@@ -4,7 +4,10 @@
 # Author: Manuel Seefelder
 
 module LoadImages
+import CSV
+import DataFrames
 import Images
+import PyCall
 
 export MultiChannelImage, load_tiff, apply_mask!
 
@@ -63,10 +66,65 @@ end
 function apply_mask!(img)
     mask = _calculate_mask(img)
     img = _apply_mask!(img, mask)
-    return img
 end
 ################################################################################
+# convert lif file to tiff files
 
+"""
+    convert_lif_to_tiff(path::S) where {S<:AbstractString}
+
+    Convert a lif file to tiff files. The lif file is expected to contain multiple
+    images. Each image is saved in a separate folder. Each channel of the image is
+    saved as a separate tiff file.
+
+    Nota Bene: the current function cannot be used to convert Z-stacks in a meaningful way.
+"""
+function convert_lif_to_tiff(path::S) where {S<:AbstractString}
+    # load python module for reading lif files
+    readlif = PyCall.pyimport("readlif.reader")
+    # read lif file
+    f = readlif.LifFile(path)
+    # get image meta_data
+    meta_data = f.image_list
+    # base path for saving images
+    base_path = (dirname(path))
+
+    # convert to tiff
+    for img ∈ 1:f.num_images
+        name = meta_data[img]["name"]
+        image = f.get_image(img-1)
+        image_path = "$base_path/$name"
+        mkdir(image_path)
+        for channel ∈ 1:meta_data[img]["channels"]
+            image.get_frame(z=0, t=0, c=channel-1).save("$image_path/$name-channel-$channel.tiff")
+        end
+    end
+
+    # convert meta data to csv file
+    convert_lif_meta_data_to_csv(meta_data, base_path)
+end
+
+function convert_lif_meta_data_to_csv(meta_data::Vector{Dict{Any,Any}}, path::S) where {S<:AbstractString}
+    df_meta_data = hcat([meta_data[1]["name"]], DataFrames.DataFrame(meta_data[1]["settings"]))
+    for i ∈ 2:length(meta_data)
+        try
+            df_meta_data = vcat(
+                df_meta_data, 
+                hcat(
+                    [meta_data[i]["name"]], 
+                    DataFrames.DataFrame(meta_data[i]["settings"])
+                    )
+                )
+        catch
+            @warn "Could not convert meta data for image $i. This image will be skipped. Currently, z-stacks are not supported."
+        end
+    end
+
+    # convert to csv
+    CSV.write("$path/meta_data.csv", df_meta_data)
+    
+    return df_meta_data
+end
 
 ################################################################################
 # constructor for MultiChannelImage
