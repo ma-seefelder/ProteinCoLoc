@@ -3,10 +3,12 @@
 # See LICENSE.md in the project root for license information.
 # Author: Manuel Seefelder
 
-module Colocalization
+#module Colocalization
 include("LoadImages.jl")
 import .LoadImages
+import DataFrames: DataFrame
 using Turing
+using Turing: Variational
 
 path = ["test_images/c1.tif", "test_images/c2.tif", "test_images/c3.tif"]
 img = LoadImages.MultiChannelImage("positive_sample", path, ["blue", "green", "red"])
@@ -78,130 +80,138 @@ function correlation(x::Array{T, 4}, y::Array{T, 4}) where T <: Union{Float64, M
     end
     return ρ
 end
+######################################################################
+# function to convert the posterior samples
+######################################################################
 
-struct CoLocalizeResult
+function convert_posterior_samples(samples::Array{Float64, 2}, n_control::Int64, n_sample::Int64)
+    # check input arguments
+    6 + 2*n_control + 2*n_sample == size(samples, 1) || error("The number of parameters does not match the number of samples.")
+
+    # get parameter_names
+    parameter_names = [:μ_control, :ν_control, :σ_control, :μ_sample, :ν_sample, :σ_sample]
+    [push!(parameter_names, Symbol("μ_control_", i)) for i in 1:n_control]
+    [push!(parameter_names, Symbol("σ_control_", i)) for i in 1:n_control]
+    [push!(parameter_names, Symbol("μ_sample_", i)) for i in 1:n_sample]
+    [push!(parameter_names, Symbol("σ_sample_", i)) for i in 1:n_sample]
+        
+    # permute the samples
+    samples = DataFrame(permutedims(samples, [2, 1]), parameter_names)
+
+    # undo Fisher z transformation
+    #samples = tanh.(samples)
+end
+
+######################################################################
+# plot posterior
+######################################################################
+struct CoLocResult
     img::LoadImages.MultiChannelImage
     control::LoadImages.MultiChannelImage
     channels::Vector{Int64}
     num_patches::Int64
-    num_chains::Int64
-    ρ_control::Array{Float64, 2}
-    ρ_sample::Array{Float64, 2}
-    ρ_diff::Array{Float64, 2}
-    ρ_control_post::Array{Float64, 2}
-    ρ_sample_post::Array{Float64, 2}
-    ρ_diff_post::Array{Float64, 2}
+    posterior::DataFrame
+    advi_result
+end
+
+function plot_posterior(posterior::CoLocResult)
+    Plots.histogram(posterior.posterior.μ_control, legend = true, label = "μ_control")
+    Plots.histogram!(posterior.posterior.μ_sample, label = "μ_sample")
+    Plots.histogram(posterior.posterior.μ_control_1, label = "μ_control_1")
+
+    Plots.histogram(posterior.posterior.ν_control, label = "ν_control", legend = true)
+    Plots.histogram!(posterior.posterior.ν_sample, label = "ν_sample")
+
+    Plots.histogram(posterior.posterior.σ_control, label = "σ_control", legend = true)
+    Plots.histogram!(posterior.posterior.σ_sample, label = "σ_sample")
+
+    sum(ρ_diff .> 0) / length(ρ_diff) / sum(rand(Normal(0, 1), 10_000) .> 0) / 10_000
 end
 
 
-function colocalization_Model(
-    img::LoadImages.MultiChannelImage, 
-    control::LoadImages.MultiChannelImage, 
+function colocalization(
+    img::LoadImages.MultiChannelImageStack, 
+    control::LoadImages.MultiChannelImageStack, 
     channels::Vector{Int64},
     num_patches::Int64 = 1;
     num_chains::Int64 = num_chains
     )
-    # calculate colocalization
-    x = img.data[channels[1]]
-    y = img.data[channels[2]]
-    x_control = control.data[channels[1]]
-    y_control = control.data[channels[2]]
 
-    # assert that the images are the same size
-    @assert size(x) == size(y) == size(x_control) == size(y_control) "Images are not the same size"
+    sample = fill(0.0, length(img), num_patches)
+    for (image,idx) ∈ zip(img, 1:length(img))
+        x = image.data[channels[1]]
+        y = image.data[channels[2]]
+        x,y = patch.([x, y], num_patches)
+        sample[idx,:] = correlation(x, y)
+    end
 
-    # patch the image
-    x, y, x_control, y_control = patch.([x, y, x_control, y_control], num_patches)
+    ctrl = fill(0.0, length(img), num_patches)
+    for (image,idx) ∈ zip(control, 1:length(control))
+        x = image.data[channels[1]]
+        y = image.data[channels[2]]
+        x,y = patch.([x, y], num_patches)
+        ctrl[idx,:] = correlation(x, y)
+    end
 
-    # calculate the correlation for each patch
-    ρ_sample = correlation(x, y)
-    ρ_control = correlation(x_control, y_control)
-
-    # remove missing values
-    ρ_sample = ρ_sample[.!ismissing.(ρ_sample)]
-    ρ_control = ρ_control[.!ismissing.(ρ_control)]
-
-
-    # Fisher's z-transformation of the correlation coefficients
-    ρ_sample = atanh.(ρ_sample)
-    ρ_control = atanh.(ρ_control)
-
-    ###############################
+    ################################
     # Turing model
-    ###############################
+    ################################
+    # input data for the model are the correlation coefficients of the sample and control for each image 
+    # type: Array{Float64, 2} with size (num_images, num_patches)
 
-    @model function model_singular_image(control = ρ_control, sample = ρ_sample)
+    @model function model(control::Array{Float64,2} = ctrl, sample::Array{Float64,2} = sample)
         # get the number of patches
-        num_patches_x = size(control, 1)
-        num_patches_y = size(sample, 1)
+        num_control = size(control, 1)
+        num_sample = size(sample, 1)
 
-        # hyperpriors
-        μ_control ~ Normal(0, 1)
-        ν_control ~ Gamma(2, 0.1)
-        σ_control ~ InverseGamma(ν_control, 0.1)
+        # ============= gloabal priors (per biological condition) ============= #
+        # mean, degrees of freedom and standard deviation of the control 
+        μ_control ~ Truncated(Normal(0, 1),-1,1)
+        ν_control ~ Exponential()
+        σ_control ~ Truncated(Cauchy(std(control), 0.5 * std(control)),0,1)
+        # mean, degrees of freedom and standard deviation of the sample
+        μ_sample ~ Truncated(Normal(0, 1),-1,1)
+        ν_sample ~ Exponential()
+        σ_sample ~ Truncated(Cauchy(std(sample), 0.5 * std(sample)),0,1)
 
-        μ_sample ~ Normal(0, 1)
-        ν_sample ~ Gamma(2, 0.1)
-        σ_sample ~ InverseGamma(ν_sample, 0.1)
+        # ============= local priors (per image) ============= #
+        μ_control_image ~ filldist(Truncated(Normal(μ_control, σ_control),-1,1), num_control) # mean of the control for each patch
+        ν_control_image ~ filldist(Exponential(ν_control), num_control) # degress of freedom of the control for each patch
 
-        # priors
-        # get prior for each patch
-        μ_control_patch ~ filldist(Normal(μ_control, σ_control), num_patches)
-        ν_control_patch ~ filldist(InverseGamma(ν_control, 0.1), num_patches)
-
-        μ_sample_patch ~ filldist(Normal(μ_sample, σ_sample), num_patches)
-        ν_sample_patch ~ filldist(InverseGamma(ν_sample, 0.1), num_patches)
+        μ_sample_image ~ filldist(Truncated(Normal(μ_sample, σ_sample),-1,1), num_sample) # mean of the sample for each patch
+        ν_sample_image ~ filldist(Exponential(ν_control), num_sample) # degress of freedom of the sample for each patch
 
         # likelihood
-        for p ∈ 1:num_patches_x
-            control[p] ~ TDist(ν_control_patch[p]) + μ_control_patch[p]
+        for idx ∈ 1:num_control
+            control[idx] ~ TDist(ν_control_image[idx]) + μ_control_image[idx]
         end
 
-        for p ∈ 1:num_patches_y
-            sample[p] ~ TDist(ν_sample_patch[p]) + μ_sample_patch[p]
-        end           
+        for idx ∈ 1:num_sample
+            sample[idx] ~ TDist(ν_sample_image[idx]) + μ_sample_image[idx]
+        end
     end
 
     # sample
-    chains = sample(model_singular_image(ρ_control,ρ_control), NUTS(), MCMCThreads(), 1000, num_chains; discard_adapt=false)
+    m = model_singular_image(x, y)
+    q = vi(m, ADVI(10, 1000))
 
+    # get the posterior samples
+    q_samples = rand(q, 10_000)
+    q_samples = convert_posterior_samples(q_samples, length(ρ_control), length(ρ_sample))
+    
     # get the samples
-    ρ_control_post = tanh.(chains[:μ_control])
-    ρ_sample_post = tanh.(chains[:μ_sample])
 
     # calculate the difference
-    ρ_diff = ρ_sample_post - ρ_control_post
+    ρ_diff = q_samples.μ_sample - q_samples.μ_control
 
-    return CoLocalizeResult(
+    return CoLocResult(
         img, 
         control, 
         channels, 
         num_patches, 
-        num_chains, 
-        ρ_control, 
-        ρ_sample, 
-        ρ_diff,
-        ρ_control_post, 
-        ρ_sample_post, 
-        ρ_diff_post
+        q_samples,
+        q
         )
 
 end
 
-
-function colocalization(img::LoadImages.MultiChannelImage, channels::Vector{Int64})
-    mask = LoadImages._calculate_mask(img)
-    LoadImages._apply_mask!(img, mask)
-
-    # calculate colocalization
-    channel_1 = img.data[channels[1]]
-    channel_2 = img.data[channels[2]]
-
-    # calculate colocalization
-
-
-
-    return img
-end
-
-end
