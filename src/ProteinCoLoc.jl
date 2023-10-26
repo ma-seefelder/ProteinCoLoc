@@ -3,7 +3,6 @@
 # See LICENSE.md in the project root for license information.
 # Author: Manuel Seefelder
 
-
 module ProteinCoLoc
 
 # Dependencies

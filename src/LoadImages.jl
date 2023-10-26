@@ -8,8 +8,9 @@ import CSV
 import DataFrames
 import Images
 import PyCall
+import Base: iterate, getindex
 
-export MultiChannelImage, load_tiff, apply_mask!
+export MultiChannelImage, load_tiff, apply_mask!, MultiChannelImageStack, MultiChannelImage
 
 ################################################################################
 # Data types
@@ -28,6 +29,26 @@ struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractString, F <:
     end
 end
 
+struct MultiChannelImageStack{T <:MultiChannelImage, S <: AbstractString}
+    img::Vector{T}
+    name::S
+    num_images::Int64 # number of images in the stack
+
+    function MultiChannelImageStack(img::Vector{T}, name::S) where {T <: MultiChannelImage, S <: AbstractString}
+        new{T, S}(img, name, length(img))
+    end
+end
+
+# Method definition for struct MultiChannelImageStack
+function Base.getindex(stack::MultiChannelImageStack, i::Int64)
+    i > stack.num_images && throw(BoundsError(stack, i))
+    return stack.img[i]
+end
+
+function Base.iterate(stack::MultiChannelImageStack, state=1)
+    state > stack.num_images && return nothing
+    return stack.img[state], state + 1
+end
 ################################################################################
 # Load images from tiff files
 
@@ -146,4 +167,4 @@ function MultiChannelImage(name::S, path::Vector{S}, channels::Vector{S} =[]) wh
         )
 end
 
-end # module LoadImages
+end

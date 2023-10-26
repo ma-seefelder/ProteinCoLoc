@@ -3,21 +3,17 @@
 # See LICENSE.md in the project root for license information.
 # Author: Manuel Seefelder
 
-#module Colocalization
+module Colocalization
 include("LoadImages.jl")
 import .LoadImages
 import DataFrames: DataFrame
 using Turing
 using Turing: Variational
+using KernelDensity
 
-path = ["test_images/c1.tif", "test_images/c2.tif", "test_images/c3.tif"]
-img = LoadImages.MultiChannelImage("positive_sample", path, ["blue", "green", "red"])
-mask = LoadImages._calculate_mask(img)
-LoadImages._apply_mask!(img, mask)
 
 ######################################################################
 # function to patch the image
-
 """
     patch(img::Array{Float64, 2}, num_patches::Int64)
     Patches the image into num_patches x num_patches patches.
@@ -46,17 +42,21 @@ end
 
 """
     _exclude_zero!(a::Vector{T},b::Vector{T}) where T <: Number
-    Exclude all zero values from the vectors a and b.
+    Exclude all values that are zero in at least one of the vectors a and b.
 """
 function _exclude_zero!(a::Vector{Union{T, Missing}},b::Vector{Union{T, Missing}}) where T <: Number
     # get the indices of the zero values
-    a_zero = append!(findall(a .== 0), findall(isnan.(a)))
-    b_zero = append!(findall(b .== 0), findall(isnan.(b)))
+    a_zero = append!(findall(a .== 0), findall(isnan.(a)), findall(ismissing.(a)))
+    b_zero = append!(findall(b .== 0), findall(isnan.(b)), findall(ismissing.(b)))
     # make union of the indices
     zero_indices = sort(union(a_zero, b_zero))
     # exclude all values at the indices in zero_indices
     deleteat!(a, zero_indices)
     deleteat!(b, zero_indices)
+
+    # convert to type: Vector{T}
+    a = convert(Vector{Float64}, a)
+    b = Vector{Float64}(b)
 end
 
 """
@@ -106,8 +106,8 @@ end
 # plot posterior
 ######################################################################
 struct CoLocResult
-    img::LoadImages.MultiChannelImage
-    control::LoadImages.MultiChannelImage
+    img::LoadImages.MultiChannelImageStack
+    control::LoadImages.MultiChannelImageStack
     channels::Vector{Int64}
     num_patches::Int64
     posterior::DataFrame
@@ -115,51 +115,78 @@ struct CoLocResult
 end
 
 function plot_posterior(posterior::CoLocResult)
-    Plots.histogram(posterior.posterior.μ_control, legend = true, label = "μ_control")
-    Plots.histogram!(posterior.posterior.μ_sample, label = "μ_sample")
-    Plots.histogram(posterior.posterior.μ_control_1, label = "μ_control_1")
+    hist1 = Plots.histogram(posterior.posterior.μ_control, legend = true, label = "μ_control")
+    Plots.histogram!(hist1, posterior.posterior.μ_sample, label = "μ_sample")
 
-    Plots.histogram(posterior.posterior.ν_control, label = "ν_control", legend = true)
-    Plots.histogram!(posterior.posterior.ν_sample, label = "ν_sample")
+    hist2 = Plots.histogram(posterior.posterior.ν_control, label = "ν_control", legend = true)
+    Plots.histogram!(hist2, posterior.posterior.ν_sample, label = "ν_sample")
 
-    Plots.histogram(posterior.posterior.σ_control, label = "σ_control", legend = true)
-    Plots.histogram!(posterior.posterior.σ_sample, label = "σ_sample")
+    hist3 = Plots.histogram(posterior.posterior.σ_control, label = "σ_control", legend = true)
+    Plots.histogram!(hist3, posterior.posterior.σ_sample, label = "σ_sample")
 
-    sum(ρ_diff .> 0) / length(ρ_diff) / sum(rand(Normal(0, 1), 10_000) .> 0) / 10_000
+    Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
+    hist4 = Plots.histogram(Δρ,label = "Δρ",legend = true)
+
+    p = Plots.plot(hist1, hist2, hist3, hist4, layout = (2, 2), size = (800, 600))
+    Plots.display(p)
+    return(p)
 end
 
 
+"""
+    compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
+    Function to compute the savage_dickey_ratio at 0 for the posterior and prior.
+"""
+function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
+    Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
+    Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
+    # computing the Savage-Dickey density ratio
+    posterior_dist = kde(Δρ_post)
+    posterior_at_null = pdf(posterior_dist, 0.0)
+    # prior
+    prior_dist = kde(Δρ_prior)
+    prior_at_null = pdf(prior_dist, 0.0)
+    # compute the Bayes factor
+    bayes_factor = posterior_at_null / prior_at_null
+    return(bayes_factor)
+end
+
+#! prior for the standard deviation of the individual images is not defined
+#! e.g., use an inverse gamma distribution
+#! BF != 1, and different samples although the same data is used
 function colocalization(
     img::LoadImages.MultiChannelImageStack, 
     control::LoadImages.MultiChannelImageStack, 
     channels::Vector{Int64},
     num_patches::Int64 = 1;
-    num_chains::Int64 = num_chains
+    prior_only::Bool = false
     )
 
-    sample = fill(0.0, length(img), num_patches)
-    for (image,idx) ∈ zip(img, 1:length(img))
+    sample_img = fill(0.0, img.num_images, num_patches, num_patches)
+    for (image,idx) ∈ zip(img, 1:img.num_images)
         x = image.data[channels[1]]
         y = image.data[channels[2]]
         x,y = patch.([x, y], num_patches)
-        sample[idx,:] = correlation(x, y)
+        sample_img[idx,:,:] = correlation(x, y)
     end
 
-    ctrl = fill(0.0, length(img), num_patches)
-    for (image,idx) ∈ zip(control, 1:length(control))
+    ctrl_img = fill(0.0, control.num_images, num_patches, num_patches)
+    for (image,idx) ∈ zip(control, 1:control.num_images)
         x = image.data[channels[1]]
         y = image.data[channels[2]]
         x,y = patch.([x, y], num_patches)
-        ctrl[idx,:] = correlation(x, y)
+        ctrl_img[idx,:, :] = correlation(x, y)
     end
 
     ################################
     # Turing model
     ################################
     # input data for the model are the correlation coefficients of the sample and control for each image 
-    # type: Array{Float64, 2} with size (num_images, num_patches)
+    # type: Array{Float64, 2} with size (num_images, num_patches^2)
+    sample_img = reshape(sample_img, img.num_images, num_patches^2)
+    ctrl_img = reshape(ctrl_img, control.num_images, num_patches^2)
 
-    @model function model(control::Array{Float64,2} = ctrl, sample::Array{Float64,2} = sample)
+    @model function model(control::Array{Float64,2} = ctrl, sample::Array{Float64,2} = sample; prior_only::Bool = false)
         # get the number of patches
         num_control = size(control, 1)
         num_sample = size(sample, 1)
@@ -179,30 +206,28 @@ function colocalization(
         ν_control_image ~ filldist(Exponential(ν_control), num_control) # degress of freedom of the control for each patch
 
         μ_sample_image ~ filldist(Truncated(Normal(μ_sample, σ_sample),-1,1), num_sample) # mean of the sample for each patch
-        ν_sample_image ~ filldist(Exponential(ν_control), num_sample) # degress of freedom of the sample for each patch
+        ν_sample_image ~ filldist(Exponential(ν_sample), num_sample) # degress of freedom of the sample for each patch
 
         # likelihood
-        for idx ∈ 1:num_control
-            control[idx] ~ TDist(ν_control_image[idx]) + μ_control_image[idx]
-        end
+        if !prior_only
+            for idx ∈ 1:num_control
+                control[idx] ~ TDist(ν_control_image[idx]) + μ_control_image[idx]
+            end
 
-        for idx ∈ 1:num_sample
-            sample[idx] ~ TDist(ν_sample_image[idx]) + μ_sample_image[idx]
+            for idx ∈ 1:num_sample
+                sample[idx] ~ TDist(ν_sample_image[idx]) + μ_sample_image[idx]
+            end
         end
     end
 
     # sample
-    m = model_singular_image(x, y)
-    q = vi(m, ADVI(10, 1000))
+    m = model(sample_img, ctrl_img; prior_only = prior_only)
+    q = vi(m, ADVI(10, 10000))
 
     # get the posterior samples
     q_samples = rand(q, 10_000)
-    q_samples = convert_posterior_samples(q_samples, length(ρ_control), length(ρ_sample))
-    
-    # get the samples
+    q_samples = convert_posterior_samples(q_samples, img.num_images, control.num_images)
 
-    # calculate the difference
-    ρ_diff = q_samples.μ_sample - q_samples.μ_control
 
     return CoLocResult(
         img, 
@@ -212,6 +237,8 @@ function colocalization(
         q_samples,
         q
         )
-
 end
+
+end # module Colocalization
+
 
