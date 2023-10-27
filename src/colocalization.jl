@@ -2,16 +2,6 @@
 # This file is part of ProteinCoLoc.jl, licensed under the MIT License (MIT).
 # See LICENSE.md in the project root for license information.
 # Author: Manuel Seefelder
-
-module Colocalization
-include("LoadImages.jl")
-import .LoadImages
-import DataFrames: DataFrame
-using Turing
-using Turing: Variational
-using KernelDensity
-
-
 ######################################################################
 # function to patch the image
 """
@@ -43,20 +33,32 @@ end
 """
     _exclude_zero!(a::Vector{T},b::Vector{T}) where T <: Number
     Exclude all values that are zero in at least one of the vectors a and b.
+    Return the vectors a and b without the zero and missing values as a Vector{Float64}.
 """
-function _exclude_zero!(a::Vector{Union{T, Missing}},b::Vector{Union{T, Missing}}) where T <: Number
+function _exclude_zero!(a::Vector{T},b::Vector{T}) where T <: Number  
     # get the indices of the zero values
-    a_zero = append!(findall(a .== 0), findall(isnan.(a)), findall(ismissing.(a)))
-    b_zero = append!(findall(b .== 0), findall(isnan.(b)), findall(ismissing.(b)))
+    a_zero = append!(findall(a .== 0), findall(isnan.(a)))
+    b_zero = append!(findall(b .== 0), findall(isnan.(b)))
     # make union of the indices
     zero_indices = sort(union(a_zero, b_zero))
     # exclude all values at the indices in zero_indices
     deleteat!(a, zero_indices)
     deleteat!(b, zero_indices)
+end
 
-    # convert to type: Vector{T}
-    a = convert(Vector{Float64}, a)
-    b = Vector{Float64}(b)
+function _exclude_zero!(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
+    # change missing values to zero
+    a[ismissing.(a)] .= 0
+    b[ismissing.(b)] .= 0
+
+    # get the indices of the zero values
+    a_zero = append!(findall(a .== 0), findall(isnan.(a)))
+    b_zero = append!(findall(b .== 0), findall(isnan.(b)))
+    # make union of the indices
+    zero_indices = sort(union(a_zero, b_zero))
+    # exclude all values at the indices in zero_indices
+    deleteat!(a, zero_indices)
+    deleteat!(b, zero_indices)
 end
 
 """
@@ -106,8 +108,8 @@ end
 # plot posterior
 ######################################################################
 struct CoLocResult
-    img::LoadImages.MultiChannelImageStack
-    control::LoadImages.MultiChannelImageStack
+    img::MultiChannelImageStack
+    control::MultiChannelImageStack
     channels::Vector{Int64}
     num_patches::Int64
     posterior::DataFrame
@@ -155,11 +157,13 @@ end
 #! e.g., use an inverse gamma distribution
 #! BF != 1, and different samples although the same data is used
 function colocalization(
-    img::LoadImages.MultiChannelImageStack, 
-    control::LoadImages.MultiChannelImageStack, 
+    img::MultiChannelImageStack, 
+    control::MultiChannelImageStack, 
     channels::Vector{Int64},
     num_patches::Int64 = 1;
-    prior_only::Bool = false
+    prior_only::Bool = false, 
+    iter::Int64 = 5000, 
+    posterior_samples::Int64 = 100_000
     )
 
     sample_img = fill(0.0, img.num_images, num_patches, num_patches)
@@ -195,37 +199,41 @@ function colocalization(
         # mean, degrees of freedom and standard deviation of the control 
         μ_control ~ Truncated(Normal(0, 1),-1,1)
         ν_control ~ Exponential()
-        σ_control ~ Truncated(Cauchy(std(control), 0.5 * std(control)),0,1)
-        # mean, degrees of freedom and standard deviation of the sample
+        σ_control ~ Truncated(Cauchy(std(control), 0.5 * std(control)) + 1e-5,0,1)
+        τ_control ~ Gamma(2,2)
+        # mean, degrees of freedom and standard deviation of the sample, and the patch heterogeneity
         μ_sample ~ Truncated(Normal(0, 1),-1,1)
         ν_sample ~ Exponential()
-        σ_sample ~ Truncated(Cauchy(std(sample), 0.5 * std(sample)),0,1)
+        σ_sample ~ Truncated(Cauchy(std(sample), 0.5 * std(sample)) + 1e-5,0,1)
+        τ_sample ~ Gamma(2,2)
 
         # ============= local priors (per image) ============= #
         μ_control_image ~ filldist(Truncated(Normal(μ_control, σ_control),-1,1), num_control) # mean of the control for each patch
         ν_control_image ~ filldist(Exponential(ν_control), num_control) # degress of freedom of the control for each patch
+        σ_control_image ~ filldist(Truncated(Normal(σ_control, τ_control),0,1), num_control) # standard deviation of the control for each patch
 
         μ_sample_image ~ filldist(Truncated(Normal(μ_sample, σ_sample),-1,1), num_sample) # mean of the sample for each patch
         ν_sample_image ~ filldist(Exponential(ν_sample), num_sample) # degress of freedom of the sample for each patch
+        σ_sample_image ~ filldist(Truncated(Normal(σ_sample, τ_control),0,1), num_sample) # standard deviation of the control for each patch
 
         # likelihood
         if !prior_only
             for idx ∈ 1:num_control
-                control[idx] ~ TDist(ν_control_image[idx]) + μ_control_image[idx]
+                control[idx] ~ TDist(ν_control_image[idx]) * σ_control_image + μ_control_image[idx]
             end
 
             for idx ∈ 1:num_sample
-                sample[idx] ~ TDist(ν_sample_image[idx]) + μ_sample_image[idx]
+                sample[idx] ~ TDist(ν_sample_image[idx]) * σ_sample_image + μ_sample_image[idx]
             end
         end
     end
 
     # sample
     m = model(sample_img, ctrl_img; prior_only = prior_only)
-    q = vi(m, ADVI(10, 10000))
+    q = vi(m, ADVI(10, iter))
 
     # get the posterior samples
-    q_samples = rand(q, 10_000)
+    q_samples = rand(q, posterior_samples)
     q_samples = convert_posterior_samples(q_samples, img.num_images, control.num_images)
 
 
@@ -238,7 +246,4 @@ function colocalization(
         q
         )
 end
-
-end # module Colocalization
-
 

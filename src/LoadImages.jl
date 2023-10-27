@@ -3,15 +3,6 @@
 # See LICENSE.md in the project root for license information.
 # Author: Manuel Seefelder
 
-module LoadImages
-import CSV
-import DataFrames
-import Images
-import PyCall
-import Base: iterate, getindex
-
-export MultiChannelImage, load_tiff, apply_mask!, MultiChannelImageStack, MultiChannelImage
-
 ################################################################################
 # Data types
 struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractString, F <: AbstractFloat}
@@ -165,6 +156,4 @@ function MultiChannelImage(name::S, path::Vector{S}, channels::Vector{S} =[]) wh
         size(data[1]), 
         Images.otsu_threshold.(data)
         )
-end
-
 end

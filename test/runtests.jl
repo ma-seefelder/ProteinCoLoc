@@ -4,21 +4,18 @@
 # Author: Dr. rer. nat. Manuel Seefelder
 #########################################################################################
 using Test
-
+using .ProteinCoLoc
 ##########################################################################################
 ### Test for Image Loading functionality
 ##########################################################################################
-#include("./src/LoadImages.jl")
-#include("./src/colocalization.jl")
-using .LoadImages
-using .Colocalization
 import Images
+import Statistics: cor
 
 @testset "LoadImages" verbose = true begin 
     path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
     # define a test function for load_tiff
     @testset "load_tiff" begin
-        img = LoadImages.load_tiff(path[1])
+        img = ProteinCoLoc.load_tiff(path[1])
         @test size(img) == (1028, 1376)
 
         # check that image is converted to grayscale  
@@ -58,8 +55,8 @@ import Images
             path,(128, 128),[2.5, 2.5, 2.5]
             )
 
-        @test LoadImages._calculate_mask(img) == fill(fill(0, 128, 128),3)
-        img = LoadImages._apply_mask!(img, LoadImages._calculate_mask(img))
+        @test ProteinCoLoc._calculate_mask(img) == fill(fill(0, 128, 128),3)
+        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
         @test img.data == fill(fill(0, 128, 128),3)
 
         # test with image where all pixels are above the threshold
@@ -71,8 +68,8 @@ import Images
             path,(128, 128),[0.5, 0.5, 0.5]
             )
 
-        @test LoadImages._calculate_mask(img) == fill(fill(1, 128, 128),3)
-        img = LoadImages._apply_mask!(img, LoadImages._calculate_mask(img))
+        @test ProteinCoLoc._calculate_mask(img) == fill(fill(1, 128, 128),3)
+        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
         @test img.data == fill(fill(1, 128, 128),3)
         # confirm that the image size is not changed by applying the mask
         @test size(img.data[1]) == (128, 128) 
@@ -82,10 +79,10 @@ import Images
 
     @testset "MultiChannelImageStack" verbose = true begin
         # load image
-        img = LoadImages.MultiChannelImage("test_image", path, ["blue", "green", "red"])
+        img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         # create stack from image and test that the constructor returns a MultiChannelImageStack object
-        img_stack = LoadImages.MultiChannelImageStack([img, img, img], "test_stack")
-        @test typeof(img_stack) == LoadImages.MultiChannelImageStack{LoadImages.MultiChannelImage{Float64, String, Float64}, String}
+        img_stack = MultiChannelImageStack([img, img, img], "test_stack")
+        @test typeof(img_stack) == MultiChannelImageStack{MultiChannelImage{Float64, String, Float64}, String}
 
         # test that the constructor sets the fields correctly
         @test img_stack.name == "test_stack"
@@ -110,7 +107,7 @@ end
     # define a test case and call patch function 
     img = rand(100, 100)  # Create a 100x100 matrix of random numbers
     num_patches = 10  # We want to divide the image into 10x10 patches
-    patches = Colocalization.patch(img, num_patches)
+    patches = ProteinCoLoc.patch(img, num_patches)
 
     # check that the output is a 4D array
     @test typeof(patches) == Array{Union{Float64, Missing}, 4}
@@ -133,11 +130,11 @@ end
     # define a test set for the _exclude_zero! function
     @testset "_exclude_zero!" begin
         # define a test case
-        a = [1, 2, 0, 3, 4, 0, 5]
-        b = [0, 2, 3, 0, 4, 5, 6]
+        a = [1, 2, 0, 3, 4, 0, 5, missing]
+        b = [0, 2, 3, 0, 4, 5, 6, missing]
 
         # call _exclude_zero! function
-        Colocalization._exclude_zero!(a, b)
+        ProteinCoLoc._exclude_zero!(a, b)
 
         # check that the output is as expected
         @test a == [2,4,5]
@@ -152,7 +149,7 @@ end
         y = rand(5, 5, 10, 10)  # Create another 5x5x10x10 4D array of random numbers
 
         # call correlation function
-        ρ = Colocalization.correlation(x, y)
+        ρ = ProteinCoLoc.correlation(x, y)
 
         # check that the output is a 2D array
         @test typeof(ρ) == Array{Union{Float64, Missing}, 2}
@@ -166,6 +163,29 @@ end
                 b = y[i, j, :, :][:]
                 @test ρ[i, j] == cor(a, b)
             end
-        end
+        end  
+    end
+
+    @testset "Correlation Bayes Test" begin
+        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
+        # first load image
+        img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
+        # make a stack of the image
+        img_stack = MultiChannelImageStack([img, img, img, img, img], "test_stack")
+        control_stack = MultiChannelImageStack([img, img, img, img, img], "test_stack")
+        # calculate posterior and retrieve prior samples
+        posterior = colocalization(img_stack, control_stack, [2,3], 16; prior_only = false)
+        prior = colocalization(img_stack, control_stack, [2,3], 16; prior_only = true)
+        # check that the output is a CoLocResult object
+        @test typeof(posterior) == CoLocResult
+        @test typeof(prior) == CoLocResult
+
+        # check that the resulting Bayes factor is correct
+        @test compute_BayesFactor(posterior, prior) == 1.0 tol = 1e-2
+
+        # check that the resulting posterior is correct
+        plot_posterior(posterior)
+        # check that the resulting prior is correct
+        plot_posterior(prior)
     end
 end
