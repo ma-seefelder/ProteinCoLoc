@@ -10,10 +10,13 @@ import Base: getindex, iterate
 import CSV
 import DataFrames
 import DataFrames: DataFrame
+import Distributions: pdf
 import Images
+import KernelDensity: kde
+import Plots
 import PyCall
+import QuadGK: quadgk
 
-using KernelDensity
 using Turing
 using Turing: Variational
 

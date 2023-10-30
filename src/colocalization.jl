@@ -86,18 +86,14 @@ end
 # function to convert the posterior samples
 ######################################################################
 
-function convert_posterior_samples(samples::Array{Float64, 2}, n_control::Int64, n_sample::Int64)
-    # check input arguments
-    6 + 2*n_control + 2*n_sample == size(samples, 1) || error("The number of parameters does not match the number of samples.")
-
+function convert_posterior_samples(samples::Array{Float64, 2}, m::T) where {T <: DynamicPPL.Model}
     # get parameter_names
-    parameter_names = [:μ_control, :ν_control, :σ_control, :μ_sample, :ν_sample, :σ_sample]
-    [push!(parameter_names, Symbol("μ_control_", i)) for i in 1:n_control]
-    [push!(parameter_names, Symbol("σ_control_", i)) for i in 1:n_control]
-    [push!(parameter_names, Symbol("μ_sample_", i)) for i in 1:n_sample]
-    [push!(parameter_names, Symbol("σ_sample_", i)) for i in 1:n_sample]
-        
+    parameter_names = DynamicPPL.syms(DynamicPPL.VarInfo(m))
+    # select only the necessary parameters
+    parameter_names = collect(parameter_names[1:10])
+
     # permute the samples
+    samples = samples[1:10,:]
     samples = DataFrame(permutedims(samples, [2, 1]), parameter_names)
 
     # undo Fisher z transformation
@@ -116,20 +112,45 @@ struct CoLocResult
     advi_result
 end
 
-function plot_posterior(posterior::CoLocResult)
-    hist1 = Plots.histogram(posterior.posterior.μ_control, legend = true, label = "μ_control")
-    Plots.histogram!(hist1, posterior.posterior.μ_sample, label = "μ_sample")
+function plot_posterior(posterior::CoLocResult, prior::CoLocResult)
+    hist1 = Plots.histogram(
+        posterior.posterior.μ_control, legend = true, label = "μ_control", 
+        title = "P(ρ|data)", alpha = 0.5, xlims = (-1, 1)
+        )
+    Plots.histogram!(hist1, posterior.posterior.μ_sample, label = "μ_sample", alpha = 0.5)
 
-    hist2 = Plots.histogram(posterior.posterior.ν_control, label = "ν_control", legend = true)
-    Plots.histogram!(hist2, posterior.posterior.ν_sample, label = "ν_sample")
+    hist2 = Plots.histogram(
+        posterior.posterior.ν_control, label = "ν_control", 
+        legend = true, title = "P(ν|data)", alpha = 0.5
+        )
 
-    hist3 = Plots.histogram(posterior.posterior.σ_control, label = "σ_control", legend = true)
-    Plots.histogram!(hist3, posterior.posterior.σ_sample, label = "σ_sample")
+    Plots.histogram!(hist2, posterior.posterior.ν_sample, label = "ν_sample", alpha = 0.5)
+
+    hist3 = Plots.histogram(
+        posterior.posterior.σ_control, label = "σ_control", 
+        legend = true, title = "P(σ|data)", alpha = 0.5
+        )
+
+    Plots.histogram!(hist3, posterior.posterior.σ_sample, label = "σ_sample", alpha = 0.5)
 
     Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
-    hist4 = Plots.histogram(Δρ,label = "Δρ",legend = true)
 
-    p = Plots.plot(hist1, hist2, hist3, hist4, layout = (2, 2), size = (800, 600))
+    hist4 = Plots.histogram(
+        Δρ,legend = true, label = "Δρ", 
+        title = "P(Δρ|data)", alpha = 0.5)
+
+    hist5 = Plots.histogram(
+        posterior.posterior.τ_sample,legend = true,
+        label = "τ_sample", title = "P(τ|data)", alpha = 0.5
+        )
+
+    Plots.histogram!(hist5, posterior.posterior.τ_control, label = "τ_control", alpha = 0.5)
+
+    p = Plots.plot(
+        hist1, hist2, hist3, hist5, hist4, 
+        layout = (3, 2), size = (800, 800)
+        )
+
     Plots.display(p)
     return(p)
 end
@@ -137,20 +158,35 @@ end
 
 """
     compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
-    Function to compute the savage_dickey_ratio at 0 for the posterior and prior.
 """
 function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
     Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
     Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
-    # computing the Savage-Dickey density ratio
+    # computing the probability of Δρ <=0
     posterior_dist = kde(Δρ_post)
-    posterior_at_null = pdf(posterior_dist, 0.0)
+    p_post, ϵ_post = quadgk(x -> pdf(posterior_dist, x), -Inf, 0.0)
+    p_post = 1 - p_post
+
+    ϵ_post > 1e-5 && 
+        @warn "CDF of the posterior distribution is approximated by numerical integration 
+        with an error of $ϵ_post that is unusually large. " 
+    
     # prior
     prior_dist = kde(Δρ_prior)
-    prior_at_null = pdf(prior_dist, 0.0)
-    # compute the Bayes factor
-    bayes_factor = posterior_at_null / prior_at_null
-    return(bayes_factor)
+    p_prior, ϵ_prior = quadgk(x -> pdf(prior_dist, x), -Inf, 0.0)
+    p_prior = 1 - p_prior
+
+    ϵ_prior > 1e-5 && 
+        @warn "CDF of the prior distribution is approximated by numerical integration 
+        with an error of $ϵ_prior that is unusually large. " 
+    ##################### compute the Bayes factor #####################
+    # compute prior odds
+    prior_odds = p_prior / (1 - p_prior)
+    # compute posterior odds
+    posterior_odds = p_post / (1 - p_post)
+    # compute Bayes factor
+    bayes_factor = posterior_odds / prior_odds
+    return(bayes_factor, p_post, p_prior)
 end
 
 #! prior for the standard deviation of the individual images is not defined
@@ -162,7 +198,7 @@ function colocalization(
     channels::Vector{Int64},
     num_patches::Int64 = 1;
     prior_only::Bool = false, 
-    iter::Int64 = 5000, 
+    iter::Int64 = 10000, 
     posterior_samples::Int64 = 100_000
     )
 
@@ -190,21 +226,25 @@ function colocalization(
     sample_img = reshape(sample_img, img.num_images, num_patches^2)
     ctrl_img = reshape(ctrl_img, control.num_images, num_patches^2)
 
-    @model function model(control::Array{Float64,2} = ctrl, sample::Array{Float64,2} = sample; prior_only::Bool = false)
+    @model function model(
+        control::Array{Float64,2} = ctrl, sample::Array{Float64,2} = sample; 
+        prior_only::Bool = false
+        )
+        
         # get the number of patches
         num_control = size(control, 1)
         num_sample = size(sample, 1)
 
         # ============= gloabal priors (per biological condition) ============= #
         # mean, degrees of freedom and standard deviation of the control 
-        μ_control ~ Truncated(Normal(0, 1),-1,1)
+        μ_control ~ Truncated(Cauchy(0, 1),-1,1)
         ν_control ~ Exponential()
-        σ_control ~ Truncated(Cauchy(std(control), 0.5 * std(control)) + 1e-5,0,1)
+        σ_control ~ Truncated(Cauchy(std(control), std(control)) + 1e-5,0,1)
         τ_control ~ Gamma(2,2)
         # mean, degrees of freedom and standard deviation of the sample, and the patch heterogeneity
-        μ_sample ~ Truncated(Normal(0, 1),-1,1)
+        μ_sample ~ Truncated(Cauchy(0, 1),-1,1)
         ν_sample ~ Exponential()
-        σ_sample ~ Truncated(Cauchy(std(sample), 0.5 * std(sample)) + 1e-5,0,1)
+        σ_sample ~ Truncated(Cauchy(std(sample), std(sample)) + 1e-5,0,1)
         τ_sample ~ Gamma(2,2)
 
         # ============= local priors (per image) ============= #
@@ -214,29 +254,27 @@ function colocalization(
 
         μ_sample_image ~ filldist(Truncated(Normal(μ_sample, σ_sample),-1,1), num_sample) # mean of the sample for each patch
         ν_sample_image ~ filldist(Exponential(ν_sample), num_sample) # degress of freedom of the sample for each patch
-        σ_sample_image ~ filldist(Truncated(Normal(σ_sample, τ_control),0,1), num_sample) # standard deviation of the control for each patch
+        σ_sample_image ~ filldist(Truncated(Normal(σ_sample, τ_sample),0,1), num_sample) # standard deviation of the control for each patch
 
         # likelihood
         if !prior_only
             for idx ∈ 1:num_control
-                control[idx] ~ TDist(ν_control_image[idx]) * σ_control_image + μ_control_image[idx]
+                control[idx] ~ TDist(ν_control_image[idx]) * σ_control_image[idx] + μ_control_image[idx]
             end
 
             for idx ∈ 1:num_sample
-                sample[idx] ~ TDist(ν_sample_image[idx]) * σ_sample_image + μ_sample_image[idx]
+                sample[idx] ~ TDist(ν_sample_image[idx]) * σ_sample_image[idx] + μ_sample_image[idx]
             end
-        end
+        end       
     end
 
     # sample
-    m = model(sample_img, ctrl_img; prior_only = prior_only)
+    m = model(ctrl_img, sample_img; prior_only = prior_only)
     q = vi(m, ADVI(10, iter))
 
     # get the posterior samples
     q_samples = rand(q, posterior_samples)
-    q_samples = convert_posterior_samples(q_samples, img.num_images, control.num_images)
-
-
+    q_samples = convert_posterior_samples(q_samples, m)
     return CoLocResult(
         img, 
         control, 
