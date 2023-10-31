@@ -177,15 +177,14 @@ end
         img_stack = MultiChannelImageStack([img, img, img, img, img], "test_stack")
         control_stack = MultiChannelImageStack([img, img, img, img, img], "test_stack")
         # calculate posterior and retrieve prior samples
-        posterior = colocalization(img_stack, control_stack, [2,3], 16; prior_only = false)
-        prior = colocalization(img_stack, control_stack, [2,3], 16; prior_only = true)
+        prior, posterior = colocalization(img_stack, control_stack, [2,3], 16)
         # check that the output is a CoLocResult object
         @test typeof(posterior) == CoLocResult
         @test typeof(prior) == CoLocResult
 
         # check that the resulting Bayes factor is correct
-        @test isapprox(ProteinCoLoc.compute_BayesFactor(posterior, prior), 1.0,  atol=0.3) broken = true
-
+        bf, posterior_prob, prior_prob = ProteinCoLoc.compute_BayesFactor(posterior, prior)
+        @test isapprox(bf, 1.0,  atol=0.1)
         # check that the resulting posterior is correct
         plot_posterior(posterior, prior)
         # check that the resulting prior is correct
@@ -199,19 +198,39 @@ end
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
         # make a stack of the image
-        img_stack = MultiChannelImageStack([img, img, img, img, img], "test_stack")
-        control_stack = MultiChannelImageStack([control, control, control, control, control], "test_stack")
+        img_stack = MultiChannelImageStack([img, img, img], "test_stack")
+        control_stack = MultiChannelImageStack([control, control, control], "test_stack")
         # calculate posterior and retrieve prior samples
-        posterior = colocalization(img_stack, control_stack, [2,3], 16; prior_only = false)
-        prior = colocalization(img_stack, control_stack, [2,3], 16; prior_only = true)
+        prior, posterior = colocalization(img_stack, control_stack, [2,3], 16)
         # check that the output is a CoLocResult object
         @test typeof(posterior) == CoLocResult
         @test typeof(prior) == CoLocResult
         # check that the resulting Bayes factor is not equal to 1
-        #@test isapprox(ProteinCoLoc.compute_BayesFactor(posterior, prior), 1.0,  atol=0.1) == false
+        bf, posterior_prob, prior_prob = ProteinCoLoc.compute_BayesFactor(posterior, prior)
+        @test bf > 1.0
+        @test isapprox(bf, 56.3,  atol=3)
         # check that the resulting prior is correct
         plot_posterior(prior, prior)
         # check that the resulting posterior is correct
         plot_posterior(posterior, prior)
+    end
+
+    @testset "bayesfactor_robustness" begin
+        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
+        path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
+        # first load image
+        img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
+        control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
+        # make a stack of the image
+        img_stack = MultiChannelImageStack([img, img, img], "test_stack")
+        control_stack = MultiChannelImageStack([control, control, control], "test_stack")
+
+        # check that the function works
+        plot, bf, post, prior = bayesfactor_robustness(
+            img_stack, control_stack, [2,3],
+            [1,2,4,6,8,10,12,14,16,18,20,22,24]
+            )
+
+        @test typeof(plot) == Plots.Plot{Plots.GRBackend}     
     end
 end

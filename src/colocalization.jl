@@ -115,7 +115,7 @@ end
 function plot_posterior(posterior::CoLocResult, prior::CoLocResult)
     hist1 = Plots.histogram(
         posterior.posterior.μ_control, legend = true, label = "μ_control", 
-        title = "P(ρ|data)", alpha = 0.5, xlims = (-1, 1)
+        title = "P(ρ|data)", alpha = 0.5
         )
     Plots.histogram!(hist1, posterior.posterior.μ_sample, label = "μ_sample", alpha = 0.5)
 
@@ -189,18 +189,14 @@ function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
     return(bayes_factor, p_post, p_prior)
 end
 
-#! prior for the standard deviation of the individual images is not defined
-#! e.g., use an inverse gamma distribution
-#! BF != 1, and different samples although the same data is used
 function colocalization(
     img::MultiChannelImageStack, 
     control::MultiChannelImageStack, 
-    channels::Vector{Int64},
-    num_patches::Int64 = 1;
-    prior_only::Bool = false, 
-    iter::Int64 = 10000, 
-    posterior_samples::Int64 = 100_000
-    )
+    channels::Vector{T},
+    num_patches::T = 1;
+    iter::T = 1000, 
+    posterior_samples::T = 100_000
+    ) where T <: Int
 
     sample_img = fill(0.0, img.num_images, num_patches, num_patches)
     for (image,idx) ∈ zip(img, 1:img.num_images)
@@ -226,10 +222,7 @@ function colocalization(
     sample_img = reshape(sample_img, img.num_images, num_patches^2)
     ctrl_img = reshape(ctrl_img, control.num_images, num_patches^2)
 
-    @model function model(
-        control::Array{Float64,2} = ctrl, sample::Array{Float64,2} = sample; 
-        prior_only::Bool = false
-        )
+    @model function model(control::Matrix{Float64}, sample::Matrix{Float64})
         
         # get the number of patches
         num_control = size(control, 1)
@@ -237,15 +230,15 @@ function colocalization(
 
         # ============= gloabal priors (per biological condition) ============= #
         # mean, degrees of freedom and standard deviation of the control 
-        μ_control ~ Truncated(Cauchy(0, 1),-1,1)
+        μ_control ~ Truncated(Cauchy(0, 0.3),-1,1)
         ν_control ~ Exponential()
-        σ_control ~ Truncated(Cauchy(std(control), std(control)) + 1e-5,0,1)
-        τ_control ~ Gamma(2,2)
+        σ_control ~ Truncated(Cauchy(0, 0.3),0,1)
+        τ_control ~ Truncated(Cauchy(0, 0.3),0,1)
         # mean, degrees of freedom and standard deviation of the sample, and the patch heterogeneity
-        μ_sample ~ Truncated(Cauchy(0, 1),-1,1)
+        μ_sample ~ Truncated(Cauchy(0, 0.3),-1,1)
         ν_sample ~ Exponential()
-        σ_sample ~ Truncated(Cauchy(std(sample), std(sample)) + 1e-5,0,1)
-        τ_sample ~ Gamma(2,2)
+        σ_sample ~ Truncated(Cauchy(0, 0.3),0,1)
+        τ_sample ~ Truncated(Cauchy(0, 0.3),0,1)
 
         # ============= local priors (per image) ============= #
         μ_control_image ~ filldist(Truncated(Normal(μ_control, σ_control),-1,1), num_control) # mean of the control for each patch
@@ -257,31 +250,101 @@ function colocalization(
         σ_sample_image ~ filldist(Truncated(Normal(σ_sample, τ_sample),0,1), num_sample) # standard deviation of the control for each patch
 
         # likelihood
-        if !prior_only
-            for idx ∈ 1:num_control
-                control[idx] ~ TDist(ν_control_image[idx]) * σ_control_image[idx] + μ_control_image[idx]
-            end
+        for idx ∈ 1:num_control
+            control[idx] ~ TDist(ν_control_image[idx]) * σ_control_image[idx] + μ_control_image[idx]
+        end
 
-            for idx ∈ 1:num_sample
-                sample[idx] ~ TDist(ν_sample_image[idx]) * σ_sample_image[idx] + μ_sample_image[idx]
-            end
+        for idx ∈ 1:num_sample
+            sample[idx] ~ TDist(ν_sample_image[idx]) * σ_sample_image[idx] + μ_sample_image[idx]
         end       
     end
 
+    # define model
+    m = model(ctrl_img, sample_img)
+    # get prior
+    prior_chain = sample(m, Prior(), posterior_samples)
+
+    prior = CoLocResult(
+        img, control, 
+        channels, num_patches,
+        DataFrames.DataFrame(prior_chain[[
+            :μ_control,:ν_control,:σ_control,:τ_control,
+            :μ_sample,:ν_sample,:σ_sample,:τ_sample
+            ]]),
+        prior_chain
+    )
+
+    ######################################################
+    # get the posterior samples
+    # calculate number of latent variables
+    num_latent = 8 + size(ctrl_img)[1] * 3 + size(sample_img)[1] * 3
     # sample
-    m = model(ctrl_img, sample_img; prior_only = prior_only)
-    q = vi(m, ADVI(10, iter))
+    q = vi(m, ADVI(num_latent, iter))
 
     # get the posterior samples
     q_samples = rand(q, posterior_samples)
     q_samples = convert_posterior_samples(q_samples, m)
-    return CoLocResult(
-        img, 
-        control, 
-        channels, 
-        num_patches, 
-        q_samples,
-        q
+
+    posterior = CoLocResult(
+        img, control, 
+        channels,num_patches, 
+        q_samples, q
         )
+
+    ######################################################
+    return prior, posterior
 end
 
+function bayesfactor_robustness(
+    img::MultiChannelImageStack, 
+    control::MultiChannelImageStack, 
+    channels::Vector{T},
+    num_patches::Vector{T} = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    iter::T = 1000, 
+    posterior_samples::T = 100_000
+    ) where T <: Int
+
+    bf = fill(0.0, length(num_patches))
+    p_post = fill(0.0, length(num_patches))
+    p_prior = fill(0.0, length(num_patches))
+
+    for (n_patch, idx) ∈ zip(num_patches, 1:length(num_patches))
+        prior, posterior = colocalization(
+            img, control, channels, n_patch; 
+            iter = iter, posterior_samples = posterior_samples)
+        bf[idx], p_post[idx], p_prior[idx] = compute_BayesFactor(posterior, prior)
+    end
+
+    # plot the results
+    p1 = Plots.plot(
+        num_patches.^2, log10.(bf), 
+        xlabel = "number of patches", 
+        ylabel = "log10(Bayes factor)", 
+        title = "Bayes factor vs number of patches",
+        legend = false
+        )
+
+    p2 = Plots.plot(
+        num_patches.^2, p_post, 
+        xlabel = "number of patches", 
+        ylabel = "P(Δρ > 0| data)", 
+        title = "P(Δρ > 0| data) vs number of patches",
+        legend = false
+        )
+
+    p3 = Plots.plot(
+        num_patches.^2, p_prior, 
+        xlabel = "number of patches", 
+        ylabel = "P(Δρ > 0)", 
+        title = "P(Δρ > 0) vs number of patches",
+        legend = false
+        )
+
+    p = Plots.plot(
+        p1, p2, p3,
+        layout = (3, 1), size = (800, 800)
+        )
+    
+    Plots.display(p)
+    return p, bf, p_post, p_prior 
+end
