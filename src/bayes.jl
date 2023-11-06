@@ -1,3 +1,10 @@
+##########################################################################################
+## bayes.jl
+# This file is part of ProteinCoLoc.jl, licensed under the MIT License (MIT).
+# See LICENSE.md in the project root for license information.
+# Author: Manuel Seefelder
+##########################################################################################
+
 ######################################################################
 # function to convert the posterior samples
 ######################################################################
@@ -28,48 +35,99 @@ struct CoLocResult
     advi_result
 end
 
-function plot_posterior(posterior::CoLocResult, prior::CoLocResult)
+function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
     hist1 = Plots.histogram(
         posterior.posterior.μ_control, legend = true, label = "μ_control", 
-        title = "P(ρ|data)", alpha = 0.5
+        title = "P(ρ|data)", alpha = 0.5, normalize = :pdf
         )
-    Plots.histogram!(hist1, posterior.posterior.μ_sample, label = "μ_sample", alpha = 0.5)
+    Plots.histogram!(
+        hist1, posterior.posterior.μ_sample, label = "μ_sample", 
+        alpha = 0.5, normalize = :pdf
+        )
 
     hist2 = Plots.histogram(
         posterior.posterior.ν_control, label = "ν_control", 
-        legend = true, title = "P(ν|data)", alpha = 0.5
+        legend = true, title = "P(ν|data)", alpha = 0.5,
+        normalize = :pdf
         )
 
-    Plots.histogram!(hist2, posterior.posterior.ν_sample, label = "ν_sample", alpha = 0.5)
+    Plots.histogram!(
+        hist2, posterior.posterior.ν_sample, 
+        label = "ν_sample", alpha = 0.5, normalize = :pdf
+        )
 
     hist3 = Plots.histogram(
         posterior.posterior.σ_control, label = "σ_control", 
-        legend = true, title = "P(σ|data)", alpha = 0.5
+        legend = true, title = "P(σ|data)", alpha = 0.5,
+        normalize = :pdf
         )
 
-    Plots.histogram!(hist3, posterior.posterior.σ_sample, label = "σ_sample", alpha = 0.5)
+    Plots.histogram!(
+        hist3, posterior.posterior.σ_sample, label = "σ_sample", 
+        alpha = 0.5, normalize = :pdf
+        )
 
     Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
 
     hist4 = Plots.histogram(
-        Δρ,legend = true, label = "Δρ", 
+        Δρ,legend = true, label = "Δρ", normalize = :pdf,
         title = "P(Δρ|data)", alpha = 0.5)
 
     hist5 = Plots.histogram(
         posterior.posterior.τ_sample,legend = true,
-        label = "τ_sample", title = "P(τ|data)", alpha = 0.5
+        label = "τ_sample", title = "P(τ|data)", alpha = 0.5,
+        normalize = :pdf
         )
 
-    Plots.histogram!(hist5, posterior.posterior.τ_control, label = "τ_control", alpha = 0.5)
+    Plots.histogram!(
+        hist5, posterior.posterior.τ_control, label = "τ_control", 
+        alpha = 0.5, normalize = :pdf
+        )
 
     p = Plots.plot(
         hist1, hist2, hist3, hist5, hist4, 
         layout = (3, 2), size = (800, 800)
         )
 
-    Plots.display(p)
+    save && Plots.savefig(p, file)
     return(p)
 end
+
+function bayesplot(
+    prior::CoLocResult, 
+    posterior::CoLocResult, 
+    bf::Float64; 
+    file::String = "bayesplot.png", 
+    save::Bool = true
+    )
+
+    Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
+    Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
+
+    hist1 = Plots.histogram(
+        Δρ_prior, legend = true, label = "prior", 
+        title = "P(Δρ|data)", alpha = 0.35,
+        xlabel = "Δρ", ylabel = "PDF",
+        normalize = :pdf
+        )
+
+    Plots.histogram!(hist1, Δρ_post, label = "posterior", alpha = 0.35, normalize = :pdf)
+    Plots.vline!(hist1, [0], label = "Δρ = 0", color = :black, linestyle = :dash)
+
+    # add BF to the plot
+    Plots.annotate!(
+        hist1, 
+        [(-2.0, 0.05, Plots.text("BF[Δρ>0 : Δρ ≤ 0] = $(round(bf; digits = 2))", 10, :left, :bottom, :black))], 
+        font = "Helvetica", 
+        color = :black
+        )
+
+    if save
+        Plots.savefig(hist1, file)
+    end
+    return hist1
+end
+
 
 
 """
@@ -105,6 +163,7 @@ function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
     return(bayes_factor, p_post, p_prior)
 end
 
+#! verify that model produces correct results
 function colocalization(
     img::MultiChannelImageStack, 
     control::MultiChannelImageStack, 
@@ -114,20 +173,20 @@ function colocalization(
     posterior_samples::T = 100_000
     ) where T <: Int
 
-    sample_img = fill(0.0, img.num_images, num_patches, num_patches)
+    sample_image::Array{Union{Float64, Missing}, 3} = fill(0.0, img.num_images, num_patches, num_patches)
     for (image,idx) ∈ zip(img, 1:img.num_images)
         x = image.data[channels[1]]
         y = image.data[channels[2]]
         x,y = patch.([x, y], num_patches)
-        sample_img[idx,:,:] = correlation(x, y)
+        sample_image[idx,:,:] = correlation(x, y)
     end
 
-    ctrl_img = fill(0.0, control.num_images, num_patches, num_patches)
+    ctrl_image::Array{Union{Float64, Missing}, 3} = fill(0.0, control.num_images, num_patches, num_patches)
     for (image,idx) ∈ zip(control, 1:control.num_images)
         x = image.data[channels[1]]
         y = image.data[channels[2]]
         x,y = patch.([x, y], num_patches)
-        ctrl_img[idx,:, :] = correlation(x, y)
+        ctrl_image[idx,:, :] = correlation(x, y)
     end
 
     ################################
@@ -135,10 +194,10 @@ function colocalization(
     ################################
     # input data for the model are the correlation coefficients of the sample and control for each image 
     # type: Array{Float64, 2} with size (num_images, num_patches^2)
-    sample_img = reshape(sample_img, img.num_images, num_patches^2)
-    ctrl_img = reshape(ctrl_img, control.num_images, num_patches^2)
+    sample_img = reshape(sample_image, img.num_images, num_patches^2)
+    ctrl_img = reshape(ctrl_image, control.num_images, num_patches^2)
 
-    @model function model(control::Matrix{Float64}, sample::Matrix{Float64})
+    @model function model(control, sample)
         
         # get the number of patches
         num_control = size(control, 1)
@@ -167,11 +226,13 @@ function colocalization(
 
         # likelihood
         for idx ∈ 1:num_control
-            control[idx] ~ TDist(ν_control_image[idx]) * σ_control_image[idx] + μ_control_image[idx]
+            c = collect(skipmissing(control[idx, :]))
+            c ~ TDist(ν_control_image[idx]) * σ_control_image[idx] + μ_control_image[idx]
         end
 
         for idx ∈ 1:num_sample
-            sample[idx] ~ TDist(ν_sample_image[idx]) * σ_sample_image[idx] + μ_sample_image[idx]
+            s = collect(skipmissing(sample[idx, :]))
+            s ~ TDist(ν_sample_image[idx]) * σ_sample_image[idx] + μ_sample_image[idx]
         end       
     end
 
@@ -217,7 +278,9 @@ function bayesfactor_robustness(
     channels::Vector{T},
     num_patches::Vector{T} = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     iter::T = 1000, 
-    posterior_samples::T = 100_000
+    posterior_samples::T = 100_000,
+    save::Bool = true,
+    file::String = "bayesfactor_robustness.png"
     ) where T <: Int
 
     bf = fill(0.0, length(num_patches))
@@ -261,6 +324,6 @@ function bayesfactor_robustness(
         layout = (3, 1), size = (800, 800)
         )
     
-    Plots.display(p)
+    save && Plots.savefig(p, file)
     return p, bf, p_post, p_prior 
 end

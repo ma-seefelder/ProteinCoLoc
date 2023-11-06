@@ -19,9 +19,11 @@ import Plots: annotate!, hline!, plot, savefig, text, vline!
 import PyCall
 import QuadGK: quadgk
 import Statistics: quantile
+import StatsPlots
 
 using Turing
 using Turing: Variational
+
 
 include("LoadImages.jl")
 include("colocalization.jl")
@@ -31,5 +33,5 @@ include("plot.jl")
 export MultiChannelImage, MultiChannelImageStack, colocalization
 export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult
 export fractional_overlap, plot, plot_fractional_overlap, local_correlation_plot
-export plot_mask
+export plot_mask, bayesplot, bayesfactor_robustness
 end

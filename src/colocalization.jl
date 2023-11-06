@@ -119,8 +119,6 @@ function print(IO::Core.IO, x::FractionalOverlap)
     return println(IO, expression)
 end
 
-
-
 """
     _clip_to_zero(x::Matrix{T}) where T<: Real
     Helper function to clip non-zero values to zero.
