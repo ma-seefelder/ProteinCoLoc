@@ -251,3 +251,47 @@ end
         @test typeof(plot) == Plots.Plot{Plots.GRBackend}     
     end
 end
+
+###########################################################################################
+### Test for plotting functionality
+###########################################################################################
+@testset "Plots" verbose = true begin
+    path = path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
+    name = "test_image"
+    channels = ["blue", "green", "red"]
+    img = MultiChannelImage(name, path, channels)
+    # apply mask
+    img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
+
+    # load control image
+    path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
+    control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
+
+    # patched correlation plot
+    plot(img, 32, [1,1]; file = "test/test_images/patched_channels_1_1.png")
+    plot(img, 32, [1,2]; file = "test/test_images/patched_channels_1_2.png")
+    plot(img, 32, [1,3]; file = "test/test_images/patched_channels_1_3.png")
+    plot(img, 32, [2,2]; file = "test/test_images/patched_channels_2_2.png")
+    plot(img, 32, [2,3]; file = "test/test_images/patched_channels_2_3.png")
+    plot(img, 32, [3,3]; file = "test/test_images/patched_channels_3_3.png")
+
+    # mask
+    plot_mask(img, "test/test_images/mask.png")
+
+    # local correlation plot
+    local_correlation_plot(img, 200, [1,1]; file = "test/test_images/local_correlation_1_1.png")
+    local_correlation_plot(img, 200, [1,2]; file = "test/test_images/local_correlation_1_2.png")
+    local_correlation_plot(img, 200, [1,3]; file = "test/test_images/local_correlation_1_3.png")
+    local_correlation_plot(img, 200, [2,2]; file = "test/test_images/local_correlation_2_2.png")
+    local_correlation_plot(img, 200, [2,3]; file = "test/test_images/local_correlation_2_3.png")
+    local_correlation_plot(img,
+     200, [3,3]; file = "test/test_images/local_correlation_3_3.png")
+
+    # fractional overlap plot
+    plot_fractional_overlap(img, control, 200, [1,1]; file = "test/test_images/fractional_overlap_1_1.png", method = "quantile", quantile_level = 0.975)
+    plot_fractional_overlap(img, control, 200, [1,2]; file = "test/test_images/fractional_overlap_1_2.png", method = "quantile", quantile_level = 0.975)
+    plot_fractional_overlap(img, control, 200, [1,3]; file = "test/test_images/fractional_overlap_1_3.png", method = "quantile", quantile_level = 0.975)
+    plot_fractional_overlap(img, control, 200, [2,2]; file = "test/test_images/fractional_overlap_2_2.png", method = "quantile", quantile_level = 0.975)
+    plot_fractional_overlap(img, control, 200, [2,3]; file = "test/test_images/fractional_overlap_2_3.png", method = "quantile", quantile_level = 0.975)
+    plot_fractional_overlap(img, control, 200, [3,3]; file = "test/test_images/fractional_overlap_3_3.png", method = "quantile", quantile_level = 0.975)
+end
