@@ -44,7 +44,23 @@ import Statistics: cor
         @test img.name == name
         @test img.path == path
         @test img.pixel_size == (1028, 1376)
-        @test length(img.otsu_threshold) == 3
+        @test length(img.otsu_threshold) == size(channels)[1]
+    end
+
+    # test with five channel image
+    @testset "MultiChannelImage constructor (5 channels)" begin
+        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif","test/test_images/c3.tif", "test/test_images/c3.tif" ]
+        name = "test_image"
+        channels = ["blue", "green", "red","red_2","red_3"]
+        img = MultiChannelImage(name, path, channels)
+        @test typeof(img) == MultiChannelImage{Float64, String, Float64}
+
+        # test that the constructor sets the fields correctly
+        @test img.channels == channels
+        @test img.name == name
+        @test img.path == path
+        @test img.pixel_size == (1028, 1376)
+        @test length(img.otsu_threshold) == size(channels)[1]
     end
 
     # test for mask calculation
@@ -81,6 +97,7 @@ import Statistics: cor
     end
 
     @testset "MultiChannelImageStack" verbose = true begin
+        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
         # load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         # create stack from image and test that the constructor returns a MultiChannelImageStack object
