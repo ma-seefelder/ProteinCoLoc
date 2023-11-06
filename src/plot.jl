@@ -153,8 +153,9 @@ function plot(
     end
 
     # save the image
-    savefig(file)
-
+    if save_to_file == true
+        savefig(plt, file)
+    end
     return plt
 end
 
@@ -219,13 +220,10 @@ function local_correlation_plot(
     img::MultiChannelImage,
     num_patches::I,
     cor_channel::Vector{I} = [2, 3];
-    channel_for_plot::Vector{I} = [1, 2, 3];
-    width_cm::T = 15
-    height_cm::T = 10,
-    dpi::I = 300,
+    channel_for_plot::Vector{I} = [1, 2, 3],
     save::Bool = true,
     file::String = "local_correlation.png"
-    ) where {I <: Int, T <: Real}
+    ) where {I <: Int}
 
     # check that the number of channels is 3
     length(channel_for_plot) <= 3 || @warn "This function is currently only implemented for 3 channels"
@@ -257,7 +255,6 @@ function local_correlation_plot(
     # replace missing values with 0
     # z = replace(z, missing => 0)
 
-    
     # plot the local correlation with GLMakie
     GLMakie.activate!()
     fig = GLMakie.Figure(fontsize = 12)
@@ -266,24 +263,116 @@ function local_correlation_plot(
         xlabel = "x position [px]",
         ylabel = "y position [px]",
         title = "Colocalization between the $(img.channels[cor_channel[1]]) and $(img.channels[cor_channel[2]]) channel",
-        subtitle = "Only ρ ≥ 0.1 are shown.",
         yreversed = false,
         limits = (0.0, nothing, 0.0, nothing)
         )
 
     co = GLMakie.contourf!(
-        ax, x,y,rotr90(z), levels = range(-1,1,50),
-        colormap = :delta
+        ax, x,y,rotr90(z), levels = range(-1.001,1.0001,50),
+        colormap = :BrBG_10
         )
         
     GLMakie.Colorbar(fig[1,2], co, tellheight = false, label = "ρ")
     GLMakie.resize_to_layout!(fig)
-    # show the plot
-    GLMakie.display(fig)
 
     if save == true
         # save the plot
         GLMakie.save(file,fig)
     end
     # return the plot
+    return fig
 end
+
+#########################################################################################
+### Fractional overlap Plots                                                          ###
+#########################################################################################
+"""
+    plot_fractional_overlap(
+    img::MultiChannelImage,
+    num_patches::I = 64,
+    channels::Vector{I};
+    output_folder::String = "./test_images/"
+    ) where {I <: Int}
+
+
+    Generates a graphical representation of the fractional overlap between two channels. 
+    Requires an input image of type MultiChannelImage, a vector of the color channels too
+    be analysed and a path to the output folder to save the plot. 
+"""
+function plot_fractional_overlap(
+    img::MultiChannelImage,
+    control::MultiChannelImage,
+    num_patches::I,
+    channels::Vector{I};
+    file::String = "fractional_overlap.png",
+    save::Bool = true,
+    method::String = "quantile",
+    quantile_level::Float64 = 0.95
+    ) where I <: Int
+
+    # calculate and apply mask
+    img = _apply_mask!(img, _calculate_mask(img))
+    # calculate fractional overlap
+    FO_1, FO_2 = fractional_overlap(
+        img, control, channels, 
+        num_patches; method = method, 
+        quantile_level = quantile_level
+        )
+
+    # get patch size
+    patches = patch(img.data[1], num_patches);
+    patch_size = size(patches)[3:4]
+
+    # plot the local fractional overlap
+    x = [i for i in 1 : (num_patches-1)] .* patch_size[2]
+    y = [i for i in 1 : (num_patches-1)] .* patch_size[1]
+    z_1 = [FO_1[i, j] for i in 1 : (num_patches-1), j in 1 : (num_patches-1)]
+    z_2 = [FO_2[i, j] for i in 1 : (num_patches-1), j in 1 : (num_patches-1)]
+
+    # replace missing values with 0
+    z_1 = replace(z_1, missing => 0)
+    z_2 = replace(z_2, missing => 0)
+
+    # plot the fractional overlap
+    GLMakie.activate!()
+    fig = GLMakie.Figure(fontsize = 12, resolution = (1200,600))
+    ax = GLMakie.Axis(
+        fig[1, 1],
+        xlabel = "x position [px]",
+        ylabel = "y position [px]",
+        title = "Fractional overlap: $(channels[1]) : $(channels[2])",
+        yreversed = false,
+        limits = (0.0, nothing, 0.0, nothing)
+        )
+
+    co = GLMakie.contourf!(
+        ax, x,y,rotr90(z_1), levels = range(0,1.001,100),
+        colormap = :Blues
+        )
+
+    ax_2 = GLMakie.Axis(
+        fig[1, 2],
+        xlabel = "x position [px]",
+        ylabel = "y position [px]",
+        title = "Fractional overlap: $(channels[2]) : $(channels[1])",
+        yreversed = false,
+        limits = (0.0, nothing, 0.0, nothing)
+        )
+    
+    co_2 = GLMakie.contourf!(
+        ax_2, x,y,rotr90(z_2), levels = range(0,1.001,100),
+        colormap = :Blues
+        )
+        
+    GLMakie.Colorbar(fig[1,3], co, tellheight = false, label = "Fractional Overlap")
+    GLMakie.resize_to_layout!(fig)
+
+    if save == true
+        # save the plot
+        GLMakie.save(file,fig)
+    end
+    return fig
+end
+
+
+

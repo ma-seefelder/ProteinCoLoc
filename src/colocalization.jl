@@ -28,7 +28,8 @@ function patch(img::Array{Float64, 2}, num_patches::Int64)
 end
 
 ######################################################################
-# function to calculate the correlation
+# function to calculate the Pearson's correlation
+######################################################################
 
 """
     _exclude_zero!(a::Vector{T},b::Vector{T}) where T <: Number
@@ -82,269 +83,219 @@ function correlation(x::Array{T, 4}, y::Array{T, 4}) where T <: Union{Float64, M
     end
     return ρ
 end
+
 ######################################################################
-# function to convert the posterior samples
+# function to calculate the Fractional Overlap
 ######################################################################
+# implemented after https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3074624/
 
-function convert_posterior_samples(samples::Array{Float64, 2}, m::T) where {T <: DynamicPPL.Model}
-    # get parameter_names
-    parameter_names = DynamicPPL.syms(DynamicPPL.VarInfo(m))
-    # select only the necessary parameters
-    parameter_names = collect(parameter_names[1:10])
-
-    # permute the samples
-    samples = samples[1:10,:]
-    samples = DataFrame(permutedims(samples, [2, 1]), parameter_names)
-
-    # undo Fisher z transformation
-    #samples = tanh.(samples)
+"""
+    struct Fractional Overlap()
+    Structure to save the results of the fractional overlap analysis. 
+    The function fractional_overlap() returns this  structure that
+    possesses the following fields:
+        x: Fractional overlap of channel_1 / channel_2
+        y: Fractional overlap of channel_2 / channel_1
+        x_above_threshold: proportion of pixels above the threshold for channel 1
+        y_above_threshold: proportion of pixels above the threshold for channel 2
+        channel_1: name of channel 1
+        channel_2: name of channel 2
+"""
+struct FractionalOverlap
+    x::T where {T<:Real}
+    y::T where {T<:Real}
+    x_above_threshold::T where {T<:Real}
+    y_above_threshold::T where {T<:Real}
+    channel_1::T where {T<:Int}
+    channel_2::T where {T<:Int}
 end
 
-######################################################################
-# plot posterior
-######################################################################
-struct CoLocResult
-    img::MultiChannelImageStack
-    control::MultiChannelImageStack
-    channels::Vector{Int64}
-    num_patches::Int64
-    posterior::DataFrame
-    advi_result
+"""
+    print(IO::Core.IO, x::FractionalOverlap)
+    Print statement for the FractionalOverlap structure. 
+"""
+function print(IO::Core.IO, x::FractionalOverlap)
+    expression = "$(round(100*x.x; digits = 3))% of the $(x.channel_1) channel overlap with the $(x.channel_2) channel and $(round(100*x.y; digits = 3))% of the $(x.channel_2) channel overlap with the $(x.channel_1) channel." 
+    return println(IO, expression)
 end
 
-function plot_posterior(posterior::CoLocResult, prior::CoLocResult)
-    hist1 = Plots.histogram(
-        posterior.posterior.μ_control, legend = true, label = "μ_control", 
-        title = "P(ρ|data)", alpha = 0.5
-        )
-    Plots.histogram!(hist1, posterior.posterior.μ_sample, label = "μ_sample", alpha = 0.5)
-
-    hist2 = Plots.histogram(
-        posterior.posterior.ν_control, label = "ν_control", 
-        legend = true, title = "P(ν|data)", alpha = 0.5
-        )
-
-    Plots.histogram!(hist2, posterior.posterior.ν_sample, label = "ν_sample", alpha = 0.5)
-
-    hist3 = Plots.histogram(
-        posterior.posterior.σ_control, label = "σ_control", 
-        legend = true, title = "P(σ|data)", alpha = 0.5
-        )
-
-    Plots.histogram!(hist3, posterior.posterior.σ_sample, label = "σ_sample", alpha = 0.5)
-
-    Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
-
-    hist4 = Plots.histogram(
-        Δρ,legend = true, label = "Δρ", 
-        title = "P(Δρ|data)", alpha = 0.5)
-
-    hist5 = Plots.histogram(
-        posterior.posterior.τ_sample,legend = true,
-        label = "τ_sample", title = "P(τ|data)", alpha = 0.5
-        )
-
-    Plots.histogram!(hist5, posterior.posterior.τ_control, label = "τ_control", alpha = 0.5)
-
-    p = Plots.plot(
-        hist1, hist2, hist3, hist5, hist4, 
-        layout = (3, 2), size = (800, 800)
-        )
-
-    Plots.display(p)
-    return(p)
-end
 
 
 """
-    compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
+    _clip_to_zero(x::Matrix{T}) where T<: Real
+    Helper function to clip non-zero values to zero.
 """
-function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
-    Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
-    Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
-    # computing the probability of Δρ <=0
-    posterior_dist = kde(Δρ_post)
-    p_post, ϵ_post = quadgk(x -> pdf(posterior_dist, x), -Inf, 0.0)
-    p_post = 1 - p_post
-
-    ϵ_post > 1e-5 && 
-        @warn "CDF of the posterior distribution is approximated by numerical integration 
-        with an error of $ϵ_post that is unusually large. " 
-    
-    # prior
-    prior_dist = kde(Δρ_prior)
-    p_prior, ϵ_prior = quadgk(x -> pdf(prior_dist, x), -Inf, 0.0)
-    p_prior = 1 - p_prior
-
-    ϵ_prior > 1e-5 && 
-        @warn "CDF of the prior distribution is approximated by numerical integration 
-        with an error of $ϵ_prior that is unusually large. " 
-    ##################### compute the Bayes factor #####################
-    # compute prior odds
-    prior_odds = p_prior / (1 - p_prior)
-    # compute posterior odds
-    posterior_odds = p_post / (1 - p_post)
-    # compute Bayes factor
-    bayes_factor = posterior_odds / prior_odds
-    return(bayes_factor, p_post, p_prior)
-end
-
-function colocalization(
-    img::MultiChannelImageStack, 
-    control::MultiChannelImageStack, 
-    channels::Vector{T},
-    num_patches::T = 1;
-    iter::T = 1000, 
-    posterior_samples::T = 100_000
-    ) where T <: Int
-
-    sample_img = fill(0.0, img.num_images, num_patches, num_patches)
-    for (image,idx) ∈ zip(img, 1:img.num_images)
-        x = image.data[channels[1]]
-        y = image.data[channels[2]]
-        x,y = patch.([x, y], num_patches)
-        sample_img[idx,:,:] = correlation(x, y)
-    end
-
-    ctrl_img = fill(0.0, control.num_images, num_patches, num_patches)
-    for (image,idx) ∈ zip(control, 1:control.num_images)
-        x = image.data[channels[1]]
-        y = image.data[channels[2]]
-        x,y = patch.([x, y], num_patches)
-        ctrl_img[idx,:, :] = correlation(x, y)
-    end
-
-    ################################
-    # Turing model
-    ################################
-    # input data for the model are the correlation coefficients of the sample and control for each image 
-    # type: Array{Float64, 2} with size (num_images, num_patches^2)
-    sample_img = reshape(sample_img, img.num_images, num_patches^2)
-    ctrl_img = reshape(ctrl_img, control.num_images, num_patches^2)
-
-    @model function model(control::Matrix{Float64}, sample::Matrix{Float64})
-        
-        # get the number of patches
-        num_control = size(control, 1)
-        num_sample = size(sample, 1)
-
-        # ============= gloabal priors (per biological condition) ============= #
-        # mean, degrees of freedom and standard deviation of the control 
-        μ_control ~ Truncated(Cauchy(0, 0.3),-1,1)
-        ν_control ~ Exponential()
-        σ_control ~ Truncated(Cauchy(0, 0.3),0,1)
-        τ_control ~ Truncated(Cauchy(0, 0.3),0,1)
-        # mean, degrees of freedom and standard deviation of the sample, and the patch heterogeneity
-        μ_sample ~ Truncated(Cauchy(0, 0.3),-1,1)
-        ν_sample ~ Exponential()
-        σ_sample ~ Truncated(Cauchy(0, 0.3),0,1)
-        τ_sample ~ Truncated(Cauchy(0, 0.3),0,1)
-
-        # ============= local priors (per image) ============= #
-        μ_control_image ~ filldist(Truncated(Normal(μ_control, σ_control),-1,1), num_control) # mean of the control for each patch
-        ν_control_image ~ filldist(Exponential(ν_control), num_control) # degress of freedom of the control for each patch
-        σ_control_image ~ filldist(Truncated(Normal(σ_control, τ_control),0,1), num_control) # standard deviation of the control for each patch
-
-        μ_sample_image ~ filldist(Truncated(Normal(μ_sample, σ_sample),-1,1), num_sample) # mean of the sample for each patch
-        ν_sample_image ~ filldist(Exponential(ν_sample), num_sample) # degress of freedom of the sample for each patch
-        σ_sample_image ~ filldist(Truncated(Normal(σ_sample, τ_sample),0,1), num_sample) # standard deviation of the control for each patch
-
-        # likelihood
-        for idx ∈ 1:num_control
-            control[idx] ~ TDist(ν_control_image[idx]) * σ_control_image[idx] + μ_control_image[idx]
+function _clip_to_zero(x::Matrix{T}) where T <: Union{Float64, Missing}
+    Threads.@threads for i in CartesianIndices(x)
+        if x[i] <= 0.0
+            x[i] = 0
         end
-
-        for idx ∈ 1:num_sample
-            sample[idx] ~ TDist(ν_sample_image[idx]) * σ_sample_image[idx] + μ_sample_image[idx]
-        end       
     end
-
-    # define model
-    m = model(ctrl_img, sample_img)
-    # get prior
-    prior_chain = sample(m, Prior(), posterior_samples)
-
-    prior = CoLocResult(
-        img, control, 
-        channels, num_patches,
-        DataFrames.DataFrame(prior_chain[[
-            :μ_control,:ν_control,:σ_control,:τ_control,
-            :μ_sample,:ν_sample,:σ_sample,:τ_sample
-            ]]),
-        prior_chain
-    )
-
-    ######################################################
-    # get the posterior samples
-    # calculate number of latent variables
-    num_latent = 8 + size(ctrl_img)[1] * 3 + size(sample_img)[1] * 3
-    # sample
-    q = vi(m, ADVI(num_latent, iter))
-
-    # get the posterior samples
-    q_samples = rand(q, posterior_samples)
-    q_samples = convert_posterior_samples(q_samples, m)
-
-    posterior = CoLocResult(
-        img, control, 
-        channels,num_patches, 
-        q_samples, q
-        )
-
-    ######################################################
-    return prior, posterior
+    return x    
 end
 
-function bayesfactor_robustness(
-    img::MultiChannelImageStack, 
-    control::MultiChannelImageStack, 
-    channels::Vector{T},
-    num_patches::Vector{T} = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    iter::T = 1000, 
-    posterior_samples::T = 100_000
-    ) where T <: Int
+"""
+    prop_above_threshold(x::Matrix{T}, threshold::T) where T <: Real
+    Calculates the proportion of pixels above the defined threshold. 
 
-    bf = fill(0.0, length(num_patches))
-    p_post = fill(0.0, length(num_patches))
-    p_prior = fill(0.0, length(num_patches))
+"""
+function prop_above_threshold(x::Matrix{T}, threshold::T) where T <: Union{Float64, Missing}
+    return sum(_clip_to_zero(x .- threshold)) / (size(x)[1] * size(x)[2])
+end
 
-    for (n_patch, idx) ∈ zip(num_patches, 1:length(num_patches))
-        prior, posterior = colocalization(
-            img, control, channels, n_patch; 
-            iter = iter, posterior_samples = posterior_samples)
-        bf[idx], p_post[idx], p_prior[idx] = compute_BayesFactor(posterior, prior)
+"""
+mcc(
+x::Matrix{Union{Float64, Missing}}, 
+y::Matrix{Union{Float64, Missing}}, 
+threshold_x::Float64, 
+threshold_y::Float64
+)
+
+mcc(x, y, threshold_x::Float64, threshold_y::Float64)
+Low level function to compute Manders' Colocalization Coefficients (MCC) based
+on the matrices x and y and the thresholds for both values. 
+"""
+function mcc(
+    x::Matrix{T},
+    y::Matrix{T},
+    threshold_x::T, 
+    threshold_y::T
+    ) where T <: Union{Float64, Missing}
+
+    if ismissing(threshold_x)
+        threshold_x = 0.0
     end
 
-    # plot the results
-    p1 = Plots.plot(
-        num_patches.^2, log10.(bf), 
-        xlabel = "number of patches", 
-        ylabel = "log10(Bayes factor)", 
-        title = "Bayes factor vs number of patches",
-        legend = false
-        )
+    if ismissing(threshold_y)
+        threshold_y = 0.0
+    end
 
-    p2 = Plots.plot(
-        num_patches.^2, p_post, 
-        xlabel = "number of patches", 
-        ylabel = "P(Δρ > 0| data)", 
-        title = "P(Δρ > 0| data) vs number of patches",
-        legend = false
-        )
+    x = _clip_to_zero(x .- threshold_x)
+    y = _clip_to_zero(y .- threshold_y)
+    x_colocal = deepcopy(x)
 
-    p3 = Plots.plot(
-        num_patches.^2, p_prior, 
-        xlabel = "number of patches", 
-        ylabel = "P(Δρ > 0)", 
-        title = "P(Δρ > 0) vs number of patches",
-        legend = false
-        )
+    # return missing if sum(x) == 0.0
+    if sum(x) == 0.0
+        return missing
+    end
 
-    p = Plots.plot(
-        p1, p2, p3,
-        layout = (3, 1), size = (800, 800)
-        )
+    # calculate colocalization
+    Threads.@threads for i in CartesianIndices(x_colocal)
+        if y[i] <= 0.0
+            x_colocal[i] = 0
+        end
+    end  
+    return sum(x_colocal) / sum(x)
+end
+
+"""
+    fractional_overlap(
+    img::MultiChannelImage,
+    channels::Vector{I}
+    ) where {I <: Int}
+
+
+    fractional_overlap(
+    img::MultiChannelImage,
+    channels::Vector{I};
+    use_otsu::Bool = true,
+    ) where {I <: Int}
+
+    This function calculates the fractional overlap of two probes and
+    requires the following input arguments:
+    img::MultiChannelImage: a MultiChannelImage object
+    channels: Vector of channel indices to be used for the calculation
+"""
+function fractional_overlap(
+    img::MultiChannelImage,
+    channels::Vector{I}
+    ) where {I <: Int}
+
+    # calculate and apply mask
+    img = _apply_mask!(img, _calculate_mask(img))
     
-    Plots.display(p)
-    return p, bf, p_post, p_prior 
+    # calculate MCC values
+    M_1 = mcc(img.data[channels[1]], img.data[channels[2]], missing, missing)
+    M_2 = mcc(img.data[channels[2]], img.data[channels[1]], missing, missing)
+
+    fr_1 = prop_above_threshold(img.data[channels[1]], 0) # fraction of pixels in channel 1 above threshold
+    fr_2 = prop_above_threshold(img.data[channels[2]], 0) # fraction of pixels in channel 2 above threshold
+    return FractionalOverlap(M_1, M_2, fr_1, fr_2, channels[1], channels[2])
+end
+
+function fractional_overlap(
+    x::Matrix{T},
+    y::Matrix{T},
+    threshold_x::T,
+    threshold_y::T
+    ) where {T <: Union{Float64, Missing}}
+
+    # calculate MCC values
+    M_1 = mcc(x, y, threshold_x, threshold_y)
+    M_2 = mcc(y, x, threshold_x, threshold_y)
+
+    return M_1, M_2
+end
+
+"""
+    fractional_overlap(
+    img::MultiChannelImage,
+    control::MultiChannelImage,
+    channels::Vector{I},
+    num_patches::I;
+    method::String = "quantile",
+    quantile_level::Float64 = 0.95
+    ) where {I <: Int}
+
+    This function calculates the fractional overlap of two probes and
+    requires the following input arguments:
+    img::MultiChannelImage: a MultiChannelImage object
+    control::MultiChannelImage: a MultiChannelImage object to be used as control
+    channels: Vector of channel indices to be used for the calculation
+    num_patches: number of patches to be used for the calculation
+    method: method to calculate the threshold (either "quantile","max", "median")
+    quantile_level: quantile level to be used for the calculation of the threshold
+"""
+function fractional_overlap(
+    img::MultiChannelImage,
+    control::MultiChannelImage,
+    channels::Vector{I},
+    num_patches::I;
+    method::String = "quantile",
+    quantile_level::Float64 = 0.95
+    ) where {I <: Int}
+
+    # calculate and apply mask
+    img = _apply_mask!(img, _calculate_mask(img))
+    control = _apply_mask!(control, _calculate_mask(control))
+
+    # calculate the thresholds based on the control
+    if method == "quantile"
+        threshold_x = quantile(control.data[channels[1]][:], quantile_level)
+        threshold_y = quantile(control.data[channels[2]][:], quantile_level)
+    elseif method == "max"
+        threshold_x = maximum(control.data[channels[1]][:])
+        threshold_y = maximum(control.data[channels[2]][:])
+    elseif method == "median"
+        threshold_x = median(control.data[channels[1]][:])
+        threshold_y = median(control.data[channels[2]][:])
+    else
+        error("Method not implemented.")
+    end
+
+    # patch the image
+    x = patch(img.data[channels[1]], num_patches)
+    y = patch(img.data[channels[1]], num_patches)
+
+    # preallocate the matrices
+    M_1 = zeros(Union{Float64, Missing}, num_patches, num_patches)
+    M_2 = zeros(Union{Float64, Missing}, num_patches, num_patches)
+
+    # calculate MCC values
+    for i in 1:num_patches
+        for j in 1:num_patches
+            M_1[i, j], M_2[i, j] = fractional_overlap(x[i, j, :, :], y[i, j, :, :], threshold_x, threshold_y)
+        end
+    end
+    return M_1, M_2
 end
