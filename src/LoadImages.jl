@@ -148,6 +148,8 @@ function MultiChannelImage(name::S, path::Vector{S}, channels::Vector{S} =[]) wh
         channels = ["channel_$i" for i in 1:length(data)]
     end
 
+    image = MultiChannelImage(data, channels, name, path, size(data[1]), Images.otsu_threshold.(data))
+    
     return MultiChannelImage(
         data, 
         channels, 
