@@ -14,6 +14,7 @@ import Distributions: pdf
 import Images
 import KernelDensity: kde
 import Plots
+import Plots: plot, vline!, hline!, annotate!, savefig, text
 import PyCall
 import QuadGK: quadgk
 
@@ -22,6 +23,7 @@ using Turing: Variational
 
 include("LoadImages.jl")
 include("colocalization.jl")
+#include("plot.jl")
 
 export MultiChannelImage, MultiChannelImageStack, colocalization
 export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult

@@ -1,40 +1,41 @@
 ## plot.jl
 # This file is part of ProteinCoLoc.jl, licensed under the MIT License (MIT).
 # See LICENSE.md in the project root for license information.
-# Author: Manuel Seefelder
-# module PlotImage
-using Images
+# Author: Dr. rer. nat. Manuel Seefelder
 using GLMakie
 
-include("LoadImages.jl")
-import .LoadImages
-
-include("colocalization.jl")
-import .Colocalization: patch, correlation
-
-import Plots: plot, vline!, hline!, annotate!, savefig, text
-
-
+"""
+    minmax_norm!(img::Matrix{Float64})
+    Normalize the image to the range [0, 1].
+"""
 minmax_norm!(img::Matrix{Float64}) = (img .- minimum(img)) ./ (maximum(img) - minimum(img))
 
 
-# load test images
-path = ["test_images/c1.tif", "test_images/c2.tif", "test_images/c3.tif"]
-img = LoadImages.MultiChannelImage("positive_sample", path, ["blue", "green", "red"])
-mask = LoadImages._calculate_mask(img)
-LoadImages._apply_mask!(img, mask)
-cor_channel::Vector{Int64} = [2, 3]
-scale_channels::Bool = true
-num_patches::Int64 = 16
+"""
+    cm_to_px(cm, dpi)
+    Convert centimeters to pixels with a given dpi to determine the size of the plot.
+"""
+function cm_to_px(cm, dpi)
+    inch = cm / 2.54  # Convert cm to inches
+    px = round(Int, inch * dpi)  # Convert inches to pixels
+    return px
+end
+
+# Function to calculate font size
+function calculate_font_size(resolution, scale_factor)
+    return round(Int, min(resolution...) * scale_factor)
+end
 
 """
     plot(
     img::LoadImages.MultiChannelImage,
-    num_patches::Int64,
-    cor_channel::Vector{Int64} = [2, 3];
+    num_patches::T,
+    cor_channel::Vector{T} = [2, 3];
     scale_channels::Bool = true,
-    file::String = "test.png"
-    )
+    file::String = "test.png";
+    channel_for_plot::Vector{T} = [1, 2, 3],
+    save_to_file::Bool = true
+    ) where {T <: Int}
 
     Plot the image with the patches and the correlation of each patch.
 
@@ -44,6 +45,9 @@ num_patches::Int64 = 16
     - `cor_channel::Vector{Int64}`: The channels to use for the calculation of correlation.
     - `scale_channels::Bool`: Whether to scale the channels intensities to the range [0, 1].
     - `file::String`: The file to save the plot to. Must end with .png or .svg.
+    - `channel_for_plot::Vector{Int64}`: The channels to use for plotting. Only 1-3 channels are supported.
+        The first channel is plotted in blue, the second in green and the third in red.
+    - `save_to_file::Bool`: Whether to save the plot to the file.
 
     # Example
     ```julia
@@ -59,28 +63,52 @@ num_patches::Int64 = 16
     ```
 """
 function plot(
-    img::LoadImages.MultiChannelImage,
-    num_patches::Int64,
-    cor_channel::Vector{Int64} = [2, 3];
+    img::MultiChannelImage,
+    num_patches::T,
+    cor_channel::Vector{T} = [2, 3];
     scale_channels::Bool = true,
-    file::String = "test.png"
-    )
+    file::String = "test.png",
+    channel_for_plot::Vector{T} = [1, 2, 3],
+    save_to_file::Bool = true
+    ) where {T <: Int}
     # check that file ends with .png or .svg
     endswith(file, ".png") || endswith(file, ".svg") || @error "File must end with .png or .svg"
-
-    # check that the number of channels is 3
-    channel = length(img.channels)
-    channel <= 3 || @warn "This function is currently only implemented for 3 channels"
+    # check that the number of channels to plot is between 1 and 3
+    length(channel_for_plot) <= 3 || @error "Only 1-3 channels are supported for plotting"
+    # check that the number of channels_to_plot is <= the number of channels
+    length(channel_for_plot) <= length(img.channels) || @error "The number of channels to plot must be <= the number of channels in the image"
 
     # get patch size
     patches = patch(img.data[1], num_patches)
     patch_size = size(patches)[3:4]
 
     # extract the individual channels and scale them
+    channel = length(img.channels)
     scale_channels ? c = [minmax_norm!(img.data[i]) for i in 1:channel] : c = img.data
 
     # plot the image
-    img_view = Images.colorview(Images.RGB, c[3], c[2], c[1])
+    if length(channel_for_plot) == 3
+        img_view = Images.colorview(
+            Images.RGB, 
+            c[channel_for_plot[3]], 
+            c[channel_for_plot[2]], 
+            c[channel_for_plot[1]]
+            )
+
+    elseif length(channel_for_plot)  == 2
+        img_view = Images.colorview(
+            Images.RGB, 
+            c[channel_for_plot[2]],
+            c[channel_for_plot[1]],
+            Images.zeroarray
+            )
+    elseif length(channel_for_plot)  == 1
+        img_view = Images.colorview(
+            Images.Gray, 
+            c[channel_for_plot[1]],
+            Images.zeroarray
+            )
+    end
 
     # plot image with Plots.jl package
     # without x and y axis ticks and labels and with a black background
@@ -139,8 +167,8 @@ end
     - `img::LoadImages.MultiChannelImage`: The image to plot.
     - `file::String`: The file to save the plot to. Must end with .png or .svg.
 """
-function plot_mask(img::LoadImages.MultiChannelImage,file::String = "test.png")
-    mask = LoadImages._calculate_mask(img)
+function plot_mask(img::MultiChannelImage,file::String = "mask.png")
+    mask = _calculate_mask(img)
 
     # initialize subplots
     plt = []
@@ -170,6 +198,16 @@ function plot_mask(img::LoadImages.MultiChannelImage,file::String = "test.png")
         vline!([i*size(img.data[1])[2,]], color = :white, width = 2)
     end
 
+    # add the channel names to the bottom corner of each channel
+    for i in 1:length(img.channels)
+        annotate!(
+            (i-1)*size(img.data[1])[2,] + 10,
+            10,
+            text(img.channels[i], :yellow, :left, 40)
+            )
+    end
+   
+
     # save
     savefig(plt, file)
 
@@ -178,14 +216,19 @@ end
 
 # local correlation plot
 function local_correlation_plot(
-    img::LoadImages.MultiChannelImage,
-    num_patches::Int64,
-    cor_channel::Vector{Int64} = [2, 3]
-    )
+    img::MultiChannelImage,
+    num_patches::I,
+    cor_channel::Vector{I} = [2, 3];
+    channel_for_plot::Vector{I} = [1, 2, 3];
+    width_cm::T = 15
+    height_cm::T = 10,
+    dpi::I = 300,
+    save::Bool = true,
+    file::String = "local_correlation.png"
+    ) where {I <: Int, T <: Real}
 
     # check that the number of channels is 3
-    channel = length(img.channels)
-    channel <= 3 || @warn "This function is currently only implemented for 3 channels"
+    length(channel_for_plot) <= 3 || @warn "This function is currently only implemented for 3 channels"
 
     # get patch size
     patches = patch(img.data[1], num_patches);
@@ -194,6 +237,7 @@ function local_correlation_plot(
     # check that the patch size is reasonable
     patch_size[1] * patch_size[2] > 10 || @warn "Patch size is too small for local correlation. A size between 10 and 100 px is recommended."
     patch_size[1] * patch_size[2] < 100 || @warn "Patch size is too big for local correlation. A size between 10 and 100 px is recommended."
+    @info "Patch size is $(patch_size[1]) x $(patch_size[2]) px = $(patch_size[1] * patch_size[2]) px²"    
 
     # patch the image and calculate the correlation
     x = img.data[cor_channel[1]]
@@ -211,38 +255,35 @@ function local_correlation_plot(
     z = [ρ[i, j] for i in 1 : (num_patches-1), j in 1 : (num_patches-1)]
 
     # replace missing values with 0
-    z = replace(z, missing => 0)
+    # z = replace(z, missing => 0)
 
-    # replace all values below 0.1 with 0
-    for i in 1 : (num_patches-1)
-        for j in 1 : (num_patches-1)
-            if z[i, j] < 0.1
-                z[i, j] = 0
-            end
-        end
-    end
-
+    
     # plot the local correlation with GLMakie
     GLMakie.activate!()
-    fig = GLMakie.Figure(resolution = (size(img.data[1])[2,],size(img.data[1])[1,]))
+    fig = GLMakie.Figure(fontsize = 12)
     ax = GLMakie.Axis(
         fig[1, 1],
         xlabel = "x position [px]",
         ylabel = "y position [px]",
-        title = "Colocalization of $(img.channels[cor_channel[1]]) and $(img.channels[cor_channel[2]])",
+        title = "Colocalization between the $(img.channels[cor_channel[1]]) and $(img.channels[cor_channel[2]]) channel",
         subtitle = "Only ρ ≥ 0.1 are shown.",
-        aspect = DataAspect(),
-        yreversed = false
+        yreversed = false,
+        limits = (0.0, nothing, 0.0, nothing)
         )
 
-    co = GLMakie.contourf!(ax, x,y,rotr90(z), levels = range(0.1,1,20))
-    Colorbar(fig[1,2], co, tellheight = false, label = "|ρ|")
-
+    co = GLMakie.contourf!(
+        ax, x,y,rotr90(z), levels = range(-1,1,50),
+        colormap = :delta
+        )
+        
+    GLMakie.Colorbar(fig[1,2], co, tellheight = false, label = "ρ")
+    GLMakie.resize_to_layout!(fig)
     # show the plot
     GLMakie.display(fig)
 
-
-
+    if save == true
+        # save the plot
+        GLMakie.save(file,fig)
+    end
+    # return the plot
 end
-
-
