@@ -78,7 +78,7 @@ function correlation(x::Array{T, 4}, y::Array{T, 4}) where T <: Union{Float64, M
             a = x[i, j, :, :][:] 
             b = y[i, j, :, :][:]
             _exclude_zero!(a,b)
-            length(a) <= 3 ? ρ[i, j] = missing : ρ[i, j] = cor(a, b)
+            length(a) <= 20 ? ρ[i, j] = missing : ρ[i, j] = cor(a, b)
         end
     end
     return ρ

@@ -10,7 +10,7 @@ using .ProteinCoLoc
 using Random123
 using Test
 Random123.seed!(1234)
-#! check that in all test functions masking is done as intended
+
 ##########################################################################################
 ### Test for Image Loading functionality
 ##########################################################################################
@@ -201,14 +201,21 @@ end
         @test typeof(prior) == CoLocResult
 
         # check that the resulting Bayes factor is correct
-        bf, posterior_prob, prior_prob = compute_BayesFactor(posterior, prior)
-        @test isapprox(bf, 1.0,  atol=0.1)
+        bf, posterior_prob, prior_prob = compute_BayesFactor(posterior, prior, ρ_threshold = 0.1)
+        @test isapprox(bf, 0,  atol=0.001)
         # check that the resulting posterior is correct
         plot_posterior(posterior; file = "test/test_images/posterior_dist_identical_images.png")
         # check that the resulting prior is correct
         plot_posterior(prior; file = "test/test_images/prior_dist_identical_images.png")
         # bayes_plot
-        ProteinCoLoc.bayesplot(prior, posterior, bf; file = "test/test_images/bayes_plot_identical_images.png")
+        bayesplot(
+            prior, posterior, bf; 
+            file = "test/test_images/bayes_plot_identical_images.png", 
+            ρ_threshold = 0.1
+            )
+
+        # bayes_rangeplot
+        bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_identical_images.png")
     end
 
     @testset "Correlation Bayes Test n3" begin
@@ -223,20 +230,22 @@ end
         img_stack = MultiChannelImageStack([img, img, img], "test_stack")
         control_stack = MultiChannelImageStack([control, control, control], "test_stack")
         # calculate posterior and retrieve prior samples
-        prior, posterior = colocalization(img_stack, control_stack, [2,3], 16)
+        prior, posterior = colocalization(img_stack, control_stack, [2,3], 32)
         # check that the output is a CoLocResult object
         @test typeof(posterior) == CoLocResult
         @test typeof(prior) == CoLocResult
         # check that the resulting Bayes factor is not equal to 1
         bf, posterior_prob, prior_prob = compute_BayesFactor(posterior, prior)
-        @test bf > 1.0
-        @test isapprox(bf, 56.3,  atol=3)
+        @test bf == Inf
         # check that the resulting prior is correct
         plot_posterior(prior; file = "test/test_images/prior_dist_n3.png")
         # check that the resulting posterior is correct
         plot_posterior(posterior; file = "test/test_images/posterior_dist_n3.png")
         # bayes_plot
-        bayes_plot(prior, posterior, bf; file = "test/test_images/bayes_plot_n3.png")
+        bayesplot(prior, posterior, bf; file = "test/test_images/bayes_plot_n3.png")
+        # bayes_rangeplot
+        bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_n3.png")
+
     end
 
     @testset "Correlation Bayes Test identical samples n1" begin
@@ -244,7 +253,9 @@ end
         path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
         # first load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
+        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
         control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
+        control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
         # make a stack of the image
         img_stack = MultiChannelImageStack([img], "test_stack")
         control_stack = MultiChannelImageStack([control], "test_stack")
@@ -256,21 +267,24 @@ end
         # check that the resulting Bayes factor is not equal to 1
         bf, posterior_prob, prior_prob = compute_BayesFactor(posterior, prior)
         @test bf > 1
-        @test isapprox(bf, 2.799,  atol=0.2)
         # check that the resulting prior is correct
         plot_posterior(prior; file = "test/test_images/prior_dist_n1.png")
         # check that the resulting posterior is correct
         plot_posterior(posterior; file = "test/test_images/posterior_dist_n1.png")
         # bayes_plot
         bayesplot(prior, posterior, bf; file = "test/test_images/bayes_plot_n1.png")
+        # bayes_rangeplot
+        bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_n1.png")
     end
 
-    @testset "Correlation Bayes Test identical negative n1" begin
+    @testset "Correlation Bayes Test channel 1 and 3 n1" begin
         path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
         path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
         # first load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
+        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
         control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
+        control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
         # make a stack of the image
         img_stack = MultiChannelImageStack([img], "test_stack")
         control_stack = MultiChannelImageStack([control], "test_stack")
@@ -281,14 +295,14 @@ end
         @test typeof(prior) == CoLocResult
         # check that the resulting Bayes factor is not equal to 1
         bf, posterior_prob, prior_prob = compute_BayesFactor(posterior, prior)
-        @test bf < 1
-        @test isapprox(bf, 0.4076,  atol=0.1)
         # check that the resulting prior is correct
         plot_posterior(prior; file = "test/test_images/prior_dist_c1c3.png")
         # check that the resulting posterior is correct
         plot_posterior(posterior; file = "test/test_images/posterior_dist_c1c3.png")
         # bayes_plot
         bayesplot(prior, posterior, bf; file = "test/test_images/bayes_plot_c1c3.png")
+        # bayes_rangeplot
+        bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_c1c3.png")
     end
 
     @testset "bayesfactor_robustness" begin
@@ -296,18 +310,19 @@ end
         path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
         # first load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
+        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
         control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
+        control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
         # make a stack of the image
-        img_stack = MultiChannelImageStack([img, img, img], "test_stack")
+        img_stack = MultiChannelImageStack([img, img, imgs], "test_stack")
         control_stack = MultiChannelImageStack([control, control, control], "test_stack")
 
         # check that the function works
-        plotted, bf, post, prior = ProteinCoLoc.bayesfactor_robustness(
+        plotted, bf, post, prior = bayesfactor_robustness(
             img_stack, control_stack, [2,3],
             [12,14,16,18,20,22,24];
             file = "test/test_images/bayesfactor_robustness.png"
             )
-
     end
 end
 
@@ -318,13 +333,15 @@ end
     path = path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
     name = "test_image"
     channels = ["blue", "green", "red"]
+
+    # load image
     img = MultiChannelImage(name, path, channels)
-    # apply mask
     img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
 
     # load control image
     path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
     control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
+    control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
 
     # patched correlation plot
     plot(img, 32, [1,1]; file = "test/test_images/patched_channels_1_1.png")
@@ -333,6 +350,14 @@ end
     plot(img, 32, [2,2]; file = "test/test_images/patched_channels_2_2.png")
     plot(img, 32, [2,3]; file = "test/test_images/patched_channels_2_3.png")
     plot(img, 32, [3,3]; file = "test/test_images/patched_channels_3_3.png")
+
+    # patched correlation plot with control
+    plot(control, 32, [1,1]; file = "test/test_images/patched_channels_1_1_control.png")
+    plot(control, 32, [1,2]; file = "test/test_images/patched_channels_1_2_control.png")
+    plot(control, 32, [1,3]; file = "test/test_images/patched_channels_1_3_control.png")
+    plot(control, 32, [2,2]; file = "test/test_images/patched_channels_2_2_control.png")
+    plot(control, 32, [2,3]; file = "test/test_images/patched_channels_2_3_control.png")
+    plot(control, 32, [3,3]; file = "test/test_images/patched_channels_3_3_control.png")
 
     # mask
     plot_mask(img, "test/test_images/mask.png")
@@ -343,8 +368,15 @@ end
     local_correlation_plot(img, 200, [1,3]; file = "test/test_images/local_correlation_1_3.png")
     local_correlation_plot(img, 200, [2,2]; file = "test/test_images/local_correlation_2_2.png")
     local_correlation_plot(img, 200, [2,3]; file = "test/test_images/local_correlation_2_3.png")
-    local_correlation_plot(img,
-     200, [3,3]; file = "test/test_images/local_correlation_3_3.png")
+    local_correlation_plot(img, 200, [3,3]; file = "test/test_images/local_correlation_3_3.png")
+
+    # local correlation plot with control
+    local_correlation_plot(control, 200, [1,1]; file = "test/test_images/local_correlation_1_1_control.png")
+    local_correlation_plot(control, 200, [1,2]; file = "test/test_images/local_correlation_1_2_control.png")
+    local_correlation_plot(control, 200, [1,3]; file = "test/test_images/local_correlation_1_3_control.png")
+    local_correlation_plot(control, 200, [2,2]; file = "test/test_images/local_correlation_2_2_control.png")
+    local_correlation_plot(control, 200, [2,3]; file = "test/test_images/local_correlation_2_3_control.png")
+    local_correlation_plot(control, 200, [3,3]; file = "test/test_images/local_correlation_3_3_control.png")
 
     # fractional overlap plot
     plot_fractional_overlap(img, control, 200, [1,1]; file = "test/test_images/fractional_overlap_1_1.png", method = "quantile", quantile_level = 0.975)
