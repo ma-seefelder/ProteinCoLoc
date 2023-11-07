@@ -375,4 +375,150 @@ function plot_fractional_overlap(
 end
 
 
+###############################################################################
+# Plotting functions for the Bayesian inference
+###############################################################################
 
+"""
+    plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
+    Generates diagnostic plots of a CoLocResult struct obtained from ProteinCoLoc.colocalization().
+
+    # Arguments
+    - `posterior::CoLocResult`: The CoLocResult struct to plot.
+    - `file::String`: The file to save the plot to. Must end with .png.
+    - `save::Bool`: Whether to save the plot to the file.
+"""
+function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
+    hist1 = Plots.histogram(
+        posterior.posterior.μ_control, legend = true, label = "μ_control", 
+        title = "P(ρ|data)", alpha = 0.5, normalize = :pdf
+        )
+    Plots.histogram!(
+        hist1, posterior.posterior.μ_sample, label = "μ_sample", 
+        alpha = 0.5, normalize = :pdf
+        )
+
+    hist2 = Plots.histogram(
+        posterior.posterior.ν_control, label = "ν_control", 
+        legend = true, title = "P(ν|data)", alpha = 0.5,
+        normalize = :pdf
+        )
+
+    Plots.histogram!(
+        hist2, posterior.posterior.ν_sample, 
+        label = "ν_sample", alpha = 0.5, normalize = :pdf
+        )
+
+    hist3 = Plots.histogram(
+        posterior.posterior.σ_control, label = "σ_control", 
+        legend = true, title = "P(σ|data)", alpha = 0.5,
+        normalize = :pdf
+        )
+
+    Plots.histogram!(
+        hist3, posterior.posterior.σ_sample, label = "σ_sample", 
+        alpha = 0.5, normalize = :pdf
+        )
+
+    Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
+
+    hist4 = Plots.histogram(
+        Δρ,legend = true, label = "Δρ", normalize = :pdf,
+        title = "P(Δρ|data)", alpha = 0.5)
+
+    hist5 = Plots.histogram(
+        posterior.posterior.τ_sample,legend = true,
+        label = "τ_sample", title = "P(τ|data)", alpha = 0.5,
+        normalize = :pdf
+        )
+
+    Plots.histogram!(
+        hist5, posterior.posterior.τ_control, label = "τ_control", 
+        alpha = 0.5, normalize = :pdf
+        )
+
+    p = Plots.plot(
+        hist1, hist2, hist3, hist5, hist4, 
+        layout = (3, 2), size = (800, 800)
+        )
+
+    save && Plots.savefig(p, file)
+    return(p)
+end
+
+"""
+    bayesplot(
+    prior::CoLocResult, 
+    posterior::CoLocResult, 
+    bf::Float64; 
+    file::String = "bayesplot.png", 
+    save::Bool = true
+    )
+    Generates a plot of the resulitng prior and posterior distribution
+    of Δ̢ρ and annotates the plot with the Bayes factor.
+"""
+function bayesplot(
+    prior::CoLocResult, 
+    posterior::CoLocResult, 
+    bf::Float64; 
+    file::String = "bayesplot.png", 
+    save::Bool = true,
+    ρ_threshold::Float64 = 0.0
+    )
+
+    Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
+    Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
+
+    hist1 = Plots.histogram(
+        Δρ_prior, legend = true, label = "prior", 
+        title = "P(Δρ|data)", alpha = 0.35,
+        xlabel = "Δρ", ylabel = "PDF",
+        normalize = :pdf
+        )
+
+    Plots.histogram!(hist1, Δρ_post, label = "posterior", alpha = 0.35, normalize = :pdf)
+    Plots.vline!(hist1, [0], label = "Δρ = $ρ_threshold", color = :black, linestyle = :dash)
+
+    # add BF to the plot
+    Plots.annotate!(
+        hist1, 
+        [(-2.0, 0.05, Plots.text("BF[Δρ>$ρ_threshold : Δρ ≤ $ρ_threshold] = $(round(bf; digits = 2))", 10, :left, :bottom, :black))], 
+        font = "Helvetica", 
+        color = :black
+        )
+
+    if save
+        Plots.savefig(hist1, file)
+    end
+    return hist1
+end
+
+
+function bayes_rangeplot(
+    prior::CoLocResult,
+    posterior::CoLocResult;
+    Δ̢ρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)),
+    save::Bool = true,
+    file::String = "bayes_rangeplot.png"
+    ) where {T <: Real}
+
+    # calculate the bayes factor for each Δρ threshold
+    bf = fill(0.0, length(Δ̢ρ))
+    for idx in eachindex(Δ̢ρ)
+        a, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = Δ̢ρ[idx])
+        a > 0 ? bf[idx] = a : bf[idx] = NaN
+    end 
+
+    # plot the results
+    p1 = Plots.plot(
+        Δ̢ρ, log10.(bf), 
+        xlabel = "Δρ0", 
+        ylabel = "log10(BF[Δρ > Δρ0 : Δρ ≤ Δρ0])", 
+        title = "Bayes factor vs Δρ",
+        legend = false
+        )
+
+    Plots.hline!(p1, [0], label = "BF = 1", color = :black, linestyle = :dash)
+    save && Plots.savefig(p1, file)
+    return p1
+end

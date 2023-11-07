@@ -1,4 +1,4 @@
-##########################################################################################
+#########################################################################################
 ## bayes.jl
 # This file is part of ProteinCoLoc.jl, licensed under the MIT License (MIT).
 # See LICENSE.md in the project root for license information.
@@ -35,110 +35,23 @@ struct CoLocResult
     advi_result
 end
 
-function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
-    hist1 = Plots.histogram(
-        posterior.posterior.μ_control, legend = true, label = "μ_control", 
-        title = "P(ρ|data)", alpha = 0.5, normalize = :pdf
-        )
-    Plots.histogram!(
-        hist1, posterior.posterior.μ_sample, label = "μ_sample", 
-        alpha = 0.5, normalize = :pdf
-        )
-
-    hist2 = Plots.histogram(
-        posterior.posterior.ν_control, label = "ν_control", 
-        legend = true, title = "P(ν|data)", alpha = 0.5,
-        normalize = :pdf
-        )
-
-    Plots.histogram!(
-        hist2, posterior.posterior.ν_sample, 
-        label = "ν_sample", alpha = 0.5, normalize = :pdf
-        )
-
-    hist3 = Plots.histogram(
-        posterior.posterior.σ_control, label = "σ_control", 
-        legend = true, title = "P(σ|data)", alpha = 0.5,
-        normalize = :pdf
-        )
-
-    Plots.histogram!(
-        hist3, posterior.posterior.σ_sample, label = "σ_sample", 
-        alpha = 0.5, normalize = :pdf
-        )
-
-    Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
-
-    hist4 = Plots.histogram(
-        Δρ,legend = true, label = "Δρ", normalize = :pdf,
-        title = "P(Δρ|data)", alpha = 0.5)
-
-    hist5 = Plots.histogram(
-        posterior.posterior.τ_sample,legend = true,
-        label = "τ_sample", title = "P(τ|data)", alpha = 0.5,
-        normalize = :pdf
-        )
-
-    Plots.histogram!(
-        hist5, posterior.posterior.τ_control, label = "τ_control", 
-        alpha = 0.5, normalize = :pdf
-        )
-
-    p = Plots.plot(
-        hist1, hist2, hist3, hist5, hist4, 
-        layout = (3, 2), size = (800, 800)
-        )
-
-    save && Plots.savefig(p, file)
-    return(p)
-end
-
-function bayesplot(
-    prior::CoLocResult, 
-    posterior::CoLocResult, 
-    bf::Float64; 
-    file::String = "bayesplot.png", 
-    save::Bool = true
-    )
-
-    Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
-    Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
-
-    hist1 = Plots.histogram(
-        Δρ_prior, legend = true, label = "prior", 
-        title = "P(Δρ|data)", alpha = 0.35,
-        xlabel = "Δρ", ylabel = "PDF",
-        normalize = :pdf
-        )
-
-    Plots.histogram!(hist1, Δρ_post, label = "posterior", alpha = 0.35, normalize = :pdf)
-    Plots.vline!(hist1, [0], label = "Δρ = 0", color = :black, linestyle = :dash)
-
-    # add BF to the plot
-    Plots.annotate!(
-        hist1, 
-        [(-2.0, 0.05, Plots.text("BF[Δρ>0 : Δρ ≤ 0] = $(round(bf; digits = 2))", 10, :left, :bottom, :black))], 
-        font = "Helvetica", 
-        color = :black
-        )
-
-    if save
-        Plots.savefig(hist1, file)
-    end
-    return hist1
-end
-
-
-
 """
-    compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
+    compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult; ρ_theshold::Float64 = 0.0)
+
+    Compute the Bayes factor for the colocalization of two proteins.
+    H1: Δ̢ > ρ_theshold; H0: Δ̢ <= ρ_threshold
+    The Bayes factor is computed as the ratio of the posterior odds and the prior odds.
+    The prior odds are computed as the ratio of the probability of Δρ <= 0 under the alternative hypothesis and the null hypothesis.
+    The posterior odds are computed as the ratio of the probability of Δρ <= 0 under the alternative hypothesis and the null hypothesis.
+    The prior and posterior distributions are approximated by a kernel density estimation (KDE) and the 
+    probability of Δρ <= ρ_threshold is approximated by numerical integration.
 """
-function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
+function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult; ρ_threshold::Float64 = 0.0)
     Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
     Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
     # computing the probability of Δρ <=0
     posterior_dist = kde(Δρ_post)
-    p_post, ϵ_post = quadgk(x -> pdf(posterior_dist, x), -Inf, 0.0)
+    p_post, ϵ_post = quadgk(x -> pdf(posterior_dist, x), -Inf, ρ_threshold)
     p_post = 1 - p_post
 
     ϵ_post > 1e-5 && 
@@ -147,7 +60,7 @@ function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
     
     # prior
     prior_dist = kde(Δρ_prior)
-    p_prior, ϵ_prior = quadgk(x -> pdf(prior_dist, x), -Inf, 0.0)
+    p_prior, ϵ_prior = quadgk(x -> pdf(prior_dist, x), -Inf, ρ_threshold)
     p_prior = 1 - p_prior
 
     ϵ_prior > 1e-5 && 
@@ -163,7 +76,6 @@ function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult)
     return(bayes_factor, p_post, p_prior)
 end
 
-#! verify that model produces correct results
 function colocalization(
     img::MultiChannelImageStack, 
     control::MultiChannelImageStack, 
@@ -197,9 +109,18 @@ function colocalization(
     sample_img = reshape(sample_image, img.num_images, num_patches^2)
     ctrl_img = reshape(ctrl_image, control.num_images, num_patches^2)
 
+    sample_data = fill(Vector{Float64}(), img.num_images)
+    for (row, idx) in zip(eachrow(sample_img), 1:img.num_images)
+        sample_data[idx] = collect(skipmissing(row))
+    end
+
+    ctrl_data = fill(Vector{Float64}(), control.num_images)
+    for (row, idx) in zip(eachrow(ctrl_img), 1:control.num_images)
+        ctrl_data[idx] = collect(skipmissing(row))
+    end
+
     @model function model(control, sample)
-        
-        # get the number of patches
+        # get the number of images
         num_control = size(control, 1)
         num_sample = size(sample, 1)
 
@@ -226,18 +147,18 @@ function colocalization(
 
         # likelihood
         for idx ∈ 1:num_control
-            c = collect(skipmissing(control[idx, :]))
-            c ~ TDist(ν_control_image[idx]) * σ_control_image[idx] + μ_control_image[idx]
+            #c = collect(skipmissing(control[idx, :]))
+            control[idx] ~ TDist(ν_control_image[idx]) * σ_control_image[idx] + μ_control_image[idx]
         end
 
         for idx ∈ 1:num_sample
-            s = collect(skipmissing(sample[idx, :]))
-            s ~ TDist(ν_sample_image[idx]) * σ_sample_image[idx] + μ_sample_image[idx]
-        end       
+            #s = collect(skipmissing(sample[idx, :]))
+            sample[idx] ~ TDist(ν_sample_image[idx]) * σ_sample_image[idx] + μ_sample_image[idx]
+        end      
     end
 
     # define model
-    m = model(ctrl_img, sample_img)
+    m = model(ctrl_data, sample_data)
     # get prior
     prior_chain = sample(m, Prior(), posterior_samples)
 
