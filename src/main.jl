@@ -7,22 +7,33 @@
 # The functions are exported and can be used by the user.
 # Additionally, the function is called by the GUI to perform the analysis.
 
+image_path = "C:/Users/Manuel/Documents/GitHub/ProteinCoLoc/test/test_images/positive/"
+control_image_path = "C:/Users/Manuel/Documents/GitHub/ProteinCoLoc/test/test_images/negative/"
+output_folder_path = "C:/Users/Manuel/Documents/GitHub/ProteinCoLoc/test/test_images"
+
 function start_analysis(
     image_path::S, # path to the images
     control_image_path::S, # path to the control images
     output_folder_path::S, # path to the output folder
-    number_patches::I, # number of patches
+    number_patches::I, # number of patchesm
+    number_patches_loc::I, # number of patches for local correlation
+    number_patches_bfrobustness::Vector{I}, # number of patches for bayes factor robustness
     number_channels::I, # number of channels
     channel_selection::Bool, # channel selection
     channel_selection_two::Vector{I}, # channel selection two
-    patched_correlation_plot::Bool, # patched correlation plot
-    local_correlation_plot::Bool, # local correlation plot
-    fractional_overlap_plot::Bool, # fractional overlap plot
-    bayes_factor_plot::Bool, # bayes factor plot
-    bayes_range_plot::Bool, # bayes range plot
-    bayes_factor_robustness_plot::Bool, # bayes factor robustness plot
-    number_iterations::I, # number of iterations
-    number_posterior_samples::I # number of posterior samples
+    patched_correlation_plt::Bool, # patched correlation plot
+    local_correlation_plt::Bool, # local correlation plot
+    fractional_overlap_plt::Bool, # fractional overlap plot
+    bayes_factor_plt::Bool, # bayes factor plot
+    bayes_range_plt::Bool, # bayes range plot
+    bayes_factor_robustness_plt::Bool, # bayes factor robustness plot,
+    posterior_plt::Bool, # posterior plot
+    mask_plt::Bool, # mask plot
+    number_iterations::I = 1000, # number of iterations
+    number_posterior_samples::I = 100_000,# number of posterior samples
+    ρ_threshold::Float64 = 0.1, # threshold for the bayes factor
+    ρ_range::Vector{Float64} = [-0.8, 0.8], # range for the bayes factor range plot
+    ρ_range_step::Float64 = 0.01 # step size for the bayes factor range plot   
     ) where {S<:AbstractString, I<:Integer}
 
     ###########################################################################
@@ -43,6 +54,8 @@ function start_analysis(
     number_patches < 1 && error("The number of patches must be at least 1.")
     # check that the number of selected channels is 2
     length(channel_selection_two) != 2 && error("The number of selected channels must be 2.")
+    # check that ρ_range[1] < ρ_range[2]
+    ρ_range[1] >= ρ_range[2] && error("ρ_range[1] must be smaller than ρ_range[2].")
 
     ###########################################################################
     # load and preprocess images
@@ -52,6 +65,46 @@ function start_analysis(
     # load control images
     control_images = get_images(control_image_path, number_channels, "control images")
 
-    #! continue from here
+    ###########################################################################
+    # perform analysis and plotting
+    ###########################################################################
+    if !channel_selection
+        generate_plots(
+            images, control_images, channel_selection_two, number_patches, number_patches_loc, 
+            number_patches_bfrobustness, number_iterations, number_posterior_samples, ρ_threshold, 
+            ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
+            fractional_overlap_plt, bayes_factor_plt, bayes_range_plt, bayes_factor_robustness_plt, 
+            posterior_plt
+            )
+    else
+        # extract all possible combinations of channels 
+        channel_combinations = combinations2(number_channels)
+        # iterate over all channel combinations
+        for channels ∈ channel_combinations
+            generate_plots(
+                images, control_images, channels, number_patches, number_patches_loc, 
+                number_patches_bfrobustness, number_iterations, number_posterior_samples, ρ_threshold, 
+                ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
+                fractional_overlap_plt, bayes_factor_plt, bayes_range_plt, bayes_factor_robustness_plt, 
+                posterior_plt
+            )
+        end
+    end
 
+    # mask plot
+    if mask_plt
+        for img_set in [images, control_images]
+            for img in img_set
+                plot_mask(img, output_folder_path * "/mask" * string(img.:name)  * ".png")
+            end
+        end
+    end
 end
+
+
+#=
+ProteinCoLoc.start_analysis(
+    image_path, control_image_path, output_folder_path, 32, 200, [6,12,24,32,64], 3, true, [2,3], true, true,
+    true, true, true, true, true, true, 1000, 100_000, 0.1, [-0.8, 0.8], 0.01
+    )
+=#

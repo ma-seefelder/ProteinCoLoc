@@ -5,21 +5,24 @@
 #import .ProteinCoLoc
 using Mousetrap
 
+#! NOT IMPLEMENTED: define Switch() for masking plot
+#! NOT IMPLEMENTED: define SpinButton() for number of patches for local correlation plot
 # load gui formatting file (gui_css.jl)
 include("gui_css.jl")
 
-main() do app::Application
-    ########################################################################
-    #### generate window and main box ######################################
-    ########################################################################
-    #set_current_theme!(app,THEME_DEFAULT_DARK)
-    win = Window(app)
-    set_title!(win, "ProteinCoLoc.jl")
-    set_size_request!(win, Vector2f(1400, 1000))
+function gui() 
+    main() do app::Application
+        ########################################################################
+        #### generate window and main box ######################################
+        ########################################################################
+        #set_current_theme!(app,THEME_DEFAULT_DARK)
+        win = Window(app)
+        set_title!(win, "ProteinCoLoc.jl")
+        set_size_request!(win, Vector2f(1400, 1000))
     
-    main_box = Box(ORIENTATION_VERTICAL)
-    set_margin!(main_box, 50)
-    set_horizontal_alignment!(main_box, ALIGNMENT_START)
+        main_box = Box(ORIENTATION_VERTICAL)
+        set_margin!(main_box, 50)
+        set_horizontal_alignment!(main_box, ALIGNMENT_START)
 
     ########################################################################
     #### generate box for the introduction of the program ##################
@@ -255,6 +258,20 @@ main() do app::Application
     bayes_factor_robustness_plot_button_box = vbox(bayes_factor_robustness_plot_button_label, bayes_factor_robustness_plot_button)
     set_spacing!(bayes_factor_robustness_plot_button_box, 10)
 
+    # mask plot
+    mask_plot_button = Switch()
+    set_is_active!(mask_plot_button, true)
+    mask_plot_button_label = Label("Mask plot")
+    mask_plot_button_box = vbox(mask_plot_button_label, mask_plot_button)
+    set_spacing!(mask_plot_button_box, 10)
+
+    # posterior plot
+    posterior_plot_button = Switch()
+    set_is_active!(posterior_plot_button, true)
+    posterior_plot_button_label = Label("Posterior plot")
+    posterior_plot_button_box = vbox(posterior_plot_button_label, posterior_plot_button)
+    set_spacing!(posterior_plot_button_box, 10)
+    
     # combine all options into one box
     plot_box = Box(ORIENTATION_VERTICAL)
     push_back!(plot_box, generated_plots_label)
@@ -266,6 +283,8 @@ main() do app::Application
     push_back!(generated_plots_box, fractional_overlap_plot_button_box)
     push_back!(generated_plots_box, bayes_factor_plot_button_box)
     push_back!(generated_plots_box, bayes_range_plot_button_box)
+    push_back!(posterior_plot_button_box, mask_plot_button_box)
+    push_back!(generated_plots_box, posterior_plot_button_box)
     push_back!(generated_plots_box, bayes_factor_robustness_plot_button_box)
     push_back!(plot_box, generated_plots_box)
 
@@ -442,6 +461,8 @@ main() do app::Application
         bayes_factor_plot = get_is_active(bayes_factor_plot_button)
         bayes_range_plot = get_is_active(bayes_range_plot_button)
         bayes_factor_robustness_plot = get_is_active(bayes_factor_robustness_plot_button)
+        posterior_plt = get_is_active(posterior_plot_button)
+        mask_plt = get_is_active(mask_plot_button)
 
         # get the number of iterations
         numb_iterations = get_text(number_iterations)
@@ -460,30 +481,40 @@ main() do app::Application
             "Fractional overlap plot: "*string(fractional_overlap_plot)*"\n"*
             "Bayes factor plot: "*string(bayes_factor_plot)*"\n"*
             "Bayes range plot: "*string(bayes_range_plot)*"\n"*
+            "Mask plot: "*string(mask_plt)*"\n"*
+            "Posterior plot: "*string(posterior_plt)*"\n"*
             "Bayes factor robustness plot: "*string(bayes_factor_robustness_plot)*"\n"*
             "Number of iterations: "*string(numb_iterations)*"\n"*
             "Number of posterior samples: "*string(numb_posterior_samples)*"\n"
             
         set_text!(log, log_string)
-        
+        #=
         # start the analysis
         start_analysis(
             image_path, # path to the images
             control_image_path, # path to the control images
             output_folder_path, # path to the output folder
             number_patches, # number of patches
+            number_patches_loc, # number of patches for local correlation plot #! not part of GUI yet
+            number_patches_bfrobustness, # number of patches for bayes factor robustness plot #! not part of GUI yet
             number_channels, # number of channels
             channel_selection, # channel selection
             channel_selection_two, # channel selection two
-            patched_correlation_plot, # patched correlation plot
-            local_correlation_plot, # local correlation plot
-            fractional_overlap_plot, # fractional overlap plot
-            bayes_factor_plot, # bayes factor plot
-            bayes_range_plot, # bayes range plot
-            bayes_factor_robustness_plot, # bayes factor robustness plot
+            patched_correlation_plt, # patched correlation plot
+            local_correlation_plt, # local correlation plot
+            fractional_overlap_plt, # fractional overlap plot
+            bayes_factor_plt, # bayes factor plot
+            bayes_range_plt, # bayes range plot
+            bayes_factor_robustness_plt, # bayes factor robustness plot
+            posterior_plt, # posterior plot 
+            mask_plt, # mask plot 
             number_iterations, # number of iterations
-            number_posterior_samples # number of posterior samples
+            number_posterior_samples, # number of posterior samples,
+            ρ_threshold, # threshold for the correlation coefficient #! not part of GUI yet
+            ρ_range, # range of the correlation coefficient #! not part of GUI yet
+            ρ_range_step # step size of the correlation coefficient #! not part of GUI yet
             )
+            =#
 
         # deactivate spinner
         set_is_spinning!(spinner, false)
@@ -499,6 +530,7 @@ main() do app::Application
         
         return nothing
     end
-
 end
+end
+
 

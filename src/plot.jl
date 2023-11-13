@@ -493,7 +493,6 @@ function bayesplot(
     return hist1
 end
 
-
 function bayes_rangeplot(
     prior::CoLocResult,
     posterior::CoLocResult;
