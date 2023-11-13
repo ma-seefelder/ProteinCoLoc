@@ -477,7 +477,7 @@ function bayesplot(
         )
 
     Plots.histogram!(hist1, Δρ_post, label = "posterior", alpha = 0.35, normalize = :pdf)
-    Plots.vline!(hist1, [0], label = "Δρ = $ρ_threshold", color = :black, linestyle = :dash)
+    Plots.vline!(hist1, [ρ_threshold], label = "Δρ = $ρ_threshold", color = :black, linestyle = :dash)
 
     # add BF to the plot
     Plots.annotate!(
