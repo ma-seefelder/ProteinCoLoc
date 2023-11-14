@@ -391,8 +391,9 @@ end
 function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
     hist1 = Plots.histogram(
         posterior.posterior.μ_control, legend = true, label = "μ_control", 
-        title = "P(ρ|data)", alpha = 0.5, normalize = :pdf.
-        xticks = collect(-2:0.1:2)
+        title = "P(ρ|data)", alpha = 0.5, normalize = :pdf,
+        xticks = collect(-2:0.2:2),
+        xrotation = 60
         )
     Plots.histogram!(
         hist1, posterior.posterior.μ_sample, label = "μ_sample", 
@@ -475,7 +476,8 @@ function bayesplot(
         title = "P(Δρ|data)", alpha = 0.35,
         xlabel = "Δρ", ylabel = "PDF",
         normalize = :pdf,
-        xticks = collect(-2:0.1:2)
+        xticks = collect(-2:0.2:2),
+        xrotation = 60
         )
 
     Plots.histogram!(hist1, Δρ_post, label = "posterior", alpha = 0.35, normalize = :pdf)
