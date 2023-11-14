@@ -23,6 +23,7 @@ import StatsPlots
 
 using Turing
 using Turing: Variational
+using Mousetrap
 
 
 include("LoadImages.jl")
@@ -31,11 +32,12 @@ include("bayes.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
+include("gui.jl")
 
 export MultiChannelImage, MultiChannelImageStack, colocalization
 export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult
 export fractional_overlap, plot, plot_fractional_overlap, local_correlation_plot
 export plot_mask, bayesplot, bayes_rangeplot, bayesfactor_robustness
-
 end
+
 

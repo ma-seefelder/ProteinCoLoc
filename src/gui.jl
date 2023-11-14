@@ -3,10 +3,6 @@
 # See LICENSE.md in the project root for license information.
 # Author: Manuel Seefelder
 #import .ProteinCoLoc
-using Mousetrap
-
-#! NOT IMPLEMENTED: define Switch() for masking plot
-#! NOT IMPLEMENTED: define SpinButton() for number of patches for local correlation plot
 # load gui formatting file (gui_css.jl)
 include("gui_css.jl")
 
@@ -20,24 +16,24 @@ function gui()
         set_title!(win, "ProteinCoLoc.jl")
         set_size_request!(win, Vector2f(1400, 1000))
     
-        main_box = Box(ORIENTATION_VERTICAL)
+        main_box = Mousetrap.Box(ORIENTATION_VERTICAL)
         set_margin!(main_box, 50)
         set_horizontal_alignment!(main_box, ALIGNMENT_START)
 
     ########################################################################
     #### generate box for the introduction of the program ##################
     ########################################################################
-    intro_box = Box(ORIENTATION_VERTICAL)
+    intro_box = Mousetrap.Box(ORIENTATION_VERTICAL)
     set_horizontal_alignment!(intro_box, ALIGNMENT_START)
     set_expand!(intro_box, true)
 
     ########################################################################
     # header label
-    header_1 = Label("ProteinCoLoc.jl")
+    header_1 = Mousetrap.Label("ProteinCoLoc.jl")
     add_css_class!(header_1, "titlebody")
-    header_2 = Label("A program to analyze the colocalization of proteins by Bayesian inference")
+    header_2 = Mousetrap.Label("A program to analyze the colocalization of proteins by Bayesian inference")
     add_css_class!(header_2, "sub_title")
-    header_3 = Label(
+    header_3 = Mousetrap.Label(
         "
         <b>Author</b>: Dr. rer. nat. Manuel Seefelder
         <b>Email</b>: proteincoloc@protonmail.de
@@ -50,7 +46,7 @@ function gui()
     set_margin!(header, 5)
 
     # add text with description of the program to the intro box
-    text= Label(
+    text= Mousetrap.Label(
         "This software is designed for analyzing colocalization in immunofluorescence images, a process where the presence of multiple proteins in the same location is examined. To use the program, the user loads several target images and corresponding control images (e.g., secondary-antibody only control). The program then calculates the degree of colocalization among the proteins (Pearson's correlation and Fractional overlap) and presents the results in various figures. Additionally, it computes a Bayes Factor and the posterior probability of colocalization, only considering areas in the images where signals were detected. This is done by automatically masking the images prior to all calculations.",
         )
 
@@ -75,15 +71,16 @@ function gui()
     #### generate box for the input of the images and other seetings    ####
     ########################################################################
     main_setting_box = CenterBox(ORIENTATION_HORIZONTAL)
-    setting_box = Box(ORIENTATION_VERTICAL)
+    setting_box = Mousetrap.Box(ORIENTATION_VERTICAL)
     set_spacing!(setting_box, 10)
 
     ##############################
-    ## slider: number of patches
+    ## number of patches
     ##############################
-    path_slider_label = Label("<b>Number of NxN patches to be used for the analysis</b>")
+    path_slider_label = Mousetrap.Label("<b>Number of NxN patches to be used for the analysis</b>")
     add_css_class!(path_slider_label, "text")
     set_justify_mode!(path_slider_label, JUSTIFY_MODE_LEFT)
+    add_css_class!(path_slider_label, "text")
 
     patch_slider = SpinButton(1.0,100,1.0)
     set_value!(patch_slider, 16)
@@ -96,14 +93,74 @@ function gui()
     push_back!(setting_box, slider_box) # add box to the setting box
 
     ##############################
+    ## number of patches for local correlation plot
+    ##############################
+    slider_loc_label = Mousetrap.Label("<b>Number of NxN patches (local correlation plot)</b>")
+    set_justify_mode!(slider_loc_label, JUSTIFY_MODE_LEFT)
+    add_css_class!(slider_loc_label, "text")
+
+    slider_loc = SpinButton(20,500,1.0)
+    set_value!(slider_loc, 200)
+    set_tooltip_text!(
+        slider_loc, 
+        "<b>Number of NxN patches to be used for the local correlation plot </b>: The number of patches for the local correlation plot should be higher than the number of patches for the patched correlation plot or the bayesian inference. The higher the number of patches, the more fine grained the local correlation plot will be. The default value is 200."
+        )
+
+    slider_loc_box = vbox(slider_loc_label, slider_loc) # create box for the slider
+    set_spacing!(slider_loc_box, 10) # set spacing between label and slider
+    push_back!(setting_box, slider_loc_box) # add box to the setting box
+
+    ###############################################################
+    ## number of patches for bayes factor robustness plot
+    ###############################################################
+    slider_bfrobustness_label = Mousetrap.Label("<b>Number of NxN patches (bayes factor robustness plot)</b>")
+    set_justify_mode!(slider_bfrobustness_label, JUSTIFY_MODE_LEFT)
+    add_css_class!(slider_bfrobustness_label, "text")
+
+    slider_bfrobustness_min = SpinButton(1,500,1.0)
+    slider_bf_robustness_min_label = Mousetrap.Label("Min")
+    set_value!(slider_bfrobustness_min, 10)
+    set_tooltip_text!(slider_bfrobustness_min, "Minimal number patches that are explored in the bayes factor robustness plot.")
+
+    slider_bfrobustness_max = SpinButton(1,100,1.0)
+    slider_bf_robustness_max_label = Mousetrap.Label("Max")
+    set_value!(slider_bfrobustness_max, 50)
+    set_tooltip_text!(slider_bfrobustness_max, "Maximal number patches that are explored in the bayes factor robustness plot.")
+
+    slider_bfrobustness_step = SpinButton(1,5,1.0)
+    slider_bf_robustness_step_label = Mousetrap.Label("Step size")
+    set_value!(slider_bfrobustness_step, 10)
+    set_tooltip_text!(slider_bfrobustness_step, "Step size of the number of patches that are explored in the bayes factor robustness plot. The higher the step size, the faster the analysis will be. CAVE: A too small step size can lead to memory issues or long runtimes.")
+
+    slider_bfrobustness_box_child = hbox(
+        vbox(slider_bf_robustness_min_label, slider_bfrobustness_min), 
+        vbox(slider_bf_robustness_max_label,slider_bfrobustness_max), 
+        vbox(slider_bf_robustness_step_label,slider_bfrobustness_step)
+        )
+
+    # center the child box
+    set_horizontal_alignment!(slider_bfrobustness_box_child, ALIGNMENT_CENTER)
+
+    # generate separator that is displayed after the slider_bfrobustness_box_child
+    separator_bfrobustness = Separator()
+    set_margin!(separator_bfrobustness, 20)
+    set_expand!(separator_bfrobustness, true)
+    set_size_request!(separator_bfrobustness, Vector2f(0,5))
+
+    slider_bfrobustness_box = vbox(slider_bfrobustness_label, slider_bfrobustness_box_child, separator_bfrobustness)
+    set_spacing!(slider_bfrobustness_box, 10)
+    set_spacing!(slider_bfrobustness_box_child, 10)
+    push_back!(setting_box, slider_bfrobustness_box) # add box to the setting box
+
+    ##############################
     ## file chooser: images
     ##############################
-    image_selector_label = Label("<b>Enter the path to the folder containing the sample images </b>")
+    image_selector_label = Mousetrap.Label("<b>Enter the path to the folder containing the sample images </b>")
     add_css_class!(image_selector_label, "text")
     # create a text field in which the path to the folder can be entered
     image_selector = Entry()
     set_text!(image_selector, "Sample Image Folder path")
-    set_size_request!(image_selector, Vector2f(200, 50))
+    set_size_request!(image_selector, Vector2f(200, 20))
 
     image_selector_box = vbox(
         image_selector_label, 
@@ -117,12 +174,12 @@ function gui()
     ###############################
     ## file chooser: control images
     ###############################
-    control_image_selector_label = Label("<b>Enter the path to the folder containing the control images </b>")
+    control_image_selector_label = Mousetrap.Label("<b>Enter the path to the folder containing the control images </b>")
     add_css_class!(control_image_selector_label, "text")
     # create a text field in which the path to the folder can be entered
     control_image_selector = Entry()
     set_text!(control_image_selector, "Control Imge Folder path")
-    set_size_request!(control_image_selector, Vector2f(200, 50))
+    set_size_request!(control_image_selector, Vector2f(200, 20))
 
     control_image_selector_box = vbox(
         control_image_selector_label, 
@@ -135,16 +192,23 @@ function gui()
     ###############################
     ## file chooser: output folder
     ###############################
-    output_folder_selector_label = Label("<b>Enter the path to the output folder </b>")
+    output_folder_selector_label = Mousetrap.Label("<b>Enter the path to the output folder </b>")
     add_css_class!(output_folder_selector_label, "text")
     # create a text field in which the path to the folder can be entered
     output_folder_selector = Entry()
     set_text!(output_folder_selector, "Output Folder path")
-    set_size_request!(output_folder_selector, Vector2f(200, 50))
+    set_size_request!(output_folder_selector, Vector2f(200, 20))
+
+    # generate separator that is displayed after output_folder_selector_box
+    separator_outputfolder = Separator()
+    set_margin!(separator_outputfolder, 20)
+    set_expand!(separator_outputfolder, true)
+    set_size_request!(separator_outputfolder, Vector2f(0,5))
 
     output_folder_selector_box = vbox(
         output_folder_selector_label, 
-        output_folder_selector
+        output_folder_selector,
+        separator_outputfolder
         )
 
     set_spacing!(output_folder_selector_box, 10) # set spacing between label and slider
@@ -153,13 +217,13 @@ function gui()
     ###############################
     ## Analysis settings
     ###############################
-    analysis_settings_label = Label("General settings")
+    analysis_settings_label = Mousetrap.Label("General settings")
     add_css_class!(analysis_settings_label, "sub_title")
     push_front!(setting_box, analysis_settings_label)
 
     ######################################
     # channel selection
-    number_channels_label = Label("<b>How many color channels have been recorded: </b>")
+    number_channels_label = Mousetrap.Label("<b>How many color channels have been recorded: </b>")
     add_css_class!(number_channels_label, "text")
     number_channels = DropDown()
     number_channels_item_2 = push_back!(number_channels, "2 channels")
@@ -173,7 +237,7 @@ function gui()
 
     ######################################
     # select channels for selection
-    channel_selection_label = Label("<b>Select the channels to be used for the analysis: </b>")
+    channel_selection_label = Mousetrap.Label("<b>Select the channels to be used for the analysis: </b>")
     add_css_class!(channel_selection_label, "text")
     # all combinations
     channel_selection_button_all = Switch()
@@ -183,7 +247,7 @@ function gui()
         "<b>All combinations </b>: If toggled, all possible combinations of the selected channels will be used for the analysis. For example, if three channels are recorded, the combinations 1-2, 1-3, and 2-3 will be used for the analysis."
         )
 
-    channel_selection_button_all_label = Label("All combinations")
+    channel_selection_button_all_label = Mousetrap.Label("All combinations")
     add_css_class!(channel_selection_button_all_label, "text")
 
     channel_selection_button_all_box = vbox(channel_selection_button_all_label, channel_selection_button_all)
@@ -191,9 +255,9 @@ function gui()
 
     # only two channels
     channel_selection_entry_two_entry = Entry()
-    channel_selection_entry_two_label = Label("Only two channels")
+    channel_selection_entry_two_label = Mousetrap.Label("Only two channels")
     add_css_class!(channel_selection_entry_two_label, "text")
-    set_text!(channel_selection_entry_two_entry, "Channel 1, Channel 2")
+    set_text!(channel_selection_entry_two_entry, "1,2")
     
     set_tooltip_text!(
         channel_selection_entry_two_entry, 
@@ -213,67 +277,67 @@ function gui()
     ######################################
     ## Generated Plots (switches)
     ######################################
-    generated_plots_label = Label("Generated plots")
+    generated_plots_label = Mousetrap.Label("Generated plots")
     add_css_class!(generated_plots_label, "sub_title")
     
     # patched correlation plot
     patched_correlation_plot_button = Switch()
     set_is_active!(patched_correlation_plot_button, true)
-    patched_correlation_plot_button_label = Label("Patched correlation plot")
+    patched_correlation_plot_button_label = Mousetrap.Label("Patched correlation plot")
     patched_correlation_plot_button_box = vbox(patched_correlation_plot_button_label, patched_correlation_plot_button)
     set_spacing!(patched_correlation_plot_button_box, 10)
 
     # local correlation plot
     local_correlation_plot_button = Switch()
     set_is_active!(local_correlation_plot_button, true)
-    local_correlation_plot_button_label = Label("Local correlation plot")
+    local_correlation_plot_button_label = Mousetrap.Label("Local correlation plot")
     local_correlation_plot_button_box = vbox(local_correlation_plot_button_label, local_correlation_plot_button)
     set_spacing!(local_correlation_plot_button_box, 10)
 
     # fractional overlap plot
     fractional_overlap_plot_button = Switch()
     set_is_active!(fractional_overlap_plot_button, true)
-    fractional_overlap_plot_button_label = Label("Fractional overlap plot")
+    fractional_overlap_plot_button_label = Mousetrap.Label("Fractional overlap plot")
     fractional_overlap_plot_button_box = vbox(fractional_overlap_plot_button_label, fractional_overlap_plot_button)
     set_spacing!(fractional_overlap_plot_button_box, 10)
 
     # Bayes factor plot
     bayes_factor_plot_button = Switch()
     set_is_active!(bayes_factor_plot_button, true)
-    bayes_factor_plot_button_label = Label("Bayes factor plot")
+    bayes_factor_plot_button_label = Mousetrap.Label("Bayes factor plot")
     bayes_factor_plot_button_box = vbox(bayes_factor_plot_button_label, bayes_factor_plot_button)
     set_spacing!(bayes_factor_plot_button_box, 10)
 
     # Bayes range plot
     bayes_range_plot_button = Switch()
     set_is_active!(bayes_range_plot_button, true)
-    bayes_range_plot_button_label = Label("Bayes range plot")
+    bayes_range_plot_button_label = Mousetrap.Label("Bayes range plot")
     bayes_range_plot_button_box = vbox(bayes_range_plot_button_label, bayes_range_plot_button)
     set_spacing!(bayes_range_plot_button_box, 10)
 
     # Bayes factor robustness plot
     bayes_factor_robustness_plot_button = Switch()
     set_is_active!(bayes_factor_robustness_plot_button, false)
-    bayes_factor_robustness_plot_button_label = Label("Bayes factor robustness plot")
+    bayes_factor_robustness_plot_button_label = Mousetrap.Label("Bayes factor robustness plot")
     bayes_factor_robustness_plot_button_box = vbox(bayes_factor_robustness_plot_button_label, bayes_factor_robustness_plot_button)
     set_spacing!(bayes_factor_robustness_plot_button_box, 10)
 
     # mask plot
     mask_plot_button = Switch()
     set_is_active!(mask_plot_button, true)
-    mask_plot_button_label = Label("Mask plot")
+    mask_plot_button_label = Mousetrap.Label("Mask plot")
     mask_plot_button_box = vbox(mask_plot_button_label, mask_plot_button)
     set_spacing!(mask_plot_button_box, 10)
 
     # posterior plot
     posterior_plot_button = Switch()
     set_is_active!(posterior_plot_button, true)
-    posterior_plot_button_label = Label("Posterior plot")
+    posterior_plot_button_label = Mousetrap.Label("Posterior plot")
     posterior_plot_button_box = vbox(posterior_plot_button_label, posterior_plot_button)
     set_spacing!(posterior_plot_button_box, 10)
     
     # combine all options into one box
-    plot_box = Box(ORIENTATION_VERTICAL)
+    plot_box = Mousetrap.Box(ORIENTATION_VERTICAL)
     push_back!(plot_box, generated_plots_label)
     set_spacing!(plot_box, 10)
 
@@ -295,16 +359,16 @@ function gui()
     ###################################
     ## Settings for Bayesian analysis
     ###################################
-    bayes_box = Box(ORIENTATION_VERTICAL)
+    bayes_box = Mousetrap.Box(ORIENTATION_VERTICAL)
     set_spacing!(bayes_box, 10)
 
     # heading
-    bayes_heading_label = Label("Settings: Bayesian Inference")
+    bayes_heading_label = Mousetrap.Label("Settings: Bayesian Inference")
     add_css_class!(bayes_heading_label, "sub_title")
     push_front!(bayes_box, bayes_heading_label)
 
     # number of iterations
-    number_iterations_label = Label("<b>Number of iterations: </b>")
+    number_iterations_label = Mousetrap.Label("<b>Number of iterations: </b>")
     add_css_class!(number_iterations_label, "text")
     number_iterations = Entry()
     set_text!(number_iterations, "10000")
@@ -319,7 +383,7 @@ function gui()
     push_back!(bayes_box, number_iterations_box)
 
     # number of posterior samples
-    number_posterior_samples_label = Label("<b>Number of prior and posterior samples: </b>")
+    number_posterior_samples_label = Mousetrap.Label("<b>Number of prior and posterior samples: </b>")
     add_css_class!(number_posterior_samples_label, "text")
     number_posterior_samples = Entry()
     set_text!(number_posterior_samples, "100000")
@@ -335,10 +399,26 @@ function gui()
     set_horizontal_alignment!(bayes_box, ALIGNMENT_CENTER)
     set_end_child!(main_setting_box, bayes_box)
 
+    #############################
+    ## Δρ threshold
+    #############################
+    ρ_threshold_label = Mousetrap.Label("<b>Δρ threshold: </b>")
+    add_css_class!(ρ_threshold_label, "text")
+    ρ_threshold_entry = Entry()
+    set_text!(ρ_threshold_entry, "0.1")
+    set_tooltip_text!(
+        ρ_threshold_entry,
+        "The threshold for the difference between correlation coefficient of sample and control image that is considered meaningful.This threshold is used to compute the Bayes Factor and to generate the Bayes Factor plot. The Bayes Factor compares the two hypothesis H0: &#916;&#961; &lt;= &#961;_threshold and H1: &#916;&#961; &gt; &#961;_threshold. The default value is 0.1 as small differences in the correlation coefficient are biologically difficult to interpret."
+        )
+
+    ρ_threshold_box = vbox(ρ_threshold_label, ρ_threshold_entry)
+    set_spacing!(ρ_threshold_box, 10)
+    push_back!(bayes_box, ρ_threshold_box)
+
     ########################################################################
     #### bottom box                                                     ####
     ########################################################################
-    bottom_box = Box(ORIENTATION_VERTICAL)
+    bottom_box = Mousetrap.Box(ORIENTATION_VERTICAL)
     set_spacing!(bottom_box, 10)
 
     # add horizontal separator
@@ -348,8 +428,8 @@ function gui()
     set_size_request!(bottom_separator, Vector2f(0,5))
 
     # add button to start the analysis
-    start_button = Button()
-    start_button_label = Label("Start analysis")
+    start_button = Mousetrap.Button()
+    start_button_label = Mousetrap.Label("Start analysis")
     add_css_class!(start_button_label, "text")
     set_child!(start_button, start_button_label)
 
@@ -368,11 +448,11 @@ function gui()
     # add frame to display log message
     log_frame = Frame()
     add_css_class!(log_frame, "log_frame")
-    log_frame_label = Label("Log")
+    log_frame_label = Mousetrap.Label("Log")
     add_css_class!(log_frame_label, "sub_title")
     set_label_widget!(log_frame, log_frame_label)
 
-    log = Label("")
+    log = Mousetrap.Label("")
     set_child!(log_frame, log)
 
     set_horizontal_alignment!(log, ALIGNMENT_START)
@@ -399,7 +479,7 @@ function gui()
     ### define actions                                                   ###
     ########################################################################
     # define action for the start button
-    connect_signal_clicked!(start_button) do self::Button
+    connect_signal_clicked!(start_button) do self::Mousetrap.Button
         # activate spinner
         set_is_spinning!(spinner, true)
 
@@ -445,14 +525,45 @@ function gui()
         end
 
         # get the number of patches
-        number_patches = get_value(patch_slider)
+        number_patches = Int64(get_value(patch_slider))
 
+        # get the number of patches for the local correlation plot
+        number_patches_loc = Int64(get_value(slider_loc))
+
+        # get the number of patches for the bayes factor robustness plot
+        numb_patches_bfrobustness = collect(
+            range(
+                Int64(get_value(slider_bfrobustness_min)),
+                Int64(get_value(slider_bfrobustness_max));
+                step = get_value(slider_bfrobustness_step)
+                )
+            )
+        numb_patches_bfrobustness = Int64.(numb_patches_bfrobustness)
+        
         # get the number of channels
         numb_channels = get_selected(number_channels)
+
+        if numb_channels == number_channels_item_2
+            numb_channels = 2
+        elseif numb_channels == number_channels_item_3
+            numb_channels = 3
+        elseif numb_channels == number_channels_item_4
+            numb_channels = 4
+        elseif numb_channels == number_channels_item_5
+            numb_channels = 5
+        else
+            log_string = log_string * "Error: Please select the number of channels.\n"
+            set_text!(log, log_string)
+            set_is_spinning!(spinner, false)
+            return nothing
+        end
 
         # get the channel selection
         channel_selection = get_is_active(channel_selection_button_all)
         channel_selection_two = get_text(channel_selection_entry_two_entry)
+        channel_selection_two = split(channel_selection_two, ",")
+        channel_selection_two = parse.(Int64, channel_selection_two)
+
 
         # get the generated plots
         patched_correlation_plot = get_is_active(patched_correlation_plot_button)
@@ -461,19 +572,24 @@ function gui()
         bayes_factor_plot = get_is_active(bayes_factor_plot_button)
         bayes_range_plot = get_is_active(bayes_range_plot_button)
         bayes_factor_robustness_plot = get_is_active(bayes_factor_robustness_plot_button)
-        posterior_plt = get_is_active(posterior_plot_button)
-        mask_plt = get_is_active(mask_plot_button)
+        posterior_plot = get_is_active(posterior_plot_button)
+        mask_plot = get_is_active(mask_plot_button)
 
         # get the number of iterations
-        numb_iterations = get_text(number_iterations)
+        numb_iterations = parse(Int64,get_text(number_iterations))
 
         # get the number of posterior samples
-        numb_posterior_samples = get_text(number_posterior_samples)
+        numb_posterior_samples = parse(Int64,get_text(number_posterior_samples))
+
+        # get the threshold for the correlation coefficient
+        ρ_threshold = parse(Float64,get_text(ρ_threshold_entry))
 
         # print the settings to the log
         log_string = log_string * "Settings: \n"*
             "Number of NxN patches: "*string(number_patches)*"\n"*
-            "Number of channels: "*string(numb_channels)*"\n"*
+            "Number of NxN patches for local correlation plot: "*string(number_patches_loc)*"\n"*
+            "Number of NxN patches for bayes factor robustness plot: " *string(numb_patches_bfrobustness)*"\n"*
+            "Number of channels: "* string(numb_channels)*"\n"*
             "Channel selection: "*string(channel_selection)*"\n"*
             "Channel selection two: "*string(channel_selection_two)*"\n"*
             "Patched correlation plot: "*string(patched_correlation_plot)*"\n"*
@@ -481,40 +597,44 @@ function gui()
             "Fractional overlap plot: "*string(fractional_overlap_plot)*"\n"*
             "Bayes factor plot: "*string(bayes_factor_plot)*"\n"*
             "Bayes range plot: "*string(bayes_range_plot)*"\n"*
-            "Mask plot: "*string(mask_plt)*"\n"*
-            "Posterior plot: "*string(posterior_plt)*"\n"*
+            "Mask plot: "*string(mask_plot)*"\n"*
+            "Posterior plot: "*string(posterior_plot)*"\n"*
             "Bayes factor robustness plot: "*string(bayes_factor_robustness_plot)*"\n"*
             "Number of iterations: "*string(numb_iterations)*"\n"*
-            "Number of posterior samples: "*string(numb_posterior_samples)*"\n"
+            "Number of posterior samples: "*string(numb_posterior_samples)*"\n"*
+            "Δρ threshold: "*string(ρ_threshold)*"\n"
             
         set_text!(log, log_string)
-        #=
+
+        # define the range of the correlation coefficient
+        ρ_range = [-0.8,0.8]
+        ρ_range_step = 0.05
+
         # start the analysis
         start_analysis(
             image_path, # path to the images
             control_image_path, # path to the control images
             output_folder_path, # path to the output folder
             number_patches, # number of patches
-            number_patches_loc, # number of patches for local correlation plot #! not part of GUI yet
-            number_patches_bfrobustness, # number of patches for bayes factor robustness plot #! not part of GUI yet
-            number_channels, # number of channels
+            number_patches_loc, # number of patches for local correlation plot
+            numb_patches_bfrobustness, # number of patches for bayes factor robustness plot 
+            numb_channels, # number of channels
             channel_selection, # channel selection
             channel_selection_two, # channel selection two
-            patched_correlation_plt, # patched correlation plot
-            local_correlation_plt, # local correlation plot
-            fractional_overlap_plt, # fractional overlap plot
-            bayes_factor_plt, # bayes factor plot
-            bayes_range_plt, # bayes range plot
-            bayes_factor_robustness_plt, # bayes factor robustness plot
-            posterior_plt, # posterior plot 
-            mask_plt, # mask plot 
-            number_iterations, # number of iterations
-            number_posterior_samples, # number of posterior samples,
-            ρ_threshold, # threshold for the correlation coefficient #! not part of GUI yet
-            ρ_range, # range of the correlation coefficient #! not part of GUI yet
-            ρ_range_step # step size of the correlation coefficient #! not part of GUI yet
+            patched_correlation_plot, # patched correlation plot
+            local_correlation_plot, # local correlation plot
+            fractional_overlap_plot, # fractional overlap plot
+            bayes_factor_plot, # bayes factor plot
+            bayes_range_plot, # bayes range plot
+            bayes_factor_robustness_plot, # bayes factor robustness plot
+            posterior_plot, # posterior plot 
+            mask_plot, # mask plot 
+            numb_iterations, # number of iterations
+            numb_posterior_samples, # number of posterior samples,
+            ρ_threshold, # threshold for the correlation coefficient
+            ρ_range, # range of the correlation coefficient
+            ρ_range_step # step size of the correlation coefficient
             )
-            =#
 
         # deactivate spinner
         set_is_spinning!(spinner, false)

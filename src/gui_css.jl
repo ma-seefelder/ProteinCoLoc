@@ -11,7 +11,7 @@
 add_css!(
     """
     .titlebody{
-        font-size: 40px;
+        font-size: 32px;
         font-weight: bold;
         font-family: sans-serif;
         margin-bottom: 10px;
@@ -25,7 +25,7 @@ add_css!(
 add_css!(
     """
     .sub_title{
-        font-size: 24px;
+        font-size: 20px;
         font-weight: bold;
         font-family: sans-serif;
         margin-bottom: 10px;
@@ -38,7 +38,7 @@ add_css!(
 add_css!(
     """
     .text{
-        font-size: 16px;
+        font-size: 14px;
         font-family: sans-serif;
         margin-bottom: 10px;   
     }
@@ -49,7 +49,7 @@ add_css!(
 add_css!(
     """
     .log{
-        font-size: 12px;
+        font-size: 10px;
         font-family: sans-serif;
         margin-bottom: 12px; 
         color: #000000; 

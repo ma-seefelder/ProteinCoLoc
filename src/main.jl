@@ -7,10 +7,6 @@
 # The functions are exported and can be used by the user.
 # Additionally, the function is called by the GUI to perform the analysis.
 
-image_path = "C:/Users/Manuel/Documents/GitHub/ProteinCoLoc/test/test_images/positive/"
-control_image_path = "C:/Users/Manuel/Documents/GitHub/ProteinCoLoc/test/test_images/negative/"
-output_folder_path = "C:/Users/Manuel/Documents/GitHub/ProteinCoLoc/test/test_images"
-
 function start_analysis(
     image_path::S, # path to the images
     control_image_path::S, # path to the control images
@@ -100,11 +96,3 @@ function start_analysis(
         end
     end
 end
-
-
-#=
-ProteinCoLoc.start_analysis(
-    image_path, control_image_path, output_folder_path, 32, 200, [6,12,24,32,64], 3, true, [2,3], true, true,
-    true, true, true, true, true, true, 1000, 100_000, 0.1, [-0.8, 0.8], 0.01
-    )
-=#

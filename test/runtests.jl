@@ -15,7 +15,7 @@ Random123.seed!(1234)
 ### Test for Image Loading functionality
 ##########################################################################################
 @testset "LoadImages" verbose = true begin 
-    path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
+    path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
     # define a test function for load_tiff
     @testset "load_tiff" begin
         img = ProteinCoLoc.load_tiff(path[1])
@@ -49,7 +49,7 @@ Random123.seed!(1234)
 
     # test with five channel image
     @testset "MultiChannelImage constructor (5 channels)" begin
-        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif","test/test_images/c3.tif", "test/test_images/c3.tif" ]
+        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
         name = "test_image"
         channels = ["blue", "green", "red","red_2","red_3"]
         img = MultiChannelImage(name, path, channels)
@@ -97,7 +97,7 @@ Random123.seed!(1234)
     end
 
     @testset "MultiChannelImageStack" verbose = true begin
-        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
+        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
         # load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         # create stack from image and test that the constructor returns a MultiChannelImageStack object
@@ -187,7 +187,7 @@ end
     end
 
     @testset "Correlation Bayes Test identical samples" begin
-        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
+        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
         # first load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
@@ -219,8 +219,8 @@ end
     end
 
     @testset "Correlation Bayes Test n3" begin
-        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
-        path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
+        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
+        path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
         # first load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
@@ -249,8 +249,8 @@ end
     end
 
     @testset "Correlation Bayes Test identical samples n1" begin
-        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
-        path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
+        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
+        path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
         # first load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
@@ -278,8 +278,8 @@ end
     end
 
     @testset "Correlation Bayes Test channel 1 and 3 n1" begin
-        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
-        path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
+        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
+        path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
         # first load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
@@ -306,15 +306,15 @@ end
     end
 
     @testset "bayesfactor_robustness" begin
-        path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
-        path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
+        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
+        path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
         # first load image
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
         control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
         control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
         # make a stack of the image
-        img_stack = MultiChannelImageStack([img, img, imgs], "test_stack")
+        img_stack = MultiChannelImageStack([img, img, img], "test_stack")
         control_stack = MultiChannelImageStack([control, control, control], "test_stack")
 
         # check that the function works
@@ -330,7 +330,7 @@ end
 ### Test for plotting functionality
 ###########################################################################################
 @testset "Plots" verbose = true begin
-    path = path = ["test/test_images/c1.tif", "test/test_images/c2.tif", "test/test_images/c3.tif"]
+    path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
     name = "test_image"
     channels = ["blue", "green", "red"]
 
@@ -339,7 +339,7 @@ end
     img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
 
     # load control image
-    path_control = ["test/test_images/negative_c1.tif", "test/test_images/negative_c2.tif", "test/test_images/negative_c3.tif"]
+    path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
     control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
     control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
 

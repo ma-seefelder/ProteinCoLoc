@@ -209,6 +209,7 @@ function bayesfactor_robustness(
     p_prior = fill(0.0, length(num_patches))
 
     for (n_patch, idx) ∈ zip(num_patches, 1:length(num_patches))
+        println("n_patch: $n_patch; idx: $idx")
         prior, posterior = colocalization(
             img, control, channels, n_patch; 
             iter = iter, posterior_samples = posterior_samples)
