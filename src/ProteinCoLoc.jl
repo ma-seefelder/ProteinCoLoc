@@ -14,12 +14,9 @@ import Distributions: pdf
 import GLMakie
 import Images
 import KernelDensity: kde
-import Plots
-import Plots: annotate!, hline!, plot, savefig, text, vline!
 import PyCall
 import QuadGK: quadgk
 import Statistics: quantile
-import StatsPlots
 
 using Turing
 using Turing: Variational

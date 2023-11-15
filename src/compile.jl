@@ -1,2 +1,7 @@
 using PackageCompiler
-create_app("C:/Users/Manuel/Documents/GitHub/ProteinCoLoc", "C:/Users/Manuel/Desktop/ProteinCoLoc", app_name="ProteinCoLoc", script="script.jl")
+create_app(
+    "C:/Users/manue/Documents/GitHub/ProteinCoLoc", 
+    "C:/Users/manue/Desktop/ProteinCoLoc", 
+    script="script.jl";
+    executables = ["ProteinCoLoc" => "julia_main"]
+    )

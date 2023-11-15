@@ -110,24 +110,14 @@ function plot(
             )
     end
 
-    # plot image with Plots.jl package
-    # without x and y axis ticks and labels and with a black background
-    plt = plot(
-        img_view,
-        ticks = false,
-        border = :none,
-        legend = false,
-        grid = false,
-        size = (size(img.data[1])[2,],size(img.data[1])[1,]),
-        background_color = :black,
-        dpi = 96
-        )
-
+    fig = Figure(resolution = (size(img.data[1])[2,],size(img.data[1])[1,]), backgroundcolor = :black)
+    ax1 = Axis(fig[1, 1], aspect = DataAspect(), yreversed = true)
+    image!(ax1, img_view')
 
     # add lines to the image to separate the patches
     for i in 0:num_patches
-        hline!([i*patch_size[1]], color = :white, linealpha = 0.5, linestyle = :dash)
-        vline!([i*patch_size[2]], color = :white, linealpha = 0.5, linestyle = :dash)
+        GLMakie.hlines!([i*patch_size[1]], color = :white, linealpha = 0.5, linestyle = :dash, linewidth = 1)
+        GLMakie.vlines!([i*patch_size[2]], color = :white, linealpha = 0.5, linestyle = :dash, linewidth = 1)
     end
 
     ######################################
@@ -145,18 +135,18 @@ function plot(
     # add the correlation values to the image
     for patch ∈ CartesianIndices(ρ)
         ismissing(ρ[patch]) && continue
-        annotate!(
+        GLMakie.text!(
+            ax1,
             (patch[2]-1)*patch_size[2] + patch_size[2]/2,
             (patch[1]-1)*patch_size[1] + patch_size[1]/2,
-            text(round(ρ[patch],digits = 2), :white, :center, 8)
+            text = string(round(ρ[patch],digits = 2)),
+            color = :white, fontsize = 9	
             )
     end
 
     # save the image
-    if save_to_file == true
-        savefig(plt, file)
-    end
-    return plt
+    save_to_file && GLMakie.save(file, fig)
+    return fig
 end
 
 """
@@ -181,38 +171,34 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
     # combine the subplots
     plt = Images.hcat(plt...)
 
-    # plot image with Plots.jl package
     # without x and y axis ticks and labels and with a black background
-    plt = plot(
-        plt,
-        ticks = false,
-        border = :none,
-        legend = false,
-        grid = false,
-        size = (3*size(img.data[1])[2,],size(img.data[1])[1,]),
-        background_color = :black,
-        dpi = 96
+    fig = Figure(
+        resolution = (0.3*size(plt)[2,],0.3*size(plt)[1,]), 
+        background_color = :black
         )
+
+    ax1 = Axis(fig[1, 1], aspect = DataAspect(), yreversed = true)
+    image!(ax1, plt')
 
     # add lines to the image to separate the channels
     for i in 0:length(img.channels)
-        vline!([i*size(img.data[1])[2,]], color = :white, width = 2)
+        GLMakie.vlines!([i*size(img.data[1])[2,]], color = :white, width = 2)
     end
 
     # add the channel names to the bottom corner of each channel
-    for i in 1:length(img.channels)
-        annotate!(
-            (i-1)*size(img.data[1])[2,] + 10,
-            10,
-            text(img.channels[i], :yellow, :left, 40)
+    for i in 0:(length(img.channels)-1)
+        GLMakie.text!(
+            ax1, 
+            (i*size(img.data[1])[2,] +100), 100,
+            text = string(img.channels[i+1]),
+            color = :yellow, fontsize = 20.0
             )
     end
    
-
     # save
-    savefig(plt, file)
+    GLMakie.save(file, fig)
 
-    return plt
+    return fig
 end
 
 # local correlation plot
@@ -389,63 +375,85 @@ end
     - `save::Bool`: Whether to save the plot to the file.
 """
 function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
-    hist1 = Plots.histogram(
-        posterior.posterior.μ_control, legend = true, label = "μ_control", 
-        title = "P(ρ|data)", alpha = 0.5, normalize = :pdf,
-        xticks = collect(-2:0.2:2),
-        xrotation = 60
-        )
-    Plots.histogram!(
-        hist1, posterior.posterior.μ_sample, label = "μ_sample", 
-        alpha = 0.5, normalize = :pdf
+    fig = GLMakie.Figure(resolution = (1200, 800))
+    ax1 = Axis(
+        fig[1, 1], xlabel = "ρ", ylabel = "P(ρ|data)", title = "P(ρ|data)",
+        limits = (-1, 1, nothing, nothing), 
+        xticks = (collect(-1.0:0.2:1.0), string.(collect(-1.0:0.2:1.0))), 
+        xticklabelrotation = deg2rad(60)
         )
 
-    hist2 = Plots.histogram(
-        posterior.posterior.ν_control, label = "ν_control", 
-        legend = true, title = "P(ν|data)", alpha = 0.5,
-        normalize = :pdf
+    hist1a = GLMakie.density!(
+        ax1, posterior.posterior.μ_control,
+        alpha = 0.5, label = "μ_control",
+        normalization = :pdf
+        )
+        
+    hist1b = GLMakie.density!(
+        ax1, posterior.posterior.μ_sample,
+        alpha = 0.5, label = "μ_sample",
+        normalization = :pdf
         )
 
-    Plots.histogram!(
-        hist2, posterior.posterior.ν_sample, 
-        label = "ν_sample", alpha = 0.5, normalize = :pdf
+    ax2 = Axis(fig[1, 2], xlabel = "ρ", ylabel = "P(ν|data)", title = "P(ν|data)")
+    
+    hist2a = GLMakie.density!(
+        ax2, posterior.posterior.ν_control, normalization = :pdf,
+        alpha = 0.5, label = "ν_control"
         )
 
-    hist3 = Plots.histogram(
-        posterior.posterior.σ_control, label = "σ_control", 
-        legend = true, title = "P(σ|data)", alpha = 0.5,
-        normalize = :pdf
+    hist2b = GLMakie.density!(
+        ax2, posterior.posterior.ν_sample, normalization = :pdf,
+        alpha = 0.5, label = "ν_sample"
+    )
+
+    ax3 = Axis(fig[1, 3], xlabel = "σ", ylabel = "P(σ|data)", title = "P(σ|data)")
+
+    hist3a = GLMakie.density!(
+        ax3, posterior.posterior.σ_control, normalization = :pdf,
+        alpha = 0.5, label = "σ_control"
         )
 
-    Plots.histogram!(
-        hist3, posterior.posterior.σ_sample, label = "σ_sample", 
-        alpha = 0.5, normalize = :pdf
+    hist3b = GLMakie.density!(
+        ax3, posterior.posterior.σ_sample, normalization = :pdf,
+        alpha = 0.5, label = "σ_sample"
+    )
+
+    ax4 = Axis(fig[1, 4], xlabel = "τ", ylabel = "P(τ|data)", title = "P(τ|data)")
+
+    hist4a = GLMakie.density!(
+        ax4, posterior.posterior.τ_sample, normalization = :pdf,
+        alpha = 0.5, label = "τ_sample"
         )
 
+    hist4b = GLMakie.density!(
+        ax4, posterior.posterior.τ_control, normalization = :pdf,
+        alpha = 0.5, label = "τ_control"
+    )
+
+    lgd = GLMakie.Legend(
+        fig[2,1:4], ax1, orientation = :horizontal, 
+        framevisible = false
+        )
+    #########
+    # Δ̢ρ 
     Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
 
-    hist4 = Plots.histogram(
-        Δρ,legend = true, label = "Δρ", normalize = :pdf,
-        title = "P(Δρ|data)", alpha = 0.5)
-
-    hist5 = Plots.histogram(
-        posterior.posterior.τ_sample,legend = true,
-        label = "τ_sample", title = "P(τ|data)", alpha = 0.5,
-        normalize = :pdf
+    ax5 = Axis(
+        fig[3, 1:4], xlabel = "Δρ", ylabel = "P(Δρ|data)", title = "P(Δρ|data)",
+        limits = (-2, 2, nothing, nothing), 
+        xticks = (collect(-2.0:0.1:2.0), string.(collect(-2.0:0.1:2.0))), 
+        xticklabelrotation = deg2rad(60)
+        
         )
 
-    Plots.histogram!(
-        hist5, posterior.posterior.τ_control, label = "τ_control", 
-        alpha = 0.5, normalize = :pdf
-        )
+    hist5 = GLMakie.density!(
+        ax5, Δρ, normalization = :pdf,
+        alpha = 0.5, label = "Δρ"
+    )
 
-    p = Plots.plot(
-        hist1, hist2, hist3, hist5, hist4, 
-        layout = (3, 2), size = (800, 800)
-        )
-
-    save && Plots.savefig(p, file)
-    return(p)
+    save && GLMakie.save(file, fig)
+    return(fig)
 end
 
 """
@@ -471,30 +479,37 @@ function bayesplot(
     Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
     Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
 
-    hist1 = Plots.histogram(
-        Δρ_prior, legend = true, label = "prior", 
-        title = "P(Δρ|data)", alpha = 0.35,
-        xlabel = "Δρ", ylabel = "PDF",
-        normalize = :pdf,
-        xticks = collect(-2:0.2:2),
-        xrotation = 60
+    fig = Figure(resolution = (600, 600))
+    ax1 = Axis(
+        fig[1, 1], xlabel = "Δρ", ylabel = "PDF", title = "P(Δρ|data)",
+        xticks = (collect(-2.0:0.2:2.0), string.(collect(-2.0:0.2:2.0))), 
+        xticklabelrotation = deg2rad(60)
+    )
+
+    hist1a = GLMakie.density!(
+        ax1, Δρ_prior, normalize = :pdf,
+        label = "prior", alpha = 0.30
+    )
+
+    hist1b = GLMakie.density!(
+        ax1, Δρ_post, normalize = :pdf,
+        label = "posterior", alpha = 0.30
+    )
+
+    GLMakie.vlines!(
+        ax1, ρ_threshold, color = :black, 
+        linestyle = :dash, label = "Δρ = $ρ_threshold"
         )
 
-    Plots.histogram!(hist1, Δρ_post, label = "posterior", alpha = 0.35, normalize = :pdf)
-    Plots.vline!(hist1, [ρ_threshold], label = "Δρ = $ρ_threshold", color = :black, linestyle = :dash)
+    t = "BF[Δρ>$ρ_threshold : Δρ ≤ $ρ_threshold] = $(round(bf; digits = 4))"
+    # Add BF to the plot
+    GLMakie.text!(-2,0.05, text = t)
 
-    # add BF to the plot
-    Plots.annotate!(
-        hist1, 
-        [(-2.0, 0.05, Plots.text("BF[Δρ>$ρ_threshold : Δρ ≤ $ρ_threshold] = $(round(bf; digits = 2))", 10, :left, :bottom, :black))], 
-        font = "Helvetica", 
-        color = :black
-        )
+    lgd = GLMakie.Legend(fig[2,1], ax1, orientation = :horizontal, framevisible = false)
 
-    if save
-        Plots.savefig(hist1, file)
-    end
-    return hist1
+    save && GLMakie.save(file, fig)
+
+    return fig
 end
 
 function bayes_rangeplot(
@@ -512,16 +527,21 @@ function bayes_rangeplot(
         a > 0 ? bf[idx] = a : bf[idx] = NaN
     end 
 
+    ticks = collect(range(Δ̢ρ[1], Δ̢ρ[end], length = 11))
     # plot the results
-    p1 = Plots.plot(
-        Δ̢ρ, log10.(bf), 
-        xlabel = "Δρ0", 
+    fig = GLMakie.Figure(resolution = (600, 600))
+    ax1 = GLMakie.Axis(
+        fig[1, 1], xlabel = "Δρ0", 
         ylabel = "log10(BF[Δρ > Δρ0 : Δρ ≤ Δρ0])", 
         title = "Bayes factor vs Δρ",
-        legend = false
-        )
+        limits = (Δ̢ρ[1], Δ̢ρ[end], nothing, nothing), 
+        xticks = (ticks, string.(ticks)),
+        xticklabelrotation = deg2rad(60)
+    )
 
-    Plots.hline!(p1, [0], label = "BF = 1", color = :black, linestyle = :dash)
-    save && Plots.savefig(p1, file)
-    return p1
+    GLMakie.lines!(ax1, Δ̢ρ, log10.(bf))
+
+    GLMakie.hlines!(ax1, [0], color = :black, linestyle = :dash, label = "BF = 1")
+    save && GLMakie.save(file, fig)
+    return fig
 end

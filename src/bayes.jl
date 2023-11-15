@@ -217,35 +217,17 @@ function bayesfactor_robustness(
     end
 
     # plot the results
-    p1 = Plots.plot(
-        num_patches.^2, log10.(bf), 
-        xlabel = "number of patches", 
-        ylabel = "log10(Bayes factor)", 
-        title = "Bayes factor vs number of patches",
-        legend = false
-        )
+    fig = Figure(resolution = (800, 800))
+    ax1 = Axis(fig[1, 1], xlabel = "number of patches", ylabel = "log10(Bayes factor)")
+    lines!(ax1, num_patches.^2, log10.(bf))
 
-    p2 = Plots.plot(
-        num_patches.^2, p_post, 
-        xlabel = "number of patches", 
-        ylabel = "P(Δρ > 0| data)", 
-        title = "P(Δρ > 0| data) vs number of patches",
-        legend = false
-        )
+    ax2 = Axis(fig[2, 1], xlabel = "number of patches", ylabel = "P(Δρ > 0| data)")
+    lines!(ax2, num_patches.^2, p_post)
 
-    p3 = Plots.plot(
-        num_patches.^2, p_prior, 
-        xlabel = "number of patches", 
-        ylabel = "P(Δρ > 0)", 
-        title = "P(Δρ > 0) vs number of patches",
-        legend = false
-        )
+    ax3 = Axis(fig[3, 1], xlabel = "number of patches", ylabel = "P(Δρ > 0)")
+    lines!(ax3, num_patches.^2, p_prior)
 
-    p = Plots.plot(
-        p1, p2, p3,
-        layout = (3, 1), size = (800, 800)
-        )
-    
-    save && Plots.savefig(p, file)
-    return p, bf, p_post, p_prior 
+    # Save the figure
+    save && GLMakie.save(file, fig)
+    return fig, bf, p_post, p_prior 
 end
