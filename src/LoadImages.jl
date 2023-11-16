@@ -80,6 +80,7 @@ function apply_mask!(img)
     img = _apply_mask!(img, mask)
 end
 ################################################################################
+#= #! Excluded in the compiled version
 # convert lif file to tiff files
 
 """
@@ -137,6 +138,8 @@ function convert_lif_meta_data_to_csv(meta_data::Vector{Dict{Any,Any}}, path::S)
     
     return df_meta_data
 end
+
+#=
 
 ################################################################################
 # constructor for MultiChannelImage

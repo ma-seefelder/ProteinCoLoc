@@ -14,7 +14,6 @@ import Distributions: pdf
 import GLMakie
 import Images
 import KernelDensity: kde
-import PyCall
 import QuadGK: quadgk
 import Statistics: quantile
 
