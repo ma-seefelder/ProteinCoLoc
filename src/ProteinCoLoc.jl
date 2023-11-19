@@ -16,6 +16,7 @@ import Images
 import KernelDensity: kde
 import QuadGK: quadgk
 import Statistics: quantile
+import Base: Cint
 
 using Turing
 using Turing: Variational
@@ -29,6 +30,7 @@ include("plot.jl")
 include("utils.jl")
 include("main.jl")
 include("gui.jl")
+include("script.jl")
 
 export MultiChannelImage, MultiChannelImageStack, colocalization
 export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult

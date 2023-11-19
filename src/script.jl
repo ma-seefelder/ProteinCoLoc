@@ -1,6 +1,4 @@
-function julia_main()::CInt
-    include("ProteinCoLoc.jl")
-    using .ProteinCoLoc
+function julia_main()::Cint 
     ProteinCoLoc.gui()
     return 0
 end
