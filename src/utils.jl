@@ -39,7 +39,8 @@ function get_images(path::S, nchannels::I, stack_name::S) where {I<:Integer, S<:
     # retrieve image names
     image_names = Vector{String}()
     for i in split.(files, "_")
-        !in(i[1],image_names) ? push!(image_names,i[1]) : nothing
+        length(i) > 2 ? img_name = join(i[1:end-1],"_") : img_name = i[1]
+        !in(img_name,image_names) ? push!(image_names,img_name) : nothing
     end
 
     # load images
