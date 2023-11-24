@@ -94,6 +94,52 @@ function apply_mask!(img)
     mask = _calculate_mask(img)
     img = _apply_mask!(img, mask)
 end
+
+################################################################################
+# shuffle individual pixels in each channel of a MultiChannelImage
+function shuffle_pixels(img::MultiChannelImage)
+    for channel ∈ 1:length(img.channels)
+        # retrieve pixel values
+        img.data[channel] = shuffle!(img.data[channel])
+    end
+    return img
+end
+
+# shuffle blocks of pixels in each channel of a MultiChannelImage 
+# with block size block_size to accomodate for autocorrelation
+# use the patch function to create blocks
+function shuffle_blocks(img::MultiChannelImage, block_size::Int64)
+    # calculate number of blocks
+    img_size = [size(img.data[1])[1], size(img.data[1])[2]]
+    num_blocks = Int.(div.(img_size, sqrt(block_size)))
+
+
+    for channel ∈ 1:length(img.channels)
+        # retrieve pixel values
+        data = patch(img.data[channel], num_blocks[1], num_blocks[2])
+        ############################################################
+        # shuffle blocks, i.e. only shuffle the order of the blocks
+        ############################################################
+        # Assume data is a 4D array and shuffle_idx is a 1D array of shuffled indices
+        dims = size(data)
+        indices = CartesianIndices((dims[1], dims[2]))
+        shuffle_idx = indices[randperm(length(indices))]
+
+        # Create a new array with the first two dimensions shuffled
+        shuffled_data = similar(data)
+        for i in eachindex(shuffle_idx)
+            shuffled_data[shuffle_idx[i], :, :, :] = data[indices[i], :, :, :]
+        end
+
+        ############################################################
+        # unpatch
+        ############################################################
+        img.data[channel] = unpatch(shuffled_data, Int.(img.pixel_size))
+    end
+    return img
+end
+
+
 ################################################################################
 #= Excluded in the compiled version
 # convert lif file to tiff files

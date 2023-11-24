@@ -316,6 +316,14 @@ end
 
     # load image
     img = MultiChannelImage(name, path, channels)
+    # patched correlation plot with img after pixel shuffling
+    pixel_shuffled = ProteinCoLoc.shuffle_pixels(img)
+    plot(pixel_shuffled, 32, [2,3]; file = "test/test_images/patched_channels_2_3_shuffled.png")
+    # block shuffle
+    block_shuffled = ProteinCoLoc.shuffle_blocks(img, 9)
+    plot(block_shuffled, 32, [2,3]; file = "test/test_images/patched_channels_2_3_block_shuffled.png")
+
+    # apply mask
     img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
 
     # load control image

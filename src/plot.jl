@@ -124,9 +124,9 @@ function plot(
             )
     end
 
-    fig = Figure(resolution = (size(img.data[1])[2,],size(img.data[1])[1,]), backgroundcolor = :black)
-    ax1 = Axis(fig[1, 1], aspect = DataAspect(), yreversed = true)
-    image!(ax1, img_view')
+    fig = GLMakie.Figure(resolution = (size(img.data[1])[2,],size(img.data[1])[1,]), backgroundcolor = :black)
+    ax1 = GLMakie.Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
+    GLMakie.image!(ax1, img_view')
 
     # add lines to the image to separate the patches
     for i in 0:num_patches
@@ -186,12 +186,12 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
     plt = Images.hcat(plt...)
 
     # without x and y axis ticks and labels and with a black background
-    fig = Figure(
+    fig = GLMakie.Figure(
         resolution = (0.3*size(plt)[2,],0.3*size(plt)[1,]), 
         background_color = :black
         )
 
-    ax1 = Axis(fig[1, 1], aspect = DataAspect(), yreversed = true)
+    ax1 = Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
     image!(ax1, plt')
 
     # add lines to the image to separate the channels
@@ -493,8 +493,8 @@ function bayesplot(
     Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
     Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
 
-    fig = Figure(resolution = (600, 600))
-    ax1 = Axis(
+    fig = GLMakie.Figure(resolution = (600, 600))
+    ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "Δρ", ylabel = "PDF", title = "P(Δρ|data)",
         xticks = (collect(-2.0:0.2:2.0), string.(collect(-2.0:0.2:2.0))), 
         xticklabelrotation = deg2rad(60)

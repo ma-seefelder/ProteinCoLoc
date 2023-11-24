@@ -32,6 +32,7 @@ import KernelDensity: kde
 import QuadGK: quadgk
 import Statistics: quantile
 import Base: Cint
+import Random: shuffle!, randperm
 
 using Turing
 using Turing: Variational
@@ -51,7 +52,7 @@ include("script.jl")
 export MultiChannelImage, MultiChannelImageStack, colocalization
 export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult
 export fractional_overlap, plot, plot_fractional_overlap, local_correlation_plot
-export plot_mask, bayesplot, bayes_rangeplot, bayesfactor_robustness
+export plot_mask, bayesplot, bayes_rangeplot
 end
 
 

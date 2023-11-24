@@ -42,6 +42,51 @@ function patch(img::Array{Float64, 2}, num_patches::Int64)
     return patches
 end
 
+"""
+    patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
+    Patches the image into num_patches_x x num_patches_y patches.
+
+"""
+function patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
+    # calculate the size of the patches
+    patch_size_x = Int64(floor(size(img, 1) / num_patches_x))
+    patch_size_y = Int64(floor(size(img, 2) / num_patches_y))
+    # initialize the patches
+    patches = zeros(Union{Float64, Missing}, num_patches_x, num_patches_y, patch_size_x, patch_size_y)
+    # loop over the patches
+    for i in 1:num_patches_x
+        for j in 1:num_patches_y
+            patches[i, j, :, :] = img[(i-1)*patch_size_x+1:i*patch_size_x, (j-1)*patch_size_y+1:j*patch_size_y]
+        end
+    end
+    return patches
+end
+
+"""
+    unpatch(patches::Array{Union{Float64, Missing}, 4})
+    Unpatches the patches into an image.
+    Return the image.
+"""
+function unpatch(patches::Array{Union{Float64, Missing}, 4}, img_size::Tuple{Int64, Int64})
+    # Get the dimensions of the patches
+    num_patches_x, num_patches_y, patch_size_x, patch_size_y = size(patches)
+    # Initialize the image
+    img = zeros(Float64, img_size[1], img_size[2])
+    # Loop over the patches
+    for i in 1:num_patches_x
+        for j in 1:num_patches_y
+            img[(i-1)*patch_size_x+1:i*patch_size_x, (j-1)*patch_size_y+1:j*patch_size_y] = patches[i, j, :, :]
+        end
+    end
+    return img
+end
+
+"""
+    _apply_mask!(img::MultiChannelImage, mask::Matrix{Bool})
+    Apply the mask to the image.
+    Return the masked image.
+"""
+
 ######################################################################
 # function to calculate the Pearson's correlation
 ######################################################################
