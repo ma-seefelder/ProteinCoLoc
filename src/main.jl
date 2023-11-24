@@ -42,7 +42,9 @@ function start_analysis(
     number_posterior_samples::I = 100_000,# number of posterior samples
     ρ_threshold::Float64 = 0.1, # threshold for the bayes factor
     ρ_range::Vector{Float64} = [-0.8, 0.8], # range for the bayes factor range plot
-    ρ_range_step::Float64 = 0.01 # step size for the bayes factor range plot   
+    ρ_range_step::Float64 = 0.01, # step size for the bayes factor range plot ,
+    shuffle::Bool = false, # shuffle patches
+    shuffle_method::Symbol = :block # shuffle method  
     ) where {S<:AbstractString, I<:Integer}
 
     ###########################################################################
@@ -53,8 +55,6 @@ function start_analysis(
     number_channels < 2 && error("The number of channels must be at least 2.")
     # check if the image path is valid
     !isdir(image_path) && error("The image path is not valid.")
-    # check if the control image path is valid
-    !isdir(control_image_path) && error("The control image path is not valid.")
     # check if the output folder path is valid
     !isdir(output_folder_path) && error("The output folder path is not valid.")
     # check if the output folder contains a log file
@@ -72,7 +72,28 @@ function start_analysis(
     # load images
     images = get_images(image_path, number_channels, "images")
     # load control images
-    control_images = get_images(control_image_path, number_channels, "control images")
+    if !shuffle 
+        # check if the control image path is valid
+        !isdir(control_image_path) && error("The control image path is not valid.")
+        # load control images
+        control_images = get_images(control_image_path, number_channels, "control images")
+    else
+        control_unshuffled = get_images(image_path, number_channels, "shuffled_control", mask = false)
+        control = Vector{MultiChannelImage}(undef, control_unshuffled.num_images)
+        for (img, idx) in zip(control_unshuffled, control_unshuffled.num_images)
+            img.:name = "shuffled_control_" * img.:name
+            if shuffle_method == :pixel
+                control[idx] = shuffle_pixels(img)
+            elseif shuffle_method == :block
+                control[idx] = shuffle_blocks(img, 9)
+            else 
+                @error "This shuffling is not supported. Please choose either :pixel or :block."
+            end
+        end
+        control_images = MultiChannelImageStack(control, "shuffled_control")
+        control_unshuffled = nothing # delete the original images to save RAM
+    end
+
 
     ###########################################################################
     # perform analysis and plotting
@@ -80,9 +101,9 @@ function start_analysis(
     if !channel_selection
         generate_plots(
             images, control_images, channel_selection_two, number_patches, number_patches_loc, 
-            number_patches_bfrobustness, number_iterations, number_posterior_samples, ρ_threshold, 
+            number_iterations, number_posterior_samples, ρ_threshold, 
             ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-            fractional_overlap_plt, bayes_factor_plt, bayes_range_plt, bayes_factor_robustness_plt, 
+            fractional_overlap_plt, bayes_factor_plt, bayes_range_plt, 
             posterior_plt
             )
     else
@@ -92,9 +113,9 @@ function start_analysis(
         for channels ∈ channel_combinations
             generate_plots(
                 images, control_images, channels, number_patches, number_patches_loc, 
-                number_patches_bfrobustness, number_iterations, number_posterior_samples, ρ_threshold, 
+                number_iterations, number_posterior_samples, ρ_threshold, 
                 ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-                fractional_overlap_plt, bayes_factor_plt, bayes_range_plt, bayes_factor_robustness_plt, 
+                fractional_overlap_plt, bayes_factor_plt, bayes_range_plt, 
                 posterior_plt
             )
         end

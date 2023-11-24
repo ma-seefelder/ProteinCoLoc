@@ -191,7 +191,7 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
         background_color = :black
         )
 
-    ax1 = Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
+    ax1 = GLMakie.Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
     image!(ax1, plt')
 
     # add lines to the image to separate the channels
@@ -390,7 +390,7 @@ end
 """
 function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
     fig = GLMakie.Figure(resolution = (1200, 800))
-    ax1 = Axis(
+    ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "ρ", ylabel = "P(ρ|data)", title = "P(ρ|data)",
         limits = (-1, 1, nothing, nothing), 
         xticks = (collect(-1.0:0.2:1.0), string.(collect(-1.0:0.2:1.0))), 
@@ -409,7 +409,7 @@ function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", 
         normalization = :pdf
         )
 
-    ax2 = Axis(fig[1, 2], xlabel = "ρ", ylabel = "P(ν|data)", title = "P(ν|data)")
+    ax2 = GLMakie.Axis(fig[1, 2], xlabel = "ρ", ylabel = "P(ν|data)", title = "P(ν|data)")
     
     hist2a = GLMakie.density!(
         ax2, posterior.posterior.ν_control, normalization = :pdf,
@@ -421,7 +421,7 @@ function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", 
         alpha = 0.5, label = "ν_sample"
     )
 
-    ax3 = Axis(fig[1, 3], xlabel = "σ", ylabel = "P(σ|data)", title = "P(σ|data)")
+    ax3 = GLMakie.Axis(fig[1, 3], xlabel = "σ", ylabel = "P(σ|data)", title = "P(σ|data)")
 
     hist3a = GLMakie.density!(
         ax3, posterior.posterior.σ_control, normalization = :pdf,
@@ -433,7 +433,7 @@ function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", 
         alpha = 0.5, label = "σ_sample"
     )
 
-    ax4 = Axis(fig[1, 4], xlabel = "τ", ylabel = "P(τ|data)", title = "P(τ|data)")
+    ax4 = GLMakie.Axis(fig[1, 4], xlabel = "τ", ylabel = "P(τ|data)", title = "P(τ|data)")
 
     hist4a = GLMakie.density!(
         ax4, posterior.posterior.τ_sample, normalization = :pdf,
@@ -453,7 +453,7 @@ function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", 
     # Δ̢ρ 
     Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
 
-    ax5 = Axis(
+    ax5 = GLMakie.Axis(
         fig[3, 1:4], xlabel = "Δρ", ylabel = "P(Δρ|data)", title = "P(Δρ|data)",
         limits = (-2, 2, nothing, nothing), 
         xticks = (collect(-2.0:0.1:2.0), string.(collect(-2.0:0.1:2.0))), 

@@ -19,7 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 =#
 
 # get_files
-function get_images(path::S, nchannels::I, stack_name::S) where {I<:Integer, S<:AbstractString}
+function get_images(path::S, nchannels::I, stack_name::S; mask::Bool = true) where {I<:Integer, S<:AbstractString}
     # get files in image path
     files = readdir(path, join=false)
     # remove subdirectories
@@ -53,8 +53,10 @@ function get_images(path::S, nchannels::I, stack_name::S) where {I<:Integer, S<:
             channel_files[j] = path * "/" * files[file_index]
         end
         images[i] = MultiChannelImage(image_name, channel_files, channel_names)
-        # mask image 
-        images[i] = ProteinCoLoc._apply_mask!(images[i], ProteinCoLoc._calculate_mask(images[i]))
+        # mask image
+        if mask
+            images[i] = ProteinCoLoc._apply_mask!(images[i], ProteinCoLoc._calculate_mask(images[i]))
+        end
     end
     # return files
     return MultiChannelImageStack(images, stack_name)
@@ -85,9 +87,9 @@ end
 # helper function to plot all the plots for a given image and control image stack
 function generate_plots(
     images, control_images, channel_selection_two, number_patches, number_patches_loc, 
-    number_patches_bfrobustness, number_iterations, number_posterior_samples, ρ_threshold, 
+    number_iterations, number_posterior_samples, ρ_threshold, 
     ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-    fractional_overlap_plt, bayes_factor_plt, bayes_range_plt, bayes_factor_robustness_plt, 
+    fractional_overlap_plt, bayes_factor_plt, bayes_range_plt,
     posterior_plt)
 
     prior, posterior = colocalization(
@@ -126,14 +128,6 @@ function generate_plots(
     if bayes_range_plt
         base_file = "$output_folder_path/bayes_factor_range_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
         bayes_rangeplot(prior, posterior; file = base_file * ".png", Δ̢ρ = collect(range(ρ_range[1],ρ_range[2];step =ρ_range_step)))
-    end
-
-    if bayes_factor_robustness_plt
-        base_file = "$output_folder_path/bayes_factor_robustness_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
-        bayesfactor_robustness(
-            images, control_images, channel_selection_two, number_patches_bfrobustness;
-            file = base_file * ".png"
-        )
     end
 
     if posterior_plt

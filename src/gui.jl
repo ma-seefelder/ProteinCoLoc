@@ -183,6 +183,31 @@ function gui()
 
     set_spacing!(output_folder_selector_box, 10) # set spacing between label and slider
     push_back!(setting_box, output_folder_selector_box)
+
+    ###############################
+    # add option to shuffle pixels
+    shuffle_label = Mousetrap.Label("<b>Shuffle sample image to get control images: </b>")
+    add_css_class!(shuffle_label, "text")
+    shuffle_button = Switch()
+    # add tooltip
+    set_tooltip_text!(
+        shuffle_button, 
+        "<b>Shuffle pixels in each channel </b>: If toggled, the pixels in each channel are shuffled to create a control image. This option is useful if no control images are available. The default value is false."
+        )
+    set_is_active!(shuffle_button, false)
+
+    # add option to shuffle blocks or pixel-wise
+    shuffle_option_label = Mousetrap.Label("<b>Shuffle method </b>")
+    shuffle_option = DropDown()
+    shuffle_option_item_pixel = push_back!(shuffle_option, "Pixel-wise")
+    shuffle_option_item_block = push_back!(shuffle_option, "Block-wise")
+    set_tooltip_text!(
+        shuffle_option, 
+        "<b>Shuffle method </b>: If 'Pixel-wise' is selected, the pixels in each channel are shuffled individually. If 'Block-wise' is selected, the pixels are shuffled in blocks of 3x3 pixels. This option is only relevant if the button 'Shuffle pixels in each channel' is selected. The default value is 'Pixel-wise'."
+        )
+    shuffle_main_box = hbox(shuffle_label, shuffle_button, shuffle_option_label, shuffle_option)
+    set_spacing!(shuffle_main_box, 10)
+    push_back!(setting_box, shuffle_main_box)
     
     ###############################
     ## Analysis settings
@@ -193,13 +218,18 @@ function gui()
 
     ######################################
     # channel selection
-    number_channels_label = Mousetrap.Label("<b>How many color channels have been recorded: </b>")
+    number_channels_label = Mousetrap.Label("<b>Number of recorded color channels: </b>")
     add_css_class!(number_channels_label, "text")
     number_channels = DropDown()
     number_channels_item_2 = push_back!(number_channels, "2 channels")
     number_channels_item_3 = push_back!(number_channels, "3 channels")
     number_channels_item_4 = push_back!(number_channels, "4 channels")
     number_channels_item_5 = push_back!(number_channels, "5 channels")
+    number_channels_item_6 = push_back!(number_channels, "6 channels")
+    number_channels_item_7 = push_back!(number_channels, "7 channels")
+    number_channels_item_8 = push_back!(number_channels, "8 channels")
+    number_channels_item_9 = push_back!(number_channels, "9 channels")
+    number_channels_item_10 = push_back!(number_channels, "10 channels")
     
     number_channels_box = hbox(number_channels_label,number_channels)
     set_spacing!(number_channels_box, 10) # set spacing between label and slider
@@ -465,10 +495,12 @@ function gui()
         end
 
         if !isdir(control_image_path)
-            log_string = log_string * "Error: The path to the control image folder is not valid. Please enter a valid path.\n"
-            set_text!(log, log_string)
-            set_is_spinning!(spinner, false)
-            return nothing
+            if !get_is_active(shuffle_button)
+                log_string = log_string * "Error: The path to the control image folder is not valid. Please enter a valid path.\n"
+                set_text!(log, log_string)
+                set_is_spinning!(spinner, false)
+                return nothing
+            end
         end
 
         if !isdir(output_folder_path)
@@ -491,34 +523,32 @@ function gui()
 
         # get the number of patches for the local correlation plot
         number_patches_loc = Int64(get_value(slider_loc))
-
-        # get the number of patches for the bayes factor robustness plot
-        numb_patches_bfrobustness = collect(
-            range(
-                Int64(get_value(slider_bfrobustness_min)),
-                Int64(get_value(slider_bfrobustness_max));
-                step = get_value(slider_bfrobustness_step)
-                )
-            )
-        numb_patches_bfrobustness = Int64.(numb_patches_bfrobustness)
         
         # get the number of channels
         numb_channels = get_selected(number_channels)
 
-        if numb_channels == number_channels_item_2
-            numb_channels = 2
-        elseif numb_channels == number_channels_item_3
-            numb_channels = 3
-        elseif numb_channels == number_channels_item_4
-            numb_channels = 4
-        elseif numb_channels == number_channels_item_5
-            numb_channels = 5
+        # Define a dictionary to map number_channels_item to their corresponding values
+        channels_dict = Dict(
+            number_channels_item_2 => 2,
+            number_channels_item_3 => 3,
+            number_channels_item_4 => 4,
+            number_channels_item_5 => 5,
+            number_channels_item_6 => 6,
+            number_channels_item_7 => 7,
+            number_channels_item_8 => 8,
+            number_channels_item_9 => 9,
+            number_channels_item_10 => 10
+        )
+
+        # Use the dictionary to assign the value to numb_channels
+        if haskey(channels_dict, numb_channels)
+            numb_channels = channels_dict[numb_channels]
         else
             log_string = log_string * "Error: Please select the number of channels.\n"
             set_text!(log, log_string)
             set_is_spinning!(spinner, false)
             return nothing
-        end
+        end 
 
         # get the channel selection
         channel_selection = get_is_active(channel_selection_button_all)
@@ -561,6 +591,23 @@ function gui()
         # get the threshold for the correlation coefficient
         ρ_threshold = parse(Float64,get_text(ρ_threshold_entry))
 
+        # get the shuffle method
+        shuffle_method = get_selected(shuffle_option)
+        shuffle_option_dict = Dict(
+            shuffle_option_item_pixel => :pixel,
+            shuffle_option_item_block => :block
+        )
+
+        if haskey(shuffle_option_dict, shuffle_method)
+            shuffle_method = shuffle_option_dict[shuffle_method]
+        else
+            log_string = log_string * "Error: Please select the shuffle method.\n"
+            set_text!(log, log_string)
+            set_is_spinning!(spinner, false)
+            return nothing
+        end
+
+
         # print the settings to the log
         log_string = log_string * "Settings: \n"*
             "Number of NxN patches: "*string(number_patches)*"\n"*
@@ -577,7 +624,9 @@ function gui()
             "Posterior plot: "*string(posterior_plot)*"\n"*
             "Number of iterations: "*string(numb_iterations)*"\n"*
             "Number of posterior samples: "*string(numb_posterior_samples)*"\n"*
-            "Δρ threshold: "*string(ρ_threshold)*"\n"
+            "Δρ threshold: "*string(ρ_threshold)*"\n" *
+            "Shuffle pixels: "*string(get_is_active(shuffle_button))*"\n"*
+            "Shuffle method: "*string(shuffle_method)*"\n"
             
         set_text!(log, log_string)
 
@@ -606,7 +655,9 @@ function gui()
             numb_posterior_samples, # number of posterior samples,
             ρ_threshold, # threshold for the correlation coefficient
             ρ_range, # range of the correlation coefficient
-            ρ_range_step # step size of the correlation coefficient
+            ρ_range_step, # step size of the correlation coefficient,
+            get_is_active(shuffle_button), # shuffle pixels
+            shuffle_method # shuffle method
             )
 
         # deactivate spinner
