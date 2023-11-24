@@ -75,9 +75,17 @@ function plot_images(
     for image in image_stack
         # plot local correlation
         if plot_type == :local_correlation
-            local_correlation_plot(image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png")
+            try 
+                local_correlation_plot(image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png")
+            catch
+                @warn "The local correlation plot for image $(image.:name) could not be generated."
+            end
         elseif plot_type == :patched_correlation
-            plot(image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png")
+            try 
+                plot(image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png")
+            catch
+                @warn "The patched correlation plot for image $(image.:name) could not be generated."
+            end
         else
             error("The plot type is not valid.")
         end
@@ -112,27 +120,43 @@ function generate_plots(
     if fractional_overlap_plt
         base_file = "$output_folder_path/fractional_overlap_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
         for (img, ctrl) in zip(images, control_images)
-            plot_fractional_overlap(
-                img, ctrl,  number_patches_loc, channel_selection_two, 
-                file = base_file * "_" * img.:name * ".png"
-            )
+            try 
+                plot_fractional_overlap(
+                    img, ctrl,  number_patches_loc, channel_selection_two, 
+                    file = base_file * "_" * img.:name * ".png"
+                )
+            catch
+                @warn "The fractional overlap plot for image $(img.:name) could not be generated."
+            end
         end
     end
 
     bf, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = ρ_threshold)
     if bayes_factor_plt
         base_file = "$output_folder_path/bayes_factor_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
-        bayesplot(prior, posterior, bf; file = base_file * ".png", ρ_threshold = ρ_threshold)
+        try 
+            bayesplot(prior, posterior, bf; file = base_file * ".png", ρ_threshold = ρ_threshold)
+        catch
+            @warn "The bayes factor plot could not be generated."
+        end
     end
 
     if bayes_range_plt
         base_file = "$output_folder_path/bayes_factor_range_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
-        bayes_rangeplot(prior, posterior; file = base_file * ".png", Δ̢ρ = collect(range(ρ_range[1],ρ_range[2];step =ρ_range_step)))
+        try 
+            bayes_rangeplot(prior, posterior; file = base_file * ".png", Δ̢ρ = collect(range(ρ_range[1],ρ_range[2];step =ρ_range_step)))
+        catch
+            @warn "The bayes factor range plot could not be generated."
+        end
     end
 
     if posterior_plt
         base_file = output_folder_path * "/posterior_c" * string(channel_selection_two[1]) * "_c" * string(channel_selection_two[2])
-        plot_posterior(posterior; file = base_file * ".png")
+        try 
+            plot_posterior(posterior; file = base_file * ".png")
+        catch
+            @warn "The posterior plot could not be generated."
+        end
     end
 end
 

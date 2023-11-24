@@ -192,7 +192,7 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
         )
 
     ax1 = GLMakie.Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
-    image!(ax1, plt')
+    GLMakie.image!(ax1, plt')
 
     # add lines to the image to separate the channels
     for i in 0:length(img.channels)
