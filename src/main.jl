@@ -28,7 +28,6 @@ function start_analysis(
     output_folder_path::S, # path to the output folder
     number_patches::I, # number of patchesm
     number_patches_loc::I, # number of patches for local correlation
-    number_patches_bfrobustness::Vector{I}, # number of patches for bayes factor robustness
     number_channels::I, # number of channels
     channel_selection::Bool, # channel selection
     channel_selection_two::Vector{I}, # channel selection two
@@ -37,7 +36,6 @@ function start_analysis(
     fractional_overlap_plt::Bool, # fractional overlap plot
     bayes_factor_plt::Bool, # bayes factor plot
     bayes_range_plt::Bool, # bayes range plot
-    bayes_factor_robustness_plt::Bool, # bayes factor robustness plot,
     posterior_plt::Bool, # posterior plot
     mask_plt::Bool, # mask plot
     number_iterations::I = 1000, # number of iterations

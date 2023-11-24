@@ -304,26 +304,6 @@ end
         # bayes_rangeplot
         bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_c1c3.png")
     end
-
-    @testset "bayesfactor_robustness" begin
-        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
-        path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
-        # first load image
-        img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
-        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
-        control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
-        control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
-        # make a stack of the image
-        img_stack = MultiChannelImageStack([img, img, img], "test_stack")
-        control_stack = MultiChannelImageStack([control, control, control], "test_stack")
-
-        # check that the function works
-        plotted, bf, post, prior = bayesfactor_robustness(
-            img_stack, control_stack, [2,3],
-            [12,14,16,18,20,22,24];
-            file = "test/test_images/bayesfactor_robustness.png"
-            )
-    end
 end
 
 ###########################################################################################

@@ -122,48 +122,6 @@ function gui()
     set_spacing!(slider_loc_box, 10) # set spacing between label and slider
     push_back!(setting_box, slider_loc_box) # add box to the setting box
 
-    ###############################################################
-    ## number of patches for bayes factor robustness plot
-    ###############################################################
-    slider_bfrobustness_label = Mousetrap.Label("<b>Number of NxN patches (bayes factor robustness plot)</b>")
-    set_justify_mode!(slider_bfrobustness_label, JUSTIFY_MODE_LEFT)
-    add_css_class!(slider_bfrobustness_label, "text")
-
-    slider_bfrobustness_min = SpinButton(1,500,1.0)
-    slider_bf_robustness_min_label = Mousetrap.Label("Min")
-    set_value!(slider_bfrobustness_min, 10)
-    set_tooltip_text!(slider_bfrobustness_min, "Minimal number patches that are explored in the bayes factor robustness plot.")
-
-    slider_bfrobustness_max = SpinButton(1,100,1.0)
-    slider_bf_robustness_max_label = Mousetrap.Label("Max")
-    set_value!(slider_bfrobustness_max, 50)
-    set_tooltip_text!(slider_bfrobustness_max, "Maximal number patches that are explored in the bayes factor robustness plot.")
-
-    slider_bfrobustness_step = SpinButton(1,5,1.0)
-    slider_bf_robustness_step_label = Mousetrap.Label("Step size")
-    set_value!(slider_bfrobustness_step, 10)
-    set_tooltip_text!(slider_bfrobustness_step, "Step size of the number of patches that are explored in the bayes factor robustness plot. The higher the step size, the faster the analysis will be. CAVE: A too small step size can lead to memory issues or long runtimes.")
-
-    slider_bfrobustness_box_child = hbox(
-        vbox(slider_bf_robustness_min_label, slider_bfrobustness_min), 
-        vbox(slider_bf_robustness_max_label,slider_bfrobustness_max), 
-        vbox(slider_bf_robustness_step_label,slider_bfrobustness_step)
-        )
-
-    # center the child box
-    set_horizontal_alignment!(slider_bfrobustness_box_child, ALIGNMENT_CENTER)
-
-    # generate separator that is displayed after the slider_bfrobustness_box_child
-    separator_bfrobustness = Separator()
-    set_margin!(separator_bfrobustness, 20)
-    set_expand!(separator_bfrobustness, true)
-    set_size_request!(separator_bfrobustness, Vector2f(0,5))
-
-    slider_bfrobustness_box = vbox(slider_bfrobustness_label, slider_bfrobustness_box_child, separator_bfrobustness)
-    set_spacing!(slider_bfrobustness_box, 10)
-    set_spacing!(slider_bfrobustness_box_child, 10)
-    push_back!(setting_box, slider_bfrobustness_box) # add box to the setting box
-
     ##############################
     ## file chooser: images
     ##############################
@@ -327,13 +285,6 @@ function gui()
     bayes_range_plot_button_box = vbox(bayes_range_plot_button_label, bayes_range_plot_button)
     set_spacing!(bayes_range_plot_button_box, 10)
 
-    # Bayes factor robustness plot
-    bayes_factor_robustness_plot_button = Switch()
-    set_is_active!(bayes_factor_robustness_plot_button, false)
-    bayes_factor_robustness_plot_button_label = Mousetrap.Label("Bayes factor robustness plot")
-    bayes_factor_robustness_plot_button_box = vbox(bayes_factor_robustness_plot_button_label, bayes_factor_robustness_plot_button)
-    set_spacing!(bayes_factor_robustness_plot_button_box, 10)
-
     # mask plot
     mask_plot_button = Switch()
     set_is_active!(mask_plot_button, true)
@@ -361,7 +312,6 @@ function gui()
     push_back!(generated_plots_box, bayes_range_plot_button_box)
     push_back!(posterior_plot_button_box, mask_plot_button_box)
     push_back!(generated_plots_box, posterior_plot_button_box)
-    push_back!(generated_plots_box, bayes_factor_robustness_plot_button_box)
     push_back!(plot_box, generated_plots_box)
 
     set_horizontal_alignment!(generated_plots_box, ALIGNMENT_CENTER)
@@ -576,6 +526,22 @@ function gui()
         channel_selection_two = split(channel_selection_two, ",")
         channel_selection_two = parse.(Int64, channel_selection_two)
 
+        if length(channel_selection_two) != 2 && channel_selection
+            log_string = 
+                log_string * 
+                "Warning: Please enter only two channels for the channel selection if the button 'all combinations' is active. \n"
+
+            set_text!(log, log_string)
+            set_is_spinning!(spinner, false)
+            channel_selection_two = [2,3]
+        elseif length(channel_selection_two) != 2 && !channel_selection
+            log_string = 
+                log_string *
+                "Warning: Please enter only two channels for the channel selection. \n"
+            set_text!(log, log_string)
+            set_is_spinning!(spinner, false)
+            return nothing
+        end
 
         # get the generated plots
         patched_correlation_plot = get_is_active(patched_correlation_plot_button)
@@ -583,7 +549,6 @@ function gui()
         fractional_overlap_plot = get_is_active(fractional_overlap_plot_button)
         bayes_factor_plot = get_is_active(bayes_factor_plot_button)
         bayes_range_plot = get_is_active(bayes_range_plot_button)
-        bayes_factor_robustness_plot = get_is_active(bayes_factor_robustness_plot_button)
         posterior_plot = get_is_active(posterior_plot_button)
         mask_plot = get_is_active(mask_plot_button)
 
@@ -600,7 +565,6 @@ function gui()
         log_string = log_string * "Settings: \n"*
             "Number of NxN patches: "*string(number_patches)*"\n"*
             "Number of NxN patches for local correlation plot: "*string(number_patches_loc)*"\n"*
-            "Number of NxN patches for bayes factor robustness plot: " *string(numb_patches_bfrobustness)*"\n"*
             "Number of channels: "* string(numb_channels)*"\n"*
             "Channel selection: "*string(channel_selection)*"\n"*
             "Channel selection two: "*string(channel_selection_two)*"\n"*
@@ -611,7 +575,6 @@ function gui()
             "Bayes range plot: "*string(bayes_range_plot)*"\n"*
             "Mask plot: "*string(mask_plot)*"\n"*
             "Posterior plot: "*string(posterior_plot)*"\n"*
-            "Bayes factor robustness plot: "*string(bayes_factor_robustness_plot)*"\n"*
             "Number of iterations: "*string(numb_iterations)*"\n"*
             "Number of posterior samples: "*string(numb_posterior_samples)*"\n"*
             "Δρ threshold: "*string(ρ_threshold)*"\n"
@@ -629,7 +592,6 @@ function gui()
             output_folder_path, # path to the output folder
             number_patches, # number of patches
             number_patches_loc, # number of patches for local correlation plot
-            numb_patches_bfrobustness, # number of patches for bayes factor robustness plot 
             numb_channels, # number of channels
             channel_selection, # channel selection
             channel_selection_two, # channel selection two
@@ -638,7 +600,6 @@ function gui()
             fractional_overlap_plot, # fractional overlap plot
             bayes_factor_plot, # bayes factor plot
             bayes_range_plot, # bayes range plot
-            bayes_factor_robustness_plot, # bayes factor robustness plot
             posterior_plot, # posterior plot 
             mask_plot, # mask plot 
             numb_iterations, # number of iterations
