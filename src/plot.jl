@@ -408,8 +408,8 @@ function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", 
         alpha = 0.5, label = "sample",
         normalization = :pdf
         )
-
-    ax2 = GLMakie.Axis(fig[1, 2], xlabel = "ρ", ylabel = "P(ν|data)", title = "P(ν|data)")
+        
+    ax2 = GLMakie.Axis(fig[1, 2], xlabel = "ν", ylabel = "P(ν|data)", title = "P(ν|data)")
     
     hist2a = GLMakie.density!(
         ax2, posterior.posterior.ν_control, normalization = :pdf,
