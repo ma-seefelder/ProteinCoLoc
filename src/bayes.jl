@@ -141,13 +141,13 @@ function colocalization(
         # mean, degrees of freedom and standard deviation of the control 
         μ_control ~ Truncated(Cauchy(0, 0.3),-1,1)
         ν_control ~ Exponential()
-        σ_control ~ Truncated(Cauchy(0, 0.3),0,1)
-        τ_control ~ Truncated(Cauchy(0, 0.3),0,1)
+        σ_control ~ Truncated(Cauchy(0, 0.3),0.0001,1)
+        τ_control ~ Truncated(Cauchy(0, 0.3),0.0001,1)
         # mean, degrees of freedom and standard deviation of the sample, and the patch heterogeneity
         μ_sample ~ Truncated(Cauchy(0, 0.3),-1,1)
         ν_sample ~ Exponential()
-        σ_sample ~ Truncated(Cauchy(0, 0.3),0,1)
-        τ_sample ~ Truncated(Cauchy(0, 0.3),0,1)
+        σ_sample ~ Truncated(Cauchy(0, 0.3),0.0001,1)
+        τ_sample ~ Truncated(Cauchy(0, 0.3),0.0001,1)
 
         # ============= local priors (per image) ============= #
         μ_control_image ~ filldist(Truncated(Normal(μ_control, σ_control),-1,1), num_control) # mean of the control for each patch
