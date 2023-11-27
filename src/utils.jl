@@ -93,12 +93,22 @@ function plot_images(
 end
 
 # helper function to plot all the plots for a given image and control image stack
+"""
+    generate_plots(
+    images, control_images, channel_selection_two, number_patches, number_patches_loc, 
+    number_iterations, number_posterior_samples, ρ_threshold, 
+    ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
+    bayes_factor_plt, bayes_range_plt, posterior_plt
+    )
+
+    Generate all plots for a given image and control image stack.
+"""
 function generate_plots(
     images, control_images, channel_selection_two, number_patches, number_patches_loc, 
     number_iterations, number_posterior_samples, ρ_threshold, 
     ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-    fractional_overlap_plt, bayes_factor_plt, bayes_range_plt,
-    posterior_plt)
+    bayes_factor_plt, bayes_range_plt, posterior_plt
+    )
 
     prior, posterior = colocalization(
         images, control_images, channel_selection_two, 
@@ -115,20 +125,6 @@ function generate_plots(
         base_file = "$output_folder_path/local_correlation_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
         plot_images(:local_correlation, images, number_patches_loc, channel_selection_two, base_file)
         plot_images(:local_correlation, control_images, number_patches_loc, channel_selection_two, base_file, "_control")
-    end
-
-    if fractional_overlap_plt
-        base_file = "$output_folder_path/fractional_overlap_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
-        for (img, ctrl) in zip(images, control_images)
-            try 
-                plot_fractional_overlap(
-                    img, ctrl,  number_patches_loc, channel_selection_two, 
-                    file = base_file * "_" * img.:name * ".png"
-                )
-            catch
-                @warn "The fractional overlap plot for image $(img.:name) could not be generated."
-            end
-        end
     end
 
     bf, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = ρ_threshold)

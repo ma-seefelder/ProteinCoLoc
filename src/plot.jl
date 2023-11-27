@@ -215,21 +215,19 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
     return fig
 end
 
-# local correlation plot
-function local_correlation_plot(
-    img::MultiChannelImage,
-    num_patches::I,
-    cor_channel::Vector{I} = [2, 3];
-    channel_for_plot::Vector{I} = [1, 2, 3],
-    save::Bool = true,
-    file::String = "local_correlation.png"
-    ) where {I <: Int}
 
+"""
+    _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel)
+    Low level function to plot the local correlation between two channels.
+    should not be called directly. Use local_correlation_plot() instead.
+    Return a matrix of the local correlation values.
+"""
+function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel)
     # check that the number of channels is 3
     length(channel_for_plot) <= 3 || @warn "This function is currently only implemented for 3 channels"
 
     # get patch size
-    patches = patch(img.data[1], num_patches);
+    patches = patch(img.data[1], num_patches)
     patch_size = size(patches)[3:4]
 
     # check that the patch size is reasonable
@@ -246,6 +244,42 @@ function local_correlation_plot(
     x, y = patch.([x, y], num_patches)
     # calculate the correlation for each patch
     ρ = correlation(x, y)
+
+    return ρ, patch_size
+end
+
+
+# local correlation plot
+function local_correlation_plot(
+    img::MultiChannelImage,
+    num_patches::I,
+    cor_channel::Vector{I} = [2, 3];
+    channel_for_plot::Vector{I} = [1, 2, 3],
+    save::Bool = true,
+    file::String = "local_correlation.png"
+    ) where {I <: Int}
+
+    ρ, patch_size = _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel)
+    
+    # check that patches with a successful correlation calculation exist
+    if sum(ismissing.(ρ)) == size(ρ)[1] * size(ρ)[2]
+        @warn "No patches with a successful correlation calculation exist at $num_patches patches. A different patch size is tried."
+        # try a different patch
+        patch_number_range = reverse(collect(10:10:num_patches))
+        for pn ∈ patch_number_range
+            @info "Trying $pn patches"
+            ρ, patch_size = ProteinCoLoc._local_correlation_plot(img, channel_for_plot, pn, cor_channel)
+            if sum(ismissing.(ρ)) < size(ρ)[1] * size(ρ)[2]
+                @info "Found patches with a successful correlation calculation at $pn patches"
+                num_patches = pn
+                break
+            end
+            if sum(ismissing.(ρ)) == size(ρ)[1] * size(ρ)[2] && pn == patch_number_range[end]
+                @warn "No local correlation plot could be generated."
+                return nothing
+            end
+        end    
+    end
 
     # plot the local correlation
     x = [i for i in 1 : (num_patches-1)] .* patch_size[2]
@@ -283,96 +317,6 @@ function local_correlation_plot(
     return fig
 end
 
-#########################################################################################
-### Fractional overlap Plots                                                          ###
-#########################################################################################
-"""
-    plot_fractional_overlap(
-    img::MultiChannelImage,
-    num_patches::I = 64,
-    channels::Vector{I};
-    output_folder::String = "./test_images/"
-    ) where {I <: Int}
-
-
-    Generates a graphical representation of the fractional overlap between two channels. 
-    Requires an input image of type MultiChannelImage, a vector of the color channels too
-    be analysed and a path to the output folder to save the plot. 
-"""
-function plot_fractional_overlap(
-    img::MultiChannelImage,
-    control::MultiChannelImage,
-    num_patches::I,
-    channels::Vector{I};
-    file::String = "fractional_overlap.png",
-    save::Bool = true,
-    method::String = "quantile",
-    quantile_level::Float64 = 0.95
-    ) where I <: Int
-
-    # calculate and apply mask
-    img = _apply_mask!(img, _calculate_mask(img))
-    # calculate fractional overlap
-    FO_1, FO_2 = fractional_overlap(
-        img, control, channels, 
-        num_patches; method = method, 
-        quantile_level = quantile_level
-        )
-
-    # get patch size
-    patches = patch(img.data[1], num_patches);
-    patch_size = size(patches)[3:4]
-
-    # plot the local fractional overlap
-    x = [i for i in 1 : (num_patches-1)] .* patch_size[2]
-    y = [i for i in 1 : (num_patches-1)] .* patch_size[1]
-    z_1 = [FO_1[i, j] for i in 1 : (num_patches-1), j in 1 : (num_patches-1)]
-    z_2 = [FO_2[i, j] for i in 1 : (num_patches-1), j in 1 : (num_patches-1)]
-
-    # replace missing values with 0
-    z_1 = replace(z_1, missing => 0)
-    z_2 = replace(z_2, missing => 0)
-
-    # plot the fractional overlap
-    GLMakie.activate!()
-    fig = GLMakie.Figure(fontsize = 12, resolution = (1200,600))
-    ax = GLMakie.Axis(
-        fig[1, 1],
-        xlabel = "x position [px]",
-        ylabel = "y position [px]",
-        title = "Fractional overlap: $(channels[1]) : $(channels[2])",
-        yreversed = false,
-        limits = (0.0, nothing, 0.0, nothing)
-        )
-
-    co = GLMakie.contourf!(
-        ax, x,y,rotr90(z_1), levels = range(0,1.001,100),
-        colormap = :Blues
-        )
-
-    ax_2 = GLMakie.Axis(
-        fig[1, 2],
-        xlabel = "x position [px]",
-        ylabel = "y position [px]",
-        title = "Fractional overlap: $(channels[2]) : $(channels[1])",
-        yreversed = false,
-        limits = (0.0, nothing, 0.0, nothing)
-        )
-    
-    co_2 = GLMakie.contourf!(
-        ax_2, x,y,rotr90(z_2), levels = range(0,1.001,100),
-        colormap = :Blues
-        )
-        
-    GLMakie.Colorbar(fig[1,3], co, tellheight = false, label = "Fractional Overlap")
-    GLMakie.resize_to_layout!(fig)
-
-    if save == true
-        # save the plot
-        GLMakie.save(file,fig)
-    end
-    return fig
-end
 
 
 ###############################################################################

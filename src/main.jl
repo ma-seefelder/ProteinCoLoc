@@ -33,7 +33,6 @@ function start_analysis(
     channel_selection_two::Vector{I}, # channel selection two
     patched_correlation_plt::Bool, # patched correlation plot
     local_correlation_plt::Bool, # local correlation plot
-    fractional_overlap_plt::Bool, # fractional overlap plot
     bayes_factor_plt::Bool, # bayes factor plot
     bayes_range_plt::Bool, # bayes range plot
     posterior_plt::Bool, # posterior plot
@@ -103,8 +102,7 @@ function start_analysis(
             images, control_images, channel_selection_two, number_patches, number_patches_loc, 
             number_iterations, number_posterior_samples, ρ_threshold, 
             ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-            fractional_overlap_plt, bayes_factor_plt, bayes_range_plt, 
-            posterior_plt
+            bayes_factor_plt, bayes_range_plt, posterior_plt
             )
     else
         # extract all possible combinations of channels 
@@ -115,9 +113,7 @@ function start_analysis(
                 images, control_images, channels, number_patches, number_patches_loc, 
                 number_iterations, number_posterior_samples, ρ_threshold, 
                 ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-                fractional_overlap_plt, bayes_factor_plt, bayes_range_plt, 
-                posterior_plt
-            )
+                bayes_factor_plt, bayes_range_plt, posterior_plt            )
         end
     end
 

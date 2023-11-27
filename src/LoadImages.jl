@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ################################################################################
 # Data types
-mutable struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractString, F <: AbstractFloat}
+struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractString, F <: AbstractFloat}
     data::Vector{Matrix{T}}
     channels::Vector{S}
     name::S
@@ -35,7 +35,7 @@ mutable struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractStri
     end
 end
 
-mutable struct MultiChannelImageStack{T <:MultiChannelImage, S <: AbstractString}
+struct MultiChannelImageStack{T <:MultiChannelImage, S <: AbstractString}
     img::Vector{T}
     name::S
     num_images::Int64 # number of images in the stack

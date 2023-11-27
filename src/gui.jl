@@ -59,7 +59,7 @@ function gui()
 
     # add text with description of the program to the intro box
     text= Mousetrap.Label(
-        "This software is designed for analyzing colocalization in immunofluorescence images, a process where the presence of multiple proteins in the same location is examined. To use the program, the user loads several target images and corresponding control images (e.g., secondary-antibody only control). The program then calculates the degree of colocalization among the proteins (Pearson's correlation and Fractional overlap) and presents the results in various figures. Additionally, it computes a Bayes Factor and the posterior probability of colocalization, only considering areas in the images where signals were detected. This is done by automatically masking the images prior to all calculations.",
+        "This software is designed for analyzing colocalization in immunofluorescence images, a process where the presence of multiple proteins in the same location is examined. To use the program, the user loads several target images and corresponding control images (e.g., secondary-antibody only control). The program then calculates the degree of colocalization among the proteins (Pearson's correlation) and presents the results in various figures. Additionally, it computes a Bayes Factor and the posterior probability of colocalization, only considering areas in the images where signals were detected. This is done by automatically masking the images prior to all calculations.",
         )
 
     add_css_class!(text, "text")
@@ -294,13 +294,6 @@ function gui()
     local_correlation_plot_button_box = vbox(local_correlation_plot_button_label, local_correlation_plot_button)
     set_spacing!(local_correlation_plot_button_box, 10)
 
-    # fractional overlap plot
-    fractional_overlap_plot_button = Switch()
-    set_is_active!(fractional_overlap_plot_button, true)
-    fractional_overlap_plot_button_label = Mousetrap.Label("Fractional overlap plot")
-    fractional_overlap_plot_button_box = vbox(fractional_overlap_plot_button_label, fractional_overlap_plot_button)
-    set_spacing!(fractional_overlap_plot_button_box, 10)
-
     # Bayes factor plot
     bayes_factor_plot_button = Switch()
     set_is_active!(bayes_factor_plot_button, true)
@@ -337,7 +330,6 @@ function gui()
     generated_plots_box = FlowBox(ORIENTATION_HORIZONTAL)
     push_back!(generated_plots_box, patched_correlation_plot_button_box)
     push_back!(generated_plots_box, local_correlation_plot_button_box)
-    push_back!(generated_plots_box, fractional_overlap_plot_button_box)
     push_back!(generated_plots_box, bayes_factor_plot_button_box)
     push_back!(generated_plots_box, bayes_range_plot_button_box)
     push_back!(posterior_plot_button_box, mask_plot_button_box)
@@ -576,7 +568,6 @@ function gui()
         # get the generated plots
         patched_correlation_plot = get_is_active(patched_correlation_plot_button)
         local_correlation_plot = get_is_active(local_correlation_plot_button)
-        fractional_overlap_plot = get_is_active(fractional_overlap_plot_button)
         bayes_factor_plot = get_is_active(bayes_factor_plot_button)
         bayes_range_plot = get_is_active(bayes_range_plot_button)
         posterior_plot = get_is_active(posterior_plot_button)
@@ -617,7 +608,6 @@ function gui()
             "Channel selection two: "*string(channel_selection_two)*"\n"*
             "Patched correlation plot: "*string(patched_correlation_plot)*"\n"*
             "Local correlation plot: "*string(local_correlation_plot)*"\n"*
-            "Fractional overlap plot: "*string(fractional_overlap_plot)*"\n"*
             "Bayes factor plot: "*string(bayes_factor_plot)*"\n"*
             "Bayes range plot: "*string(bayes_range_plot)*"\n"*
             "Mask plot: "*string(mask_plot)*"\n"*
@@ -646,7 +636,6 @@ function gui()
             channel_selection_two, # channel selection two
             patched_correlation_plot, # patched correlation plot
             local_correlation_plot, # local correlation plot
-            fractional_overlap_plot, # fractional overlap plot
             bayes_factor_plot, # bayes factor plot
             bayes_range_plot, # bayes range plot
             posterior_plot, # posterior plot 
