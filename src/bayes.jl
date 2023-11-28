@@ -314,7 +314,7 @@ function colocalization(
     ######################################################
     # get the posterior samples
     # calculate number of latent variables
-    num_latent = 8 + size(ctrl_img)[1] * 3 + size(sample_img)[1] * 3
+    num_latent = 8 + size(ctrl_data)[1] * 3 + size(sample_data)[1] * 3
     # sample
     q = vi(m, ADVI(num_latent, iter))
 
