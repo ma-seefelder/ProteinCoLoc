@@ -20,14 +20,35 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
     minmax_norm!(img::Matrix{Float64})
-    Normalize the image to the range [0, 1].
+
+This function normalizes a 2D image matrix to the range [0, 1].
+
+# Arguments
+- `img`: A 2D matrix of Float64 representing the image to be normalized.
+
+# Returns
+- `img`: The input image matrix, modified in-place, where each pixel value has been normalized to the range [0, 1].
+
+# Notes
+This function normalizes the image by subtracting the minimum pixel value from each pixel, and then dividing each pixel by the range of pixel values (maximum - minimum). The normalization is performed in-place, modifying the input image matrix directly.
 """
 minmax_norm!(img::Matrix{Float64}) = (img .- minimum(img)) ./ (maximum(img) - minimum(img))
 
 
 """
-    cm_to_px(cm, dpi)
-    Convert centimeters to pixels with a given dpi to determine the size of the plot.
+    cm_to_px(cm::Float64, dpi::Int)::Int
+
+This function converts a measurement from centimeters to pixels, given a specific dots per inch (dpi) value.
+
+# Arguments
+- `cm`: A Float64 representing the measurement in centimeters.
+- `dpi`: An integer representing the dots per inch (dpi) value.
+
+# Returns
+- `px`: An integer representing the measurement in pixels.
+
+# Notes
+This function first converts the measurement from centimeters to inches, then converts the measurement from inches to pixels using the dpi value. The result is rounded to the nearest integer.
 """
 function cm_to_px(cm, dpi)
     inch = cm / 2.54  # Convert cm to inches
@@ -35,7 +56,24 @@ function cm_to_px(cm, dpi)
     return px
 end
 
-# Function to calculate font size
+"""
+    calculate_font_size(
+    resolution::Tuple{Int, Int}, 
+    scale_factor::Float64
+    )
+
+This function calculates the font size based on the resolution of the plot and a scale factor.
+
+# Arguments
+- `resolution`: A tuple of two integers representing the width and height of the plot in pixels.
+- `scale_factor`: A Float64 representing the scale factor to be applied to the resolution to calculate the font size.
+
+# Returns
+- `font_size`: An integer representing the calculated font size.
+
+# Notes
+This function calculates the font size by taking the minimum of the width and height of the plot, multiplying it by the scale factor, and rounding the result to the nearest integer.
+"""
 function calculate_font_size(resolution, scale_factor)
     return round(Int, min(resolution...) * scale_factor)
 end
@@ -215,12 +253,33 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
     return fig
 end
 
-
 """
-    _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel)
-    Low level function to plot the local correlation between two channels.
-    should not be called directly. Use local_correlation_plot() instead.
-    Return a matrix of the local correlation values.
+    _local_correlation_plot(
+    img::MultiChannelImageStack, 
+    channel_for_plot::Vector{Int}, 
+    num_patches::Int, 
+    cor_channel::Vector{Int}
+    )::Tuple{Matrix{Float64}, Tuple{Int, Int}}
+
+This is a low-level function that calculates and returns the local correlation between two channels of a multi-channel image.
+
+# Arguments
+- `img`: A MultiChannelImageStack representing the image.
+- `channel_for_plot`: A Vector of integers representing the channels to be plotted.
+- `num_patches`: An integer representing the number of patches to be analyzed.
+- `cor_channel`: A Vector of two integers representing the channels for which the correlation is to be calculated.
+
+# Returns
+- `ρ`: A matrix of Float64 representing the local correlation values for each patch.
+- `patch_size`: A tuple of two integers representing the width and height of the patches in pixels.
+
+# Errors
+- Throws a warning if the number of channels is not 3.
+- Throws a warning if the patch size is too small or too big for local correlation.
+- Throws an error if the images are not the same size.
+
+# Notes
+This function checks the number of channels, calculates the patch size, checks the patch size, patches the image, and calculates the correlation for each patch. This function should not be called directly. Use `local_correlation_plot()` instead.
 """
 function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel)
     # check that the number of channels is 3
@@ -249,7 +308,36 @@ function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel
 end
 
 
-# local correlation plot
+"""
+    local_correlation_plot(
+    img::MultiChannelImage,
+    num_patches::Int,
+    cor_channel::Vector{Int} = [2, 3];
+    channel_for_plot::Vector{Int} = [1, 2, 3],
+    save::Bool = true,
+    file::String = "local_correlation.png"
+    )
+
+This function generates a local correlation plot for a multi-channel image.
+
+# Arguments
+- `img`: A MultiChannelImage representing the image.
+- `num_patches`: An integer representing the number of patches to be analyzed.
+- `cor_channel`: A Vector of two integers representing the channels for which the correlation is to be calculated. Default is [2, 3].
+- `channel_for_plot`: A Vector of integers representing the channels to be plotted. Default is [1, 2, 3].
+- `save`: A boolean indicating whether to save the plot to a file. Default is true.
+- `file`: A string representing the filename for the output file. Default is "local_correlation.png".
+
+# Returns
+- `fig`: A Figure object representing the generated plot.
+
+# Errors
+- Throws a warning if no patches with a successful correlation calculation exist.
+- Throws a warning if no local correlation plot could be generated.
+
+# Notes
+This function calculates the local correlation for each patch, checks that patches with a successful correlation calculation exist, tries a different patch size if necessary, plots the local correlation, and saves the plot to a file if specified.
+"""
 function local_correlation_plot(
     img::MultiChannelImage,
     num_patches::I,
@@ -317,20 +405,29 @@ function local_correlation_plot(
     return fig
 end
 
-
-
 ###############################################################################
 # Plotting functions for the Bayesian inference
 ###############################################################################
 
 """
-    plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
-    Generates diagnostic plots of a CoLocResult struct obtained from ProteinCoLoc.colocalization().
+    plot_posterior(
+    posterior::CoLocResult; 
+    file::String = "posterior.png", 
+    save::Bool = true
+    )
 
-    # Arguments
-    - `posterior::CoLocResult`: The CoLocResult struct to plot.
-    - `file::String`: The file to save the plot to. Must end with .png.
-    - `save::Bool`: Whether to save the plot to the file.
+This function generates diagnostic plots of a CoLocResult struct obtained from ProteinCoLoc.colocalization().
+
+# Arguments
+- `posterior`: A CoLocResult struct representing the posterior to be plotted.
+- `file`: A string representing the filename to save the plot to. Must end with .png. Default is "posterior.png".
+- `save`: A boolean indicating whether to save the plot to a file. Default is true.
+
+# Returns
+- `fig`: A Figure object representing the generated plot.
+
+# Notes
+This function generates five plots: four for the posterior distributions of ρ, ν, σ, and τ, and one for the posterior distribution of Δρ. Each plot includes a density plot for the control and sample. The plots are saved to a file if specified.
 """
 function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
     fig = GLMakie.Figure(resolution = (1200, 800))
@@ -420,10 +517,25 @@ end
     posterior::CoLocResult, 
     bf::Float64; 
     file::String = "bayesplot.png", 
-    save::Bool = true
+    save::Bool = true,
+    ρ_threshold::Float64 = 0.0
     )
-    Generates a plot of the resulitng prior and posterior distribution
-    of Δ̢ρ and annotates the plot with the Bayes factor.
+
+This function generates a plot of the resulting prior and posterior distribution of Δρ and annotates the plot with the Bayes factor.
+
+# Arguments
+- `prior`: A CoLocResult struct representing the prior to be plotted.
+- `posterior`: A CoLocResult struct representing the posterior to be plotted.
+- `bf`: A Float64 representing the Bayes factor to be annotated on the plot.
+- `file`: A string representing the filename to save the plot to. Must end with .png. Default is "bayesplot.png".
+- `save`: A boolean indicating whether to save the plot to a file. Default is true.
+- `ρ_threshold`: A Float64 representing the threshold for Δρ to be plotted as a vertical line. Default is 0.0.
+
+# Returns
+- `fig`: A Figure object representing the generated plot.
+
+# Notes
+This function calculates Δρ for the prior and posterior, creates a figure and axis, plots the density of the prior and posterior, plots a vertical line at the ρ threshold, annotates the plot with the Bayes factor, and saves the plot to a file if specified.
 """
 function bayesplot(
     prior::CoLocResult, 
@@ -470,6 +582,30 @@ function bayesplot(
     return fig
 end
 
+"""
+    bayes_rangeplot(
+    prior::CoLocResult, 
+    posterior::CoLocResult; 
+    Δ̢ρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)), 
+    save::Bool = true, 
+    file::String = "bayes_rangeplot.png"
+    ) where {T <: Real}
+
+This function generates a plot of the Bayes factor for a range of Δρ thresholds.
+
+# Arguments
+- `prior`: A CoLocResult struct representing the prior to be plotted.
+- `posterior`: A CoLocResult struct representing the posterior to be plotted.
+- `Δ̢ρ`: A Vector of Real numbers representing the range of Δρ thresholds to be used. Default is collect(range(-0.5,0.5;step =0.05)).
+- `save`: A boolean indicating whether to save the plot to a file. Default is true.
+- `file`: A string representing the filename to save the plot to. Must end with .png. Default is "bayes_rangeplot.png".
+
+# Returns
+- `fig`: A Figure object representing the generated plot.
+
+# Notes
+This function calculates the Bayes factor for each Δρ threshold, creates a figure and axis, plots the Bayes factor for each Δρ threshold, plots a horizontal line at BF = 1, and saves the plot to a file if specified.
+"""
 function bayes_rangeplot(
     prior::CoLocResult,
     posterior::CoLocResult;

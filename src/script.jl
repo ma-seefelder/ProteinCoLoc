@@ -17,7 +17,17 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 =#
+"""
+    julia_main()::Cint
 
+This function serves as the entry point for the application when it is run as a standalone executable.
+
+# Returns
+- `0`: A Cint representing a successful execution of the application.
+
+# Notes
+This function calls the `ProteinCoLoc.gui` function, which launches the graphical user interface (GUI) of the application. The function returns 0 to indicate a successful execution of the application.
+"""
 function julia_main()::Cint 
     ProteinCoLoc.gui()
     return 0

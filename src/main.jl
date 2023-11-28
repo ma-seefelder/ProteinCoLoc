@@ -22,6 +22,62 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # The functions are exported and can be used by the user.
 # Additionally, the function is called by the GUI to perform the analysis.
 
+"""
+    start_analysis(
+    image_path::S, 
+    control_image_path::S, 
+    output_folder_path::S, 
+    number_patches::I, 
+    number_patches_loc::I, 
+    number_channels::I, 
+    channel_selection::Bool, 
+    channel_selection_two::Vector{I}, 
+    patched_correlation_plt::Bool, 
+    local_correlation_plt::Bool, 
+    bayes_factor_plt::Bool, 
+    bayes_range_plt::Bool, 
+    posterior_plt::Bool, 
+    mask_plt::Bool, 
+    number_iterations::I = 1000, 
+    number_posterior_samples::I = 100_000,
+    ρ_threshold::Float64 = 0.1, 
+    ρ_range::Vector{Float64} = [-0.8, 0.8], 
+    ρ_range_step::Float64 = 0.01, 
+    shuffle::Bool = false, 
+    shuffle_method::Symbol = :block  
+    ) where {S<:AbstractString, I<:Integer}
+
+This function starts the analysis of multi-channel images.
+
+# Arguments
+- `image_path`: A string representing the path to the images.
+- `control_image_path`: A string representing the path to the control images.
+- `output_folder_path`: A string representing the path to the output folder.
+- `number_patches`: An integer representing the number of patches.
+- `number_patches_loc`: An integer representing the number of patches for local correlation.
+- `number_channels`: An integer representing the number of channels.
+- `channel_selection`: A boolean indicating whether to select channels.
+- `channel_selection_two`: A Vector of integers representing the two selected channels.
+- `patched_correlation_plt`: A boolean indicating whether to plot the patched correlation.
+- `local_correlation_plt`: A boolean indicating whether to plot the local correlation.
+- `bayes_factor_plt`: A boolean indicating whether to plot the Bayes factor.
+- `bayes_range_plt`: A boolean indicating whether to plot the Bayes range.
+- `posterior_plt`: A boolean indicating whether to plot the posterior.
+- `mask_plt`: A boolean indicating whether to plot the mask.
+- `number_iterations`: An integer representing the number of iterations. Default is 1000.
+- `number_posterior_samples`: An integer representing the number of posterior samples. Default is 100_000.
+- `ρ_threshold`: A Float64 representing the threshold for the Bayes factor. Default is 0.1.
+- `ρ_range`: A Vector of Float64 representing the range for the Bayes factor range plot. Default is [-0.8, 0.8].
+- `ρ_range_step`: A Float64 representing the step size for the Bayes factor range plot. Default is 0.01.
+- `shuffle`: A boolean indicating whether to shuffle patches. Default is false.
+- `shuffle_method`: A Symbol representing the shuffle method. Default is :block.
+
+# Returns
+- Nothing. The function saves the plots to the specified output folder.
+
+# Notes
+This function checks the input parameters, loads and preprocesses the images, performs the analysis, and generates the plots.
+"""
 function start_analysis(
     image_path::S, # path to the images
     control_image_path::S, # path to the control images
