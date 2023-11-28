@@ -162,7 +162,7 @@ function plot(
             )
     end
 
-    fig = GLMakie.Figure(resolution = (size(img.data[1])[2,],size(img.data[1])[1,]), backgroundcolor = :black)
+    fig = GLMakie.Figure(size = (size(img.data[1])[2,],size(img.data[1])[1,]), backgroundcolor = :black)
     ax1 = GLMakie.Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
     GLMakie.image!(ax1, img_view')
 
@@ -225,7 +225,7 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
 
     # without x and y axis ticks and labels and with a black background
     fig = GLMakie.Figure(
-        resolution = (0.3*size(plt)[2,],0.3*size(plt)[1,]), 
+        size = (0.3*size(plt)[2,],0.3*size(plt)[1,]), 
         background_color = :black
         )
 
@@ -370,12 +370,12 @@ function local_correlation_plot(
     end
 
     # plot the local correlation
-    x = [i for i in 1 : (num_patches-1)] .* patch_size[2]
-    y = [i for i in 1 : (num_patches-1)] .* patch_size[1]
-    z = [ρ[i, j] for i in 1 : (num_patches-1), j in 1 : (num_patches-1)]
+    x = [i for i in 1 : (num_patches)] .* patch_size[2]
+    y = [i for i in 1 : (num_patches)] .* patch_size[1]
+    z = [ρ[i, j] for i in 1 : (num_patches), j in 1 : (num_patches)]
 
     # replace missing values with 0
-    # z = replace(z, missing => 0)
+    z = replace(z, missing => -2.0)
 
     # plot the local correlation with GLMakie
     GLMakie.activate!()
@@ -430,7 +430,7 @@ This function generates diagnostic plots of a CoLocResult struct obtained from P
 This function generates five plots: four for the posterior distributions of ρ, ν, σ, and τ, and one for the posterior distribution of Δρ. Each plot includes a density plot for the control and sample. The plots are saved to a file if specified.
 """
 function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
-    fig = GLMakie.Figure(resolution = (1200, 800))
+    fig = GLMakie.Figure(size = (1200, 800))
     ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "ρ", ylabel = "P(ρ|data)", title = "P(ρ|data)",
         limits = (-1, 1, nothing, nothing), 
@@ -549,7 +549,7 @@ function bayesplot(
     Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
     Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
 
-    fig = GLMakie.Figure(resolution = (600, 600))
+    fig = GLMakie.Figure(size = (600, 600))
     ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "Δρ", ylabel = "PDF", title = "P(Δρ|data)",
         xticks = (collect(-2.0:0.2:2.0), string.(collect(-2.0:0.2:2.0))), 
@@ -623,7 +623,7 @@ function bayes_rangeplot(
 
     ticks = collect(range(Δ̢ρ[1], Δ̢ρ[end], length = 11))
     # plot the results
-    fig = GLMakie.Figure(resolution = (600, 600))
+    fig = GLMakie.Figure(size = (600, 600))
     ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "Δρ0", 
         ylabel = "log10(BF[Δρ > Δρ0 : Δρ ≤ Δρ0])", 
