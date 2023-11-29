@@ -76,7 +76,7 @@ function get_images(path::S, nchannels::I, stack_name::S; mask::Bool = true) whe
         for j in 1:nchannels
             file_index = findfirst(file -> occursin(image_name * "_c" * string(j), file), files)
             !isnothing(file_index) || error("The image path is not valid.")
-            channel_files[j] = path * "/" * files[file_index]
+            channel_files[j] = joinpath(path, files[file_index])
         end
         images[i] = MultiChannelImage(image_name, channel_files, channel_names)
         # mask image
@@ -218,7 +218,7 @@ function generate_plots(
 
     bf, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = ρ_threshold)
     if bayes_factor_plt
-        base_file = "$output_folder_path/bayes_factor_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
+        base_file = joinpath(output_folder_path, "bayes_factor_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
         try 
             bayesplot(prior, posterior, bf; file = base_file * ".png", ρ_threshold = ρ_threshold)
         catch
@@ -227,7 +227,7 @@ function generate_plots(
     end
 
     if bayes_range_plt
-        base_file = "$output_folder_path/bayes_factor_range_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
+        base_file = joinpath(output_folder_path, "bayes_factor_range_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
         try 
             bayes_rangeplot(prior, posterior; file = base_file * ".png", Δ̢ρ = collect(range(ρ_range[1],ρ_range[2];step =ρ_range_step)))
         catch
@@ -236,7 +236,7 @@ function generate_plots(
     end
 
     if posterior_plt
-        base_file = output_folder_path * "/posterior_c" * string(channel_selection_two[1]) * "_c" * string(channel_selection_two[2])
+        base_file = joinpath(output_folder_path, "posterior_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
         try 
             plot_posterior(posterior; file = base_file * ".png")
         catch

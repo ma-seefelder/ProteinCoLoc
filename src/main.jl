@@ -205,7 +205,7 @@ function start_analysis(
     if mask_plt
         for img_set in [images, control_images]
             for img in img_set
-                plot_mask(img, output_folder_path * "/mask" * string(img.:name)  * ".png")
+                plot_mask(img, joinpath(output_folder_path, "mask" * string(img.:name)  * ".png"))
             end
         end
     end
