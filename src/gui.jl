@@ -48,7 +48,7 @@ function gui()
     header_3 = Mousetrap.Label(
         "
         <b>Author</b>: Dr. rer. nat. Manuel Seefelder
-        <b>Email</b>: proteincoloc@protonmail.de
+        <b>Email</b>: manuel.seefelder@uni-ulm.de
         <b>Version</b>: 1.0.0
         ")
 
