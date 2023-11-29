@@ -1,7 +1,7 @@
 #=
 ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
 Copyright (C) 2023  Dr. rer. nat. Manuel
-E-Mail: proteincoloc@protonmail.com
+E-Mail: manuel.seefelder@uni-ulm.de
 Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
 
 This program is free software: you can redistribute it and/or modify
@@ -355,7 +355,7 @@ function gui()
     number_iterations_label = Mousetrap.Label("<b>Number of iterations: </b>")
     add_css_class!(number_iterations_label, "text")
     number_iterations = Entry()
-    set_text!(number_iterations, "10000")
+    set_text!(number_iterations, "1000")
 
     set_tooltip_text!(
         number_iterations, 

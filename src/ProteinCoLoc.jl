@@ -1,7 +1,7 @@
 #=
 ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
 Copyright (C) 2023  Dr. rer. nat. Manuel
-E-Mail: proteincoloc@protonmail.com
+E-Mail: manuel.seefelder@uni-ulm.de
 Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
 
 This program is free software: you can redistribute it and/or modify
@@ -17,9 +17,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 =#
-
 module ProteinCoLoc
-
 # Dependencies
 import Base: getindex, iterate
 import CSV
@@ -30,7 +28,7 @@ import GLMakie
 import Images
 import KernelDensity: kde
 import QuadGK: quadgk
-import Statistics: quantile
+import Statistics: quantile, mean, median
 import Base: Cint
 import Random: shuffle!, randperm
 

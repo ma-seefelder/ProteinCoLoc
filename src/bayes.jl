@@ -1,7 +1,7 @@
 #=
 ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
 Copyright (C) 2023  Dr. rer. nat. Manuel
-E-Mail: proteincoloc@protonmail.com
+E-Mail: manuel.seefelder@uni-ulm.de
 Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
 
 This program is free software: you can redistribute it and/or modify
@@ -176,6 +176,8 @@ function _prepare_data(img::MultiChannelImageStack, channels::Vector{T}, num_pat
     sample_data = fill(Vector{Float64}(), img.num_images)
     for (row, idx) in zip(eachrow(sample_img), 1:img.num_images)
         sample_data[idx] = collect(skipmissing(row))
+        # remove NaN values
+        sample_data[idx] = sample_data[idx][.!isnan.(sample_data[idx])]
     end
 
     # remove images with no signal above background
@@ -238,8 +240,8 @@ function colocalization(
     ctrl_data = _prepare_data(control, channels, num_patches)
     sample_data = _prepare_data(img, channels, num_patches)
 
-    isnothing(ctrl_data) && @error "No control images with signal above background for the selected channels."  
-    isnothing(sample_data) && @error "No sample images with signal above background for the selected channels."
+    isnothing(ctrl_data) && return missing, missing
+    isnothing(sample_data) && return missing, missing
 
     """
     @model function model(control, sample)
@@ -268,12 +270,12 @@ function colocalization(
         μ_control ~ Truncated(Cauchy(0, 0.3),-1,1)
         ν_control ~ Exponential()
         σ_control ~ Truncated(Cauchy(0, 0.3),0.0001,1)
-        τ_control ~ Truncated(Cauchy(0, 0.3),0.0001,1)
+        τ_control ~ Truncated(Cauchy(0.1, 0.3),0.0001,1)
         # mean, degrees of freedom and standard deviation of the sample, and the patch heterogeneity
         μ_sample ~ Truncated(Cauchy(0, 0.3),-1,1)
         ν_sample ~ Exponential()
-        σ_sample ~ Truncated(Cauchy(0, 0.3),0.0001,1)
-        τ_sample ~ Truncated(Cauchy(0, 0.3),0.0001,1)
+        σ_sample ~ Truncated(Cauchy(0.1, 0.3),0.0001,1)
+        τ_sample ~ Truncated(Cauchy(0.1, 0.3),0.0001,1)
 
         # ============= local priors (per image) ============= #
         μ_control_image ~ filldist(Truncated(Normal(μ_control, σ_control),-1,1), num_control) # mean of the control for each patch
@@ -314,7 +316,7 @@ function colocalization(
     ######################################################
     # get the posterior samples
     # calculate number of latent variables
-    num_latent = 8 + size(ctrl_data)[1] * 3 + size(sample_data)[1] * 3
+    num_latent = size(DataFrames.DataFrame(prior_chain))[2] - 3
     # sample
     q = vi(m, ADVI(num_latent, iter))
 

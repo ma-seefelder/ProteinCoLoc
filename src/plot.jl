@@ -1,7 +1,7 @@
 #=
 ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
 Copyright (C) 2023  Dr. rer. nat. Manuel
-E-Mail: proteincoloc@protonmail.com
+E-Mail: manuel.seefelder@uni-ulm.de
 Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
 
 This program is free software: you can redistribute it and/or modify
@@ -290,9 +290,9 @@ function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel
     patch_size = size(patches)[3:4]
 
     # check that the patch size is reasonable
-    patch_size[1] * patch_size[2] > 10 || @warn "Patch size is too small for local correlation. A size between 10 and 100 px is recommended."
-    patch_size[1] * patch_size[2] < 100 || @warn "Patch size is too big for local correlation. A size between 10 and 100 px is recommended."
-    @info "Patch size is $(patch_size[1]) x $(patch_size[2]) px = $(patch_size[1] * patch_size[2]) px²"    
+    #patch_size[1] * patch_size[2] > 10 || @warn "Patch size is too small for local correlation. A size between 10 and 100 px is recommended."
+    #patch_size[1] * patch_size[2] < 100 || @warn "Patch size is too big for local correlation. A size between 10 and 100 px is recommended."
+    #@info "Patch size is $(patch_size[1]) x $(patch_size[2]) px = $(patch_size[1] * patch_size[2]) px²"    
 
     # patch the image and calculate the correlation
     x = img.data[cor_channel[1]]
@@ -355,7 +355,6 @@ function local_correlation_plot(
         # try a different patch
         patch_number_range = reverse(collect(10:10:num_patches))
         for pn ∈ patch_number_range
-            @info "Trying $pn patches"
             ρ, patch_size = ProteinCoLoc._local_correlation_plot(img, channel_for_plot, pn, cor_channel)
             if sum(ismissing.(ρ)) < size(ρ)[1] * size(ρ)[2]
                 @info "Found patches with a successful correlation calculation at $pn patches"

@@ -1,7 +1,7 @@
 #=
 ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
 Copyright (C) 2023  Dr. rer. nat. Manuel
-E-Mail: proteincoloc@protonmail.com
+E-Mail: manuel.seefelder@uni-ulm.de
 Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
 
 This program is free software: you can redistribute it and/or modify
@@ -206,14 +206,14 @@ function generate_plots(
     end
 
     # perform colocalization analysis
-    try 
-        prior, posterior = colocalization(
-            images, control_images, channel_selection_two, 
-            number_patches; iter = number_iterations, posterior_samples = number_posterior_samples
+    prior, posterior = colocalization(
+        images, control_images, channel_selection_two, 
+        number_patches; iter = number_iterations, posterior_samples = number_posterior_samples
         )
-    catch
-        @warn "The colocalization analysis could not be performed."
-        return nothing
+
+    if ismissing(prior) || ismissing(posterior)
+        @warn "The colocalization analysis could not be performed."   
+        return missing, missing, missing
     end
 
     bf, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = ρ_threshold)
@@ -243,6 +243,8 @@ function generate_plots(
             @warn "The posterior plot could not be generated."
         end
     end
+
+    return prior, posterior, bf
 end
 
 """
@@ -271,3 +273,102 @@ function combinations2(n)
     end
     return combination
 end
+
+"""
+    compute_stats(samples::Vector{T}) where {T<:AbstractFloat}
+
+This function computes the mean, median, and 95% credible interval for a vector of samples.
+
+# Arguments
+- `samples`: A vector of floating point numbers representing the samples.
+
+# Returns
+- `mean_value`: The mean of the samples.
+- `median_value`: The median of the samples.
+- `credible_interval_value`: A 2-element array representing the 2.5% and 97.5% quantiles of the samples, which form a 95% credible interval.
+
+# Notes
+This function uses the `mean`, `median`, and `quantile` functions from the Statistics module in Julia to compute the statistics.
+"""
+function compute_stats(samples::Vector{T}) where {T<:AbstractFloat}
+    # compute mean, median, and 95% credible interval for prior and posterior
+    mean_value = mean(samples)
+    median_value = median(samples)
+    credible_interval_value = quantile(samples, [0.025, 0.975])
+    return mean_value, median_value, credible_interval_value
+end
+
+# generate a function to generate txt file with results
+"""
+    generate_txt(
+        prior::CoLocResult, posterior::CoLocResult, 
+        bf::T, channels::Vector{I}, ρ_threshold::T; 
+        file::S = "result.csv"
+    ) where {T<:AbstractFloat, I<:Integer, S<:AbstractString}
+
+This function generates a text file with statistical results for prior and posterior samples.
+
+# Arguments
+- `prior`: A `CoLocResult` object representing the prior samples.
+- `posterior`: A `CoLocResult` object representing the posterior samples.
+- `bf`: A floating point number representing the Bayes factor.
+- `channels`: A vector of integers representing the channels.
+- `ρ_threshold`: A floating point number representing the ρ threshold.
+- `file`: An optional string representing the file name. If not provided, defaults to "result.csv".
+
+# Returns
+- This function does not return a value.
+
+# Notes
+This function computes the mean, median, and 95% credible interval for the prior and posterior samples, as well as for the control images. It also computes these statistics for Δ̢ρ. It then writes these statistics to a text file, with each statistic separated by a "|". If the file does not exist, it is created; otherwise, the statistics are appended to the existing file.
+"""
+function generate_txt(
+    prior::CoLocResult, posterior::CoLocResult, 
+    bf::T, channels::Vector{I}, ρ_threshold::T; 
+    file::S = "result.csv"
+    ) where {T<:AbstractFloat, I<:Integer, S<:AbstractString}
+    prior_samples = prior.posterior
+    posterior_samples = posterior.posterior
+    # compute mean, median, and 95% credible interval for prior and posterior
+    prior_mean, prior_median, prior_credible_interval = compute_stats(prior_samples.:μ_sample)
+    posterior_mean, posterior_median, posterior_credible_interval = compute_stats(posterior_samples.:μ_sample)
+    # compute mean, median, and 95% credible interval for control images
+    control_prior_mean, control_prior_median, control_prior_credible_interval = compute_stats(prior_samples.:μ_control)
+    control_posterior_mean, control_posterior_median, control_posterior_credible_interval = compute_stats(posterior_samples.:μ_control)
+
+    #  compute stats for Δ̢ρ
+    Δ̢ρ_mean, Δ̢ρ_median, Δ̢ρ_credible_interval = compute_stats(posterior_samples.:μ_sample .- prior_samples.:μ_control)
+
+    # generate file if it does not exist, else append to file
+    if !isfile(file)
+        # generate empty file
+        open(file, "w") do f
+            write(
+                f,
+                join([             
+                "channel_1", "channel_2","ρ_threshold","bf",
+                "mean_prior","median_prior","lower_credible_interval_prior","upper_credible_interval_prior",
+                "mean_posterior","median_posterior","lower_credible_interval_posterior","upper_credible_interval_posterior",
+                "mean_control_prior","median_control_prior","lower_credible_interval_control_prior","upper_credible_interval_control_prior",
+                "mean_control_posterior","median_control_posterior","lower_credible_interval_control_posterior","upper_credible_interval_control_posterior",
+                "mean_Δ̢ρ","median_Δ̢ρ","lower_credible_interval_Δ̢ρ","upper_credible_interval_Δ̢ρ"], "|"),"\n"
+                )
+        end
+    end
+
+    # write data
+    open(file, "a") do f
+        write(
+            f,
+            join(string.(round.([             
+            channels[1], channels[2], ρ_threshold, bf,
+            prior_mean, prior_median, prior_credible_interval[1], prior_credible_interval[2],
+            posterior_mean, posterior_median, posterior_credible_interval[1], posterior_credible_interval[2],
+            control_prior_mean, control_prior_median, control_prior_credible_interval[1], control_prior_credible_interval[2],
+            control_posterior_mean, control_posterior_median, control_posterior_credible_interval[1], control_posterior_credible_interval[2],
+            Δ̢ρ_mean, Δ̢ρ_median, Δ̢ρ_credible_interval[1], Δ̢ρ_credible_interval[2]], digits =6), "|")),"\n"
+            )
+    end
+    return nothing
+end
+

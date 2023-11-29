@@ -1,7 +1,7 @@
 #=
 ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
 Copyright (C) 2023  Dr. rer. nat. Manuel
-E-Mail: proteincoloc@protonmail.com
+E-Mail: manuel.seefelder@uni-ulm.de
 Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
 
 This program is free software: you can redistribute it and/or modify
@@ -154,22 +154,50 @@ function start_analysis(
     # perform analysis and plotting
     ###########################################################################
     if !channel_selection
-        generate_plots(
+        prior, posterior, bf = generate_plots(
             images, control_images, channel_selection_two, number_patches, number_patches_loc, 
             number_iterations, number_posterior_samples, ρ_threshold, 
             ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
             bayes_factor_plt, bayes_range_plt, posterior_plt
             )
+
+        if !ismissing(prior)
+            generate_txt(prior, posterior, bf, channel_selection_two, ρ_threshold, file = joinpath(output_folder_path, "result.txt"))
+            # write the DataFrames prior_samples and posterior_samples to csv
+            CSV.write(
+                joinpath(output_folder_path,"prior_samples_channel$(string(channel_selection_two[1]))_$(channel_selection_two[2]).csv"),
+                prior.posterior
+                )
+
+            CSV.write(
+                joinpath(output_folder_path,"posterior_samples_channel$(string(channel_selection_two[1]))_$(channel_selection_two[2]).csv"),
+                posterior.posterior
+                )
+        end
     else
         # extract all possible combinations of channels 
         channel_combinations = combinations2(number_channels)
         # iterate over all channel combinations
         for channels ∈ channel_combinations
-            generate_plots(
+            prior, posterior, bf = generate_plots(
                 images, control_images, channels, number_patches, number_patches_loc, 
                 number_iterations, number_posterior_samples, ρ_threshold, 
                 ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-                bayes_factor_plt, bayes_range_plt, posterior_plt            )
+                bayes_factor_plt, bayes_range_plt, posterior_plt)
+
+            if !ismissing(prior)
+                generate_txt(prior, posterior, bf, channels, ρ_threshold, file = joinpath(output_folder_path, "result.txt"))
+                # write the DataFrames prior_samples and posterior_samples to csv
+                CSV.write(
+                    joinpath(output_folder_path,"prior_samples_channel$(string(channels[1]))_$(channels[2]).csv"),
+                    prior.posterior
+                )
+
+                CSV.write(
+                    joinpath(output_folder_path,"posterior_samples_channel$(string(channels[1]))_$(channels[2]).csv"),
+                    posterior.posterior
+                )
+            end
         end
     end
 
