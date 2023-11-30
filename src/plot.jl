@@ -432,8 +432,9 @@ This function generates diagnostic plots of a CoLocResult struct obtained from P
 This function generates five plots: four for the posterior distributions of ρ, ν, σ, and τ, and one for the posterior distribution of Δρ. Each plot includes a density plot for the control and sample. The plots are saved to a file if specified.
 """
 function plot_posterior(
-    posterior::CoLocResult; file::String = "posterior.png", save::Bool = true, fig_size::Vector{T} = [16.0,12.0], dpi::T= 300
-    ) where {T <: Real}
+    posterior::CoLocResult; file::String = "posterior.png", 
+    save::Bool = true, fig_size::Vector{T} = [16.0,12.0], dpi::I= 300
+    ) where {T <: AbstractFloat, I <: Integer}
 
     fig_size_1 = 72*fig_size[1]/2.54
     fig_size_2 = 72*fig_size[2]/2.54
@@ -569,8 +570,8 @@ function bayesplot(
     save::Bool = true,
     ρ_threshold::Float64 = 0.0,
     fig_size::Vector{T} = [8.0,10.0],
-    dpi::T= 300
-    ) where {T <: Real}
+    dpi::I= 300
+    ) where {T <: AbstractFloat, I <: Integer}
 
     Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
     Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
@@ -649,10 +650,10 @@ function bayes_rangeplot(
     posterior::CoLocResult;
     Δρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)),
     save::Bool = true,
-    file::String = "bayes_rangeplot.png";
+    file::String = "bayes_rangeplot.png",
     fig_size::Vector{T} = [8.0,10.0],
-    dpi::T= 300
-    ) where {T <: Real}
+    dpi::I= 300
+    ) where {T <: AbstractFloat, I <: Integer}
 
     # calculate the bayes factor for each Δρ threshold
     bf = fill(0.0, length(Δρ))
