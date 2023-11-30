@@ -421,6 +421,9 @@ This function generates diagnostic plots of a CoLocResult struct obtained from P
 - `posterior`: A CoLocResult struct representing the posterior to be plotted.
 - `file`: A string representing the filename to save the plot to. Must end with .png. Default is "posterior.png".
 - `save`: A boolean indicating whether to save the plot to a file. Default is true.
+- `fig_size`: A Vector of two Real numbers representing the width and height of the plot in centimeters. Default is [16.0,12.0].
+- `dpi`: An integer representing the dots per inch (dpi) value. Default is 300.
+
 
 # Returns
 - `fig`: A Figure object representing the generated plot.
@@ -428,85 +431,105 @@ This function generates diagnostic plots of a CoLocResult struct obtained from P
 # Notes
 This function generates five plots: four for the posterior distributions of ρ, ν, σ, and τ, and one for the posterior distribution of Δρ. Each plot includes a density plot for the control and sample. The plots are saved to a file if specified.
 """
-function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
-    fig = GLMakie.Figure(size = (1200, 800))
+function plot_posterior(
+    posterior::CoLocResult; file::String = "posterior.png", save::Bool = true, fig_size::Vector{T} = [16.0,12.0], dpi::T= 300
+    ) where {T <: Real}
+
+    fig_size_1 = 72*fig_size[1]/2.54
+    fig_size_2 = 72*fig_size[2]/2.54
+    fig = GLMakie.Figure(size = (fig_size_1, fig_size_2), backgroundcolor = :white, fontsize = 8, figure_padding = (1,8,1,1))
+
     ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "ρ", ylabel = "P(ρ|data)", title = "P(ρ|data)",
-        limits = (-1, 1, nothing, nothing), 
-        xticks = (collect(-1.0:0.2:1.0), string.(collect(-1.0:0.2:1.0))), 
+        #limits = (-1, 1, nothing, nothing), 
+        #xticks = (collect(-1.0:0.2:1.0), string.(collect(-1.0:0.2:1.0))), 
         xticklabelrotation = deg2rad(60)
         )
 
-    hist1a = GLMakie.density!(
+    GLMakie.density!(
         ax1, posterior.posterior.μ_control,
         alpha = 0.5, label = "control",
         normalization = :pdf
         )
         
-    hist1b = GLMakie.density!(
+    GLMakie.density!(
         ax1, posterior.posterior.μ_sample,
         alpha = 0.5, label = "sample",
         normalization = :pdf
         )
         
-    ax2 = GLMakie.Axis(fig[1, 2], xlabel = "ν", ylabel = "P(ν|data)", title = "P(ν|data)")
+    ax2 = GLMakie.Axis(fig[1, 2], xlabel = "ν", ylabel = "P(ν|data)", title = "P(ν|data)", xticklabelrotation = deg2rad(60))
     
-    hist2a = GLMakie.density!(
+    GLMakie.density!(
         ax2, posterior.posterior.ν_control, normalization = :pdf,
         alpha = 0.5, label = "ν_control"
         )
 
-    hist2b = GLMakie.density!(
+    GLMakie.density!(
         ax2, posterior.posterior.ν_sample, normalization = :pdf,
         alpha = 0.5, label = "ν_sample"
     )
 
-    ax3 = GLMakie.Axis(fig[1, 3], xlabel = "σ", ylabel = "P(σ|data)", title = "P(σ|data)")
+    ax3 = GLMakie.Axis(fig[1, 3], xlabel = "σ", ylabel = "P(σ|data)", title = "P(σ|data)", xticklabelrotation = deg2rad(60))
 
-    hist3a = GLMakie.density!(
+    GLMakie.density!(
         ax3, posterior.posterior.σ_control, normalization = :pdf,
         alpha = 0.5, label = "σ_control"
         )
 
-    hist3b = GLMakie.density!(
+    GLMakie.density!(
         ax3, posterior.posterior.σ_sample, normalization = :pdf,
         alpha = 0.5, label = "σ_sample"
     )
 
-    ax4 = GLMakie.Axis(fig[1, 4], xlabel = "τ", ylabel = "P(τ|data)", title = "P(τ|data)")
+    ax4 = GLMakie.Axis(fig[1, 4], xlabel = "τ", ylabel = "P(τ|data)", title = "P(τ|data)", xticklabelrotation = deg2rad(60))
 
-    hist4a = GLMakie.density!(
+    GLMakie.density!(
         ax4, posterior.posterior.τ_sample, normalization = :pdf,
         alpha = 0.5, label = "τ_sample"
         )
 
-    hist4b = GLMakie.density!(
+    GLMakie.density!(
         ax4, posterior.posterior.τ_control, normalization = :pdf,
         alpha = 0.5, label = "τ_control"
     )
 
-    lgd = GLMakie.Legend(
-        fig[2,1:4], ax1, orientation = :horizontal, 
-        framevisible = false
+    GLMakie.Legend(
+        fig[1,5], ax1, orientation = :vertical, framevisible = false, 
+        labelsize = 8, rowgap = 0, titlegap = 0,
+        tellheight = false, valign = :top,
+        patchsize = (5,5)
         )
     #########
-    # Δ̢ρ 
+    # Δρ 
     Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
 
     ax5 = GLMakie.Axis(
-        fig[3, 1:4], xlabel = "Δρ", ylabel = "P(Δρ|data)", title = "P(Δρ|data)",
+        fig[2, 1:5], xlabel = "Δρ", ylabel = "P(Δρ|data)", title = "P(Δρ|data)",
         limits = (-2, 2, nothing, nothing), 
         xticks = (collect(-2.0:0.1:2.0), string.(collect(-2.0:0.1:2.0))), 
-        xticklabelrotation = deg2rad(60)
-        
+        xticklabelrotation = deg2rad(60) 
         )
 
-    hist5 = GLMakie.density!(
-        ax5, Δρ, normalization = :pdf,
-        alpha = 0.5, label = "Δρ"
+    GLMakie.density!(
+        ax5, Δρ, normalization = :pdf, label = "Δρ",
+        color = :darkgrey, alpha = 0.5
     )
 
-    save && GLMakie.save(file, fig)
+    GLMakie.vlines!(ax5, 0, color = :black, linestyle = :dash)
+
+    # colgaps
+    GLMakie.colgap!(fig.layout,1,GLMakie.Relative(0.02))
+    GLMakie.colgap!(fig.layout,2,GLMakie.Relative(0.02))
+    GLMakie.colgap!(fig.layout,3,GLMakie.Relative(0.02))
+    GLMakie.colgap!(fig.layout,4,GLMakie.Relative(0.02))
+
+    # colsize of legend
+    GLMakie.colsize!(fig.layout,5,GLMakie.Relative(0.11))
+    # rowgap between upper and lower plot
+    GLMakie.rowgap!(fig.layout,1,GLMakie.Relative(0.02))
+
+    save && GLMakie.save(file, fig , px_per_unit = dpi/72)
     return(fig)
 end
 
@@ -529,6 +552,8 @@ This function generates a plot of the resulting prior and posterior distribution
 - `file`: A string representing the filename to save the plot to. Must end with .png. Default is "bayesplot.png".
 - `save`: A boolean indicating whether to save the plot to a file. Default is true.
 - `ρ_threshold`: A Float64 representing the threshold for Δρ to be plotted as a vertical line. Default is 0.0.
+- `fig_size`: A Vector of two Real numbers representing the width and height of the plot in centimeters. Default is [8.0,10.0].
+- `dpi`: An integer representing the dots per inch (dpi) value. Default is 300.
 
 # Returns
 - `fig`: A Figure object representing the generated plot.
@@ -542,17 +567,26 @@ function bayesplot(
     bf::Float64; 
     file::String = "bayesplot.png", 
     save::Bool = true,
-    ρ_threshold::Float64 = 0.0
-    )
+    ρ_threshold::Float64 = 0.0,
+    fig_size::Vector{T} = [8.0,10.0],
+    dpi::T= 300
+    ) where {T <: Real}
 
     Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
     Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
 
-    fig = GLMakie.Figure(size = (600, 600))
+    fig_size_1 = 72*fig_size[1]/2.54
+    fig_size_2 = 72*fig_size[2]/2.54
+    fig = GLMakie.Figure(
+        size = (fig_size_1, fig_size_2), backgroundcolor = :white, 
+        fontsize = 8, figure_padding = (1,8,1,1)  
+        )
+
     ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "Δρ", ylabel = "PDF", title = "P(Δρ|data)",
-        xticks = (collect(-2.0:0.2:2.0), string.(collect(-2.0:0.2:2.0))), 
-        xticklabelrotation = deg2rad(60)
+        xticks = (collect(-2.0:0.4:2.0), string.(collect(-2.0:0.4:2.0))), 
+        xticklabelrotation = deg2rad(60),
+        limits = (-2, 2, nothing, nothing)
     )
 
     hist1a = GLMakie.density!(
@@ -570,14 +604,19 @@ function bayesplot(
         linestyle = :dash, label = "Δρ = $ρ_threshold"
         )
 
-    t = "BF[Δρ>$ρ_threshold : Δρ ≤ $ρ_threshold] = $(round(bf; digits = 4))"
+    t = "BF = $(round(bf; digits = 4))"
     # Add BF to the plot
-    GLMakie.text!(-2,0.05, text = t)
+    GLMakie.text!(-1.9,0.05, text = t)
+    GLMakie.Legend(
+        fig[2,1], ax1, orientation = :horizontal, framevisible = false, 
+        labelsize = 8, rowgap = 0, titlegap = 0,
+        tellheight = false, valign = :top,
+        patchsize = (5,5)
+        )
 
-    lgd = GLMakie.Legend(fig[2,1], ax1, orientation = :horizontal, framevisible = false)
-
-    save && GLMakie.save(file, fig)
-
+    GLMakie.rowsize!(fig.layout,1,GLMakie.Relative(0.90))
+    GLMakie.rowgap!(fig.layout,1,GLMakie.Relative(0.01))
+    save && GLMakie.save(file, fig, px_per_unit = dpi/72)
     return fig
 end
 
@@ -585,7 +624,7 @@ end
     bayes_rangeplot(
     prior::CoLocResult, 
     posterior::CoLocResult; 
-    Δ̢ρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)), 
+    Δρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)), 
     save::Bool = true, 
     file::String = "bayes_rangeplot.png"
     ) where {T <: Real}
@@ -595,7 +634,7 @@ This function generates a plot of the Bayes factor for a range of Δρ threshold
 # Arguments
 - `prior`: A CoLocResult struct representing the prior to be plotted.
 - `posterior`: A CoLocResult struct representing the posterior to be plotted.
-- `Δ̢ρ`: A Vector of Real numbers representing the range of Δρ thresholds to be used. Default is collect(range(-0.5,0.5;step =0.05)).
+- `Δρ`: A Vector of Real numbers representing the range of Δρ thresholds to be used. Default is collect(range(-0.5,0.5;step =0.05)).
 - `save`: A boolean indicating whether to save the plot to a file. Default is true.
 - `file`: A string representing the filename to save the plot to. Must end with .png. Default is "bayes_rangeplot.png".
 
@@ -608,33 +647,53 @@ This function calculates the Bayes factor for each Δρ threshold, creates a fig
 function bayes_rangeplot(
     prior::CoLocResult,
     posterior::CoLocResult;
-    Δ̢ρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)),
+    Δρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)),
     save::Bool = true,
-    file::String = "bayes_rangeplot.png"
+    file::String = "bayes_rangeplot.png";
+    fig_size::Vector{T} = [8.0,10.0],
+    dpi::T= 300
     ) where {T <: Real}
 
     # calculate the bayes factor for each Δρ threshold
-    bf = fill(0.0, length(Δ̢ρ))
-    for idx in eachindex(Δ̢ρ)
-        a, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = Δ̢ρ[idx])
+    bf = fill(0.0, length(Δρ))
+    for idx in eachindex(Δρ)
+        a, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = Δρ[idx])
         a > 0 ? bf[idx] = a : bf[idx] = NaN
     end 
 
-    ticks = collect(range(Δ̢ρ[1], Δ̢ρ[end], length = 11))
+    # return if all values are NaN or Inf
+    if all(isnan.(bf))
+        @warn "All values are bayes factors are zero. No plot is generated."
+        return nothing
+    end
+
+    if all(isinf.(bf))
+        @warn "All values are bayes factors are infinite. No plot is generated."
+        return nothing
+    end
+
     # plot the results
-    fig = GLMakie.Figure(size = (600, 600))
+    ticks = collect(range(Δρ[1], Δρ[end], length = 11))
+    fig_size_1 = 72*fig_size[1]/2.54
+    fig_size_2 = 72*fig_size[2]/2.54
+
+    fig = GLMakie.Figure(
+        size = (fig_size_1, fig_size_2), backgroundcolor = :white,
+        fontsize = 8, figure_padding = (1,8,1,1)
+        )
+
     ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "Δρ0", 
         ylabel = "log10(BF[Δρ > Δρ0 : Δρ ≤ Δρ0])", 
         title = "Bayes factor vs Δρ",
-        limits = (Δ̢ρ[1], Δ̢ρ[end], nothing, nothing), 
+        limits = (Δρ[1], Δρ[end], nothing, nothing), 
         xticks = (ticks, string.(ticks)),
         xticklabelrotation = deg2rad(60)
     )
 
-    GLMakie.lines!(ax1, Δ̢ρ, log10.(bf))
+    GLMakie.lines!(ax1, Δρ, log10.(bf))
 
     GLMakie.hlines!(ax1, [0], color = :black, linestyle = :dash, label = "BF = 1")
-    save && GLMakie.save(file, fig)
+    save && GLMakie.save(file, fig, px_per_unit = dpi/72)
     return fig
 end

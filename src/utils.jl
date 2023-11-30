@@ -229,7 +229,7 @@ function generate_plots(
     if bayes_range_plt
         base_file = joinpath(output_folder_path, "bayes_factor_range_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
         try 
-            bayes_rangeplot(prior, posterior; file = base_file * ".png", Δ̢ρ = collect(range(ρ_range[1],ρ_range[2];step =ρ_range_step)))
+            bayes_rangeplot(prior, posterior; file = base_file * ".png", Δρ = collect(range(ρ_range[1],ρ_range[2];step =ρ_range_step)))
         catch
             @warn "The bayes factor range plot could not be generated."
         end
@@ -320,7 +320,7 @@ This function generates a text file with statistical results for prior and poste
 - This function does not return a value.
 
 # Notes
-This function computes the mean, median, and 95% credible interval for the prior and posterior samples, as well as for the control images. It also computes these statistics for Δ̢ρ. It then writes these statistics to a text file, with each statistic separated by a "|". If the file does not exist, it is created; otherwise, the statistics are appended to the existing file.
+This function computes the mean, median, and 95% credible interval for the prior and posterior samples, as well as for the control images. It also computes these statistics for Δρ. It then writes these statistics to a text file, with each statistic separated by a "|". If the file does not exist, it is created; otherwise, the statistics are appended to the existing file.
 """
 function generate_txt(
     prior::CoLocResult, posterior::CoLocResult, 
@@ -336,8 +336,8 @@ function generate_txt(
     control_prior_mean, control_prior_median, control_prior_credible_interval = compute_stats(prior_samples.:μ_control)
     control_posterior_mean, control_posterior_median, control_posterior_credible_interval = compute_stats(posterior_samples.:μ_control)
 
-    #  compute stats for Δ̢ρ
-    Δ̢ρ_mean, Δ̢ρ_median, Δ̢ρ_credible_interval = compute_stats(posterior_samples.:μ_sample .- prior_samples.:μ_control)
+    #  compute stats for Δρ
+    Δρ_mean, Δρ_median, Δρ_credible_interval = compute_stats(posterior_samples.:μ_sample .- prior_samples.:μ_control)
 
     # generate file if it does not exist, else append to file
     if !isfile(file)
@@ -351,7 +351,7 @@ function generate_txt(
                 "mean_posterior","median_posterior","lower_credible_interval_posterior","upper_credible_interval_posterior",
                 "mean_control_prior","median_control_prior","lower_credible_interval_control_prior","upper_credible_interval_control_prior",
                 "mean_control_posterior","median_control_posterior","lower_credible_interval_control_posterior","upper_credible_interval_control_posterior",
-                "mean_Δ̢ρ","median_Δ̢ρ","lower_credible_interval_Δ̢ρ","upper_credible_interval_Δ̢ρ"], "|"),"\n"
+                "mean_Δρ","median_Δρ","lower_credible_interval_Δρ","upper_credible_interval_Δρ"], "|"),"\n"
                 )
         end
     end
@@ -366,7 +366,7 @@ function generate_txt(
             posterior_mean, posterior_median, posterior_credible_interval[1], posterior_credible_interval[2],
             control_prior_mean, control_prior_median, control_prior_credible_interval[1], control_prior_credible_interval[2],
             control_posterior_mean, control_posterior_median, control_posterior_credible_interval[1], control_posterior_credible_interval[2],
-            Δ̢ρ_mean, Δ̢ρ_median, Δ̢ρ_credible_interval[1], Δ̢ρ_credible_interval[2]], digits =6), "|")),"\n"
+            Δρ_mean, Δρ_median, Δρ_credible_interval[1], Δρ_credible_interval[2]], digits =6), "|")),"\n"
             )
     end
     return nothing
