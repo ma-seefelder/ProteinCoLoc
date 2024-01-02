@@ -1,5 +1,5 @@
 # ProteinCoLoc
-<p align="center"> <img src = "logo.png" width = 500 height = 500> </p>
+<p align="center"> <img src = "logo.png" width = 500 height = 450> </p>
 
 ## Description
 ProteinCoLoc is a scientific software designed for Bayesian analysis of co-localization in microscopic images. Utilizing cutting-edge statistical methods, ProteinCoLoc provides accurate and detailed insights for molecular biology researchers. A graphical user interface is available that facilitates the use of the software. Additionally, a compiled version of ProteinCoLoc is available at XY that does not require the installation of Julia. 
