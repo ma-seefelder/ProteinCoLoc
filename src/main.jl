@@ -135,7 +135,7 @@ function start_analysis(
     else
         control_unshuffled = get_images(image_path, number_channels, "shuffled_control", mask = false)
         control = Vector{MultiChannelImage}(undef, control_unshuffled.num_images)
-        for (img, idx) in zip(control_unshuffled, control_unshuffled.num_images)
+        for (img, idx) in zip(control_unshuffled, 1:control_unshuffled.num_images)
             img.:name = "shuffled_control_" * img.:name
             if shuffle_method == :pixel
                 control[idx] = shuffle_pixels(img)
@@ -147,6 +147,7 @@ function start_analysis(
         end
         control_images = MultiChannelImageStack(control, "shuffled_control")
         control_unshuffled = nothing # delete the original images to save RAM
+        println("Shuffled control images.")
     end
 
 

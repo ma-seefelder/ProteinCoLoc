@@ -642,6 +642,8 @@ function gui()
         ρ_range = [-0.8,0.8]
         ρ_range_step = 0.05
 
+        println(get_is_active(shuffle_button))
+
         # start the analysis
         start_analysis(
             image_path, # path to the images
