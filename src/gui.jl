@@ -69,11 +69,11 @@ function gui()
     # add logo to the header box
     logo = ImageDisplay()
     create_from_file!(logo, "logo.png")
-    set_size_request!(logo, Vector2f(150, 150))
+    set_size_request!(logo, Vector2f(200, 250))
     logo_box = Mousetrap.Box(ORIENTATION_HORIZONTAL)
     set_horizontal_alignment!(logo_box, ALIGNMENT_END)
     push_back!(logo_box, logo)
-    set_size_request!(logo_box, Vector2f(150, 150))
+    set_size_request!(logo_box, Vector2f(200, 250))
 
     # add spacer box to the header box	
     spacer_box = Mousetrap.Box(ORIENTATION_HORIZONTAL)
