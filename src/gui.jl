@@ -65,9 +65,27 @@ function gui()
     add_css_class!(text, "text")
     set_justify_mode!(text, JUSTIFY_MODE_FILL)
     set_wrap_mode!(text, LABEL_WRAP_MODE_WORD_OR_CHAR)
+
+    # add logo to the header box
+    logo = ImageDisplay()
+    create_from_file!(logo, "logo.png")
+    set_size_request!(logo, Vector2f(150, 150))
+    logo_box = Mousetrap.Box(ORIENTATION_HORIZONTAL)
+    set_horizontal_alignment!(logo_box, ALIGNMENT_END)
+    push_back!(logo_box, logo)
+    set_size_request!(logo_box, Vector2f(150, 150))
+
+    # add spacer box to the header box	
+    spacer_box = Mousetrap.Box(ORIENTATION_HORIZONTAL)
+    set_expand!(spacer_box, true)
+    set_size_request!(spacer_box, Vector2f(150, 150))
+    
+    # combine header and logo box and position in the center
+    header_logo = hbox(header, spacer_box, logo_box)
+    set_horizontal_alignment!(header_logo, ALIGNMENT_CENTER)
     
     # add header and text to the intro box
-    push_back!(intro_box, header)
+    push_back!(intro_box, header_logo)
     push_back!(intro_box, text)
 
     # add separator after the intro box

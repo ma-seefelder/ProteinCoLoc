@@ -30,7 +30,7 @@ add_css!(
         font-weight: bold;
         font-family: sans-serif;
         margin-bottom: 10px;
-        color: #4472C4;     
+        color: #4C7081;     
     }
     """
     )
@@ -44,7 +44,7 @@ add_css!(
         font-weight: bold;
         font-family: sans-serif;
         margin-bottom: 10px;
-        color: #4472C4;      
+        color: #4C7081;      
     }
     """
     )
