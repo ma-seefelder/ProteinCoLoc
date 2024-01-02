@@ -1,21 +1,78 @@
-## colocalization.jl
-# This file is part of ProteinCoLoc.jl, licensed under the MIT License (MIT).
-# See LICENSE.md in the project root for license information.
-# Author: Manuel Seefelder
-######################################################################
+#=
+ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
+Copyright (C) 2023  Dr. rer. nat. Manuel
+E-Mail: manuel.seefelder@uni-ulm.de
+Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+=#
+
 # function to patch the image
 """
     patch(img::Array{Float64, 2}, num_patches::Int64)
-    Patches the image into num_patches x num_patches patches.
-    Return a 4D array with the patches.
+
+This function divides an image into a square grid of patches.
+
+# Arguments
+- `img`: A 2D array representing the image to be patched.
+- `num_patches`: An integer representing the number of patches along each axis. The image will be divided into `num_patches` x `num_patches` patches.
+
+# Returns
+- `patches`: A 4D array representing the patches of the image. The first two dimensions are the number of patches along the x and y axes, and the last two dimensions are the size of each patch.
+
+# Notes
+This function calculates the size of the patches, trims the image to fit an exact number of patches, initializes a 4D array for the patches, loops over the patches, and assigns the corresponding part of the image to each patch.
 """
 function patch(img::Array{Float64, 2}, num_patches::Int64)
     # calculate the size of the patches
     patch_size_x = Int64(floor(size(img, 1) / num_patches))
     patch_size_y = Int64(floor(size(img, 2) / num_patches))
-    # calculate the number of patches
-    num_patches_x = Int64(floor(size(img, 1) / patch_size_x))
-    num_patches_y = Int64(floor(size(img, 2) / patch_size_y))
+    
+    # cut the image to the correct size
+    img = img[1:num_patches*patch_size_x, 1:num_patches*patch_size_y]
+
+    # initialize the patches
+    patches = zeros(Union{Float64, Missing}, num_patches, num_patches, patch_size_x, patch_size_y)
+    # loop over the patches
+    for i in 1:num_patches
+        for j in 1:num_patches
+            patches[i, j, :, :] = img[(i-1)*patch_size_x+1:i*patch_size_x, (j-1)*patch_size_y+1:j*patch_size_y]
+        end
+    end
+    return patches
+end
+
+"""
+    patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
+
+This function divides an image into a specified number of patches.
+
+# Arguments
+- `img`: A 2D array representing the image to be patched.
+- `num_patches_x`: An integer representing the number of patches along the x-axis.
+- `num_patches_y`: An integer representing the number of patches along the y-axis.
+
+# Returns
+- `patches`: A 4D array representing the patches of the image. The first two dimensions are the number of patches along the x and y axes, and the last two dimensions are the size of each patch.
+
+# Notes
+This function calculates the size of the patches, initializes a 4D array for the patches, loops over the patches, and assigns the corresponding part of the image to each patch.
+"""
+function patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
+    # calculate the size of the patches
+    patch_size_x = Int64(floor(size(img, 1) / num_patches_x))
+    patch_size_y = Int64(floor(size(img, 2) / num_patches_y))
     # initialize the patches
     patches = zeros(Union{Float64, Missing}, num_patches_x, num_patches_y, patch_size_x, patch_size_y)
     # loop over the patches
@@ -27,36 +84,86 @@ function patch(img::Array{Float64, 2}, num_patches::Int64)
     return patches
 end
 
+"""
+    unpatch(patches::Array{Union{Float64, Missing}, 4}, img_size::Tuple{Int64, Int64})
+
+This function reconstructs an image from its patches.
+
+# Arguments
+- `patches`: A 4D array representing the patches of the image. The first two dimensions are the number of patches along the x and y axes, and the last two dimensions are the size of each patch.
+- `img_size`: A tuple representing the size of the original image.
+
+# Returns
+- `img`: A 2D array representing the reconstructed image.
+
+# Notes
+This function iterates over the patches, places each patch in the correct position in the image, and returns the reconstructed image.
+"""
+function unpatch(patches::Array{Union{Float64, Missing}, 4}, img_size::Tuple{Int64, Int64})
+    # Get the dimensions of the patches
+    num_patches_x, num_patches_y, patch_size_x, patch_size_y = size(patches)
+    # Initialize the image
+    img = zeros(Float64, img_size[1], img_size[2])
+    # Loop over the patches
+    for i in 1:num_patches_x
+        for j in 1:num_patches_y
+            img[(i-1)*patch_size_x+1:i*patch_size_x, (j-1)*patch_size_y+1:j*patch_size_y] = patches[i, j, :, :]
+        end
+    end
+    return img
+end
+
 ######################################################################
 # function to calculate the Pearson's correlation
 ######################################################################
 
 """
-    _exclude_zero!(a::Vector{T},b::Vector{T}) where T <: Number
-    Exclude all values that are zero in at least one of the vectors a and b.
-    Return the vectors a and b without the zero and missing values as a Vector{Float64}.
+    _exclude_zero!(a::Vector{T}, b::Vector{T}) where T <: Number
+
+This function excludes zero and NaN values from two vectors.
+
+# Arguments
+- `a`: A vector of numbers.
+- `b`: A vector of numbers.
+
+# Returns
+- This function does not return a value. It modifies the input vectors `a` and `b` in-place.
+
+# Notes
+This function finds the indices of zero and NaN values in both vectors, creates a union of these indices, and deletes the values at these indices from both vectors.
 """
-function _exclude_zero!(a::Vector{T},b::Vector{T}) where T <: Number  
-    # get the indices of the zero values
-    a_zero = append!(findall(a .== 0), findall(isnan.(a)))
-    b_zero = append!(findall(b .== 0), findall(isnan.(b)))
-    # make union of the indices
-    zero_indices = sort(union(a_zero, b_zero))
+function _exclude_zero!(a::Vector{T}, b::Vector{T}) where T <: Number
+    # get the indices of the zero and NaN values
+    zero_indices = sort(union(findall(iszero, a), findall(isnan, a), findall(iszero, b), findall(isnan, b)))
+
     # exclude all values at the indices in zero_indices
     deleteat!(a, zero_indices)
     deleteat!(b, zero_indices)
 end
 
+"""
+    _exclude_zero!(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
+
+This function excludes zero and NaN values from two vectors.
+
+# Arguments
+- `a`: A vector of numbers or missing values.
+- `b`: A vector of numbers or missing values.
+
+# Returns
+- This function does not return a value.
+
+# Notes
+This function replaces missing values with zero, finds the indices of zero and NaN values in both vectors, creates a union of these indices, and deletes the values at these indices from both vectors.
+"""
 function _exclude_zero!(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
     # change missing values to zero
-    a[ismissing.(a)] .= 0
-    b[ismissing.(b)] .= 0
+    replace!(a, missing => 0)
+    replace!(b, missing => 0)
 
-    # get the indices of the zero values
-    a_zero = append!(findall(a .== 0), findall(isnan.(a)))
-    b_zero = append!(findall(b .== 0), findall(isnan.(b)))
-    # make union of the indices
-    zero_indices = sort(union(a_zero, b_zero))
+    # get the indices of the zero and NaN values
+    zero_indices = sort(union(findall(iszero, a), findall(isnan, a), findall(iszero, b), findall(isnan, b)))
+
     # exclude all values at the indices in zero_indices
     deleteat!(a, zero_indices)
     deleteat!(b, zero_indices)
@@ -64,8 +171,18 @@ end
 
 """
     correlation(x::Array{Float64, 4}, y::Array{Float64, 4})
-    Calculate the correlation between two 4D arrays.
-    Return a 2D array with the correlation for each patch.
+
+This function calculates the correlation between two 4D arrays.
+
+# Arguments
+- `x`: A 4D array representing the first set of data.
+- `y`: A 4D array representing the second set of data.
+
+# Returns
+- `ρ`: A 2D array representing the correlation for each patch.
+
+# Notes
+This function iterates over the patches in the 4D arrays, excludes zeros from the data, and calculates the correlation between the patches. If the length of the data in a patch is less than or equal to 15, the correlation is set to missing.
 """
 function correlation(x::Array{T, 4}, y::Array{T, 4}) where T <: Union{Float64, Missing}
     # get the number of patches
@@ -78,222 +195,9 @@ function correlation(x::Array{T, 4}, y::Array{T, 4}) where T <: Union{Float64, M
             a = x[i, j, :, :][:] 
             b = y[i, j, :, :][:]
             _exclude_zero!(a,b)
-            length(a) <= 20 ? ρ[i, j] = missing : ρ[i, j] = cor(a, b)
+            length(a) <= 15 ? ρ[i, j] = missing : ρ[i, j] = cor(a, b)
         end
     end
     return ρ
 end
 
-######################################################################
-# function to calculate the Fractional Overlap
-######################################################################
-# implemented after https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3074624/
-
-"""
-    struct Fractional Overlap()
-    Structure to save the results of the fractional overlap analysis. 
-    The function fractional_overlap() returns this  structure that
-    possesses the following fields:
-        x: Fractional overlap of channel_1 / channel_2
-        y: Fractional overlap of channel_2 / channel_1
-        x_above_threshold: proportion of pixels above the threshold for channel 1
-        y_above_threshold: proportion of pixels above the threshold for channel 2
-        channel_1: name of channel 1
-        channel_2: name of channel 2
-"""
-struct FractionalOverlap
-    x::T where {T<:Real}
-    y::T where {T<:Real}
-    x_above_threshold::T where {T<:Real}
-    y_above_threshold::T where {T<:Real}
-    channel_1::T where {T<:Int}
-    channel_2::T where {T<:Int}
-end
-
-"""
-    print(IO::Core.IO, x::FractionalOverlap)
-    Print statement for the FractionalOverlap structure. 
-"""
-function print(IO::Core.IO, x::FractionalOverlap)
-    expression = "$(round(100*x.x; digits = 3))% of the $(x.channel_1) channel overlap with the $(x.channel_2) channel and $(round(100*x.y; digits = 3))% of the $(x.channel_2) channel overlap with the $(x.channel_1) channel." 
-    return println(IO, expression)
-end
-
-"""
-    _clip_to_zero(x::Matrix{T}) where T<: Real
-    Helper function to clip non-zero values to zero.
-"""
-function _clip_to_zero(x::Matrix{T}) where T <: Union{Float64, Missing}
-    Threads.@threads for i in CartesianIndices(x)
-        if x[i] <= 0.0
-            x[i] = 0
-        end
-    end
-    return x    
-end
-
-"""
-    prop_above_threshold(x::Matrix{T}, threshold::T) where T <: Real
-    Calculates the proportion of pixels above the defined threshold. 
-
-"""
-function prop_above_threshold(x::Matrix{T}, threshold::T) where T <: Union{Float64, Missing}
-    return sum(_clip_to_zero(x .- threshold)) / (size(x)[1] * size(x)[2])
-end
-
-"""
-mcc(
-x::Matrix{Union{Float64, Missing}}, 
-y::Matrix{Union{Float64, Missing}}, 
-threshold_x::Float64, 
-threshold_y::Float64
-)
-
-mcc(x, y, threshold_x::Float64, threshold_y::Float64)
-Low level function to compute Manders' Colocalization Coefficients (MCC) based
-on the matrices x and y and the thresholds for both values. 
-"""
-function mcc(
-    x::Matrix{T},
-    y::Matrix{T},
-    threshold_x::T, 
-    threshold_y::T
-    ) where T <: Union{Float64, Missing}
-
-    if ismissing(threshold_x)
-        threshold_x = 0.0
-    end
-
-    if ismissing(threshold_y)
-        threshold_y = 0.0
-    end
-
-    x = _clip_to_zero(x .- threshold_x)
-    y = _clip_to_zero(y .- threshold_y)
-    x_colocal = deepcopy(x)
-
-    # return missing if sum(x) == 0.0
-    if sum(x) == 0.0
-        return missing
-    end
-
-    # calculate colocalization
-    Threads.@threads for i in CartesianIndices(x_colocal)
-        if y[i] <= 0.0
-            x_colocal[i] = 0
-        end
-    end  
-    return sum(x_colocal) / sum(x)
-end
-
-"""
-    fractional_overlap(
-    img::MultiChannelImage,
-    channels::Vector{I}
-    ) where {I <: Int}
-
-
-    fractional_overlap(
-    img::MultiChannelImage,
-    channels::Vector{I};
-    use_otsu::Bool = true,
-    ) where {I <: Int}
-
-    This function calculates the fractional overlap of two probes and
-    requires the following input arguments:
-    img::MultiChannelImage: a MultiChannelImage object
-    channels: Vector of channel indices to be used for the calculation
-"""
-function fractional_overlap(
-    img::MultiChannelImage,
-    channels::Vector{I}
-    ) where {I <: Int}
-
-    # calculate and apply mask
-    img = _apply_mask!(img, _calculate_mask(img))
-    
-    # calculate MCC values
-    M_1 = mcc(img.data[channels[1]], img.data[channels[2]], missing, missing)
-    M_2 = mcc(img.data[channels[2]], img.data[channels[1]], missing, missing)
-
-    fr_1 = prop_above_threshold(img.data[channels[1]], 0) # fraction of pixels in channel 1 above threshold
-    fr_2 = prop_above_threshold(img.data[channels[2]], 0) # fraction of pixels in channel 2 above threshold
-    return FractionalOverlap(M_1, M_2, fr_1, fr_2, channels[1], channels[2])
-end
-
-function fractional_overlap(
-    x::Matrix{T},
-    y::Matrix{T},
-    threshold_x::T,
-    threshold_y::T
-    ) where {T <: Union{Float64, Missing}}
-
-    # calculate MCC values
-    M_1 = mcc(x, y, threshold_x, threshold_y)
-    M_2 = mcc(y, x, threshold_x, threshold_y)
-
-    return M_1, M_2
-end
-
-"""
-    fractional_overlap(
-    img::MultiChannelImage,
-    control::MultiChannelImage,
-    channels::Vector{I},
-    num_patches::I;
-    method::String = "quantile",
-    quantile_level::Float64 = 0.95
-    ) where {I <: Int}
-
-    This function calculates the fractional overlap of two probes and
-    requires the following input arguments:
-    img::MultiChannelImage: a MultiChannelImage object
-    control::MultiChannelImage: a MultiChannelImage object to be used as control
-    channels: Vector of channel indices to be used for the calculation
-    num_patches: number of patches to be used for the calculation
-    method: method to calculate the threshold (either "quantile","max", "median")
-    quantile_level: quantile level to be used for the calculation of the threshold
-"""
-function fractional_overlap(
-    img::MultiChannelImage,
-    control::MultiChannelImage,
-    channels::Vector{I},
-    num_patches::I;
-    method::String = "quantile",
-    quantile_level::Float64 = 0.95
-    ) where {I <: Int}
-
-    # calculate and apply mask
-    img = _apply_mask!(img, _calculate_mask(img))
-    control = _apply_mask!(control, _calculate_mask(control))
-
-    # calculate the thresholds based on the control
-    if method == "quantile"
-        threshold_x = quantile(control.data[channels[1]][:], quantile_level)
-        threshold_y = quantile(control.data[channels[2]][:], quantile_level)
-    elseif method == "max"
-        threshold_x = maximum(control.data[channels[1]][:])
-        threshold_y = maximum(control.data[channels[2]][:])
-    elseif method == "median"
-        threshold_x = median(control.data[channels[1]][:])
-        threshold_y = median(control.data[channels[2]][:])
-    else
-        error("Method not implemented.")
-    end
-
-    # patch the image
-    x = patch(img.data[channels[1]], num_patches)
-    y = patch(img.data[channels[1]], num_patches)
-
-    # preallocate the matrices
-    M_1 = zeros(Union{Float64, Missing}, num_patches, num_patches)
-    M_2 = zeros(Union{Float64, Missing}, num_patches, num_patches)
-
-    # calculate MCC values
-    for i in 1:num_patches
-        for j in 1:num_patches
-            M_1[i, j], M_2[i, j] = fractional_overlap(x[i, j, :, :], y[i, j, :, :], threshold_x, threshold_y)
-        end
-    end
-    return M_1, M_2
-end

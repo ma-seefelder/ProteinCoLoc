@@ -17,38 +17,18 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 =#
-module ProteinCoLoc
-# Dependencies
-import Base: getindex, iterate
-import CSV
-import DataFrames
-import DataFrames: DataFrame
-import Distributions: pdf
-import GLMakie
-import Images
-import KernelDensity: kde
-import QuadGK: quadgk
-import Statistics: quantile, mean, median
-import Base: Cint
-import Random: shuffle!, randperm
+"""
+    julia_main()::Cint
 
-using Turing
-using Turing: Variational
-using Mousetrap
+This function serves as the entry point for the application when it is run as a standalone executable.
 
-include("LoadImages.jl")
-include("colocalization.jl")
-include("bayes.jl")
-include("plot.jl")
-include("utils.jl")
-include("main.jl")
-include("gui_css.jl")
-include("gui.jl")
-include("script.jl")
+# Returns
+- `0`: A Cint representing a successful execution of the application.
 
-export MultiChannelImage, MultiChannelImageStack, colocalization
-export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult
-export plot, local_correlation_plot,plot_mask, bayesplot, bayes_rangeplot
+# Notes
+This function calls the `ProteinCoLoc.gui` function, which launches the graphical user interface (GUI) of the application. The function returns 0 to indicate a successful execution of the application.
+"""
+function julia_main()::Cint 
+    ProteinCoLoc.gui()
+    return 0
 end
-
- 

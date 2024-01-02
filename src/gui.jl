@@ -1,10 +1,22 @@
-## gui.jl
-# This file is part of ProteinCoLoc.jl, licensed under the MIT License (MIT).
-# See LICENSE.md in the project root for license information.
-# Author: Manuel Seefelder
-#import .ProteinCoLoc
-# load gui formatting file (gui_css.jl)
-include("gui_css.jl")
+#=
+ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
+Copyright (C) 2023  Dr. rer. nat. Manuel
+E-Mail: manuel.seefelder@uni-ulm.de
+Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+=#
 
 function gui() 
     main() do app::Application
@@ -36,8 +48,8 @@ function gui()
     header_3 = Mousetrap.Label(
         "
         <b>Author</b>: Dr. rer. nat. Manuel Seefelder
-        <b>Email</b>: proteincoloc@protonmail.de
-        <b>Version</b>: 0.1.0
+        <b>Email</b>: manuel.seefelder@uni-ulm.de
+        <b>Version</b>: 1.0.0
         ")
 
     add_css_class!(header_3, "text")
@@ -47,15 +59,33 @@ function gui()
 
     # add text with description of the program to the intro box
     text= Mousetrap.Label(
-        "This software is designed for analyzing colocalization in immunofluorescence images, a process where the presence of multiple proteins in the same location is examined. To use the program, the user loads several target images and corresponding control images (e.g., secondary-antibody only control). The program then calculates the degree of colocalization among the proteins (Pearson's correlation and Fractional overlap) and presents the results in various figures. Additionally, it computes a Bayes Factor and the posterior probability of colocalization, only considering areas in the images where signals were detected. This is done by automatically masking the images prior to all calculations.",
+        "This software is designed for analyzing colocalization in immunofluorescence images, a process where the presence of multiple proteins in the same location is examined. To use the program, the user loads several target images and corresponding control images (e.g., secondary-antibody only control). The program then calculates the degree of colocalization among the proteins (Pearson's correlation) and presents the results in various figures. Additionally, it computes a Bayes Factor and the posterior probability of colocalization, only considering areas in the images where signals were detected. This is done by automatically masking the images prior to all calculations.",
         )
 
     add_css_class!(text, "text")
     set_justify_mode!(text, JUSTIFY_MODE_FILL)
     set_wrap_mode!(text, LABEL_WRAP_MODE_WORD_OR_CHAR)
+
+    # add logo to the header box
+    logo = ImageDisplay()
+    create_from_file!(logo, "logo.png")
+    set_size_request!(logo, Vector2f(150, 150))
+    logo_box = Mousetrap.Box(ORIENTATION_HORIZONTAL)
+    set_horizontal_alignment!(logo_box, ALIGNMENT_END)
+    push_back!(logo_box, logo)
+    set_size_request!(logo_box, Vector2f(150, 150))
+
+    # add spacer box to the header box	
+    spacer_box = Mousetrap.Box(ORIENTATION_HORIZONTAL)
+    set_expand!(spacer_box, true)
+    set_size_request!(spacer_box, Vector2f(150, 150))
+    
+    # combine header and logo box and position in the center
+    header_logo = hbox(header, spacer_box, logo_box)
+    set_horizontal_alignment!(header_logo, ALIGNMENT_CENTER)
     
     # add header and text to the intro box
-    push_back!(intro_box, header)
+    push_back!(intro_box, header_logo)
     push_back!(intro_box, text)
 
     # add separator after the intro box
@@ -109,48 +139,6 @@ function gui()
     slider_loc_box = vbox(slider_loc_label, slider_loc) # create box for the slider
     set_spacing!(slider_loc_box, 10) # set spacing between label and slider
     push_back!(setting_box, slider_loc_box) # add box to the setting box
-
-    ###############################################################
-    ## number of patches for bayes factor robustness plot
-    ###############################################################
-    slider_bfrobustness_label = Mousetrap.Label("<b>Number of NxN patches (bayes factor robustness plot)</b>")
-    set_justify_mode!(slider_bfrobustness_label, JUSTIFY_MODE_LEFT)
-    add_css_class!(slider_bfrobustness_label, "text")
-
-    slider_bfrobustness_min = SpinButton(1,500,1.0)
-    slider_bf_robustness_min_label = Mousetrap.Label("Min")
-    set_value!(slider_bfrobustness_min, 10)
-    set_tooltip_text!(slider_bfrobustness_min, "Minimal number patches that are explored in the bayes factor robustness plot.")
-
-    slider_bfrobustness_max = SpinButton(1,100,1.0)
-    slider_bf_robustness_max_label = Mousetrap.Label("Max")
-    set_value!(slider_bfrobustness_max, 50)
-    set_tooltip_text!(slider_bfrobustness_max, "Maximal number patches that are explored in the bayes factor robustness plot.")
-
-    slider_bfrobustness_step = SpinButton(1,5,1.0)
-    slider_bf_robustness_step_label = Mousetrap.Label("Step size")
-    set_value!(slider_bfrobustness_step, 10)
-    set_tooltip_text!(slider_bfrobustness_step, "Step size of the number of patches that are explored in the bayes factor robustness plot. The higher the step size, the faster the analysis will be. CAVE: A too small step size can lead to memory issues or long runtimes.")
-
-    slider_bfrobustness_box_child = hbox(
-        vbox(slider_bf_robustness_min_label, slider_bfrobustness_min), 
-        vbox(slider_bf_robustness_max_label,slider_bfrobustness_max), 
-        vbox(slider_bf_robustness_step_label,slider_bfrobustness_step)
-        )
-
-    # center the child box
-    set_horizontal_alignment!(slider_bfrobustness_box_child, ALIGNMENT_CENTER)
-
-    # generate separator that is displayed after the slider_bfrobustness_box_child
-    separator_bfrobustness = Separator()
-    set_margin!(separator_bfrobustness, 20)
-    set_expand!(separator_bfrobustness, true)
-    set_size_request!(separator_bfrobustness, Vector2f(0,5))
-
-    slider_bfrobustness_box = vbox(slider_bfrobustness_label, slider_bfrobustness_box_child, separator_bfrobustness)
-    set_spacing!(slider_bfrobustness_box, 10)
-    set_spacing!(slider_bfrobustness_box_child, 10)
-    push_back!(setting_box, slider_bfrobustness_box) # add box to the setting box
 
     ##############################
     ## file chooser: images
@@ -213,6 +201,31 @@ function gui()
 
     set_spacing!(output_folder_selector_box, 10) # set spacing between label and slider
     push_back!(setting_box, output_folder_selector_box)
+
+    ###############################
+    # add option to shuffle pixels
+    shuffle_label = Mousetrap.Label("<b>Shuffle sample image to get control images: </b>")
+    add_css_class!(shuffle_label, "text")
+    shuffle_button = Switch()
+    # add tooltip
+    set_tooltip_text!(
+        shuffle_button, 
+        "<b>Shuffle pixels in each channel </b>: If toggled, the pixels in each channel are shuffled to create a control image. This option is useful if no control images are available. The default value is false."
+        )
+    set_is_active!(shuffle_button, false)
+
+    # add option to shuffle blocks or pixel-wise
+    shuffle_option_label = Mousetrap.Label("<b>Shuffle method </b>")
+    shuffle_option = DropDown()
+    shuffle_option_item_pixel = push_back!(shuffle_option, "Pixel-wise")
+    shuffle_option_item_block = push_back!(shuffle_option, "Block-wise")
+    set_tooltip_text!(
+        shuffle_option, 
+        "<b>Shuffle method </b>: If 'Pixel-wise' is selected, the pixels in each channel are shuffled individually. If 'Block-wise' is selected, the pixels are shuffled in blocks of 3x3 pixels. This option is only relevant if the button 'Shuffle pixels in each channel' is selected. The default value is 'Pixel-wise'."
+        )
+    shuffle_main_box = hbox(shuffle_label, shuffle_button, shuffle_option_label, shuffle_option)
+    set_spacing!(shuffle_main_box, 10)
+    push_back!(setting_box, shuffle_main_box)
     
     ###############################
     ## Analysis settings
@@ -223,13 +236,18 @@ function gui()
 
     ######################################
     # channel selection
-    number_channels_label = Mousetrap.Label("<b>How many color channels have been recorded: </b>")
+    number_channels_label = Mousetrap.Label("<b>Number of recorded color channels: </b>")
     add_css_class!(number_channels_label, "text")
     number_channels = DropDown()
     number_channels_item_2 = push_back!(number_channels, "2 channels")
     number_channels_item_3 = push_back!(number_channels, "3 channels")
     number_channels_item_4 = push_back!(number_channels, "4 channels")
     number_channels_item_5 = push_back!(number_channels, "5 channels")
+    number_channels_item_6 = push_back!(number_channels, "6 channels")
+    number_channels_item_7 = push_back!(number_channels, "7 channels")
+    number_channels_item_8 = push_back!(number_channels, "8 channels")
+    number_channels_item_9 = push_back!(number_channels, "9 channels")
+    number_channels_item_10 = push_back!(number_channels, "10 channels")
     
     number_channels_box = hbox(number_channels_label,number_channels)
     set_spacing!(number_channels_box, 10) # set spacing between label and slider
@@ -294,13 +312,6 @@ function gui()
     local_correlation_plot_button_box = vbox(local_correlation_plot_button_label, local_correlation_plot_button)
     set_spacing!(local_correlation_plot_button_box, 10)
 
-    # fractional overlap plot
-    fractional_overlap_plot_button = Switch()
-    set_is_active!(fractional_overlap_plot_button, true)
-    fractional_overlap_plot_button_label = Mousetrap.Label("Fractional overlap plot")
-    fractional_overlap_plot_button_box = vbox(fractional_overlap_plot_button_label, fractional_overlap_plot_button)
-    set_spacing!(fractional_overlap_plot_button_box, 10)
-
     # Bayes factor plot
     bayes_factor_plot_button = Switch()
     set_is_active!(bayes_factor_plot_button, true)
@@ -314,13 +325,6 @@ function gui()
     bayes_range_plot_button_label = Mousetrap.Label("Bayes range plot")
     bayes_range_plot_button_box = vbox(bayes_range_plot_button_label, bayes_range_plot_button)
     set_spacing!(bayes_range_plot_button_box, 10)
-
-    # Bayes factor robustness plot
-    bayes_factor_robustness_plot_button = Switch()
-    set_is_active!(bayes_factor_robustness_plot_button, false)
-    bayes_factor_robustness_plot_button_label = Mousetrap.Label("Bayes factor robustness plot")
-    bayes_factor_robustness_plot_button_box = vbox(bayes_factor_robustness_plot_button_label, bayes_factor_robustness_plot_button)
-    set_spacing!(bayes_factor_robustness_plot_button_box, 10)
 
     # mask plot
     mask_plot_button = Switch()
@@ -344,12 +348,10 @@ function gui()
     generated_plots_box = FlowBox(ORIENTATION_HORIZONTAL)
     push_back!(generated_plots_box, patched_correlation_plot_button_box)
     push_back!(generated_plots_box, local_correlation_plot_button_box)
-    push_back!(generated_plots_box, fractional_overlap_plot_button_box)
     push_back!(generated_plots_box, bayes_factor_plot_button_box)
     push_back!(generated_plots_box, bayes_range_plot_button_box)
     push_back!(posterior_plot_button_box, mask_plot_button_box)
     push_back!(generated_plots_box, posterior_plot_button_box)
-    push_back!(generated_plots_box, bayes_factor_robustness_plot_button_box)
     push_back!(plot_box, generated_plots_box)
 
     set_horizontal_alignment!(generated_plots_box, ALIGNMENT_CENTER)
@@ -371,7 +373,7 @@ function gui()
     number_iterations_label = Mousetrap.Label("<b>Number of iterations: </b>")
     add_css_class!(number_iterations_label, "text")
     number_iterations = Entry()
-    set_text!(number_iterations, "10000")
+    set_text!(number_iterations, "1000")
 
     set_tooltip_text!(
         number_iterations, 
@@ -503,10 +505,12 @@ function gui()
         end
 
         if !isdir(control_image_path)
-            log_string = log_string * "Error: The path to the control image folder is not valid. Please enter a valid path.\n"
-            set_text!(log, log_string)
-            set_is_spinning!(spinner, false)
-            return nothing
+            if !get_is_active(shuffle_button)
+                log_string = log_string * "Error: The path to the control image folder is not valid. Please enter a valid path.\n"
+                set_text!(log, log_string)
+                set_is_spinning!(spinner, false)
+                return nothing
+            end
         end
 
         if !isdir(output_folder_path)
@@ -529,34 +533,32 @@ function gui()
 
         # get the number of patches for the local correlation plot
         number_patches_loc = Int64(get_value(slider_loc))
-
-        # get the number of patches for the bayes factor robustness plot
-        numb_patches_bfrobustness = collect(
-            range(
-                Int64(get_value(slider_bfrobustness_min)),
-                Int64(get_value(slider_bfrobustness_max));
-                step = get_value(slider_bfrobustness_step)
-                )
-            )
-        numb_patches_bfrobustness = Int64.(numb_patches_bfrobustness)
         
         # get the number of channels
         numb_channels = get_selected(number_channels)
 
-        if numb_channels == number_channels_item_2
-            numb_channels = 2
-        elseif numb_channels == number_channels_item_3
-            numb_channels = 3
-        elseif numb_channels == number_channels_item_4
-            numb_channels = 4
-        elseif numb_channels == number_channels_item_5
-            numb_channels = 5
+        # Define a dictionary to map number_channels_item to their corresponding values
+        channels_dict = Dict(
+            number_channels_item_2 => 2,
+            number_channels_item_3 => 3,
+            number_channels_item_4 => 4,
+            number_channels_item_5 => 5,
+            number_channels_item_6 => 6,
+            number_channels_item_7 => 7,
+            number_channels_item_8 => 8,
+            number_channels_item_9 => 9,
+            number_channels_item_10 => 10
+        )
+
+        # Use the dictionary to assign the value to numb_channels
+        if haskey(channels_dict, numb_channels)
+            numb_channels = channels_dict[numb_channels]
         else
             log_string = log_string * "Error: Please select the number of channels.\n"
             set_text!(log, log_string)
             set_is_spinning!(spinner, false)
             return nothing
-        end
+        end 
 
         # get the channel selection
         channel_selection = get_is_active(channel_selection_button_all)
@@ -564,14 +566,28 @@ function gui()
         channel_selection_two = split(channel_selection_two, ",")
         channel_selection_two = parse.(Int64, channel_selection_two)
 
+        if length(channel_selection_two) != 2 && channel_selection
+            log_string = 
+                log_string * 
+                "Warning: Please enter only two channels for the channel selection if the button 'all combinations' is active. \n"
+
+            set_text!(log, log_string)
+            set_is_spinning!(spinner, false)
+            channel_selection_two = [2,3]
+        elseif length(channel_selection_two) != 2 && !channel_selection
+            log_string = 
+                log_string *
+                "Warning: Please enter only two channels for the channel selection. \n"
+            set_text!(log, log_string)
+            set_is_spinning!(spinner, false)
+            return nothing
+        end
 
         # get the generated plots
         patched_correlation_plot = get_is_active(patched_correlation_plot_button)
         local_correlation_plot = get_is_active(local_correlation_plot_button)
-        fractional_overlap_plot = get_is_active(fractional_overlap_plot_button)
         bayes_factor_plot = get_is_active(bayes_factor_plot_button)
         bayes_range_plot = get_is_active(bayes_range_plot_button)
-        bayes_factor_robustness_plot = get_is_active(bayes_factor_robustness_plot_button)
         posterior_plot = get_is_active(posterior_plot_button)
         mask_plot = get_is_active(mask_plot_button)
 
@@ -584,25 +600,41 @@ function gui()
         # get the threshold for the correlation coefficient
         ρ_threshold = parse(Float64,get_text(ρ_threshold_entry))
 
+        # get the shuffle method
+        shuffle_method = get_selected(shuffle_option)
+        shuffle_option_dict = Dict(
+            shuffle_option_item_pixel => :pixel,
+            shuffle_option_item_block => :block
+        )
+
+        if haskey(shuffle_option_dict, shuffle_method)
+            shuffle_method = shuffle_option_dict[shuffle_method]
+        else
+            log_string = log_string * "Error: Please select the shuffle method.\n"
+            set_text!(log, log_string)
+            set_is_spinning!(spinner, false)
+            return nothing
+        end
+
+
         # print the settings to the log
         log_string = log_string * "Settings: \n"*
             "Number of NxN patches: "*string(number_patches)*"\n"*
             "Number of NxN patches for local correlation plot: "*string(number_patches_loc)*"\n"*
-            "Number of NxN patches for bayes factor robustness plot: " *string(numb_patches_bfrobustness)*"\n"*
             "Number of channels: "* string(numb_channels)*"\n"*
             "Channel selection: "*string(channel_selection)*"\n"*
             "Channel selection two: "*string(channel_selection_two)*"\n"*
             "Patched correlation plot: "*string(patched_correlation_plot)*"\n"*
             "Local correlation plot: "*string(local_correlation_plot)*"\n"*
-            "Fractional overlap plot: "*string(fractional_overlap_plot)*"\n"*
             "Bayes factor plot: "*string(bayes_factor_plot)*"\n"*
             "Bayes range plot: "*string(bayes_range_plot)*"\n"*
             "Mask plot: "*string(mask_plot)*"\n"*
             "Posterior plot: "*string(posterior_plot)*"\n"*
-            "Bayes factor robustness plot: "*string(bayes_factor_robustness_plot)*"\n"*
             "Number of iterations: "*string(numb_iterations)*"\n"*
             "Number of posterior samples: "*string(numb_posterior_samples)*"\n"*
-            "Δρ threshold: "*string(ρ_threshold)*"\n"
+            "Δρ threshold: "*string(ρ_threshold)*"\n" *
+            "Shuffle pixels: "*string(get_is_active(shuffle_button))*"\n"*
+            "Shuffle method: "*string(shuffle_method)*"\n"
             
         set_text!(log, log_string)
 
@@ -617,23 +649,22 @@ function gui()
             output_folder_path, # path to the output folder
             number_patches, # number of patches
             number_patches_loc, # number of patches for local correlation plot
-            numb_patches_bfrobustness, # number of patches for bayes factor robustness plot 
             numb_channels, # number of channels
             channel_selection, # channel selection
             channel_selection_two, # channel selection two
             patched_correlation_plot, # patched correlation plot
             local_correlation_plot, # local correlation plot
-            fractional_overlap_plot, # fractional overlap plot
             bayes_factor_plot, # bayes factor plot
             bayes_range_plot, # bayes range plot
-            bayes_factor_robustness_plot, # bayes factor robustness plot
             posterior_plot, # posterior plot 
             mask_plot, # mask plot 
             numb_iterations, # number of iterations
             numb_posterior_samples, # number of posterior samples,
             ρ_threshold, # threshold for the correlation coefficient
             ρ_range, # range of the correlation coefficient
-            ρ_range_step # step size of the correlation coefficient
+            ρ_range_step, # step size of the correlation coefficient,
+            get_is_active(shuffle_button), # shuffle pixels
+            shuffle_method # shuffle method
             )
 
         # deactivate spinner

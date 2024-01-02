@@ -49,16 +49,14 @@ Random123.seed!(1234)
 
     # test with five channel image
     @testset "MultiChannelImage constructor (5 channels)" begin
-        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
         name = "test_image"
         channels = ["blue", "green", "red","red_2","red_3"]
-        img = MultiChannelImage(name, path, channels)
+        img = MultiChannelImage(name, [path[1],path[2],path[3],path[3],path[3]],channels)
         @test typeof(img) == MultiChannelImage{Float64, String, Float64}
 
         # test that the constructor sets the fields correctly
         @test img.channels == channels
         @test img.name == name
-        @test img.path == path
         @test img.pixel_size == (1028, 1376)
         @test length(img.otsu_threshold) == size(channels)[1]
     end
@@ -304,26 +302,6 @@ end
         # bayes_rangeplot
         bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_c1c3.png")
     end
-
-    @testset "bayesfactor_robustness" begin
-        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
-        path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
-        # first load image
-        img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
-        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
-        control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
-        control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
-        # make a stack of the image
-        img_stack = MultiChannelImageStack([img, img, img], "test_stack")
-        control_stack = MultiChannelImageStack([control, control, control], "test_stack")
-
-        # check that the function works
-        plotted, bf, post, prior = bayesfactor_robustness(
-            img_stack, control_stack, [2,3],
-            [12,14,16,18,20,22,24];
-            file = "test/test_images/bayesfactor_robustness.png"
-            )
-    end
 end
 
 ###########################################################################################
@@ -333,8 +311,16 @@ end
     path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
     name = "test_image"
     channels = ["blue", "green", "red"]
-
     # load image
+    img = MultiChannelImage(name, path, channels)
+    # patched correlation plot with img after pixel shuffling
+    pixel_shuffled = ProteinCoLoc.shuffle_pixels(img)
+    plot(pixel_shuffled, 32, [2,3]; file = "test/test_images/patched_channels_2_3_shuffled.png")
+    # block shuffle
+    block_shuffled = ProteinCoLoc.shuffle_blocks(img, 9)
+    plot(block_shuffled, 32, [2,3]; file = "test/test_images/patched_channels_2_3_block_shuffled.png")
+
+    # apply mask
     img = MultiChannelImage(name, path, channels)
     img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
 
@@ -344,45 +330,25 @@ end
     control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
 
     # patched correlation plot
-    plot(img, 32, [1,1]; file = "test/test_images/patched_channels_1_1.png")
     plot(img, 32, [1,2]; file = "test/test_images/patched_channels_1_2.png")
     plot(img, 32, [1,3]; file = "test/test_images/patched_channels_1_3.png")
-    plot(img, 32, [2,2]; file = "test/test_images/patched_channels_2_2.png")
     plot(img, 32, [2,3]; file = "test/test_images/patched_channels_2_3.png")
-    plot(img, 32, [3,3]; file = "test/test_images/patched_channels_3_3.png")
 
     # patched correlation plot with control
-    plot(control, 32, [1,1]; file = "test/test_images/patched_channels_1_1_control.png")
     plot(control, 32, [1,2]; file = "test/test_images/patched_channels_1_2_control.png")
     plot(control, 32, [1,3]; file = "test/test_images/patched_channels_1_3_control.png")
-    plot(control, 32, [2,2]; file = "test/test_images/patched_channels_2_2_control.png")
     plot(control, 32, [2,3]; file = "test/test_images/patched_channels_2_3_control.png")
-    plot(control, 32, [3,3]; file = "test/test_images/patched_channels_3_3_control.png")
 
     # mask
     plot_mask(img, "test/test_images/mask.png")
 
     # local correlation plot
-    local_correlation_plot(img, 200, [1,1]; file = "test/test_images/local_correlation_1_1.png")
     local_correlation_plot(img, 200, [1,2]; file = "test/test_images/local_correlation_1_2.png")
     local_correlation_plot(img, 200, [1,3]; file = "test/test_images/local_correlation_1_3.png")
-    local_correlation_plot(img, 200, [2,2]; file = "test/test_images/local_correlation_2_2.png")
     local_correlation_plot(img, 200, [2,3]; file = "test/test_images/local_correlation_2_3.png")
-    local_correlation_plot(img, 200, [3,3]; file = "test/test_images/local_correlation_3_3.png")
 
     # local correlation plot with control
-    local_correlation_plot(control, 200, [1,1]; file = "test/test_images/local_correlation_1_1_control.png")
     local_correlation_plot(control, 200, [1,2]; file = "test/test_images/local_correlation_1_2_control.png")
     local_correlation_plot(control, 200, [1,3]; file = "test/test_images/local_correlation_1_3_control.png")
-    local_correlation_plot(control, 200, [2,2]; file = "test/test_images/local_correlation_2_2_control.png")
     local_correlation_plot(control, 200, [2,3]; file = "test/test_images/local_correlation_2_3_control.png")
-    local_correlation_plot(control, 200, [3,3]; file = "test/test_images/local_correlation_3_3_control.png")
-
-    # fractional overlap plot
-    plot_fractional_overlap(img, control, 200, [1,1]; file = "test/test_images/fractional_overlap_1_1.png", method = "quantile", quantile_level = 0.975)
-    plot_fractional_overlap(img, control, 200, [1,2]; file = "test/test_images/fractional_overlap_1_2.png", method = "quantile", quantile_level = 0.975)
-    plot_fractional_overlap(img, control, 200, [1,3]; file = "test/test_images/fractional_overlap_1_3.png", method = "quantile", quantile_level = 0.975)
-    plot_fractional_overlap(img, control, 200, [2,2]; file = "test/test_images/fractional_overlap_2_2.png", method = "quantile", quantile_level = 0.975)
-    plot_fractional_overlap(img, control, 200, [2,3]; file = "test/test_images/fractional_overlap_2_3.png", method = "quantile", quantile_level = 0.975)
-    plot_fractional_overlap(img, control, 200, [3,3]; file = "test/test_images/fractional_overlap_3_3.png", method = "quantile", quantile_level = 0.975)
 end

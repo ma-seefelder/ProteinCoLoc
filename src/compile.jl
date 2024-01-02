@@ -17,38 +17,11 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 =#
-module ProteinCoLoc
-# Dependencies
-import Base: getindex, iterate
-import CSV
-import DataFrames
-import DataFrames: DataFrame
-import Distributions: pdf
-import GLMakie
-import Images
-import KernelDensity: kde
-import QuadGK: quadgk
-import Statistics: quantile, mean, median
-import Base: Cint
-import Random: shuffle!, randperm
 
-using Turing
-using Turing: Variational
-using Mousetrap
-
-include("LoadImages.jl")
-include("colocalization.jl")
-include("bayes.jl")
-include("plot.jl")
-include("utils.jl")
-include("main.jl")
-include("gui_css.jl")
-include("gui.jl")
-include("script.jl")
-
-export MultiChannelImage, MultiChannelImageStack, colocalization
-export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult
-export plot, local_correlation_plot,plot_mask, bayesplot, bayes_rangeplot
-end
-
- 
+using PackageCompiler
+create_app(
+    "C:/Users/manue/Documents/GitHub/ProteinCoLoc", 
+    "C:/Users/manue/Desktop/ProteinCoLoc", 
+    script="C:/Users/manue/Documents/GitHub/ProteinCoLoc/src/script.jl";
+    force = true
+    )

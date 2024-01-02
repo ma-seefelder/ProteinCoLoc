@@ -1,19 +1,54 @@
-## plot.jl
-# This file is part of ProteinCoLoc.jl, licensed under the MIT License (MIT).
-# See LICENSE.md in the project root for license information.
-# Author: Dr. rer. nat. Manuel Seefelder
-using GLMakie
+#=
+ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
+Copyright (C) 2023  Dr. rer. nat. Manuel
+E-Mail: manuel.seefelder@uni-ulm.de
+Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+=#
 
 """
     minmax_norm!(img::Matrix{Float64})
-    Normalize the image to the range [0, 1].
+
+This function normalizes a 2D image matrix to the range [0, 1].
+
+# Arguments
+- `img`: A 2D matrix of Float64 representing the image to be normalized.
+
+# Returns
+- `img`: The input image matrix, modified in-place, where each pixel value has been normalized to the range [0, 1].
+
+# Notes
+This function normalizes the image by subtracting the minimum pixel value from each pixel, and then dividing each pixel by the range of pixel values (maximum - minimum). The normalization is performed in-place, modifying the input image matrix directly.
 """
 minmax_norm!(img::Matrix{Float64}) = (img .- minimum(img)) ./ (maximum(img) - minimum(img))
 
 
 """
-    cm_to_px(cm, dpi)
-    Convert centimeters to pixels with a given dpi to determine the size of the plot.
+    cm_to_px(cm::Float64, dpi::Int)::Int
+
+This function converts a measurement from centimeters to pixels, given a specific dots per inch (dpi) value.
+
+# Arguments
+- `cm`: A Float64 representing the measurement in centimeters.
+- `dpi`: An integer representing the dots per inch (dpi) value.
+
+# Returns
+- `px`: An integer representing the measurement in pixels.
+
+# Notes
+This function first converts the measurement from centimeters to inches, then converts the measurement from inches to pixels using the dpi value. The result is rounded to the nearest integer.
 """
 function cm_to_px(cm, dpi)
     inch = cm / 2.54  # Convert cm to inches
@@ -21,7 +56,24 @@ function cm_to_px(cm, dpi)
     return px
 end
 
-# Function to calculate font size
+"""
+    calculate_font_size(
+    resolution::Tuple{Int, Int}, 
+    scale_factor::Float64
+    )
+
+This function calculates the font size based on the resolution of the plot and a scale factor.
+
+# Arguments
+- `resolution`: A tuple of two integers representing the width and height of the plot in pixels.
+- `scale_factor`: A Float64 representing the scale factor to be applied to the resolution to calculate the font size.
+
+# Returns
+- `font_size`: An integer representing the calculated font size.
+
+# Notes
+This function calculates the font size by taking the minimum of the width and height of the plot, multiplying it by the scale factor, and rounding the result to the nearest integer.
+"""
 function calculate_font_size(resolution, scale_factor)
     return round(Int, min(resolution...) * scale_factor)
 end
@@ -110,24 +162,14 @@ function plot(
             )
     end
 
-    # plot image with Plots.jl package
-    # without x and y axis ticks and labels and with a black background
-    plt = plot(
-        img_view,
-        ticks = false,
-        border = :none,
-        legend = false,
-        grid = false,
-        size = (size(img.data[1])[2,],size(img.data[1])[1,]),
-        background_color = :black,
-        dpi = 96
-        )
-
+    fig = GLMakie.Figure(size = (size(img.data[1])[2,],size(img.data[1])[1,]), backgroundcolor = :black)
+    ax1 = GLMakie.Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
+    GLMakie.image!(ax1, img_view')
 
     # add lines to the image to separate the patches
     for i in 0:num_patches
-        hline!([i*patch_size[1]], color = :white, linealpha = 0.5, linestyle = :dash)
-        vline!([i*patch_size[2]], color = :white, linealpha = 0.5, linestyle = :dash)
+        GLMakie.hlines!([i*patch_size[1]], color = :white, linealpha = 0.5, linestyle = :dash, linewidth = 1)
+        GLMakie.vlines!([i*patch_size[2]], color = :white, linealpha = 0.5, linestyle = :dash, linewidth = 1)
     end
 
     ######################################
@@ -145,18 +187,18 @@ function plot(
     # add the correlation values to the image
     for patch ∈ CartesianIndices(ρ)
         ismissing(ρ[patch]) && continue
-        annotate!(
+        GLMakie.text!(
+            ax1,
             (patch[2]-1)*patch_size[2] + patch_size[2]/2,
             (patch[1]-1)*patch_size[1] + patch_size[1]/2,
-            text(round(ρ[patch],digits = 2), :white, :center, 8)
+            text = string(round(ρ[patch],digits = 2)),
+            color = :white, fontsize = 9	
             )
     end
 
     # save the image
-    if save_to_file == true
-        savefig(plt, file)
-    end
-    return plt
+    save_to_file && GLMakie.save(file, fig)
+    return fig
 end
 
 """
@@ -181,61 +223,76 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
     # combine the subplots
     plt = Images.hcat(plt...)
 
-    # plot image with Plots.jl package
     # without x and y axis ticks and labels and with a black background
-    plt = plot(
-        plt,
-        ticks = false,
-        border = :none,
-        legend = false,
-        grid = false,
-        size = (3*size(img.data[1])[2,],size(img.data[1])[1,]),
-        background_color = :black,
-        dpi = 96
+    fig = GLMakie.Figure(
+        size = (0.3*size(plt)[2,],0.3*size(plt)[1,]), 
+        background_color = :black
         )
+
+    ax1 = GLMakie.Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
+    GLMakie.image!(ax1, plt')
 
     # add lines to the image to separate the channels
     for i in 0:length(img.channels)
-        vline!([i*size(img.data[1])[2,]], color = :white, width = 2)
+        GLMakie.vlines!([i*size(img.data[1])[2,]], color = :white, width = 2)
     end
 
     # add the channel names to the bottom corner of each channel
-    for i in 1:length(img.channels)
-        annotate!(
-            (i-1)*size(img.data[1])[2,] + 10,
-            10,
-            text(img.channels[i], :yellow, :left, 40)
+    for i in 0:(length(img.channels)-1)
+        GLMakie.text!(
+            ax1, 
+            (i*size(img.data[1])[2,] +100), 100,
+            text = string(img.channels[i+1]),
+            color = :yellow, fontsize = 20.0
             )
     end
    
-
     # save
-    savefig(plt, file)
+    GLMakie.save(file, fig)
 
-    return plt
+    return fig
 end
 
-# local correlation plot
-function local_correlation_plot(
-    img::MultiChannelImage,
-    num_patches::I,
-    cor_channel::Vector{I} = [2, 3];
-    channel_for_plot::Vector{I} = [1, 2, 3],
-    save::Bool = true,
-    file::String = "local_correlation.png"
-    ) where {I <: Int}
+"""
+    _local_correlation_plot(
+    img::MultiChannelImageStack, 
+    channel_for_plot::Vector{Int}, 
+    num_patches::Int, 
+    cor_channel::Vector{Int}
+    )::Tuple{Matrix{Float64}, Tuple{Int, Int}}
 
+This is a low-level function that calculates and returns the local correlation between two channels of a multi-channel image.
+
+# Arguments
+- `img`: A MultiChannelImageStack representing the image.
+- `channel_for_plot`: A Vector of integers representing the channels to be plotted.
+- `num_patches`: An integer representing the number of patches to be analyzed.
+- `cor_channel`: A Vector of two integers representing the channels for which the correlation is to be calculated.
+
+# Returns
+- `ρ`: A matrix of Float64 representing the local correlation values for each patch.
+- `patch_size`: A tuple of two integers representing the width and height of the patches in pixels.
+
+# Errors
+- Throws a warning if the number of channels is not 3.
+- Throws a warning if the patch size is too small or too big for local correlation.
+- Throws an error if the images are not the same size.
+
+# Notes
+This function checks the number of channels, calculates the patch size, checks the patch size, patches the image, and calculates the correlation for each patch. This function should not be called directly. Use `local_correlation_plot()` instead.
+"""
+function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel)
     # check that the number of channels is 3
     length(channel_for_plot) <= 3 || @warn "This function is currently only implemented for 3 channels"
 
     # get patch size
-    patches = patch(img.data[1], num_patches);
+    patches = patch(img.data[1], num_patches)
     patch_size = size(patches)[3:4]
 
     # check that the patch size is reasonable
-    patch_size[1] * patch_size[2] > 10 || @warn "Patch size is too small for local correlation. A size between 10 and 100 px is recommended."
-    patch_size[1] * patch_size[2] < 100 || @warn "Patch size is too big for local correlation. A size between 10 and 100 px is recommended."
-    @info "Patch size is $(patch_size[1]) x $(patch_size[2]) px = $(patch_size[1] * patch_size[2]) px²"    
+    #patch_size[1] * patch_size[2] > 10 || @warn "Patch size is too small for local correlation. A size between 10 and 100 px is recommended."
+    #patch_size[1] * patch_size[2] < 100 || @warn "Patch size is too big for local correlation. A size between 10 and 100 px is recommended."
+    #@info "Patch size is $(patch_size[1]) x $(patch_size[2]) px = $(patch_size[1] * patch_size[2]) px²"    
 
     # patch the image and calculate the correlation
     x = img.data[cor_channel[1]]
@@ -247,13 +304,77 @@ function local_correlation_plot(
     # calculate the correlation for each patch
     ρ = correlation(x, y)
 
+    return ρ, patch_size
+end
+
+
+"""
+    local_correlation_plot(
+    img::MultiChannelImage,
+    num_patches::Int,
+    cor_channel::Vector{Int} = [2, 3];
+    channel_for_plot::Vector{Int} = [1, 2, 3],
+    save::Bool = true,
+    file::String = "local_correlation.png"
+    )
+
+This function generates a local correlation plot for a multi-channel image.
+
+# Arguments
+- `img`: A MultiChannelImage representing the image.
+- `num_patches`: An integer representing the number of patches to be analyzed.
+- `cor_channel`: A Vector of two integers representing the channels for which the correlation is to be calculated. Default is [2, 3].
+- `channel_for_plot`: A Vector of integers representing the channels to be plotted. Default is [1, 2, 3].
+- `save`: A boolean indicating whether to save the plot to a file. Default is true.
+- `file`: A string representing the filename for the output file. Default is "local_correlation.png".
+
+# Returns
+- `fig`: A Figure object representing the generated plot.
+
+# Errors
+- Throws a warning if no patches with a successful correlation calculation exist.
+- Throws a warning if no local correlation plot could be generated.
+
+# Notes
+This function calculates the local correlation for each patch, checks that patches with a successful correlation calculation exist, tries a different patch size if necessary, plots the local correlation, and saves the plot to a file if specified.
+"""
+function local_correlation_plot(
+    img::MultiChannelImage,
+    num_patches::I,
+    cor_channel::Vector{I} = [2, 3];
+    channel_for_plot::Vector{I} = [1, 2, 3],
+    save::Bool = true,
+    file::String = "local_correlation.png"
+    ) where {I <: Int}
+
+    ρ, patch_size = _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel)
+    
+    # check that patches with a successful correlation calculation exist
+    if sum(ismissing.(ρ)) == size(ρ)[1] * size(ρ)[2]
+        @warn "No patches with a successful correlation calculation exist at $num_patches patches. A different patch size is tried."
+        # try a different patch
+        patch_number_range = reverse(collect(10:10:num_patches))
+        for pn ∈ patch_number_range
+            ρ, patch_size = ProteinCoLoc._local_correlation_plot(img, channel_for_plot, pn, cor_channel)
+            if sum(ismissing.(ρ)) < size(ρ)[1] * size(ρ)[2]
+                @info "Found patches with a successful correlation calculation at $pn patches"
+                num_patches = pn
+                break
+            end
+            if sum(ismissing.(ρ)) == size(ρ)[1] * size(ρ)[2] && pn == patch_number_range[end]
+                @warn "No local correlation plot could be generated."
+                return nothing
+            end
+        end    
+    end
+
     # plot the local correlation
-    x = [i for i in 1 : (num_patches-1)] .* patch_size[2]
-    y = [i for i in 1 : (num_patches-1)] .* patch_size[1]
-    z = [ρ[i, j] for i in 1 : (num_patches-1), j in 1 : (num_patches-1)]
+    x = [i for i in 1 : (num_patches)] .* patch_size[2]
+    y = [i for i in 1 : (num_patches)] .* patch_size[1]
+    z = [ρ[i, j] for i in 1 : (num_patches), j in 1 : (num_patches)]
 
     # replace missing values with 0
-    # z = replace(z, missing => 0)
+    z = replace(z, missing => -2.0)
 
     # plot the local correlation with GLMakie
     GLMakie.activate!()
@@ -283,169 +404,134 @@ function local_correlation_plot(
     return fig
 end
 
-#########################################################################################
-### Fractional overlap Plots                                                          ###
-#########################################################################################
-"""
-    plot_fractional_overlap(
-    img::MultiChannelImage,
-    num_patches::I = 64,
-    channels::Vector{I};
-    output_folder::String = "./test_images/"
-    ) where {I <: Int}
-
-
-    Generates a graphical representation of the fractional overlap between two channels. 
-    Requires an input image of type MultiChannelImage, a vector of the color channels too
-    be analysed and a path to the output folder to save the plot. 
-"""
-function plot_fractional_overlap(
-    img::MultiChannelImage,
-    control::MultiChannelImage,
-    num_patches::I,
-    channels::Vector{I};
-    file::String = "fractional_overlap.png",
-    save::Bool = true,
-    method::String = "quantile",
-    quantile_level::Float64 = 0.95
-    ) where I <: Int
-
-    # calculate and apply mask
-    img = _apply_mask!(img, _calculate_mask(img))
-    # calculate fractional overlap
-    FO_1, FO_2 = fractional_overlap(
-        img, control, channels, 
-        num_patches; method = method, 
-        quantile_level = quantile_level
-        )
-
-    # get patch size
-    patches = patch(img.data[1], num_patches);
-    patch_size = size(patches)[3:4]
-
-    # plot the local fractional overlap
-    x = [i for i in 1 : (num_patches-1)] .* patch_size[2]
-    y = [i for i in 1 : (num_patches-1)] .* patch_size[1]
-    z_1 = [FO_1[i, j] for i in 1 : (num_patches-1), j in 1 : (num_patches-1)]
-    z_2 = [FO_2[i, j] for i in 1 : (num_patches-1), j in 1 : (num_patches-1)]
-
-    # replace missing values with 0
-    z_1 = replace(z_1, missing => 0)
-    z_2 = replace(z_2, missing => 0)
-
-    # plot the fractional overlap
-    GLMakie.activate!()
-    fig = GLMakie.Figure(fontsize = 12, resolution = (1200,600))
-    ax = GLMakie.Axis(
-        fig[1, 1],
-        xlabel = "x position [px]",
-        ylabel = "y position [px]",
-        title = "Fractional overlap: $(channels[1]) : $(channels[2])",
-        yreversed = false,
-        limits = (0.0, nothing, 0.0, nothing)
-        )
-
-    co = GLMakie.contourf!(
-        ax, x,y,rotr90(z_1), levels = range(0,1.001,100),
-        colormap = :Blues
-        )
-
-    ax_2 = GLMakie.Axis(
-        fig[1, 2],
-        xlabel = "x position [px]",
-        ylabel = "y position [px]",
-        title = "Fractional overlap: $(channels[2]) : $(channels[1])",
-        yreversed = false,
-        limits = (0.0, nothing, 0.0, nothing)
-        )
-    
-    co_2 = GLMakie.contourf!(
-        ax_2, x,y,rotr90(z_2), levels = range(0,1.001,100),
-        colormap = :Blues
-        )
-        
-    GLMakie.Colorbar(fig[1,3], co, tellheight = false, label = "Fractional Overlap")
-    GLMakie.resize_to_layout!(fig)
-
-    if save == true
-        # save the plot
-        GLMakie.save(file,fig)
-    end
-    return fig
-end
-
-
 ###############################################################################
 # Plotting functions for the Bayesian inference
 ###############################################################################
 
 """
-    plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
-    Generates diagnostic plots of a CoLocResult struct obtained from ProteinCoLoc.colocalization().
+    plot_posterior(
+    posterior::CoLocResult; 
+    file::String = "posterior.png", 
+    save::Bool = true
+    )
 
-    # Arguments
-    - `posterior::CoLocResult`: The CoLocResult struct to plot.
-    - `file::String`: The file to save the plot to. Must end with .png.
-    - `save::Bool`: Whether to save the plot to the file.
+This function generates diagnostic plots of a CoLocResult struct obtained from ProteinCoLoc.colocalization().
+
+# Arguments
+- `posterior`: A CoLocResult struct representing the posterior to be plotted.
+- `file`: A string representing the filename to save the plot to. Must end with .png. Default is "posterior.png".
+- `save`: A boolean indicating whether to save the plot to a file. Default is true.
+- `fig_size`: A Vector of two Real numbers representing the width and height of the plot in centimeters. Default is [16.0,12.0].
+- `dpi`: An integer representing the dots per inch (dpi) value. Default is 300.
+
+
+# Returns
+- `fig`: A Figure object representing the generated plot.
+
+# Notes
+This function generates five plots: four for the posterior distributions of ρ, ν, σ, and τ, and one for the posterior distribution of Δρ. Each plot includes a density plot for the control and sample. The plots are saved to a file if specified.
 """
-function plot_posterior(posterior::CoLocResult; file::String = "posterior.png", save::Bool = true)
-    hist1 = Plots.histogram(
-        posterior.posterior.μ_control, legend = true, label = "μ_control", 
-        title = "P(ρ|data)", alpha = 0.5, normalize = :pdf,
-        xticks = collect(-2:0.2:2),
-        xrotation = 60
-        )
-    Plots.histogram!(
-        hist1, posterior.posterior.μ_sample, label = "μ_sample", 
-        alpha = 0.5, normalize = :pdf
+function plot_posterior(
+    posterior::CoLocResult; file::String = "posterior.png", 
+    save::Bool = true, fig_size::Vector{T} = [16.0,12.0], dpi::I= 300
+    ) where {T <: AbstractFloat, I <: Integer}
+
+    fig_size_1 = 72*fig_size[1]/2.54
+    fig_size_2 = 72*fig_size[2]/2.54
+    fig = GLMakie.Figure(size = (fig_size_1, fig_size_2), backgroundcolor = :white, fontsize = 8, figure_padding = (1,8,1,1))
+
+    ax1 = GLMakie.Axis(
+        fig[1, 1], xlabel = "ρ", ylabel = "P(ρ|data)", title = "P(ρ|data)",
+        #limits = (-1, 1, nothing, nothing), 
+        #xticks = (collect(-1.0:0.2:1.0), string.(collect(-1.0:0.2:1.0))), 
+        xticklabelrotation = deg2rad(60)
         )
 
-    hist2 = Plots.histogram(
-        posterior.posterior.ν_control, label = "ν_control", 
-        legend = true, title = "P(ν|data)", alpha = 0.5,
-        normalize = :pdf
+    GLMakie.density!(
+        ax1, posterior.posterior.μ_control,
+        alpha = 0.5, label = "control",
+        normalization = :pdf
+        )
+        
+    GLMakie.density!(
+        ax1, posterior.posterior.μ_sample,
+        alpha = 0.5, label = "sample",
+        normalization = :pdf
+        )
+        
+    ax2 = GLMakie.Axis(fig[1, 2], xlabel = "ν", ylabel = "P(ν|data)", title = "P(ν|data)", xticklabelrotation = deg2rad(60))
+    
+    GLMakie.density!(
+        ax2, posterior.posterior.ν_control, normalization = :pdf,
+        alpha = 0.5, label = "ν_control"
         )
 
-    Plots.histogram!(
-        hist2, posterior.posterior.ν_sample, 
-        label = "ν_sample", alpha = 0.5, normalize = :pdf
+    GLMakie.density!(
+        ax2, posterior.posterior.ν_sample, normalization = :pdf,
+        alpha = 0.5, label = "ν_sample"
+    )
+
+    ax3 = GLMakie.Axis(fig[1, 3], xlabel = "σ", ylabel = "P(σ|data)", title = "P(σ|data)", xticklabelrotation = deg2rad(60))
+
+    GLMakie.density!(
+        ax3, posterior.posterior.σ_control, normalization = :pdf,
+        alpha = 0.5, label = "σ_control"
         )
 
-    hist3 = Plots.histogram(
-        posterior.posterior.σ_control, label = "σ_control", 
-        legend = true, title = "P(σ|data)", alpha = 0.5,
-        normalize = :pdf
+    GLMakie.density!(
+        ax3, posterior.posterior.σ_sample, normalization = :pdf,
+        alpha = 0.5, label = "σ_sample"
+    )
+
+    ax4 = GLMakie.Axis(fig[1, 4], xlabel = "τ", ylabel = "P(τ|data)", title = "P(τ|data)", xticklabelrotation = deg2rad(60))
+
+    GLMakie.density!(
+        ax4, posterior.posterior.τ_sample, normalization = :pdf,
+        alpha = 0.5, label = "τ_sample"
         )
 
-    Plots.histogram!(
-        hist3, posterior.posterior.σ_sample, label = "σ_sample", 
-        alpha = 0.5, normalize = :pdf
-        )
+    GLMakie.density!(
+        ax4, posterior.posterior.τ_control, normalization = :pdf,
+        alpha = 0.5, label = "τ_control"
+    )
 
+    GLMakie.Legend(
+        fig[1,5], ax1, orientation = :vertical, framevisible = false, 
+        labelsize = 8, rowgap = 0, titlegap = 0,
+        tellheight = false, valign = :top,
+        patchsize = (5,5)
+        )
+    #########
+    # Δρ 
     Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
 
-    hist4 = Plots.histogram(
-        Δρ,legend = true, label = "Δρ", normalize = :pdf,
-        title = "P(Δρ|data)", alpha = 0.5)
-
-    hist5 = Plots.histogram(
-        posterior.posterior.τ_sample,legend = true,
-        label = "τ_sample", title = "P(τ|data)", alpha = 0.5,
-        normalize = :pdf
+    ax5 = GLMakie.Axis(
+        fig[2, 1:5], xlabel = "Δρ", ylabel = "P(Δρ|data)", title = "P(Δρ|data)",
+        limits = (-2, 2, nothing, nothing), 
+        xticks = (collect(-2.0:0.1:2.0), string.(collect(-2.0:0.1:2.0))), 
+        xticklabelrotation = deg2rad(60) 
         )
 
-    Plots.histogram!(
-        hist5, posterior.posterior.τ_control, label = "τ_control", 
-        alpha = 0.5, normalize = :pdf
-        )
+    GLMakie.density!(
+        ax5, Δρ, normalization = :pdf, label = "Δρ",
+        color = :darkgrey, alpha = 0.5
+    )
 
-    p = Plots.plot(
-        hist1, hist2, hist3, hist5, hist4, 
-        layout = (3, 2), size = (800, 800)
-        )
+    GLMakie.vlines!(ax5, 0, color = :black, linestyle = :dash)
 
-    save && Plots.savefig(p, file)
-    return(p)
+    # colgaps
+    GLMakie.colgap!(fig.layout,1,GLMakie.Relative(0.02))
+    GLMakie.colgap!(fig.layout,2,GLMakie.Relative(0.02))
+    GLMakie.colgap!(fig.layout,3,GLMakie.Relative(0.02))
+    GLMakie.colgap!(fig.layout,4,GLMakie.Relative(0.02))
+
+    # colsize of legend
+    GLMakie.colsize!(fig.layout,5,GLMakie.Relative(0.11))
+    # rowgap between upper and lower plot
+    GLMakie.rowgap!(fig.layout,1,GLMakie.Relative(0.02))
+
+    save && GLMakie.save(file, fig , px_per_unit = dpi/72)
+    return(fig)
 end
 
 """
@@ -454,10 +540,27 @@ end
     posterior::CoLocResult, 
     bf::Float64; 
     file::String = "bayesplot.png", 
-    save::Bool = true
+    save::Bool = true,
+    ρ_threshold::Float64 = 0.0
     )
-    Generates a plot of the resulitng prior and posterior distribution
-    of Δ̢ρ and annotates the plot with the Bayes factor.
+
+This function generates a plot of the resulting prior and posterior distribution of Δρ and annotates the plot with the Bayes factor.
+
+# Arguments
+- `prior`: A CoLocResult struct representing the prior to be plotted.
+- `posterior`: A CoLocResult struct representing the posterior to be plotted.
+- `bf`: A Float64 representing the Bayes factor to be annotated on the plot.
+- `file`: A string representing the filename to save the plot to. Must end with .png. Default is "bayesplot.png".
+- `save`: A boolean indicating whether to save the plot to a file. Default is true.
+- `ρ_threshold`: A Float64 representing the threshold for Δρ to be plotted as a vertical line. Default is 0.0.
+- `fig_size`: A Vector of two Real numbers representing the width and height of the plot in centimeters. Default is [8.0,10.0].
+- `dpi`: An integer representing the dots per inch (dpi) value. Default is 300.
+
+# Returns
+- `fig`: A Figure object representing the generated plot.
+
+# Notes
+This function calculates Δρ for the prior and posterior, creates a figure and axis, plots the density of the prior and posterior, plots a vertical line at the ρ threshold, annotates the plot with the Bayes factor, and saves the plot to a file if specified.
 """
 function bayesplot(
     prior::CoLocResult, 
@@ -465,63 +568,133 @@ function bayesplot(
     bf::Float64; 
     file::String = "bayesplot.png", 
     save::Bool = true,
-    ρ_threshold::Float64 = 0.0
-    )
+    ρ_threshold::Float64 = 0.0,
+    fig_size::Vector{T} = [8.0,10.0],
+    dpi::I= 300
+    ) where {T <: AbstractFloat, I <: Integer}
 
     Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
     Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
 
-    hist1 = Plots.histogram(
-        Δρ_prior, legend = true, label = "prior", 
-        title = "P(Δρ|data)", alpha = 0.35,
-        xlabel = "Δρ", ylabel = "PDF",
-        normalize = :pdf,
-        xticks = collect(-2:0.2:2),
-        xrotation = 60
+    fig_size_1 = 72*fig_size[1]/2.54
+    fig_size_2 = 72*fig_size[2]/2.54
+    fig = GLMakie.Figure(
+        size = (fig_size_1, fig_size_2), backgroundcolor = :white, 
+        fontsize = 8, figure_padding = (1,8,1,1)  
         )
 
-    Plots.histogram!(hist1, Δρ_post, label = "posterior", alpha = 0.35, normalize = :pdf)
-    Plots.vline!(hist1, [ρ_threshold], label = "Δρ = $ρ_threshold", color = :black, linestyle = :dash)
+    ax1 = GLMakie.Axis(
+        fig[1, 1], xlabel = "Δρ", ylabel = "PDF", title = "P(Δρ|data)",
+        xticks = (collect(-2.0:0.4:2.0), string.(collect(-2.0:0.4:2.0))), 
+        xticklabelrotation = deg2rad(60),
+        limits = (-2, 2, nothing, nothing)
+    )
 
-    # add BF to the plot
-    Plots.annotate!(
-        hist1, 
-        [(-2.0, 0.05, Plots.text("BF[Δρ>$ρ_threshold : Δρ ≤ $ρ_threshold] = $(round(bf; digits = 2))", 10, :left, :bottom, :black))], 
-        font = "Helvetica", 
-        color = :black
+    hist1a = GLMakie.density!(
+        ax1, Δρ_prior, normalize = :pdf,
+        label = "prior", alpha = 0.30
+    )
+
+    hist1b = GLMakie.density!(
+        ax1, Δρ_post, normalize = :pdf,
+        label = "posterior", alpha = 0.30
+    )
+
+    GLMakie.vlines!(
+        ax1, ρ_threshold, color = :black, 
+        linestyle = :dash, label = "Δρ = $ρ_threshold"
         )
 
-    if save
-        Plots.savefig(hist1, file)
-    end
-    return hist1
+    t = "BF = $(round(bf; digits = 4))"
+    # Add BF to the plot
+    GLMakie.text!(-1.9,0.05, text = t)
+    GLMakie.Legend(
+        fig[2,1], ax1, orientation = :horizontal, framevisible = false, 
+        labelsize = 8, rowgap = 0, titlegap = 0,
+        tellheight = false, valign = :top,
+        patchsize = (5,5)
+        )
+
+    GLMakie.rowsize!(fig.layout,1,GLMakie.Relative(0.90))
+    GLMakie.rowgap!(fig.layout,1,GLMakie.Relative(0.01))
+    save && GLMakie.save(file, fig, px_per_unit = dpi/72)
+    return fig
 end
 
-function bayes_rangeplot(
-    prior::CoLocResult,
-    posterior::CoLocResult;
-    Δ̢ρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)),
-    save::Bool = true,
+"""
+    bayes_rangeplot(
+    prior::CoLocResult, 
+    posterior::CoLocResult; 
+    Δρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)), 
+    save::Bool = true, 
     file::String = "bayes_rangeplot.png"
     ) where {T <: Real}
 
+This function generates a plot of the Bayes factor for a range of Δρ thresholds.
+
+# Arguments
+- `prior`: A CoLocResult struct representing the prior to be plotted.
+- `posterior`: A CoLocResult struct representing the posterior to be plotted.
+- `Δρ`: A Vector of Real numbers representing the range of Δρ thresholds to be used. Default is collect(range(-0.5,0.5;step =0.05)).
+- `save`: A boolean indicating whether to save the plot to a file. Default is true.
+- `file`: A string representing the filename to save the plot to. Must end with .png. Default is "bayes_rangeplot.png".
+
+# Returns
+- `fig`: A Figure object representing the generated plot.
+
+# Notes
+This function calculates the Bayes factor for each Δρ threshold, creates a figure and axis, plots the Bayes factor for each Δρ threshold, plots a horizontal line at BF = 1, and saves the plot to a file if specified.
+"""
+function bayes_rangeplot(
+    prior::CoLocResult,
+    posterior::CoLocResult;
+    Δρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)),
+    save::Bool = true,
+    file::String = "bayes_rangeplot.png",
+    fig_size::Vector{T} = [8.0,10.0],
+    dpi::I= 300
+    ) where {T <: AbstractFloat, I <: Integer}
+
     # calculate the bayes factor for each Δρ threshold
-    bf = fill(0.0, length(Δ̢ρ))
-    for idx in eachindex(Δ̢ρ)
-        a, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = Δ̢ρ[idx])
+    bf = fill(0.0, length(Δρ))
+    for idx in eachindex(Δρ)
+        a, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = Δρ[idx])
         a > 0 ? bf[idx] = a : bf[idx] = NaN
     end 
 
+    # return if all values are NaN or Inf
+    if all(isnan.(bf))
+        @warn "All values are bayes factors are zero. No plot is generated."
+        return nothing
+    end
+
+    if all(isinf.(bf))
+        @warn "All values are bayes factors are infinite. No plot is generated."
+        return nothing
+    end
+
     # plot the results
-    p1 = Plots.plot(
-        Δ̢ρ, log10.(bf), 
-        xlabel = "Δρ0", 
-        ylabel = "log10(BF[Δρ > Δρ0 : Δρ ≤ Δρ0])", 
-        title = "Bayes factor vs Δρ",
-        legend = false
+    ticks = collect(range(Δρ[1], Δρ[end], length = 11))
+    fig_size_1 = 72*fig_size[1]/2.54
+    fig_size_2 = 72*fig_size[2]/2.54
+
+    fig = GLMakie.Figure(
+        size = (fig_size_1, fig_size_2), backgroundcolor = :white,
+        fontsize = 8, figure_padding = (1,8,1,1)
         )
 
-    Plots.hline!(p1, [0], label = "BF = 1", color = :black, linestyle = :dash)
-    save && Plots.savefig(p1, file)
-    return p1
+    ax1 = GLMakie.Axis(
+        fig[1, 1], xlabel = "Δρ0", 
+        ylabel = "log10(BF[Δρ > Δρ0 : Δρ ≤ Δρ0])", 
+        title = "Bayes factor vs Δρ",
+        limits = (Δρ[1], Δρ[end], nothing, nothing), 
+        xticks = (ticks, string.(ticks)),
+        xticklabelrotation = deg2rad(60)
+    )
+
+    GLMakie.lines!(ax1, Δρ, log10.(bf))
+
+    GLMakie.hlines!(ax1, [0], color = :black, linestyle = :dash, label = "BF = 1")
+    save && GLMakie.save(file, fig, px_per_unit = dpi/72)
+    return fig
 end
