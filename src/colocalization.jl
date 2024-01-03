@@ -118,7 +118,7 @@ end
 ######################################################################
 
 """
-    _exclude_zero!(a::Vector{T}, b::Vector{T}) where T <: Number
+    _exclude_zero(a::Vector{T}, b::Vector{T}) where T <: Number
 
 This function excludes zero and NaN values from two vectors.
 
@@ -127,22 +127,24 @@ This function excludes zero and NaN values from two vectors.
 - `b`: A vector of numbers.
 
 # Returns
-- This function does not return a value. It modifies the input vectors `a` and `b` in-place.
+- This function returns two vectors of numbers without zero and NaN values.
 
 # Notes
 This function finds the indices of zero and NaN values in both vectors, creates a union of these indices, and deletes the values at these indices from both vectors.
 """
-function _exclude_zero!(a::Vector{T}, b::Vector{T}) where T <: Number
+function _exclude_zero(a::Vector{T}, b::Vector{T}) where T <: Number
     # get the indices of the zero and NaN values
     zero_indices = sort(union(findall(iszero, a), findall(isnan, a), findall(iszero, b), findall(isnan, b)))
 
     # exclude all values at the indices in zero_indices
     deleteat!(a, zero_indices)
     deleteat!(b, zero_indices)
+
+    return a,b
 end
 
 """
-    _exclude_zero!(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
+    _exclude_zero(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
 
 This function excludes zero and NaN values from two vectors.
 
@@ -151,12 +153,13 @@ This function excludes zero and NaN values from two vectors.
 - `b`: A vector of numbers or missing values.
 
 # Returns
-- This function does not return a value.
+- `a`: A vector of numbers without zero and NaN values.
+- `b`: A vector of numbers without zero and NaN values.
 
 # Notes
 This function replaces missing values with zero, finds the indices of zero and NaN values in both vectors, creates a union of these indices, and deletes the values at these indices from both vectors.
 """
-function _exclude_zero!(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
+function _exclude_zero(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
     # change missing values to zero
     replace!(a, missing => 0)
     replace!(b, missing => 0)
@@ -167,6 +170,11 @@ function _exclude_zero!(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}
     # exclude all values at the indices in zero_indices
     deleteat!(a, zero_indices)
     deleteat!(b, zero_indices)
+
+    a = convert(Vector{T}, a)
+    b = convert(Vector{T}, b)
+
+    return a,b
 end
 
 """
@@ -177,6 +185,7 @@ This function calculates the correlation between two 4D arrays.
 # Arguments
 - `x`: A 4D array representing the first set of data.
 - `y`: A 4D array representing the second set of data.
+- `method`: A symbol representing the correlation method to be used. The default is `:pearson`. The other options are `:spearman` and `:kendall`.
 
 # Returns
 - `ρ`: A 2D array representing the correlation for each patch.
@@ -184,7 +193,10 @@ This function calculates the correlation between two 4D arrays.
 # Notes
 This function iterates over the patches in the 4D arrays, excludes zeros from the data, and calculates the correlation between the patches. If the length of the data in a patch is less than or equal to 15, the correlation is set to missing.
 """
-function correlation(x::Array{T, 4}, y::Array{T, 4}) where T <: Union{Float64, Missing}
+function correlation(x::Array{T, 4}, y::Array{T, 4}; method::Symbol = :pearson) where T <: Union{Float64, Missing}
+    cor_dict = Dict(:pearson => cor, :spearman => corspearman, :kendall => corkendall)
+    haskey(cor_dict, method) || throw(ArgumentError("method must be one of $(keys(cor_dict))"))
+    cor_func = cor_dict[method]
     # get the number of patches
     num_patches = size(x, 1)
     # initialize the correlation
@@ -194,8 +206,8 @@ function correlation(x::Array{T, 4}, y::Array{T, 4}) where T <: Union{Float64, M
         for j in 1:num_patches
             a = x[i, j, :, :][:] 
             b = y[i, j, :, :][:]
-            _exclude_zero!(a,b)
-            length(a) <= 15 ? ρ[i, j] = missing : ρ[i, j] = cor(a, b)
+            a,b = _exclude_zero(a,b)
+            length(a) <= 15 ? ρ[i, j] = missing : ρ[i, j] = cor_func(a, b)
         end
     end
     return ρ

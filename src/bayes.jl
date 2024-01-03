@@ -150,6 +150,7 @@ This is a low-level function that prepares the data for Bayesian analysis.
 - `img`: A MultiChannelImageStack representing the sample images.
 - `channels`: A Vector of integers representing the channels to be analyzed.
 - `num_patches`: An integer representing the number of patches to be analyzed. Default is 1.
+- `cor_method`: A Symbol representing the correlation method to be used. Default is :pearson. The other options are :spearman and :kendall.
 
 # Returns
 - `sample_data`: An array of vectors, where each vector contains the correlation values of a specific image. Images with no signal above the background for the selected channels are removed from the analysis.
@@ -160,14 +161,14 @@ This is a low-level function that prepares the data for Bayesian analysis.
 # Notes
 This function extracts the specified channels from the images, applies patching, and calculates the correlation between the channels. The resulting data is reshaped and missing values are skipped. Images with no signal above the background for the selected channels are removed from the analysis.
 """
-function _prepare_data(img::MultiChannelImageStack, channels::Vector{T}, num_patches::T = 1) where T <: Int
+function _prepare_data(img::MultiChannelImageStack, channels::Vector{T}, num_patches::T = 1; cor_method::Symbol = :pearson) where T <: Int
     # extract channels and patch 
     sample_image::Array{Union{Float64, Missing}, 3} = fill(0.0, img.num_images, num_patches, num_patches)
     for (image,idx) ∈ zip(img, 1:img.num_images)
         x = image.data[channels[1]]
         y = image.data[channels[2]]
         x,y = patch.([x, y], num_patches)
-        sample_image[idx,:,:] = correlation(x, y)
+        sample_image[idx,:,:] = correlation(x, y, method = cor_method)
     end
 
     # reshape the data
@@ -234,11 +235,12 @@ function colocalization(
     channels::Vector{T},
     num_patches::T = 1;
     iter::T = 1000, 
-    posterior_samples::T = 100_000
+    posterior_samples::T = 100_000,
+    cor_method::Symbol = :pearson
     ) where T <: Int
 
-    ctrl_data = _prepare_data(control, channels, num_patches)
-    sample_data = _prepare_data(img, channels, num_patches)
+    ctrl_data = _prepare_data(control, channels, num_patches, cor_method = cor_method)
+    sample_data = _prepare_data(img, channels, num_patches, cor_method = cor_method)
 
     isnothing(ctrl_data) && return missing, missing
     isnothing(sample_data) && return missing, missing

@@ -86,7 +86,8 @@ end
     scale_channels::Bool = true,
     file::String = "test.png";
     channel_for_plot::Vector{T} = [1, 2, 3],
-    save_to_file::Bool = true
+    save_to_file::Bool = true,
+    cor_method::Symbol = :pearson
     ) where {T <: Int}
 
     Plot the image with the patches and the correlation of each patch.
@@ -100,6 +101,7 @@ end
     - `channel_for_plot::Vector{Int64}`: The channels to use for plotting. Only 1-3 channels are supported.
         The first channel is plotted in blue, the second in green and the third in red.
     - `save_to_file::Bool`: Whether to save the plot to the file.
+    - `cor_method::Symbol`: The method to use for the calculation of correlation. Default is :pearson. Other options are :spearman and :kendall.
 
     # Example
     ```julia
@@ -121,7 +123,8 @@ function plot(
     scale_channels::Bool = true,
     file::String = "test.png",
     channel_for_plot::Vector{T} = [1, 2, 3],
-    save_to_file::Bool = true
+    save_to_file::Bool = true,
+    cor_method::Symbol = :pearson
     ) where {T <: Int}
     # check that file ends with .png or .svg
     endswith(file, ".png") || endswith(file, ".svg") || @error "File must end with .png or .svg"
@@ -182,7 +185,7 @@ function plot(
     # patch the image
     x, y = patch.([x, y], num_patches)
     # calculate the correlation for each patch
-    ρ = correlation(x, y)
+    ρ = correlation(x, y, method = cor_method)
 
     # add the correlation values to the image
     for patch ∈ CartesianIndices(ρ)
@@ -258,7 +261,8 @@ end
     img::MultiChannelImageStack, 
     channel_for_plot::Vector{Int}, 
     num_patches::Int, 
-    cor_channel::Vector{Int}
+    cor_channel::Vector{Int},
+    cor_method::Symbol = :pearson
     )::Tuple{Matrix{Float64}, Tuple{Int, Int}}
 
 This is a low-level function that calculates and returns the local correlation between two channels of a multi-channel image.
@@ -268,6 +272,7 @@ This is a low-level function that calculates and returns the local correlation b
 - `channel_for_plot`: A Vector of integers representing the channels to be plotted.
 - `num_patches`: An integer representing the number of patches to be analyzed.
 - `cor_channel`: A Vector of two integers representing the channels for which the correlation is to be calculated.
+- `cor_method`: A Symbol representing the method to be used for the calculation of correlation. Default is :pearson. Other options are :spearman and :kendall.
 
 # Returns
 - `ρ`: A matrix of Float64 representing the local correlation values for each patch.
@@ -281,7 +286,7 @@ This is a low-level function that calculates and returns the local correlation b
 # Notes
 This function checks the number of channels, calculates the patch size, checks the patch size, patches the image, and calculates the correlation for each patch. This function should not be called directly. Use `local_correlation_plot()` instead.
 """
-function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel)
+function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel; cor_method = :pearson)
     # check that the number of channels is 3
     length(channel_for_plot) <= 3 || @warn "This function is currently only implemented for 3 channels"
 
@@ -302,7 +307,7 @@ function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel
     # patch the image
     x, y = patch.([x, y], num_patches)
     # calculate the correlation for each patch
-    ρ = correlation(x, y)
+    ρ = correlation(x, y, method = cor_method)
 
     return ρ, patch_size
 end
@@ -315,7 +320,8 @@ end
     cor_channel::Vector{Int} = [2, 3];
     channel_for_plot::Vector{Int} = [1, 2, 3],
     save::Bool = true,
-    file::String = "local_correlation.png"
+    file::String = "local_correlation.png",
+    cor_method::Symbol = :pearson
     )
 
 This function generates a local correlation plot for a multi-channel image.
@@ -327,6 +333,7 @@ This function generates a local correlation plot for a multi-channel image.
 - `channel_for_plot`: A Vector of integers representing the channels to be plotted. Default is [1, 2, 3].
 - `save`: A boolean indicating whether to save the plot to a file. Default is true.
 - `file`: A string representing the filename for the output file. Default is "local_correlation.png".
+- `cor_method`: A Symbol representing the method to be used for the calculation of correlation. Default is :pearson. Other options are :spearman and :kendall.
 
 # Returns
 - `fig`: A Figure object representing the generated plot.
@@ -344,10 +351,11 @@ function local_correlation_plot(
     cor_channel::Vector{I} = [2, 3];
     channel_for_plot::Vector{I} = [1, 2, 3],
     save::Bool = true,
-    file::String = "local_correlation.png"
+    file::String = "local_correlation.png",
+    cor_method::Symbol = :pearson
     ) where {I <: Int}
 
-    ρ, patch_size = _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel)
+    ρ, patch_size = _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel, cor_method = cor_method)
     
     # check that patches with a successful correlation calculation exist
     if sum(ismissing.(ρ)) == size(ρ)[1] * size(ρ)[2]

@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 module ProteinCoLoc
 # Dependencies
 import Base: getindex, iterate
+import StatsBase: corspearman, corkendall
 import CSV
 import DataFrames
 import DataFrames: DataFrame

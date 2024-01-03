@@ -44,7 +44,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     ρ_range::Vector{Float64} = [-0.8, 0.8], 
     ρ_range_step::Float64 = 0.01, 
     shuffle::Bool = false, 
-    shuffle_method::Symbol = :block  
+    shuffle_method::Symbol = :block,
+    cor_method::Symbol = :pearson 
     ) where {S<:AbstractString, I<:Integer}
 
 This function starts the analysis of multi-channel images.
@@ -71,6 +72,7 @@ This function starts the analysis of multi-channel images.
 - `ρ_range_step`: A Float64 representing the step size for the Bayes factor range plot. Default is 0.01.
 - `shuffle`: A boolean indicating whether to shuffle patches. Default is false.
 - `shuffle_method`: A Symbol representing the shuffle method. Default is :block.
+- `cor_method`: A Symbol representing the correlation method. Default is :pearson. Can be :pearson, :spearman, or :kendall.
 
 # Returns
 - Nothing. The function saves the plots to the specified output folder.
@@ -99,7 +101,8 @@ function start_analysis(
     ρ_range::Vector{Float64} = [-0.8, 0.8], # range for the bayes factor range plot
     ρ_range_step::Float64 = 0.01, # step size for the bayes factor range plot ,
     shuffle::Bool = false, # shuffle patches
-    shuffle_method::Symbol = :block # shuffle method  
+    shuffle_method::Symbol = :block, # shuffle method
+    cor_method::Symbol = :pearson # correlation method  
     ) where {S<:AbstractString, I<:Integer}
 
     ###########################################################################
@@ -159,7 +162,7 @@ function start_analysis(
             images, control_images, channel_selection_two, number_patches, number_patches_loc, 
             number_iterations, number_posterior_samples, ρ_threshold, 
             ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-            bayes_factor_plt, bayes_range_plt, posterior_plt
+            bayes_factor_plt, bayes_range_plt, posterior_plt, cor_method
             )
 
         if !ismissing(prior)
@@ -184,7 +187,7 @@ function start_analysis(
                 images, control_images, channels, number_patches, number_patches_loc, 
                 number_iterations, number_posterior_samples, ρ_threshold, 
                 ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-                bayes_factor_plt, bayes_range_plt, posterior_plt)
+                bayes_factor_plt, bayes_range_plt, posterior_plt, cor_method)
 
             if !ismissing(prior)
                 generate_txt(prior, posterior, bf, channels, ρ_threshold, file = joinpath(output_folder_path, "result.txt"))

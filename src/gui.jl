@@ -105,6 +105,25 @@ function gui()
     set_spacing!(setting_box, 10)
 
     ##############################
+    ## correlation method
+    ##############################
+
+    cor_method_label = Mousetrap.Label("<b>Correlation method</b>")
+    add_css_class!(cor_method_label, "text")
+    cor_method_dropdown = DropDown()
+    cor_method_item_pearson = push_back!(cor_method_dropdown, "Pearson")
+    cor_method_item_spearman = push_back!(cor_method_dropdown, "Spearman")
+    cor_method_item_kendall = push_back!(cor_method_dropdown, "Kendall")
+    set_tooltip_text!(
+        cor_method_dropdown, 
+        "<b>Correlation method </b>: The correlation method used to calculate the correlation coefficient. The default value is Pearson."
+        )
+    
+    cor_method_box = vbox(cor_method_label, cor_method_dropdown)
+    set_spacing!(cor_method_box, 10)
+    push_back!(setting_box, cor_method_box)
+
+    ##############################
     ## number of patches
     ##############################
     path_slider_label = Mousetrap.Label("<b>Number of NxN patches to be used for the analysis</b>")
@@ -528,6 +547,24 @@ function gui()
             return nothing
         end
 
+        # get the correlation method
+        selected_cor_method = get_selected(cor_method_dropdown)
+        cor_method_dict = Dict(
+            cor_method_item_pearson => :pearson,
+            cor_method_item_spearman => :spearman,
+            cor_method_item_kendall => :kendall
+        )
+
+        if haskey(cor_method_dict, selected_cor_method)
+            selected_cor_method = cor_method_dict[selected_cor_method]
+        else
+            log_string = log_string * "Error: Please select an implemented correlaiton method.\n"
+            set_text!(log, log_string)
+            set_is_spinning!(spinner, false)
+            return nothing
+        end 
+
+
         # get the number of patches
         number_patches = Int64(get_value(patch_slider))
 
@@ -635,6 +672,7 @@ function gui()
             "Δρ threshold: "*string(ρ_threshold)*"\n" *
             "Shuffle pixels: "*string(get_is_active(shuffle_button))*"\n"*
             "Shuffle method: "*string(shuffle_method)*"\n"
+            "correlation method: "*string(:selected_cor_method)
             
         set_text!(log, log_string)
 
@@ -666,7 +704,8 @@ function gui()
             ρ_range, # range of the correlation coefficient
             ρ_range_step, # step size of the correlation coefficient,
             get_is_active(shuffle_button), # shuffle pixels
-            shuffle_method # shuffle method
+            shuffle_method, # shuffle method
+            selected_cor_method
             )
 
         # deactivate spinner

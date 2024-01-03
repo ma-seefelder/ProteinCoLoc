@@ -95,7 +95,8 @@ end
     num_patches::Int, 
     channel_indices::Vector{Int}, 
     base_filename::AbstractString, 
-    suffix::AbstractString=""
+    suffix::AbstractString="",
+    cor_method::Symbol = :pearson
     )
 
 This function generates plots for a stack of multi-channel images.
@@ -107,6 +108,7 @@ This function generates plots for a stack of multi-channel images.
 - `channel_indices`: A Vector of integers representing the channels to be analyzed.
 - `base_filename`: A string representing the base filename for the output files.
 - `suffix`: A string representing the suffix to be added to the base filename. Default is an empty string.
+- `cor_method`: A Symbol representing the correlation method to be used. Can be either :pearson, :kendall, or :spearman. Default is :pearson.
 
 # Returns
 - None. The function saves the generated plots to files with the specified filenames.
@@ -124,20 +126,27 @@ function plot_images(
     num_patches::Int, 
     channel_indices::Vector{Int}, 
     base_filename::AbstractString, 
-    suffix::AbstractString=""
+    suffix::AbstractString="",
+    cor_method::Symbol = :pearson
     )
 
     for image in image_stack
         # plot local correlation
         if plot_type == :local_correlation
             try 
-                local_correlation_plot(image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png")
+                local_correlation_plot(
+                    image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png",
+                    cor_method = cor_method
+                    )
             catch
                 @warn "The local correlation plot for image $(image.:name) could not be generated."
             end
         elseif plot_type == :patched_correlation
             try 
-                plot(image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png")
+                plot(
+                    image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png",
+                    cor_method = cor_method
+                    )
             catch
                 @warn "The patched correlation plot for image $(image.:name) could not be generated."
             end
@@ -153,7 +162,7 @@ end
     images, control_images, channel_selection_two, number_patches, number_patches_loc, 
     number_iterations, number_posterior_samples, ρ_threshold, 
     ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-    bayes_factor_plt, bayes_range_plt, posterior_plt
+    bayes_factor_plt, bayes_range_plt, posterior_plt, cor_method
     )
 
 This function generates all plots for a given image and control image stack.
@@ -175,6 +184,7 @@ This function generates all plots for a given image and control image stack.
 - `bayes_factor_plt`: A boolean indicating whether to generate the Bayes factor plot.
 - `bayes_range_plt`: A boolean indicating whether to generate the Bayes factor range plot.
 - `posterior_plt`: A boolean indicating whether to generate the posterior plot.
+- `cor_method`: A Symbol representing the correlation method to be used. Can be either :pearson, :kendall, or :spearman.
 
 # Returns
 - None. The function saves the generated plots to the specified output folder.
@@ -189,26 +199,40 @@ function generate_plots(
     images, control_images, channel_selection_two, number_patches, number_patches_loc, 
     number_iterations, number_posterior_samples, ρ_threshold, 
     ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-    bayes_factor_plt, bayes_range_plt, posterior_plt
+    bayes_factor_plt, bayes_range_plt, posterior_plt, cor_method
     )
     # generate patch plot
     if patched_correlation_plt
         base_file = "$output_folder_path/patched_correlation_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
-        plot_images(:patched_correlation, images, number_patches, channel_selection_two, base_file)
-        plot_images(:patched_correlation, control_images, number_patches, channel_selection_two, base_file, "_control")
+        plot_images(
+            :patched_correlation, images, number_patches, 
+            channel_selection_two, base_file, "", cor_method
+            )
+        plot_images(
+            :patched_correlation, control_images, number_patches, 
+            channel_selection_two, base_file, "_control", cor_method
+            )
     end
 
     # generate local correlation plot
     if local_correlation_plt
         base_file = "$output_folder_path/local_correlation_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
-        plot_images(:local_correlation, images, number_patches_loc, channel_selection_two, base_file)
-        plot_images(:local_correlation, control_images, number_patches_loc, channel_selection_two, base_file, "_control")
+        plot_images(
+            :local_correlation, images, number_patches_loc, 
+            channel_selection_two, base_file, "", cor_method
+            )
+
+        plot_images(
+            :local_correlation, control_images, number_patches_loc, 
+            channel_selection_two, base_file, "_control", cor_method
+            )
     end
 
     # perform colocalization analysis
     prior, posterior = colocalization(
         images, control_images, channel_selection_two, 
-        number_patches; iter = number_iterations, posterior_samples = number_posterior_samples
+        number_patches; iter = number_iterations, posterior_samples = number_posterior_samples,
+        cor_method = cor_method
         )
 
     if ismissing(prior) || ismissing(posterior)

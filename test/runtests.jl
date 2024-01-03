@@ -146,13 +146,13 @@ end
 ###########################################################################################
 @testset "Colocalization" verbose = true begin 
     # define a test set for the _exclude_zero! function
-    @testset "_exclude_zero!" begin
+    @testset "_exclude_zero" begin
         # define a test case
         a = [1, 2, 0, 3, 4, 0, 5, missing]
         b = [0, 2, 3, 0, 4, 5, 6, missing]
 
         # call _exclude_zero! function
-        ProteinCoLoc._exclude_zero!(a, b)
+        ProteinCoLoc._exclude_zero(a, b)
 
         # check that the output is as expected
         @test a == [2,4,5]
@@ -193,7 +193,7 @@ end
         img_stack = MultiChannelImageStack([img, img, img, img, img], "test_stack")
         control_stack = MultiChannelImageStack([img, img, img, img, img], "test_stack")
         # calculate posterior and retrieve prior samples
-        prior, posterior = colocalization(img_stack, control_stack, [2,3], 16)
+        prior, posterior = colocalization(img_stack, control_stack, [2,3], 16, cor_method = :spearman)
         # check that the output is a CoLocResult object
         @test typeof(posterior) == CoLocResult
         @test typeof(prior) == CoLocResult
