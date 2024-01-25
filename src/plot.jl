@@ -1,6 +1,6 @@
 #=
 ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
-Copyright (C) 2023  Dr. rer. nat. Manuel
+Copyright (C) 2023  Dr. rer. nat. Manuel Seefelder
 E-Mail: manuel.seefelder@uni-ulm.de
 Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
 

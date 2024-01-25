@@ -1,6 +1,6 @@
 #=
 ProteinCoLoc: A Julia package for the analysis of protein co-localization in microscopy images
-Copyright (C) 2023  Dr. rer. nat. Manuel
+Copyright (C) 2024  Dr. rer. nat. Manuel Seefelder
 E-Mail: manuel.seefelder@uni-ulm.de
 Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1, 89081 Ulm, Germany
 
@@ -47,7 +47,7 @@ function gui()
     add_css_class!(header_2, "sub_title")
     header_3 = Mousetrap.Label(
         "
-        <b>Author</b>: Dr. rer. nat. Manuel Seefelder
+        <b>Author</b>: Manuel Seefelder
         <b>Email</b>: manuel.seefelder@uni-ulm.de
         <b>Version</b>: 1.0.0
         ")
@@ -59,7 +59,11 @@ function gui()
 
     # add text with description of the program to the intro box
     text= Mousetrap.Label(
-        "This software is designed for analyzing colocalization in immunofluorescence images, a process where the presence of multiple proteins in the same location is examined. To use the program, the user loads several target images and corresponding control images (e.g., secondary-antibody only control). The program then calculates the degree of colocalization among the proteins (Pearson's correlation) and presents the results in various figures. Additionally, it computes a Bayes Factor and the posterior probability of colocalization, only considering areas in the images where signals were detected. This is done by automatically masking the images prior to all calculations.",
+        "Welcome to to ProteinCoLoc. This tool is designed for the assessment of colocalization in immunofluorescence images, a technique used to detect the simultaneous presence of multiple proteins, DNA, or RNA molecules in the same cellular location. To get started, simply upload your target images along with the corresponding control images, such as those using only the secondary antibody.
+
+        The software calculates how closely these proteins colocalize and displays the results through various graphical representations. It also evaluates the statistical likelihood of colocalization by calculating the Bayes Factor and the posterior probability, focusing only on regions within the images that show detectable signals. To ensure accuracy, the software automatically masks non-significant areas before performing any calculations.
+        
+        You have the option to choose the method for computing colocalization based on your research needs. By default, the software uses Pearson's correlation, which is ideal for normally distributed data. Alternatively, you can select Spearman or Kendall methods. Spearman is recommended for non-parametric data where the relationship is monotonic but not necessarily linear. Kendall is best suited for smaller datasets."
         )
 
     add_css_class!(text, "text")

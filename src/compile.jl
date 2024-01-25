@@ -20,8 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using PackageCompiler
 create_app(
-    "C:/Users/manue/Documents/GitHub/ProteinCoLoc", 
-    "C:/Users/manue/Desktop/ProteinCoLoc", 
-    script="C:/Users/manue/Documents/GitHub/ProteinCoLoc/src/script.jl";
+    "C:/Users/Manuel/Documents/GitHub/ProteinCoLoc", 
+    "C:/Users/Manuel/Desktop/ProteinCoLoc", 
+    script="C:/Users/Manuel/Documents/GitHub/ProteinCoLoc/src/script.jl";
     force = true
     )
