@@ -57,7 +57,7 @@ This function starts the analysis of multi-channel images.
 - `number_patches`: An integer representing the number of patches.
 - `number_patches_loc`: An integer representing the number of patches for local correlation.
 - `number_channels`: An integer representing the number of channels.
-- `channel_selection`: A boolean indicating whether to select channels.
+- `channel_selection`: A boolean indicating whether to select channels. If true, the function will use the two channels specified in `channel_selection_two`. If false, the function will use all possible combinations of channels.
 - `channel_selection_two`: A Vector of integers representing the two selected channels.
 - `patched_correlation_plt`: A boolean indicating whether to plot the patched correlation.
 - `local_correlation_plt`: A boolean indicating whether to plot the local correlation.
@@ -157,7 +157,7 @@ function start_analysis(
     ###########################################################################
     # perform analysis and plotting
     ###########################################################################
-    if !channel_selection
+    if channel_selection
         prior, posterior, bf = generate_plots(
             images, control_images, channel_selection_two, number_patches, number_patches_loc, 
             number_iterations, number_posterior_samples, ρ_threshold, 
