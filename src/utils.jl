@@ -210,15 +210,14 @@ function generate_plots(
         )
     bf, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = ρ_threshold)
 
-    Dagger.@sync begin
     # generate patch plot
     if patched_correlation_plt
-        Dagger.@spawn base_file_patched = "$output_folder_path/patched_correlation_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
-        Dagger.@spawn plot_images(
+        base_file_patched = "$output_folder_path/patched_correlation_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
+        plot_images(
             :patched_correlation, images, number_patches, 
             channel_selection_two, base_file_patched, "", cor_method
             )
-        Dagger.@spawn plot_images(
+        plot_images(
             :patched_correlation, control_images, number_patches, 
             channel_selection_two, base_file_patched, "_control", cor_method
             )
@@ -226,13 +225,13 @@ function generate_plots(
 
     # generate local correlation plot
     if local_correlation_plt
-        Dagger.@spawn base_file_local = "$output_folder_path/local_correlation_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
-        Dagger.@spawn plot_images(
+        base_file_local = "$output_folder_path/local_correlation_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
+        plot_images(
             :local_correlation, images, number_patches_loc, 
             channel_selection_two, base_file_local, "", cor_method
             )
 
-        Dagger.@spawn plot_images(
+        plot_images(
             :local_correlation, control_images, number_patches_loc, 
             channel_selection_two, base_file_local, "_control", cor_method
             )
@@ -244,33 +243,31 @@ function generate_plots(
     end
 
     if bayes_factor_plt
-        Dagger.@spawn base_file_bayesplot = joinpath(output_folder_path, "bayes_factor_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
+        base_file_bayesplot = joinpath(output_folder_path, "bayes_factor_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
         try 
-            Dagger.@spawn bayesplot(prior, posterior, bf; file = base_file_bayesplot * ".png", ρ_threshold = ρ_threshold)
+            bayesplot(prior, posterior, bf; file = base_file_bayesplot * ".png", ρ_threshold = ρ_threshold)
         catch
             @warn "The bayes factor plot could not be generated."
         end
     end
 
     if bayes_range_plt
-        Dagger.@spawn base_file_brange = joinpath(output_folder_path, "bayes_factor_range_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
+       base_file_brange = joinpath(output_folder_path, "bayes_factor_range_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
         try 
-            Dagger.@spawn bayes_rangeplot(prior, posterior; file = base_file_brange * ".png", Δρ = collect(range(ρ_range[1],ρ_range[2];step =ρ_range_step)))
+            bayes_rangeplot(prior, posterior; file = base_file_brange * ".png", Δρ = collect(range(ρ_range[1],ρ_range[2];step =ρ_range_step)))
         catch
             @warn "The bayes factor range plot could not be generated."
         end
     end
 
     if posterior_plt
-        Dagger.@spawn base_file_posterior = joinpath(output_folder_path, "posterior_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
+       base_file_posterior = joinpath(output_folder_path, "posterior_c$(channel_selection_two[1])_c$(channel_selection_two[2])")
         try 
-            Dagger.@spawn plot_posterior(posterior; file = base_file_posterior * ".png")
+            plot_posterior(posterior; file = base_file_posterior * ".png")
         catch
             @warn "The posterior plot could not be generated."
         end
     end
-
-    end # end of Dagger.@sync
     return prior, posterior, bf
 end 
 

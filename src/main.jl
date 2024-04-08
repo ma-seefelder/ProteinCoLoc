@@ -157,6 +157,15 @@ function start_analysis(
     ###########################################################################
     # perform analysis and plotting
     ###########################################################################
+    # mask plot
+    if mask_plt
+        for img_set in [images, control_images]
+            for img in img_set
+                plot_mask(img, joinpath(output_folder_path, "mask" * string(img.:name)  * ".png"))
+            end
+        end
+    end
+    
     if channel_selection
         prior, posterior, bf = generate_plots(
             images, control_images, channel_selection_two, number_patches, number_patches_loc, 
@@ -178,39 +187,32 @@ function start_analysis(
                 posterior.posterior
                 )
         end
-    else
-        # extract all possible combinations of channels 
-        channel_combinations = combinations2(number_channels)
-        # iterate over all channel combinations
-        for channels ∈ channel_combinations
-            prior, posterior, bf = generate_plots(
-                images, control_images, channels, number_patches, number_patches_loc, 
-                number_iterations, number_posterior_samples, ρ_threshold, 
-                ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
-                bayes_factor_plt, bayes_range_plt, posterior_plt, cor_method)
 
-            if !ismissing(prior)
-                generate_txt(prior, posterior, bf, channels, ρ_threshold, file = joinpath(output_folder_path, "result.txt"))
-                # write the DataFrames prior_samples and posterior_samples to csv
-                CSV.write(
-                    joinpath(output_folder_path,"prior_samples_channel$(string(channels[1]))_$(channels[2]).csv"),
-                    prior.posterior
-                )
+        return nothing
+    end 
 
-                CSV.write(
-                    joinpath(output_folder_path,"posterior_samples_channel$(string(channels[1]))_$(channels[2]).csv"),
-                    posterior.posterior
-                )
-            end
-        end
-    end
+    # extract all possible combinations of channels 
+    channel_combinations = combinations2(number_channels)
+    # iterate over all channel combinations
+    for channels ∈ channel_combinations
+        prior, posterior, bf = generate_plots(
+            images, control_images, channels, number_patches, number_patches_loc, 
+            number_iterations, number_posterior_samples, ρ_threshold, 
+            ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
+            bayes_factor_plt, bayes_range_plt, posterior_plt, cor_method)
 
-    # mask plot
-    if mask_plt
-        for img_set in [images, control_images]
-            for img in img_set
-                plot_mask(img, joinpath(output_folder_path, "mask" * string(img.:name)  * ".png"))
-            end
+        if !ismissing(prior)
+            generate_txt(prior, posterior, bf, channels, ρ_threshold, file = joinpath(output_folder_path, "result.txt"))
+            # write the DataFrames prior_samples and posterior_samples to csv
+            CSV.write(
+                joinpath(output_folder_path,"prior_samples_channel$(string(channels[1]))_$(channels[2]).csv"),
+                prior.posterior
+            )
+
+            CSV.write(
+                joinpath(output_folder_path,"posterior_samples_channel$(string(channels[1]))_$(channels[2]).csv"),
+                posterior.posterior
+            )
         end
     end
 end
