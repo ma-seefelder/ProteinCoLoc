@@ -166,7 +166,7 @@ function start_analysis(
         end
     end
     
-    if channel_selection
+    if channel_selection == true
         prior, posterior, bf = generate_plots(
             images, control_images, channel_selection_two, number_patches, number_patches_loc, 
             number_iterations, number_posterior_samples, ρ_threshold, 

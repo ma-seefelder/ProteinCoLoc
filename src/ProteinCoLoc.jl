@@ -22,7 +22,6 @@ module ProteinCoLoc
 import Base: getindex, iterate
 import StatsBase: corspearman, corkendall
 import CSV
-import Dagger
 import DataFrames
 import DataFrames: DataFrame
 import Distributions: pdf
