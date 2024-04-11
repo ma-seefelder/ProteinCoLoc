@@ -57,7 +57,7 @@ This function starts the analysis of multi-channel images.
 - `number_patches`: An integer representing the number of patches.
 - `number_patches_loc`: An integer representing the number of patches for local correlation.
 - `number_channels`: An integer representing the number of channels.
-- `channel_selection`: A boolean indicating whether to select channels.
+- `channel_selection`: A boolean indicating whether to select channels. If false, all possible combinations of channels are analyzed. 
 - `channel_selection_two`: A Vector of integers representing the two selected channels.
 - `patched_correlation_plt`: A boolean indicating whether to plot the patched correlation.
 - `local_correlation_plt`: A boolean indicating whether to plot the local correlation.
@@ -87,14 +87,14 @@ function start_analysis(
     number_patches::I, # number of patchesm
     number_patches_loc::I, # number of patches for local correlation
     number_channels::I, # number of channels
-    channel_selection::Bool, # channel selection
-    channel_selection_two::Vector{I}, # channel selection two
-    patched_correlation_plt::Bool, # patched correlation plot
-    local_correlation_plt::Bool, # local correlation plot
-    bayes_factor_plt::Bool, # bayes factor plot
-    bayes_range_plt::Bool, # bayes range plot
-    posterior_plt::Bool, # posterior plot
-    mask_plt::Bool, # mask plot
+    channel_selection::Bool = true, # channel selection
+    channel_selection_two::Vector{I} = true, # channel selection two
+    patched_correlation_plt::Bool = true, # patched correlation plot
+    local_correlation_plt::Bool = true, # local correlation plot
+    bayes_factor_plt::Bool = true, # bayes factor plot
+    bayes_range_plt::Bool = true , # bayes range plot
+    posterior_plt::Bool = true, # posterior plot
+    mask_plt::Bool = true, # mask plot
     number_iterations::I = 1000, # number of iterations
     number_posterior_samples::I = 100_000,# number of posterior samples
     ρ_threshold::Float64 = 0.1, # threshold for the bayes factor
@@ -157,7 +157,7 @@ function start_analysis(
     ###########################################################################
     # perform analysis and plotting
     ###########################################################################
-    if !channel_selection
+    if channel_selection
         prior, posterior, bf = generate_plots(
             images, control_images, channel_selection_two, number_patches, number_patches_loc, 
             number_iterations, number_posterior_samples, ρ_threshold, 
