@@ -32,10 +32,9 @@ import QuadGK: quadgk
 import Statistics: quantile, mean, median
 import Base: Cint
 import Random: shuffle!, randperm
-
 using Turing
 using Turing: Variational
-using Mousetrap
+#using Mousetrap
 
 include("LoadImages.jl")
 include("colocalization.jl")
@@ -43,8 +42,8 @@ include("bayes.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
-include("gui_css.jl")
-include("gui.jl")
+#include("gui_css.jl")
+#include("gui.jl")
 include("script.jl")
 
 export MultiChannelImage, MultiChannelImageStack, colocalization
