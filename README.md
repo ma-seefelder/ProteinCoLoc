@@ -18,7 +18,9 @@ For more details on this tool's methodology and potential applications, please r
 ProteinCoLoc is licensed under the <a href = "https://www.gnu.org/licenses/agpl-3.0.en.html"> GNU Affero General Public License v3.0 </a>
 
 ## Citation
-If you use ProteinCoLoc in your research, please cite it as follows:
+If you use ProteinCoLoc in your research, please cite our article in Scientific Reports:
+
+Seefelder, M., Kochanek, S. & Klein, F.A.C. ProteinCoLoc streamlines Bayesian analysis of colocalization in microscopic images. Sci Rep 14, 13277 (2024). https://doi.org/10.1038/s41598-024-63884-1
 
 ## Contact
 For support or queries, please get in touch with us at: </br></br>
