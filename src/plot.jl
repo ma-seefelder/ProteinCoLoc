@@ -171,8 +171,8 @@ function plot(
 
     # add lines to the image to separate the patches
     for i in 0:num_patches
-        GLMakie.hlines!([i*patch_size[1]], color = :white, linealpha = 0.5, linestyle = :dash, linewidth = 1)
-        GLMakie.vlines!([i*patch_size[2]], color = :white, linealpha = 0.5, linestyle = :dash, linewidth = 1)
+        GLMakie.hlines!([i*patch_size[1]], color = :white, alpha = 0.5, linestyle = :dash, linewidth = 1)
+        GLMakie.vlines!([i*patch_size[2]], color = :white, alpha = 0.5, linestyle = :dash, linewidth = 1)
     end
 
     ######################################
