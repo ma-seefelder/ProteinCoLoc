@@ -182,15 +182,18 @@ function _prepare_data(img::MultiChannelImageStack, channels::Vector{T}, num_pat
     end
 
     # remove images with no signal above background
+    delete_idx = Int[]
     for idx ∈ 1:img.num_images
         size_array = size(sample_data[idx])
         if ismissing.(sample_data[idx]) == fill(true, size_array)
             @warn "Image $idx has no signal above background for the selected channels.
             The image is removed from the analysis."
-            deleteat!(sample_data, idx)
-        end
+            push!(delete_idx, idx)              
+        end  
     end
-
+    length(delete_idx) >= 1 && deleteat!(sample_data, delete_idx)
+    
+    
     if length(sample_data) == 0
         return nothing
     end
