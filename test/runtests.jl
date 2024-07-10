@@ -134,11 +134,16 @@ end
     @test size(patches) == (num_patches, num_patches, size(img, 1) ÷ num_patches, size(img, 2) ÷ num_patches)
 
     # check that the values in the patches match the corresponding values in the original image
+    patches_correct::Vector{Bool} = []
     for i in 1:num_patches
         for j in 1:num_patches
-            @test patches[i, j, :, :] == img[(i-1)*size(img, 1) ÷ num_patches+1:i*size(img, 1) ÷ num_patches, (j-1)*size(img, 2) ÷ num_patches+1:j*size(img, 2) ÷ num_patches]
+            push!(
+                patches_correct,
+                patches[i, j, :, :] == img[(i-1)*size(img, 1) ÷ num_patches+1:i*size(img, 1) ÷ num_patches, (j-1)*size(img, 2) ÷ num_patches+1:j*size(img, 2) ÷ num_patches]
+                ) 
         end
     end
+    @test all(patches_correct)
 end
 
 ###########################################################################################

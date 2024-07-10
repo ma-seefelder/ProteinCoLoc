@@ -450,57 +450,54 @@ function plot_posterior(
 
     ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "ρ", ylabel = "P(ρ|data)", title = "P(ρ|data)",
-        #limits = (-1, 1, nothing, nothing), 
-        #xticks = (collect(-1.0:0.2:1.0), string.(collect(-1.0:0.2:1.0))), 
         xticklabelrotation = deg2rad(60)
         )
-
+    #
+    # alpha and normalise no longer supported, instead colour can be used
     GLMakie.density!(
         ax1, posterior.posterior.μ_control,
-        alpha = 0.5, label = "control",
-        normalization = :pdf
+        colormap = (:viridis, 0.3), label = "control",
         )
         
     GLMakie.density!(
         ax1, posterior.posterior.μ_sample,
-        alpha = 0.5, label = "sample",
-        normalization = :pdf
+        colormap = (:viridis, 0.3), label = "sample"
         )
         
     ax2 = GLMakie.Axis(fig[1, 2], xlabel = "ν", ylabel = "P(ν|data)", title = "P(ν|data)", xticklabelrotation = deg2rad(60))
     
     GLMakie.density!(
-        ax2, posterior.posterior.ν_control, normalization = :pdf,
-        alpha = 0.5, label = "ν_control"
+        ax2, posterior.posterior.ν_control, 
+        colormap = (:viridis, 0.3), label = "ν_control"
         )
 
     GLMakie.density!(
-        ax2, posterior.posterior.ν_sample, normalization = :pdf,
-        alpha = 0.5, label = "ν_sample"
+        ax2, posterior.posterior.ν_sample, 
+        colormap = (:viridis, 0.3), label = "ν_sample"
     )
 
     ax3 = GLMakie.Axis(fig[1, 3], xlabel = "σ", ylabel = "P(σ|data)", title = "P(σ|data)", xticklabelrotation = deg2rad(60))
 
     GLMakie.density!(
-        ax3, posterior.posterior.σ_control, normalization = :pdf,
-        alpha = 0.5, label = "σ_control"
+        ax3, posterior.posterior.σ_control, 
+        colormap = (:viridis, 0.3), label = "σ_control"
         )
 
     GLMakie.density!(
-        ax3, posterior.posterior.σ_sample, normalization = :pdf,
-        alpha = 0.5, label = "σ_sample"
+        ax3, posterior.posterior.σ_sample, 
+        colormap = (:viridis, 0.3), label = "σ_sample"
     )
 
     ax4 = GLMakie.Axis(fig[1, 4], xlabel = "τ", ylabel = "P(τ|data)", title = "P(τ|data)", xticklabelrotation = deg2rad(60))
 
     GLMakie.density!(
-        ax4, posterior.posterior.τ_sample, normalization = :pdf,
-        alpha = 0.5, label = "τ_sample"
+        ax4, posterior.posterior.τ_sample, 
+        colormap = (:viridis, 0.3), label = "τ_sample"
         )
 
     GLMakie.density!(
-        ax4, posterior.posterior.τ_control, normalization = :pdf,
-        alpha = 0.5, label = "τ_control"
+        ax4, posterior.posterior.τ_control, 
+        colormap = (:viridis, 0.3), label = "τ_control"
     )
 
     GLMakie.Legend(
@@ -521,8 +518,8 @@ function plot_posterior(
         )
 
     GLMakie.density!(
-        ax5, Δρ, normalization = :pdf, label = "Δρ",
-        color = :darkgrey, alpha = 0.5
+        ax5, Δρ, label = "Δρ",
+        color = (:darkgrey, 0.3)
     )
 
     GLMakie.vlines!(ax5, 0, color = :black, linestyle = :dash)
@@ -599,13 +596,13 @@ function bayesplot(
     )
 
     hist1a = GLMakie.density!(
-        ax1, Δρ_prior, normalize = :pdf,
-        label = "prior", alpha = 0.30
+        ax1, Δρ_prior, colormap = (:viridis, 0.3),
+        label = "prior",
     )
 
     hist1b = GLMakie.density!(
-        ax1, Δρ_post, normalize = :pdf,
-        label = "posterior", alpha = 0.30
+        ax1, Δρ_post,
+        label = "posterior", colormap = (:viridis, 0.3)
     )
 
     GLMakie.vlines!(
