@@ -2,7 +2,7 @@
 <p align="center"> <img src = "logo.png" width = 400 height = 500> </p>
 
 ## Description
-ProteinCoLoc is a scientific software designed for Bayesian analysis of co-localization in microscopic images. Utilizing cutting-edge statistical methods, ProteinCoLoc provides accurate and detailed insights for molecular biology researchers. A graphical user interface is available that facilitates the use of the software. Additionally, a compiled version of ProteinCoLoc is available at XY that does not require the installation of Julia. 
+ProteinCoLoc is a scientific software designed for Bayesian analysis of co-localization in microscopic images. Utilizing cutting-edge statistical methods, ProteinCoLoc provides accurate and detailed insights for molecular biology researchers. A graphical user interface is available that facilitates the use of the software. Additionally, a compiled version of ProteinCoLoc is available at Zenodo <a href = "https://doi.org/10.5281/zenodo.10977960"> that does not require the installation of Julia. 
 
 
 ## Features
