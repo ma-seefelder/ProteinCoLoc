@@ -1,6 +1,7 @@
 name = "ProteinCoLoc"
 uuid = "12345678-1234-1234-1234-123456789abc"
 version = "1.0.1"
+authors = ["ma-seefelder <manuel.seefelder@uni-ulm.de>"]
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
