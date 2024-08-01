@@ -7,7 +7,7 @@ makedocs(;
     modules=[ProteinCoLoc],
     authors="ma-seefelder <manuel.seefelder@uni-ulm.de>",
     sitename="ProteinCoLoc.jl",
-    format=Documenter.HTsML(;
+    format=Documenter.HTML(;
         canonical="https://ma-seefelder.github.io/ProteinCoLoc.jl",
         edit_link="master",
         assets=String[],

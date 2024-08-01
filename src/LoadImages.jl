@@ -91,7 +91,7 @@ end
 """
 function MultiChannelImageStack(img::Vector{T}, name::S) where {T <: MultiChannelImage, S <: AbstractString}
     return MultiChannelImageStack{T,S}(img, name, length(img))
-
+end
 # Method definition for struct MultiChannelImageStack
 """
     Base.getindex(stack::MultiChannelImageStack, i::Int64)
