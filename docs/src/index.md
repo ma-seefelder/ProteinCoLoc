@@ -4,11 +4,10 @@ CurrentModule = ProteinCoLoc
 
 # ProteinCoLoc
 
-Documentation for [ProteinCoLoc](https://github.com/ma-seefelder/ProteinCoLoc.jl).
+Documentation for [ProteinCoLoc](https://github.com/ma-seefelder/ProteinCoLoc).
 
 ```@index
+
 ```
 
-```@autodocs
-Modules = [ProteinCoLoc]
-```
+

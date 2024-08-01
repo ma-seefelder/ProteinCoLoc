@@ -23,22 +23,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ################################################################################
 """
     mutable struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractString, F <: AbstractFloat}
-        data::Vector{Matrix{T}}
-        channels::Vector{S}
-        name::S
-        path::Vector{S}
-        pixel_size::Tuple{F, F}
-        otsu_threshold::Vector{F}
 
     This mutable struct represents a multi-channel image.
 
     # Fields
-    - `data`: A Vector of Matrix{T} representing the image data for each channel.
-    - `channels`: A Vector of strings representing the names of the channels.
-    - `name`: A string representing the name of the image.
-    - `path`: A Vector of strings representing the paths to the image files for each channel.
-    - `pixel_size`: A Tuple of two Float64 representing the width and height of the pixels in micrometers.
-    - `otsu_threshold`: A Vector of Float64 representing the Otsu threshold for each channel.
+    - `data::Vector{Matrix{T}}`: A Vector of Matrix{T} representing the image data for each channel.
+    - `channels::Vector{S}`: A Vector of strings representing the names of the channels.
+    - `name::S`: A string representing the name of the image.
+    - `path::Vector{S}`: A Vector of strings representing the paths to the image files for each channel.
+    - `pixel_size::Tuple{F, F}`: A Tuple of two Float64 representing the width and height of the pixels in micrometers.
+    - `otsu_threshold::Vector{F}`: A Vector of Float64 representing the Otsu threshold for each channel.
 
     # Constructor
     The constructor checks that the lengths of the `data`, `channels`, and `otsu_threshold` vectors match.
@@ -63,9 +57,6 @@ end
 
 """
     mutable struct MultiChannelImageStack{T <: MultiChannelImage, S <: AbstractString}
-        img::Vector{T}
-        name::S
-        num_images::Int64
 
     This mutable struct represents a stack of multi-channel images.
 
@@ -84,17 +75,28 @@ mutable struct MultiChannelImageStack{T <:MultiChannelImage, S <: AbstractString
     img::Vector{T}
     name::S
     num_images::Int64 # number of images in the stack
-
-    function MultiChannelImageStack(img::Vector{T}, name::S) where {T <: MultiChannelImage, S <: AbstractString}
-        new{T, S}(img, name, length(img))
-    end
 end
+
+"""
+    MultiChannelImageStack(img::Vector{T}, name::S) where {T <: MultiChannelImage, S <: AbstractString}
+
+    This function creates a MultiChannelImageStack from a Vector of MultiChannelImage and a string.
+
+    # Arguments
+    - `img`: A Vector of MultiChannelImage representing the images in the stack.
+    - `name`: A string representing the name of the image stack.
+
+    # Returns
+    - `stack`: A MultiChannelImageStack representing the stack of images.
+"""
+function MultiChannelImageStack(img::Vector{T}, name::S) where {T <: MultiChannelImage, S <: AbstractString}
+    return MultiChannelImageStack{T,S}(img, name, length(img))
 
 # Method definition for struct MultiChannelImageStack
 """
     Base.getindex(stack::MultiChannelImageStack, i::Int64)
 
-This function overrides the base getindex function to retrieve an image from a MultiChannelImageStack.
+Function to retrieve an image from a MultiChannelImageStack.
 
 # Arguments
 - `stack`: A MultiChannelImageStack from which to retrieve an image.
@@ -220,6 +222,17 @@ function _apply_mask!(img, mask)
     return img
 end
 
+"""
+    apply_mask!(img)
+
+    This function calculates a  mask for a MultiChannelImage using Otsu thresholding and directly applies it to the image.
+
+    # Arguments
+    - `img`: A MultiChannelImage to which to apply the mask.
+
+    # Returns
+    - `img`: The MultiChannelImage with the mask applied.
+"""
 function apply_mask!(img)
     mask = _calculate_mask(img)
     img = _apply_mask!(img, mask)

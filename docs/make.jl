@@ -5,19 +5,23 @@ DocMeta.setdocmeta!(ProteinCoLoc, :DocTestSetup, :(using ProteinCoLoc); recursiv
 
 makedocs(;
     modules=[ProteinCoLoc],
-    authors="ma-seefelder <manuel.seefelder@uni-ulm.de> and contributors",
+    authors="ma-seefelder <manuel.seefelder@uni-ulm.de>",
     sitename="ProteinCoLoc.jl",
-    format=Documenter.HTML(;
+    format=Documenter.HTsML(;
         canonical="https://ma-seefelder.github.io/ProteinCoLoc.jl",
         edit_link="master",
         assets=String[],
     ),
     pages=[
         "Home" => "index.md",
+        "Load Images" => "loading_image.md"
     ],
+    checkdocs = :none
 )
 
+#=
 deploydocs(;
-    repo="github.com/ma-seefelder/ProteinCoLoc.jl",
-    devbranch="master",
+    repo="github.com/ma-seefelder/ProteinCoLoc",
+    devbranch="registration",
 )
+=#
