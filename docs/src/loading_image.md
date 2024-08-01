@@ -3,9 +3,12 @@ CurrentModule = ProteinCoLoc
 ```
 
 # Loading images
+```@contents
+Pages = ["loading_image.md"]
+```
 
 ## Data types and Interface
-All images need to be represented as the mutable struct `MultiChannelImage`  for further use with ProteinCoLoc.jl. This `MultiChannelImage` allows storing all pixel itensities, channel names, the image name, path to the individual channel images, the size of the image as well as the Otsu's threshold for each color channel. 
+All images need to be represented as the mutable struct `MultiChannelImage` for further use with ProteinCoLoc.jl. This `MultiChannelImage` allows storing all pixel itensities, channel names, the image name, path to the individual channel images, the size of the image as well as the Otsu's threshold for each color channel. 
 
 ```@docs
 MultiChannelImage
@@ -49,9 +52,26 @@ The image mask using Otsu thresholding can be computed and directly applied to a
 apply_mask!
 ```
 
-In addition, two low-level function are available to perform these steps individually. These functions are not part of the public API and might change in the future. 
+!!! warning "_calculate_mask and _apply_mask! are not part of the public API"
+    In addition, two low-level function are available to perform these steps individually. These functions are not part of the public API and might change in the future. 
 
 ```@docs
 _calculate_mask
-_apply_mask!
+_apply_mask!(img, mask)
+```
+
+## Generation of control images
+
+ProteinCoLocs provides two different ways to generate artificial control images. As discussed in our [paper](https://doi.org/10.1038/s41598-024-63884-1), the use of randomly shuffled or block shuffled image are not ideal as these may lead to unreliable results. Therefore, we strongly recommend the use of dedicated control images (e.g. control staining without primary antibodies) that have been taken with the same settings.
+
+The first image randomly shuffles all pixels of each color channel. 
+
+```@docs
+shuffle_pixels
+```
+
+The second method shuffles blocks of pixels in each channel of a `MultiChannelImage`. The block shuffling should retain the autocorrelation between neighboring pixels.
+
+```@docs
+shuffle_blocks
 ```

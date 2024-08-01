@@ -14,7 +14,8 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Load Images" => "loading_image.md"
+        "Load Images" => "loading_image.md",
+        "Plot" => "plot.md"
     ],
     checkdocs = :none
 )

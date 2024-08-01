@@ -312,6 +312,7 @@ function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel
     return ρ, patch_size
 end
 
+
 """
     local_correlation_plot(
     img::MultiChannelImage,
