@@ -102,18 +102,6 @@ end
         The first channel is plotted in blue, the second in green and the third in red.
     - `save_to_file::Bool`: Whether to save the plot to the file.
     - `cor_method::Symbol`: The method to use for the calculation of correlation. Default is :pearson. Other options are :spearman and :kendall.
-
-    # Example
-    ```julia
-    path = ["test_images/c1.tif", "test_images/c2.tif", "test_images/c3.tif"]
-    img = MultiChannelImage("positive_sample", path, ["blue", "green", "red"])
-    mask = _calculate_mask(img)
-    _apply_mask!(img, mask)
-    cor_channel = [2, 3]
-    scale_channels = true
-    num_patches = 16
-
-    plot(img, num_patches, cor_channel, scale_channels, "test.png")
     ```
 """
 function plot(
