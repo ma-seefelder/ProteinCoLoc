@@ -1,5 +1,8 @@
-using ProteinCoLoc
-using Documenter
+# set up environment
+import Pkg; Pkg.activate("./docs")
+!isdefined(Main, :Documenter) && Pkg.add("Documenter")
+using Documenter, ProteinCoLoc
+###############################################################################
 
 DocMeta.setdocmeta!(ProteinCoLoc, :DocTestSetup, :(using ProteinCoLoc); recursive=true)
 

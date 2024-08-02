@@ -18,7 +18,17 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 =#
 
+# set up the environment
+import Pkg
+Pkg.activate("./src/compile")
+
+if !isdefined(Main, :PackageCompiler)
+    Pkg.add("PackageCompiler")
+end
+
 using PackageCompiler
+
+# compile the package
 create_app(
     "C:/Users/Manuel/Documents/GitHub/ProteinCoLoc", 
     "C:/Users/Manuel/Desktop/ProteinCoLoc", 

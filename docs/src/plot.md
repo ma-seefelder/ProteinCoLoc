@@ -54,7 +54,7 @@ local_correlation_plot
 ## Helper functions
 
 ```@docs
-minmax_norm!(img::Matrix{Float64})
+minmax_norm!
 ```
 
 ```@docs

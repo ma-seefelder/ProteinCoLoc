@@ -1,7 +1,7 @@
 name = "ProteinCoLoc"
 uuid = "12345678-1234-1234-1234-123456789abc"
-version = "1.0.1"
 authors = ["ma-seefelder <manuel.seefelder@uni-ulm.de>"]
+version = "1.0.1"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -10,7 +10,6 @@ Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 KernelDensity = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
-PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Random123 = "74087812-796a-5b5d-8853-05524746bad3"
