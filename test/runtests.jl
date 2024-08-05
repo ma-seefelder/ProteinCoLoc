@@ -7,9 +7,7 @@ import Images
 import Statistics: cor
 
 using .ProteinCoLoc
-using Random123
 using Test
-Random123.seed!(1234)
 
 ##########################################################################################
 ### Test for Image Loading functionality
