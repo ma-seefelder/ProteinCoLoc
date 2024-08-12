@@ -401,3 +401,4 @@ FodyWeavers.xsd
 *.sln.iml
 /docs/build
 /docs/build/assets
+docs/build/assets/logo.png
