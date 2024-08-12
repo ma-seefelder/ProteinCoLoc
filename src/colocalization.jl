@@ -148,9 +148,6 @@ This function calculates the correlation between two 4D arrays.
 
 # Returns
 - `ρ`: A 2D array representing the correlation for each patch.
-
-# Notes
-This function iterates over the patches in the 4D arrays, excludes zeros from the data, and calculates the correlation between the patches. If the length of the data in a patch is less than or equal to 15, the correlation is set to missing.
 """
 function correlation(x::Array{T, 4}, y::Array{T, 4}; method::Symbol = :pearson) where T <: Union{Float64, Missing}
     # get the correlation function
@@ -175,7 +172,7 @@ function correlation(x::Array{T, 4}, y::Array{T, 4}; method::Symbol = :pearson) 
             continue
         end
         ρ[i, j] = cor_func(a, b)
-        
+
     end
     return ρ
 end
