@@ -402,3 +402,4 @@ FodyWeavers.xsd
 /docs/build
 /docs/build/assets
 docs/build/assets/logo.png
+/build
