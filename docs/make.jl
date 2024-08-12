@@ -1,9 +1,7 @@
 # set up environment
 import Pkg; Pkg.activate("./docs")
-!isdefined(Main, :Documenter) && Pkg.add("Documenter")
 using Documenter, ProteinCoLoc
 ###############################################################################
-
 DocMeta.setdocmeta!(ProteinCoLoc, :DocTestSetup, :(using ProteinCoLoc); recursive=true)
 
 makedocs(;
@@ -13,16 +11,22 @@ makedocs(;
     format=Documenter.HTML(;
         canonical="https://ma-seefelder.github.io/ProteinCoLoc.jl",
         edit_link="master",
-        assets=String[],
+        assets=String["assets/custom_css.css"],
     ),
     pages=[
         "Home" => "index.md",
-        "Load Images" => "loading_image.md",
-        "Plot" => "plot.md"
+        "API" => [
+            "API" => "index_api.md",
+            "Load Images" => "loading_image.md",
+            "Plot" => "plot.md"
+        ], 
+        "Infer colocalization" => "colocalisation.md",
+        "Example" => "index.md"
     ],
-    checkdocs = :none
+    checkdocs = :none,
+    pagesonly = true,
+    remotes = nothing
 )
-
 #=
 deploydocs(;
     repo="github.com/ma-seefelder/ProteinCoLoc",

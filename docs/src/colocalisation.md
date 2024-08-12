@@ -1,0 +1,3 @@
+```@docs
+compute_BayesFactor
+```
