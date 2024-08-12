@@ -20,40 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # function to patch the image
 """
-    patch(img::Array{Float64, 2}, num_patches::Int64)
-
-This function divides an image into a square grid of patches.
-
-# Arguments
-- `img`: A 2D array representing the image to be patched.
-- `num_patches`: An integer representing the number of patches along each axis. The image will be divided into `num_patches` x `num_patches` patches.
-
-# Returns
-- `patches`: A 4D array representing the patches of the image. The first two dimensions are the number of patches along the x and y axes, and the last two dimensions are the size of each patch.
-
-# Notes
-This function calculates the size of the patches, trims the image to fit an exact number of patches, initializes a 4D array for the patches, loops over the patches, and assigns the corresponding part of the image to each patch.
-"""
-function patch(img::Array{Float64, 2}, num_patches::Int64)
-    # calculate the size of the patches
-    patch_size_x = Int64(floor(size(img, 1) / num_patches))
-    patch_size_y = Int64(floor(size(img, 2) / num_patches))
-    
-    # cut the image to the correct size
-    img = img[1:num_patches*patch_size_x, 1:num_patches*patch_size_y]
-
-    # initialize the patches
-    patches = zeros(Union{Float64, Missing}, num_patches, num_patches, patch_size_x, patch_size_y)
-    # loop over the patches
-    for i in 1:num_patches
-        for j in 1:num_patches
-            patches[i, j, :, :] = img[(i-1)*patch_size_x+1:i*patch_size_x, (j-1)*patch_size_y+1:j*patch_size_y]
-        end
-    end
-    return patches
-end
-
-"""
     patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
 
 This function divides an image into a specified number of patches.
@@ -65,14 +31,11 @@ This function divides an image into a specified number of patches.
 
 # Returns
 - `patches`: A 4D array representing the patches of the image. The first two dimensions are the number of patches along the x and y axes, and the last two dimensions are the size of each patch.
-
-# Notes
-This function calculates the size of the patches, initializes a 4D array for the patches, loops over the patches, and assigns the corresponding part of the image to each patch.
 """
 function patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
     # calculate the size of the patches
-    patch_size_x = Int64(floor(size(img, 1) / num_patches_x))
-    patch_size_y = Int64(floor(size(img, 2) / num_patches_y))
+    patch_size_x = div(size(img, 1), num_patches_x, RoundDown) |> Int64
+    patch_size_y = div(size(img, 2), num_patches_y, RoundDown) |> Int64
     # initialize the patches
     patches = zeros(Union{Float64, Missing}, num_patches_x, num_patches_y, patch_size_x, patch_size_y)
     # loop over the patches
@@ -82,6 +45,23 @@ function patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64
         end
     end
     return patches
+end
+
+"""
+    patch(img::Array{Float64, 2}, num_patches::Int64)
+
+This function divides an image into a square grid of patches.
+
+# Arguments
+- `img`: A 2D array representing the image to be patched.
+- `num_patches`: An integer representing the number of patches along each axis. The image will be divided into `num_patches` x `num_patches` patches.
+
+# Returns
+- `patches`: A 4D array representing the patches of the image. The first two dimensions are the number of patches along the x and y axes, and the last two dimensions are the size of each patch.
+
+"""
+function patch(img::Array{Float64, 2}, num_patches::Int64)
+    return patch(img, num_patches, num_patches)
 end
 
 """
@@ -113,28 +93,14 @@ function unpatch(patches::Array{Union{Float64, Missing}, 4}, img_size::Tuple{Int
     return img
 end
 
-######################################################################
-# function to calculate the Pearson's correlation
-######################################################################
-
-"""
-    _exclude_zero(a::Vector{T}, b::Vector{T}) where T <: Number
-
-This function excludes zero and NaN values from two vectors.
-
-# Arguments
-- `a`: A vector of numbers.
-- `b`: A vector of numbers.
-
-# Returns
-- This function returns two vectors of numbers without zero and NaN values.
-
-# Notes
-This function finds the indices of zero and NaN values in both vectors, creates a union of these indices, and deletes the values at these indices from both vectors.
-"""
-function _exclude_zero(a::Vector{T}, b::Vector{T}) where T <: Number
+function _exclude_zero(a, b)
     # get the indices of the zero and NaN values
-    zero_indices = sort(union(findall(iszero, a), findall(isnan, a), findall(iszero, b), findall(isnan, b)))
+    zero_indices = sort(
+        union(findall(iszero, a), 
+        findall(isnan, a), 
+        findall(iszero, b), 
+        findall(isnan, b))
+        )
 
     # exclude all values at the indices in zero_indices
     deleteat!(a, zero_indices)
@@ -143,39 +109,23 @@ function _exclude_zero(a::Vector{T}, b::Vector{T}) where T <: Number
     return a,b
 end
 
-"""
-    _exclude_zero(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
-
-This function excludes zero and NaN values from two vectors.
-
-# Arguments
-- `a`: A vector of numbers or missing values.
-- `b`: A vector of numbers or missing values.
-
-# Returns
-- `a`: A vector of numbers without zero and NaN values.
-- `b`: A vector of numbers without zero and NaN values.
-
-# Notes
-This function replaces missing values with zero, finds the indices of zero and NaN values in both vectors, creates a union of these indices, and deletes the values at these indices from both vectors.
-"""
 function _exclude_zero(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
     # change missing values to zero
     replace!(a, missing => 0)
     replace!(b, missing => 0)
 
-    # get the indices of the zero and NaN values
-    zero_indices = sort(union(findall(iszero, a), findall(isnan, a), findall(iszero, b), findall(isnan, b)))
-
-    # exclude all values at the indices in zero_indices
-    deleteat!(a, zero_indices)
-    deleteat!(b, zero_indices)
+    # exclude all values that are zero or NaN
+    a,b = _exclude_zero(a, b)
 
     a = convert(Vector{T}, a)
     b = convert(Vector{T}, b)
 
     return a,b
 end
+
+######################################################################
+# function to calculate the Pearson's correlation
+######################################################################
 
 """
     correlation(x::Array{Float64, 4}, y::Array{Float64, 4})
