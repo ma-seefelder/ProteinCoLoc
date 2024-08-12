@@ -126,6 +126,15 @@ end
 ######################################################################
 # function to calculate the Pearson's correlation
 ######################################################################
+function _correlation_algorithm(method::Symbol)
+    # check if method is valid
+    cor_dict = Dict(:pearson => cor, :spearman => corspearman, :kendall => corkendall)
+    haskey(cor_dict, method) || throw(ArgumentError("method must be one of $(keys(cor_dict))"))
+    # define correlation method
+    cor_func = cor_dict[method]
+    return cor_func
+end
+
 
 """
     correlation(x::Array{Float64, 4}, y::Array{Float64, 4})
@@ -144,21 +153,29 @@ This function calculates the correlation between two 4D arrays.
 This function iterates over the patches in the 4D arrays, excludes zeros from the data, and calculates the correlation between the patches. If the length of the data in a patch is less than or equal to 15, the correlation is set to missing.
 """
 function correlation(x::Array{T, 4}, y::Array{T, 4}; method::Symbol = :pearson) where T <: Union{Float64, Missing}
-    cor_dict = Dict(:pearson => cor, :spearman => corspearman, :kendall => corkendall)
-    haskey(cor_dict, method) || throw(ArgumentError("method must be one of $(keys(cor_dict))"))
-    cor_func = cor_dict[method]
+    # get the correlation function
+    cor_func = _correlation_algorithm(method)
     # get the number of patches
-    num_patches = size(x, 1)
+    num_patches_x = size(x, 1)
+    num_patches_y = size(x, 2)	
+
     # initialize the correlation
-    ρ = zeros(Union{Float64, Missing},num_patches, num_patches)
+    ρ = zeros(Union{Float64, Missing},num_patches_x, num_patches_y)
+
     # loop over the patches
-    for i in 1:num_patches
-        for j in 1:num_patches
-            a = x[i, j, :, :][:] 
-            b = y[i, j, :, :][:]
-            a,b = _exclude_zero(a,b)
-            length(a) <= 15 ? ρ[i, j] = missing : ρ[i, j] = cor_func(a, b)
+    for (i, j) in Iterators.product(1:num_patches_x, 1:num_patches_y)
+        # extract the patch from the 4D array and exclude the zero and NaN values
+        a = x[i, j, :, :][:] 
+        b = y[i, j, :, :][:]
+        a,b = _exclude_zero(a,b)
+
+        # calculate the correlation and exclude the zero and NaN values
+        if length(a) <= 15 || length(b) <= 15
+            ρ[i, j] = missing
+            continue
         end
+        ρ[i, j] = cor_func(a, b)
+        
     end
     return ρ
 end
