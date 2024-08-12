@@ -102,6 +102,18 @@ end
         The first channel is plotted in blue, the second in green and the third in red.
     - `save_to_file::Bool`: Whether to save the plot to the file.
     - `cor_method::Symbol`: The method to use for the calculation of correlation. Default is :pearson. Other options are :spearman and :kendall.
+
+    # Example
+    ```julia
+    path = ["test_images/c1.tif", "test_images/c2.tif", "test_images/c3.tif"]
+    img = MultiChannelImage("positive_sample", path, ["blue", "green", "red"])
+    mask = _calculate_mask(img)
+    _apply_mask!(img, mask)
+    cor_channel = [2, 3]
+    scale_channels = true
+    num_patches = 16
+
+    plot(img, num_patches, cor_channel, scale_channels, "test.png")
     ```
 """
 function plot(
@@ -405,10 +417,9 @@ end
 
 """
     plot_posterior(
-    posterior::CoLocResult; 
-    file::String = "posterior.png", 
-    save::Bool = true
-    )
+    posterior::CoLocResult; file::String = "posterior.png", 
+    save::Bool = true, fig_size::Vector{T} = [16.0,12.0], dpi::I= 300
+    ) where {T <: AbstractFloat, I <: Integer}
 
 This function generates diagnostic plots of a CoLocResult struct obtained from ProteinCoLoc.colocalization().
 
@@ -533,8 +544,10 @@ end
     bf::Float64; 
     file::String = "bayesplot.png", 
     save::Bool = true,
-    ρ_threshold::Float64 = 0.0
-    )
+    ρ_threshold::Float64 = 0.0,
+    fig_size::Vector{T} = [8.0,10.0],
+    dpi::I= 300
+    ) where {T <: AbstractFloat, I <: Integer}
 
 This function generates a plot of the resulting prior and posterior distribution of Δρ and annotates the plot with the Bayes factor.
 
@@ -613,14 +626,36 @@ function bayesplot(
     return fig
 end
 
+function bayesplot(
+    prior::CoLocResult, 
+    posterior::CoLocResult; 
+    file::String = "bayesplot.png", 
+    save::Bool = true,
+    ρ_threshold::Float64 = 0.0,
+    fig_size::Vector{T} = [8.0,10.0],
+    dpi::I= 300
+    ) where {T <: AbstractFloat, I <: Integer}
+
+    bf = compute_BayesFactor(posterior, prior; ρ_threshold = ρ_threshold)
+    
+    return bayesplot(
+        prior, posterior, bf; 
+        file = file, save = save, ρ_threshold = ρ_threshold, 
+        fig_size = fig_size, dpi = dpi
+        )
+end
+
+
 """
     bayes_rangeplot(
     prior::CoLocResult, 
     posterior::CoLocResult; 
     Δρ::Vector{T} = collect(range(-0.5,0.5;step =0.05)), 
     save::Bool = true, 
-    file::String = "bayes_rangeplot.png"
-    ) where {T <: Real}
+    file::String = "bayes_rangeplot.png",
+    dpi::I = 300,
+    fig_size::Vector{T} = [8.0,10.0]
+    ) where {T <: AbstractFloat, I <: Integer}
 
 This function generates a plot of the Bayes factor for a range of Δρ thresholds.
 
@@ -633,9 +668,6 @@ This function generates a plot of the Bayes factor for a range of Δρ threshold
 
 # Returns
 - `fig`: A Figure object representing the generated plot.
-
-# Notes
-This function calculates the Bayes factor for each Δρ threshold, creates a figure and axis, plots the Bayes factor for each Δρ threshold, plots a horizontal line at BF = 1, and saves the plot to a file if specified.
 """
 function bayes_rangeplot(
     prior::CoLocResult,
