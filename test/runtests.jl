@@ -155,7 +155,7 @@ end
         b = [0, 2, 3, 0, 4, 5, 6, missing]
 
         # call _exclude_zero! function
-        ProteinCoLoc._exclude_zero(a, b)
+        a,b = ProteinCoLoc._exclude_zero(a, b)
 
         # check that the output is as expected
         @test a == [2,4,5]
