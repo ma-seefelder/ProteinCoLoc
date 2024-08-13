@@ -237,7 +237,7 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
 
     # add lines to the image to separate the channels
     for i in 0:length(img.channels)
-        GLMakie.vlines!([i*size(img.data[1])[2,]], color = :white, width = 2)
+        GLMakie.vlines!([i*size(img.data[1])[2,]], color = :white, linewidth = 2)
     end
 
     # add the channel names to the bottom corner of each channel
