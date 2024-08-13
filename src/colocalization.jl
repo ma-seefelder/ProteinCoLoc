@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # function to patch the image
 """
-    patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
+    patch(img, num_patches_x::Int64, num_patches_y::Int64)
 
 This function divides an image into a specified number of patches.
 
@@ -32,7 +32,7 @@ This function divides an image into a specified number of patches.
 # Returns
 - `patches`: A 4D array representing the patches of the image. The first two dimensions are the number of patches along the x and y axes, and the last two dimensions are the size of each patch.
 """
-function patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
+function patch(img, num_patches_x::Int64, num_patches_y::Int64)
     # calculate the size of the patches
     patch_size_x = div(size(img, 1), num_patches_x, RoundDown) |> Int64
     patch_size_y = div(size(img, 2), num_patches_y, RoundDown) |> Int64
@@ -48,7 +48,7 @@ function patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64
 end
 
 """
-    patch(img::Array{Float64, 2}, num_patches::Int64)
+    patch(img, num_patches::Int64)
 
 This function divides an image into a square grid of patches.
 
@@ -60,7 +60,7 @@ This function divides an image into a square grid of patches.
 - `patches`: A 4D array representing the patches of the image. The first two dimensions are the number of patches along the x and y axes, and the last two dimensions are the size of each patch.
 
 """
-function patch(img::Array{Float64, 2}, num_patches::Int64)
+function patch(img, num_patches::Int64)
     return patch(img, num_patches, num_patches)
 end
 
@@ -93,15 +93,13 @@ function unpatch(patches::Array{Union{Float64, Missing}, 4}, img_size::Tuple{Int
     return img
 end
 
-function _exclude_zero(a, b)
+function _exclude_zero(a::Vector{T}, b::Vector{T}) where T <: Number
     # get the indices of the zero and NaN values
-    zero_indices = sort(
-        union(findall(iszero, a), 
-        findall(isnan, a), 
-        findall(iszero, b), 
-        findall(isnan, b))
-        )
-
+    zero_indices = sort(union(
+        findall(iszero, a), findall(isnan, a), 
+        findall(iszero, b), findall(isnan, b)
+    ))
+    
     # exclude all values at the indices in zero_indices
     deleteat!(a, zero_indices)
     deleteat!(b, zero_indices)
@@ -111,16 +109,13 @@ end
 
 function _exclude_zero(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
     # change missing values to zero
-    replace!(a, missing => 0)
-    replace!(b, missing => 0)
-
-    # exclude all values that are zero or NaN
-    a,b = _exclude_zero(a, b)
+    replace!(a, missing => T(0))
+    replace!(b, missing => T(0))
 
     a = convert(Vector{T}, a)
     b = convert(Vector{T}, b)
-
-    return a,b
+    
+    return _exclude_zero(a, b)
 end
 
 ######################################################################
@@ -167,7 +162,7 @@ function correlation(x::Array{T, 4}, y::Array{T, 4}; method::Symbol = :pearson) 
         a,b = _exclude_zero(a,b)
 
         # calculate the correlation and exclude the zero and NaN values
-        if length(a) <= 15 || length(b) <= 15
+        if length(a) <= 5 || length(b) <= 5
             ρ[i, j] = missing
             continue
         end
