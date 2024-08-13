@@ -35,9 +35,6 @@ This function converts the posterior samples from the ADVI algorithm into a Data
 
 # Returns
 - `samples`: A DataFrame where each column represents a parameter of the Bayesian model and each row represents a sample from the posterior distribution.
-
-# Notes
-This function gets the parameter names from the Bayesian model, selects the necessary parameters, permutes the samples, and converts them into a DataFrame. The Fisher z transformation is undone by applying the hyperbolic tangent function to the samples.
 """
 function convert_posterior_samples(samples::Array{Float64, 2}, m::T) where {T <: DynamicPPL.Model}
     # get parameter_names
@@ -48,13 +45,10 @@ function convert_posterior_samples(samples::Array{Float64, 2}, m::T) where {T <:
     # permute the samples
     samples = samples[1:10,:]
     samples = DataFrame(permutedims(samples, [2, 1]), parameter_names)
-
-    # undo Fisher z transformation
-    #samples = tanh.(samples)
 end
 
 ######################################################################
-# plot posterior
+# plot compute posterior
 ######################################################################
 """
     struct CoLocResult
@@ -68,9 +62,6 @@ This struct represents the result of a Bayesian colocalization analysis.
 - `num_patches`: An integer representing the number of patches that were analyzed.
 - `posterior`: A DataFrame representing the posterior distribution.
 - `advi_result`: The result of the ADVI algorithm.
-
-# Notes
-This struct is used to store the result of a Bayesian colocalization analysis. It includes the sample and control images, the channels and number of patches that were analyzed, the posterior distribution, and the result of the ADVI algorithm.
 """
 struct CoLocResult
     img::MultiChannelImageStack
@@ -81,6 +72,42 @@ struct CoLocResult
     advi_result
 end
 
+# interface
+
+"""
+    get_images(result::CoLocResult)
+
+This function returns the sample and control images from a CoLocResult.
+"""
+get_images(result::CoLocResult) = (result.img, result.control)
+
+"""
+    get_posterior(result::CoLocResult)
+    This function retrieves the posterior distribution from a CoLocResult.
+"""
+get_posterior(result::CoLocResult) = result.posterior
+
+"""
+    get_advi_result(result::CoLocResult)
+    This function retrieves the result of the ADVI algorithm from a CoLocResult.
+"""
+get_advi_result(result::CoLocResult) = result.advi_result
+
+
+"""
+    get_config(result::CoLocResult)
+
+    The function returns the channels and the number of patches that were analyzed.
+"""
+function get_config(result::CoLocResult) 
+    println("Channels: ", result.channels)
+    println("Number of patches: ", result.num_patches)
+    return ("channels" => result.channels, "num_patches" => result.num_patches)
+end
+
+
+
+######################################################################
 """
     compute_BayesFactor(
     posterior::CoLocResult, 
@@ -100,20 +127,27 @@ This function computes the Bayes factor for the colocalization of two proteins.
 - `p_post`: A Float64 representing the probability of Δρ <= ρ_threshold under the alternative hypothesis.
 - `p_prior`: A Float64 representing the probability of Δρ <= ρ_threshold under the null hypothesis.
 
-# Errors
-- Throws a warning if the error of the numerical integration for the CDF of the prior or posterior distribution is unusually large.
+# Warnings
+- Throws a warning if the error of the numerical integration for the CDF of the prior or posterior distribution is > 1e-5.
 
-# Notes
+# Implementation Notes
 The Bayes factor is computed as the ratio of the posterior odds and the prior odds. The prior and posterior odds are computed as the ratio of the probability of Δρ <= ρ_threshold under the alternative hypothesis and the null hypothesis. The prior and posterior distributions are approximated by a kernel density estimation (KDE), and the probability of Δρ <= ρ_threshold is approximated by numerical integration.
 """
 function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult; ρ_threshold::Float64 = 0.0)
     Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
     Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
-    # computing the probability of Δρ <=0
+    
     posterior_dist = kde(Δρ_post)
     p_post, ϵ_post = quadgk(x -> pdf(posterior_dist, x), -Inf, ρ_threshold)
     p_post = 1 - p_post
 
+
+    ϵ_post > 1e-5 && 
+        @warn "CDF of the posterior distribution is approximated by numerical integration 
+        with an error of $ϵ_post that is unusually large. " 
+    
+    # prior
+ 
     ϵ_post > 1e-5 && 
         @warn "CDF of the posterior distribution is approximated by numerical integration 
         with an error of $ϵ_post that is unusually large. " 
@@ -123,19 +157,33 @@ function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult; ρ_thre
     p_prior, ϵ_prior = quadgk(x -> pdf(prior_dist, x), -Inf, ρ_threshold)
     p_prior = 1 - p_prior
 
+    ϵ_post > 1e-5 && 
+        @warn "CDF of the posterior distribution is approximated by numerical integration 
+        with an error of $ϵ_post that is unusually large. "
     ϵ_prior > 1e-5 && 
         @warn "CDF of the prior distribution is approximated by numerical integration 
         with an error of $ϵ_prior that is unusually large. " 
-    ##################### compute the Bayes factor #####################
-    # compute prior odds
+ 
     prior_odds = p_prior / (1 - p_prior)
-    # compute posterior odds
     posterior_odds = p_post / (1 - p_post)
-    # compute Bayes factor
     bayes_factor = posterior_odds / prior_odds
-    return(bayes_factor, p_post, p_prior)
+
+    return bayes_factor, p_post, p_prior
 end
 
+function _remove_images_with_no_signal!(sample_data)
+    delete_idx = Int[]
+    for idx ∈ eachindex(sample_data)
+        size_array = size(sample_data[idx])
+        if ismissing.(sample_data[idx]) == trues(size_array)
+            @warn "Image $idx has no signal above background for the selected channels.
+            The image is removed from the analysis."
+            push!(delete_idx, idx)              
+        end  
+    end
+    length(delete_idx) >= 1 && deleteat!(sample_data, delete_idx)
+    return sample_data
+end
 
 """
     _prepare_data(
@@ -164,43 +212,34 @@ This function extracts the specified channels from the images, applies patching,
 function _prepare_data(img::MultiChannelImageStack, channels::Vector{T}, num_patches::T = 1; cor_method::Symbol = :pearson) where T <: Int
     # extract channels and patch 
     sample_image::Array{Union{Float64, Missing}, 3} = fill(0.0, img.num_images, num_patches, num_patches)
-    for (image,idx) ∈ zip(img, 1:img.num_images)
+    
+    for (idx, image) ∈ enumerate(img)
         x = image.data[channels[1]]
         y = image.data[channels[2]]
         x,y = patch.([x, y], num_patches)
         sample_image[idx,:,:] = correlation(x, y, method = cor_method)
     end
 
-    # reshape the data
+    # reshape to a 2D array of dimensions (num_images, num_patches^2)
     sample_img = reshape(sample_image, img.num_images, num_patches^2)
 
+    # tidy data: remove missing and NaN values, and images with no signal above background
     sample_data = fill(Vector{Float64}(), img.num_images)
-    for (row, idx) in zip(eachrow(sample_img), 1:img.num_images)
+    
+    for (idx, row) in enumerate(eachrow(sample_img))
         sample_data[idx] = collect(skipmissing(row))
-        # remove NaN values
         sample_data[idx] = sample_data[idx][.!isnan.(sample_data[idx])]
     end
 
-    # remove images with no signal above background
-    delete_idx = Int[]
-    for idx ∈ 1:img.num_images
-        size_array = size(sample_data[idx])
-        if ismissing.(sample_data[idx]) == fill(true, size_array)
-            @warn "Image $idx has no signal above background for the selected channels.
-            The image is removed from the analysis."
-            push!(delete_idx, idx)              
-        end  
-    end
-    length(delete_idx) >= 1 && deleteat!(sample_data, delete_idx)
+    sample_data = _remove_images_with_no_signal!(sample_data)
     
-    
-    if length(sample_data) == 0
+    # Check if sample_data is empty and return appropriate value
+    if isempty(sample_data)
         return nothing
     end
 
-    return(sample_data)
+    return sample_data
 end
-
 
 """
     colocalization(
