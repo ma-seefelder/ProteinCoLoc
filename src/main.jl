@@ -79,7 +79,7 @@ const options_plots_default = Dict(
     number_patches_loc::I,
     number_channels::I,
     channel_selection::Bool = true,
-    channel_selection_two::Vector{I} = true,
+    channel_selection_two::Vector{I} = [1,2],
     plot_options::Dict{S, Bool} = options_plots_default,
     number_iterations::I = 1000,
     number_posterior_samples::I = 100_000,
@@ -113,11 +113,6 @@ This function starts the analysis of multi-channel images.
 - `shuffle_method`: A Symbol representing the shuffle method. Default is :block.
 - `cor_method`: A Symbol representing the correlation method. Default is :pearson. Can be :pearson, :spearman, or :kendall.
 
-# Returns
-- Nothing. The function saves the plots to the specified output folder.
-
-# Notes
-This function checks the input parameters, loads and preprocesses the images, performs the analysis, and generates the plots.
 """
 function start_analysis(
     image_path::S,
@@ -127,7 +122,7 @@ function start_analysis(
     number_patches_loc::I,
     number_channels::I,
     channel_selection::Bool = true,
-    channel_selection_two::Vector{I} = true,
+    channel_selection_two::Vector{I} = [1,2],
     plot_options::Dict{S, Bool} = options_plots_default,
     number_iterations::I = 1000,
     number_posterior_samples::I = 100_000,

@@ -5,7 +5,9 @@ CurrentModule = ProteinCoLoc
 # Functions to plot results
 
 ## Plot correlation of each image patch
-The plotting method plots the merged `MultiChannelimage` an displays the computed correlation metric for each image patch. The correlation mechanism are chosen based on the `cor_method`argument: 
+
+The plotting method plots the merged `MultiChannelimage` an displays the computed correlation metric for each image patch. The correlation mechanism are chosen based on the `cor_method`argument:
+
 - `:pearson`: Pearson correlation coefficient (PCC)
 - `:spearman`: Spearman's rank correlation coefficient
 - `:kendall`: Kendall rank correlation coefficient
@@ -28,6 +30,7 @@ plot(
 ```
 
 ## Plot mask
+
 As explained in our [paper](https://doi.org/10.1038/s41598-024-63884-1), we use Otsu thresholding to compute a mask. This mask can be visualised using the function `plot_mask(img::MultiChannelImage, file::String)`. In these images all masked pixels are depicted black and non-masked pixels that are included in the analysis are white.
 
 ![Mask plot](./assets/mask.png)
@@ -46,6 +49,7 @@ The local correlation plot allows for the visualisation of local colocalization 
 local_correlation_plot
 ```
 ## Plot posterior distribution
+
 The `plot_posterior(posterior)` function enables the visualisation of the posterior distribution for all global model parameters under both the control and sample conditions. Additionally, it plots the posterior distribution $P(\Delta \rho | data)$, which represents the difference in the correlation metric $\rho$.
 
 ![Posterior plot](./assets/posterior_plot.png)
@@ -55,6 +59,7 @@ plot_posterior
 ```
 
 ## Bayes Plot
+
 The `bayesplot(prior, posterior)` function enables the visualisation of the prior distribution $P(\Delta \rho)$ and the posterior distribution $P(\Delta \rho | data)$,which represents the difference in the correlation metric $\rho$ before and after seeing the data. Additionally, it displays the Bayes Factor for the hypothesis $H_1: \Delta \rho > \Delta \rho_0$ compared to the null hypothesis $H_0: \Delta \rho \leq \Delta \rho_0$. The Bayes Factor at threshold $\Delta \rho_0$ can be provided as an argument to the function if it has been already computed using the function [`compute_BayesFactor`](@ref). If the argument `bf` is not specified it will be computed automatically. 
 
 ![Bayes plot](./assets/bayesplot.png)
@@ -64,6 +69,7 @@ bayesplot
 ```
 
 ## Bayes Factor range plot
+
 The selection of the threshold $\Delta \rho$ is a difficult task and quite subjective. Therefore, we provide the function `bayes_rangeplot`that visualises the Bayes Factor for the hypothesis $H_1: \Delta \rho > \Delta \rho_0$ compared to the null hypothesis $H_0: \Delta \rho \leq \Delta \rho_0$ for different values of $\Delta \rho$. The horizontal dashed lined depicts a Bayes Factor of 1.
 The values of $\Delta \rho$ for which the Bayes Factor should be computed are determined by the `Δρ::Vector{T} where T<: AbstractFloat` and defaults to a range between -0.5 and 0.5 at a step size of 0.05. 
 

@@ -1966,7 +1966,7 @@ version = "1.10.2"
 
 [[deps.ProteinCoLoc]]
 deps = ["CSV", "DataFrames", "Distributions", "GLMakie", "Images", "KernelDensity", "QuadGK", "Random", "Statistics", "StatsBase", "Turing"]
-git-tree-sha1 = "f5fa90a5a1c1288f22a3ed8282aa223b789ec411"
+git-tree-sha1 = "a8a826dc1f45a58037f127c6e292fc624654253d"
 repo-rev = "registration"
 repo-url = "https://github.com/ma-seefelder/ProteinCoLoc"
 uuid = "12345678-1234-1234-1234-123456789abc"
