@@ -355,3 +355,14 @@ end
     local_correlation_plot(control, 200, [1,3]; file = "test/test_images/local_correlation_1_3_control.png")
     local_correlation_plot(control, 200, [2,3]; file = "test/test_images/local_correlation_2_3_control.png")
 end
+
+@testset "utils.jl" begin
+    positive = ProteinCoLoc.get_images("test/test_images/positive", 3, "positive")
+    @test positive isa MultiChannelImageStack
+    @test positive[1].channels == ["c1", "c2", "c3"]
+    @test positive[1].name == "positive"
+    
+    # test plot function
+    ProteinCoLoc.plot_images(:local_correlation, positive, 200, [1,2], "test/test_images/local_correlation_1_2")
+    ProteinCoLoc.plot_images(:patched_correlation, positive, 16, [1,2], "test/test_images/patched_correlation_1_2")
+end

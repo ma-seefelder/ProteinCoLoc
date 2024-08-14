@@ -435,3 +435,5 @@ test/test_images/local_correlation_1_3_control.png
 test/test_images/local_correlation_1_3.png
 test/test_images/local_correlation_1_2_control.png
 test/test_images/local_correlation_1_2.png
+test/test_images/local_correlation_1_2_positive.png
+test/test_images/patched_correlation_1_2_positive.png
