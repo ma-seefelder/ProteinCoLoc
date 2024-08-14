@@ -7,7 +7,7 @@ Postal address: Department of Gene Therapy, University of Ulm, Helmholzstr. 8/1,
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published
 by the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,18 +18,37 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 =#
 
+function _get_images_check(nimages)
+    if nimages < 1
+        error("The number of images in the image folder is less than 1.")
+    end
+
+    if nimages != floor(nimages)
+        error("The number of images in the image folder is not a multiple of the number of channels.")
+    end
+
+    return nothing
+end
+
+function _get_names(filename::S) where {S<:AbstractString}
+    filename = split.(filename, "_")
+    # image name is first element of the file name if it contains one underscore
+    # else the image name is the filename without the extension and the characters 
+    # after the last underscore
+    length(filename) > 2 ? img_name = join(filename[1:end-1],"_") : img_name = filename[1]
+
+    #get channel name
+    channel_name = split(filename[end], ".")[1]
+    return string(img_name), string(channel_name)
+end
+
 """
-    get_images(
-    path::AbstractString, 
-    nchannels::Integer, 
-    stack_name::AbstractString; 
-    mask::Bool = true
-    )
+    get_images(path::S, nchannels::I, stack_name::S; mask::Bool = true) where {I<:Integer, S<:AbstractString}
 
 This function retrieves and loads multi-channel images from a specified path.
 
 # Arguments
-- `path`: A string representing the path to the image files.
+- `path`: A string representing the path to the image directory.
 - `nchannels`: An integer representing the number of channels in the images.
 - `stack_name`: A string representing the name of the image stack.
 - `mask`: A boolean indicating whether to apply a mask to the images. Default is true.
@@ -46,45 +65,46 @@ This function retrieves and loads multi-channel images from a specified path.
 This function retrieves the image files from the specified path, checks the number of images, generates channel names, groups the images, retrieves the image names, loads the images, applies a mask to the images if specified, and returns a MultiChannelImageStack object representing the loaded images.
 """
 function get_images(path::S, nchannels::I, stack_name::S; mask::Bool = true) where {I<:Integer, S<:AbstractString}
+    !isdir(path) && @error "The image path is not valid."
+    
     # get files in image path
     files = readdir(path, join=false)
-    # remove subdirectories
-    files = filter(x -> contains(x,"."), files)
+    # remove subdirectories and non-tif files
+    filter!(x -> contains(x,"."), files)
+    filter!(x -> endswith(x, ".tif"), files)
     # determine number of images in folder
     nimages = length(files) / nchannels
-    # check if the number of images is an integer 
-    nimages != floor(nimages) && error("The number of images in the image folder is not a multiple of the number of channels.")
-    # check if the number of images is at least 1
-    nimages < 1 && error("The number of images in the image folder must be at least 1.")
+   
+    # check if the directory is correctly organized
+    _get_images_check(nimages)
 
-    # generate vector wit channel names
-    channel_names = string.(collect(1:nchannels))
-    # group images
-    images = Vector{MultiChannelImage{Float64,String, Float64}}(undef, Int(nimages))
-
-    # retrieve image names
+    # retrieve image and channel names
     image_names = Vector{String}()
-    for i in split.(files, "_")
-        length(i) > 2 ? img_name = join(i[1:end-1],"_") : img_name = i[1]
+    channel_names = Vector{String}()
+
+    for file ∈ files
+        img_name, channel_name = _get_names(file)
         !in(img_name,image_names) ? push!(image_names,img_name) : nothing
+        !in(channel_name,channel_names) ? push!(channel_names,channel_name) : nothing
     end
 
     # load images
-    for i in eachindex(images) 
+    images = Vector{MultiChannelImage{Float64,String, Float64}}(undef, Int(nimages))
+    for i ∈ eachindex(images) 
         image_name = image_names[i]
+        # get channels of the current image in the correct order
         channel_files = fill("", nchannels)
-        for j in 1:nchannels
-            file_index = findfirst(file -> occursin(image_name * "_c" * string(j), file), files)
-            !isnothing(file_index) || error("The image path is not valid.")
-            channel_files[j] = joinpath(path, files[file_index])
-        end
+        for (channel_id, channel_name) ∈ enumerate(channel_names)
+            file_index = findfirst(file -> occursin(image_name * "_" *channel_name, file), files)
+            channel_files[channel_id] = joinpath(path, files[file_index])
+        end 
         images[i] = MultiChannelImage(image_name, channel_files, channel_names)
+
         # mask image
         if mask
             images[i] = ProteinCoLoc._apply_mask!(images[i], ProteinCoLoc._calculate_mask(images[i]))
         end
     end
-    # return files
     return MultiChannelImageStack(images, stack_name)
 end 
 
@@ -130,30 +150,28 @@ function plot_images(
     cor_method::Symbol = :pearson
     )
 
-    for image in image_stack
-        # plot local correlation
-        if plot_type == :local_correlation
-            try 
-                local_correlation_plot(
-                    image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png",
-                    cor_method = cor_method
-                    )
-            catch
-                @warn "The local correlation plot for image $(image.:name) could not be generated."
-            end
-        elseif plot_type == :patched_correlation
-            try 
-                plot(
-                    image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png",
-                    cor_method = cor_method
-                    )
-            catch
-                @warn "The patched correlation plot for image $(image.:name) could not be generated."
-            end
-        else
-            error("The plot type is not valid.")
+    # define valid plot types
+    plot_functions = Dict(
+        :local_correlation => local_correlation_plot, 
+        :patched_correlation => plot
+        )
+
+    haskey(plot_functions, plot_type) || error("The plot type is not valid.")
+
+    # get plot function
+    plot_func = plot_functions[plot_type]
+
+    for image ∈ image_stack
+        try
+            plot_func(
+                image, num_patches, channel_indices, file = "$base_filename$suffix"*"_$(image.:name).png",
+                cor_method = cor_method
+                )
+        catch
+            @warn "The plot $plot_type for image $(image.:name) could not be generated."
         end
     end
+    return nothing
 end
 
 # helper function to plot all the plots for a given image and control image stack
@@ -167,7 +185,7 @@ end
 
 This function generates all plots for a given image and control image stack.
 
-# Arguments
+# Argument
 - `images`: A MultiChannelImageStack representing the sample images.
 - `control_images`: A MultiChannelImageStack representing the control images.
 - `channel_selection_two`: A Vector of two integers representing the channels to be analyzed.
@@ -201,6 +219,7 @@ function generate_plots(
     ρ_range, ρ_range_step, output_folder_path, patched_correlation_plt, local_correlation_plt, 
     bayes_factor_plt, bayes_range_plt, posterior_plt, cor_method
     )
+
     # generate patch plot
     if patched_correlation_plt
         base_file = "$output_folder_path/patched_correlation_c$(channel_selection_two[1])_c$(channel_selection_two[2])"
@@ -288,11 +307,10 @@ This function uses two nested loops to generate all possible combinations of two
 function combinations2(n)
     # generate all possible combinations of two elements from 1:n without repetition 
     combination = Vector{Vector{Int}}()
-    for i in 1:n
-        for j in 1:n
-            if [j,i] ∉ combination && i != j
-                push!(combination, [i,j])
-            end
+
+    for i ∈ 1:n-1
+        for j ∈ i+1:n
+            push!(combination, [i,j])
         end
     end
     return combination
@@ -359,7 +377,6 @@ function generate_txt(
     # compute mean, median, and 95% credible interval for control images
     control_prior_mean, control_prior_median, control_prior_credible_interval = compute_stats(prior_samples.:μ_control)
     control_posterior_mean, control_posterior_median, control_posterior_credible_interval = compute_stats(posterior_samples.:μ_control)
-
     #  compute stats for Δρ
     Δρ_mean, Δρ_median, Δρ_credible_interval = compute_stats(posterior_samples.:μ_sample .- prior_samples.:μ_control)
 
