@@ -632,8 +632,18 @@ function gui()
         posterior_plot = get_is_active(posterior_plot_button)
         mask_plot = get_is_active(mask_plot_button)
 
+        options_plots = Dict(
+            "patched_correlation_plt" => patched_correlation_plot,
+            "local_correlation_plt" => local_correlation_plot,
+            "bayes_factor_plt" => bayes_factor_plot,
+            "bayes_range_plt" => bayes_range_plot,
+            "posterior_plt" => posterior_plot, 
+            "mask_plt" => mask_plot
+            )
+
+
         # get the number of iterations
-        numb_iterations = parse(Int64,get_text(number_iterations))
+        numb_iterations = parse(Int64, get_text(number_iterations))
 
         # get the number of posterior samples
         numb_posterior_samples = parse(Int64,get_text(number_posterior_samples))
@@ -696,12 +706,7 @@ function gui()
             numb_channels, # number of channels
             channel_selection, # channel selection
             channel_selection_two, # channel selection two
-            patched_correlation_plot, # patched correlation plot
-            local_correlation_plot, # local correlation plot
-            bayes_factor_plot, # bayes factor plot
-            bayes_range_plot, # bayes range plot
-            posterior_plot, # posterior plot 
-            mask_plot, # mask plot 
+            options_plots, # plot options 
             numb_iterations, # number of iterations
             numb_posterior_samples, # number of posterior samples,
             ρ_threshold, # threshold for the correlation coefficient
