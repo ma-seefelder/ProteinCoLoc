@@ -15,18 +15,18 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Basic tutorial" => "tutorial.md",
         "API" => [
-            "API" => "index_api.md",
             "Load Images" => "loading_image.md",
-            "Plot" => "plot.md"
+            "Plot" => "plot.md",
+            "Infer colocalization" => "colocalisation.md"
         ], 
-        "Infer colocalization" => "colocalisation.md",
-        "Example" => "index.md"
     ],
     checkdocs = :none,
     pagesonly = true,
     remotes = nothing
 )
+
 #=
 deploydocs(;
     repo="github.com/ma-seefelder/ProteinCoLoc",
