@@ -37,7 +37,7 @@ using Turing
 using Turing: Variational
 #using Mousetrap
 
-include("LoadImages.jl")
+include("load_images.jl")
 include("colocalization.jl")
 include("bayes.jl")
 include("plot.jl")
