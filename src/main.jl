@@ -34,7 +34,7 @@ function _main_checks(;number_channels, number_patches, image_path, output_folde
     log_path = joinpath(output_folder_path, "log.txt")
     isfile(log_path) && @error "The output folder $output_folder_path contains a log file. Please choose another output folder or delete the log file and results from a previous analysis."
     
-    results_path = joinpath(output_folder_path, "results.txt")
+    results_path = joinpath(output_folder_path, "result.txt")
     isfile(results_path) && @error "The output folder $output_folder_path contains a results file. Please choose another output folder or delete the results file and results from a previous analysis."
     
     ρ_range[1] >= ρ_range[2] && error("ρ_range[1] must be smaller than ρ_range[2]: $(ρ_range[1]) >= $(ρ_range[2]).")
