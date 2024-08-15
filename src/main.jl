@@ -77,8 +77,8 @@ const options_plots_default = Dict(
     output_folder_path::S,
     number_patches::I,
     number_patches_loc::I,
-    number_channels::I,
-    channel_selection::Bool = true,
+    number_channels::I;
+    channel_selection::Bool = false,
     channel_selection_two::Vector{I} = [1,2],
     plot_options::Dict{S, Bool} = options_plots_default,
     number_iterations::I = 1000,
@@ -120,8 +120,8 @@ function start_analysis(
     output_folder_path::S,
     number_patches::I,
     number_patches_loc::I,
-    number_channels::I,
-    channel_selection::Bool = true,
+    number_channels::I;
+    channel_selection::Bool = false,
     channel_selection_two::Vector{I} = [1,2],
     plot_options::Dict{S, Bool} = options_plots_default,
     number_iterations::I = 1000,
