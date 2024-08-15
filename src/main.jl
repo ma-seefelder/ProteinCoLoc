@@ -34,6 +34,9 @@ function _main_checks(;number_channels, number_patches, image_path, output_folde
     log_path = joinpath(output_folder_path, "log.txt")
     isfile(log_path) && @error "The output folder $output_folder_path contains a log file. Please choose another output folder or delete the log file and results from a previous analysis."
     
+    results_path = joinpath(output_folder_path, "results.txt")
+    isfile(results_path) && @error "The output folder $output_folder_path contains a results file. Please choose another output folder or delete the results file and results from a previous analysis."
+    
     ρ_range[1] >= ρ_range[2] && error("ρ_range[1] must be smaller than ρ_range[2]: $(ρ_range[1]) >= $(ρ_range[2]).")
     
     return nothing
@@ -94,12 +97,16 @@ const options_plots_default = Dict(
 This function starts the analysis of multi-channel images.
 
 # Arguments
+
+## Required arguments
 - `image_path`: A string representing the path to the images.
 - `control_image_path`: A string representing the path to the control images.
 - `output_folder_path`: A string representing the path to the output folder.
 - `number_patches`: An integer representing the number of patches.
 - `number_patches_loc`: An integer representing the number of patches for local correlation.
 - `number_channels`: An integer representing the number of channels.
+
+## Optional arguments
 - `channel_selection`: A boolean indicating whether to select channels. If false, all possible combinations of channels are analyzed. 
 - `channel_selection_two`: A Vector of integers representing the two selected channels.
 - `patched_correlation_plt`: A boolean indicating whether to plot the patched correlation.
@@ -143,6 +150,7 @@ function start_analysis(
         ρ_range = ρ_range
         )
 
+    @info "Starting analysis..."
     ###########################################################################
     # load and preprocess images
     ###########################################################################
@@ -150,6 +158,7 @@ function start_analysis(
     images = get_images(image_path, number_channels, "images")
     control_images = _main_load_control(shuffle, control_image_path, number_channels, image_path, shuffle_method)
 
+    @info "Images loaded successfully"
     ###########################################################################
     # perform analysis and plotting
     ###########################################################################
@@ -161,6 +170,7 @@ function start_analysis(
     posterior_plt = plot_options["posterior_plt"]
     mask_plt = plot_options["mask_plt"]
 
+    @info "Starting Bayesian inference and plotting..."
     if channel_selection
         prior, posterior, bf = generate_plots(
             images, control_images, channel_selection_two, number_patches, number_patches_loc, 
@@ -217,4 +227,6 @@ function start_analysis(
             end
         end
     end
+
+    @info "Analysis and plotting finished successfully"
 end
