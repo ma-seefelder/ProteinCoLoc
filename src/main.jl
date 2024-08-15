@@ -39,7 +39,7 @@ function _main_checks(;number_channels, number_patches, image_path, output_folde
     
     ρ_range[1] >= ρ_range[2] && error("ρ_range[1] must be smaller than ρ_range[2]: $(ρ_range[1]) >= $(ρ_range[2]).")
     
-    return nothing
+    return false
 end
 
 function _main_load_control(
@@ -141,14 +141,17 @@ function start_analysis(
     cor_method::Symbol = :pearson
     ) where {S<:AbstractString, I<:Integer}
 
-    _main_checks(
+    if _main_checks(
         number_channels = number_channels, 
         number_patches = number_patches, 
         image_path = image_path, 
         output_folder_path = output_folder_path, 
         channel_selection_two = channel_selection_two, 
         ρ_range = ρ_range
-        )
+        ) == false
+        @info "Analysis and plotting aborted"
+        return nothing
+    end
 
     @info "Starting analysis..."
     ###########################################################################
