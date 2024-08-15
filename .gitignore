@@ -5,7 +5,7 @@
 
 # ignore files in build 
 /docs/build/
-
+/test/test_images/results/
 # User-specific files
 *.rsuser
 *.suo

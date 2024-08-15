@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "c2c1f23cf519d03cfb89d2c7ab0cfa91a2ec17e3"
+project_hash = "b2bb815a20956ea50827fb9f214fdf359ad07b2d"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "6778bcc27496dae5723ff37ee30af451db8b35fe"
@@ -1966,7 +1966,7 @@ version = "1.10.2"
 
 [[deps.ProteinCoLoc]]
 deps = ["CSV", "DataFrames", "Distributions", "GLMakie", "Images", "KernelDensity", "QuadGK", "Random", "Statistics", "StatsBase", "Turing"]
-git-tree-sha1 = "a8a826dc1f45a58037f127c6e292fc624654253d"
+git-tree-sha1 = "4135af3cecaef96578e6886c5e2de563ba7ac19d"
 repo-rev = "registration"
 repo-url = "https://github.com/ma-seefelder/ProteinCoLoc"
 uuid = "12345678-1234-1234-1234-123456789abc"

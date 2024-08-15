@@ -15,8 +15,9 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Basic tutorial" => "tutorial.md",
+        "Basic usage" => "basic_usage.md",
         "API" => [
+            "Main function" => "main.md",
             "Load Images" => "loading_image.md",
             "Plot" => "plot.md",
             "Infer colocalization" => "colocalisation.md"
@@ -27,9 +28,4 @@ makedocs(;
     remotes = nothing
 )
 
-#=
-deploydocs(;
-    repo="github.com/ma-seefelder/ProteinCoLoc",
-    devbranch="registration",
-)
-=#
+#deploydocs(;repo="github.com/ma-seefelder/ProteinCoLoc")
