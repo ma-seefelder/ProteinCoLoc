@@ -221,11 +221,8 @@ function start_analysis(
 
     # mask plot
     if mask_plt
-        for img_set in [images, control_images]
-            for img in img_set
-                plot_mask(img, joinpath(output_folder_path, "mask$(img.name).png"))
-            end
-        end
+        [plot_mask(img, joinpath(output_folder_path, "mask$(img.name).png")) for img ∈ images]
+        [plot_mask(img, joinpath(output_folder_path, "mask_control_$(img.name).png")) for img ∈ control_images]
     end
 
     @info "Analysis and plotting finished successfully"
