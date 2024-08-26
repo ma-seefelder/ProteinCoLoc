@@ -369,8 +369,8 @@ function generate_txt(
     bf::T, channels::Vector{I}, ρ_threshold::T; 
     file::S = "result.csv"
     ) where {T<:AbstractFloat, I<:Integer, S<:AbstractString}
-    prior_samples = prior.posterior
-    posterior_samples = posterior.posterior
+    prior_samples = get_samples(prior)
+    posterior_samples = get_samples(posterior)
     # compute mean, median, and 95% credible interval for prior and posterior
     prior_mean, prior_median, prior_credible_interval = compute_stats(prior_samples.:μ_sample)
     posterior_mean, posterior_median, posterior_credible_interval = compute_stats(posterior_samples.:μ_sample)

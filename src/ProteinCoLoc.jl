@@ -50,7 +50,7 @@ include("script.jl")
 export MultiChannelImage, MultiChannelImageStack, colocalization
 export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult
 export plot, local_correlation_plot,plot_mask, bayesplot, bayes_rangeplot
-export start_analysis, load_tiff
+export start_analysis, load_tiff, get_samples
 end
 
  

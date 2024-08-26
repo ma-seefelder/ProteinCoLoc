@@ -38,12 +38,14 @@ function patch(img, num_patches_x::Int64, num_patches_y::Int64)
     patch_size_y = div(size(img, 2), num_patches_y, RoundDown) |> Int64
     # initialize the patches
     patches = zeros(Union{Float64, Missing}, num_patches_x, num_patches_y, patch_size_x, patch_size_y)
+    
     # loop over the patches
-    for i in 1:num_patches_x
-        for j in 1:num_patches_y
-            patches[i, j, :, :] = img[(i-1)*patch_size_x+1:i*patch_size_x, (j-1)*patch_size_y+1:j*patch_size_y]
-        end
+    idx_x = Iterators.partition(1:size(img, 1), patch_size_x)
+    idx_y = Iterators.partition(1:size(img, 2), patch_size_y)
+    @inbounds for (i, j) in Iterators.product(enumerate(idx_x), enumerate(idx_y))
+        patches[i[1], j[1], :, :] .= img[i[2], j[2]]
     end
+
     return patches
 end
 

@@ -85,7 +85,7 @@ get_images(result::CoLocResult) = (result.img, result.control)
     get_posterior(result::CoLocResult)
     This function retrieves the posterior distribution from a CoLocResult.
 """
-get_posterior(result::CoLocResult) = result.posterior
+get_samples(result::CoLocResult) = result.posterior
 
 """
     get_advi_result(result::CoLocResult)
@@ -134,8 +134,13 @@ This function computes the Bayes factor for the colocalization of two proteins.
 The Bayes factor is computed as the ratio of the posterior odds and the prior odds. The prior and posterior odds are computed as the ratio of the probability of Δρ <= ρ_threshold under the alternative hypothesis and the null hypothesis. The prior and posterior distributions are approximated by a kernel density estimation (KDE), and the probability of Δρ <= ρ_threshold is approximated by numerical integration.
 """
 function compute_BayesFactor(posterior::CoLocResult, prior::CoLocResult; ρ_threshold::Float64 = 0.0)
-    Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
-    Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
+    # get posterior and prior distribution samples
+    posterior = get_samples(posterior)
+    prior = get_samples(prior)
+
+    ### beging of commputation
+    Δρ_post = posterior.μ_sample .- posterior.μ_control
+    Δρ_prior = prior.μ_sample .- prior.μ_control
     
     posterior_dist = kde(Δρ_post)
     p_post, ϵ_post = quadgk(x -> pdf(posterior_dist, x), -Inf, ρ_threshold)

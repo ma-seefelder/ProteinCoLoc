@@ -256,48 +256,14 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
     return fig
 end
 
-"""
-    _local_correlation_plot(
-    img::MultiChannelImageStack, 
-    channel_for_plot::Vector{Int}, 
-    num_patches::Int, 
-    cor_channel::Vector{Int},
-    cor_method::Symbol = :pearson
-    )::Tuple{Matrix{Float64}, Tuple{Int, Int}}
 
-This is a low-level function that calculates and returns the local correlation between two channels of a multi-channel image.
-
-# Arguments
-- `img`: A MultiChannelImageStack representing the image.
-- `channel_for_plot`: A Vector of integers representing the channels to be plotted.
-- `num_patches`: An integer representing the number of patches to be analyzed.
-- `cor_channel`: A Vector of two integers representing the channels for which the correlation is to be calculated.
-- `cor_method`: A Symbol representing the method to be used for the calculation of correlation. Default is :pearson. Other options are :spearman and :kendall.
-
-# Returns
-- `ρ`: A matrix of Float64 representing the local correlation values for each patch.
-- `patch_size`: A tuple of two integers representing the width and height of the patches in pixels.
-
-# Errors
-- Throws a warning if the number of channels is not 3.
-- Throws a warning if the patch size is too small or too big for local correlation.
-- Throws an error if the images are not the same size.
-
-# Notes
-This function checks the number of channels, calculates the patch size, checks the patch size, patches the image, and calculates the correlation for each patch. This function should not be called directly. Use `local_correlation_plot()` instead.
-"""
-function _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel; cor_method = :pearson)
+function _local_correlation(img, channel_for_plot, num_patches, cor_channel; cor_method = :pearson)
     # check that the number of channels is 3
     length(channel_for_plot) <= 3 || @warn "This function is currently only implemented for 3 channels"
 
     # get patch size
     patches = patch(img.data[1], num_patches)
     patch_size = size(patches)[3:4]
-
-    # check that the patch size is reasonable
-    #patch_size[1] * patch_size[2] > 10 || @warn "Patch size is too small for local correlation. A size between 10 and 100 px is recommended."
-    #patch_size[1] * patch_size[2] < 100 || @warn "Patch size is too big for local correlation. A size between 10 and 100 px is recommended."
-    #@info "Patch size is $(patch_size[1]) x $(patch_size[2]) px = $(patch_size[1] * patch_size[2]) px²"    
 
     # patch the image and calculate the correlation
     x = img.data[cor_channel[1]]
@@ -354,7 +320,7 @@ function local_correlation_plot(
     cor_method::Symbol = :pearson
     ) where {I <: Int}
 
-    ρ, patch_size = _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel, cor_method = cor_method)
+    ρ, patch_size = _local_correlation(img, channel_for_plot, num_patches, cor_channel, cor_method = cor_method)
     
     # check that patches with a successful correlation calculation exist
     if sum(ismissing.(ρ)) == size(ρ)[1] * size(ρ)[2]
@@ -362,7 +328,7 @@ function local_correlation_plot(
         # try a different patch
         patch_number_range = reverse(collect(10:10:num_patches))
         for pn ∈ patch_number_range
-            ρ, patch_size = ProteinCoLoc._local_correlation_plot(img, channel_for_plot, pn, cor_channel)
+            ρ, patch_size = ProteinCoLoc._local_correlation(img, channel_for_plot, pn, cor_channel)
             if sum(ismissing.(ρ)) < size(ρ)[1] * size(ρ)[2]
                 @info "Found patches with a successful correlation calculation at $pn patches"
                 num_patches = pn
@@ -414,7 +380,6 @@ end
 ###############################################################################
 # Plotting functions for the Bayesian inference
 ###############################################################################
-
 """
     plot_posterior(
     posterior::CoLocResult; file::String = "posterior.png", 
@@ -430,7 +395,6 @@ This function generates diagnostic plots of a CoLocResult struct obtained from P
 - `fig_size`: A Vector of two Real numbers representing the width and height of the plot in centimeters. Default is [16.0,12.0].
 - `dpi`: An integer representing the dots per inch (dpi) value. Default is 300.
 
-
 # Returns
 - `fig`: A Figure object representing the generated plot.
 
@@ -441,60 +405,72 @@ function plot_posterior(
     posterior::CoLocResult; file::String = "posterior.png", 
     save::Bool = true, fig_size::Vector{T} = [16.0,12.0], dpi::I= 300
     ) where {T <: AbstractFloat, I <: Integer}
+    posterior_samples = get_samples(posterior)
 
-    fig_size_1 = 72*fig_size[1]/2.54
-    fig_size_2 = 72*fig_size[2]/2.54
+    fig_size_1, fig_size_2 = 72 .*fig_size ./2.54 
     fig = GLMakie.Figure(size = (fig_size_1, fig_size_2), backgroundcolor = :white, fontsize = 8, figure_padding = (1,8,1,1))
 
+    #########
+    # ρ 
+    #########
     ax1 = GLMakie.Axis(
         fig[1, 1], xlabel = "ρ", ylabel = "P(ρ|data)", title = "P(ρ|data)",
         xticklabelrotation = deg2rad(60)
         )
-    #
-    # alpha and normalise no longer supported, instead colour can be used
+
     GLMakie.density!(
-        ax1, posterior.posterior.μ_control,
+        ax1, posterior_samples.μ_control,
         colormap = (:viridis, 0.3), label = "control",
         )
         
     GLMakie.density!(
-        ax1, posterior.posterior.μ_sample,
+        ax1, posterior_samplesμ_sample,
         colormap = (:viridis, 0.3), label = "sample"
         )
         
+    #########
+    # ν
+    #########
     ax2 = GLMakie.Axis(fig[1, 2], xlabel = "ν", ylabel = "P(ν|data)", title = "P(ν|data)", xticklabelrotation = deg2rad(60))
     
     GLMakie.density!(
-        ax2, posterior.posterior.ν_control, 
+        ax2, posterior_samples.ν_control, 
         colormap = (:viridis, 0.3), label = "ν_control"
         )
 
     GLMakie.density!(
-        ax2, posterior.posterior.ν_sample, 
+        ax2, posterior_samples.ν_sample, 
         colormap = (:viridis, 0.3), label = "ν_sample"
     )
+
+    #########
+    # σ 
+    #########
 
     ax3 = GLMakie.Axis(fig[1, 3], xlabel = "σ", ylabel = "P(σ|data)", title = "P(σ|data)", xticklabelrotation = deg2rad(60))
 
     GLMakie.density!(
-        ax3, posterior.posterior.σ_control, 
+        ax3, posterior_samples.σ_control, 
         colormap = (:viridis, 0.3), label = "σ_control"
         )
 
     GLMakie.density!(
-        ax3, posterior.posterior.σ_sample, 
+        ax3, posterior_samples.σ_sample, 
         colormap = (:viridis, 0.3), label = "σ_sample"
     )
 
+    #########
+    # τ 
+    #########
     ax4 = GLMakie.Axis(fig[1, 4], xlabel = "τ", ylabel = "P(τ|data)", title = "P(τ|data)", xticklabelrotation = deg2rad(60))
 
     GLMakie.density!(
-        ax4, posterior.posterior.τ_sample, 
+        ax4, posterior_samples.τ_sample, 
         colormap = (:viridis, 0.3), label = "τ_sample"
         )
 
     GLMakie.density!(
-        ax4, posterior.posterior.τ_control, 
+        ax4, posterior_samples.τ_control, 
         colormap = (:viridis, 0.3), label = "τ_control"
     )
 
@@ -504,9 +480,11 @@ function plot_posterior(
         tellheight = false, valign = :top,
         patchsize = (5,5)
         )
+
     #########
     # Δρ 
-    Δρ = posterior.posterior.μ_sample .- posterior.posterior.μ_control
+    #########
+    Δρ = posterior_samples.μ_sample .- posterior_samples.μ_control
 
     ax5 = GLMakie.Axis(
         fig[2, 1:5], xlabel = "Δρ", ylabel = "P(Δρ|data)", title = "P(Δρ|data)",
@@ -578,11 +556,12 @@ function bayesplot(
     dpi::I= 300
     ) where {T <: AbstractFloat, I <: Integer}
 
-    Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
-    Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
+    prior_samples, posterior_samples = get_samples(prior), get_samples(posterior)
 
-    fig_size_1 = 72*fig_size[1]/2.54
-    fig_size_2 = 72*fig_size[2]/2.54
+    Δρ_post = posterior_samples.μ_sample .- posterior_samples.μ_control
+    Δρ_prior = prior_samples.μ_sample .- prior_samples.μ_control
+
+    fig_size_1, fig_size_2 = 72 .*fig_size ./2.54 
     fig = GLMakie.Figure(
         size = (fig_size_1, fig_size_2), backgroundcolor = :white, 
         fontsize = 8, figure_padding = (1,8,1,1)  
@@ -699,8 +678,7 @@ function bayes_rangeplot(
 
     # plot the results
     ticks = collect(range(Δρ[1], Δρ[end], length = 11))
-    fig_size_1 = 72*fig_size[1]/2.54
-    fig_size_2 = 72*fig_size[2]/2.54
+    fig_size_1, fig_size_2 = 72 .*fig_size ./2.54 
 
     fig = GLMakie.Figure(
         size = (fig_size_1, fig_size_2), backgroundcolor = :white,

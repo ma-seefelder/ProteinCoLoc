@@ -55,6 +55,11 @@ mutable struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractStri
     end
 end
 
+get_paths(img::MultiChannelImage) = img.path
+size(img::MultiChannelImage) = img.pixel_size
+otsu_threshold(img::MultiChannelImage) = img.otsu_threshold
+
+
 """
     mutable struct MultiChannelImageStack{T <: MultiChannelImage, S <: AbstractString}
 
@@ -177,12 +182,11 @@ This function iterates over the channels of the image, applies the Otsu threshol
 """
 function _calculate_mask(img)
     mask = fill(ones(size(img.data[1])), length(img.channels))
-    for i ∈ 1:length(img.channels)
-        mask[i] = img.data[i] .> img.otsu_threshold[i]
+    @inbounds for i in eachindex(img.channels)
+        @. mask[i] = img.data[i] > get_otsu_threshold(img)[i]
     end
     return mask
 end
-
 
 # Apply mask
 """
@@ -282,9 +286,8 @@ This function calculates the number of blocks in each channel, retrieves the pix
 """
 function shuffle_blocks(img::MultiChannelImage, block_size::Int64)
     # calculate number of blocks
-    img_size = [size(img.data[1])[1], size(img.data[1])[2]]
+    img_size = size(img)
     num_blocks = Int.(div.(img_size, sqrt(block_size)))
-
 
     for channel ∈ 1:length(img.channels)
         # retrieve pixel values
@@ -371,7 +374,6 @@ function convert_lif_meta_data_to_csv(meta_data::Vector{Dict{Any,Any}}, path::S)
     
     return df_meta_data
 end
-
 =#
 
 ################################################################################

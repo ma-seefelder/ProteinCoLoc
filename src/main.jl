@@ -187,12 +187,12 @@ function start_analysis(
             # write the DataFrames prior_samples and posterior_samples to csv
             CSV.write(
                 joinpath(output_folder_path,"prior_samples_channel$(string(channel_selection_two[1]))_$(channel_selection_two[2]).csv"),
-                prior.posterior
+                get_samples(prior)
                 )
 
             CSV.write(
                 joinpath(output_folder_path,"posterior_samples_channel$(string(channel_selection_two[1]))_$(channel_selection_two[2]).csv"),
-                posterior.posterior
+                get_samples(posterior)
                 )
         end
     else
@@ -211,12 +211,12 @@ function start_analysis(
                 # write the DataFrames prior_samples and posterior_samples to csv
                 CSV.write(
                     joinpath(output_folder_path,"prior_samples_channel$(string(channels[1]))_$(channels[2]).csv"),
-                    prior.posterior
+                    get_samples(prior)
                 )
 
                 CSV.write(
                     joinpath(output_folder_path,"posterior_samples_channel$(string(channels[1]))_$(channels[2]).csv"),
-                    posterior.posterior
+                    get_samples(posterior)
                 )
             end
         end
