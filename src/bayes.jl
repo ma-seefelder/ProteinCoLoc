@@ -162,9 +162,10 @@ This is a low-level function that prepares the data for Bayesian analysis.
 This function extracts the specified channels from the images, applies patching, and calculates the correlation between the channels. The resulting data is reshaped and missing values are skipped. Images with no signal above the background for the selected channels are removed from the analysis.
 """
 function _prepare_data(img::MultiChannelImageStack, channels::Vector{T}, num_patches::T = 1; cor_method::Symbol = :pearson) where T <: Int
-    # extract channels and patch 
-    sample_image::Array{Union{Float64, Missing}, 3} = fill(0.0, img.num_images, num_patches, num_patches)
-    for (image,idx) ∈ zip(img, 1:img.num_images)
+    # extract channels and patch
+    n_images = length(img)
+    sample_image::Array{Union{Float64, Missing}, 3} = fill(0.0, n_images, num_patches, num_patches)
+    for (image,idx) ∈ zip(img, 1:n_images)
         x = image.data[channels[1]]
         y = image.data[channels[2]]
         x,y = patch.([x, y], num_patches)
@@ -172,10 +173,10 @@ function _prepare_data(img::MultiChannelImageStack, channels::Vector{T}, num_pat
     end
 
     # reshape the data
-    sample_img = reshape(sample_image, img.num_images, num_patches^2)
+    sample_img = reshape(sample_image, n_images, num_patches^2)
 
-    sample_data = fill(Vector{Float64}(), img.num_images)
-    for (row, idx) in zip(eachrow(sample_img), 1:img.num_images)
+    sample_data = fill(Vector{Float64}(), n_images)
+    for (row, idx) in zip(eachrow(sample_img), 1:n_images)
         sample_data[idx] = collect(skipmissing(row))
         # remove NaN values
         sample_data[idx] = sample_data[idx][.!isnan.(sample_data[idx])]
@@ -183,7 +184,7 @@ function _prepare_data(img::MultiChannelImageStack, channels::Vector{T}, num_pat
 
     # remove images with no signal above background
     delete_idx = Int[]
-    for idx ∈ 1:img.num_images
+    for idx ∈ 1:n_images
         size_array = size(sample_data[idx])
         if ismissing.(sample_data[idx]) == fill(true, size_array)
             @warn "Image $idx has no signal above background for the selected channels.

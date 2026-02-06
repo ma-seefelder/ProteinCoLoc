@@ -104,14 +104,14 @@ Random123.seed!(1234)
 
         # test that the constructor sets the fields correctly
         @test img_stack.name == "test_stack"
-        @test img_stack.num_images == 3
+        @test length(img_stack) == 3
 
         # test that indexing works as expected
         @test img_stack[1] == img
-        @test_throws BoundsError img_stack[4] # check that indexing out of bounds throws an error  
+        @test_throws BoundsError img_stack[4] # check that indexing out of bounds throws an error
 
         # test that iterations over the stack work as expected
-        for (image, idx, i) ∈ zip(img_stack, 1:img_stack.num_images, 1:3)
+        for (image, idx, i) ∈ zip(img_stack, 1:length(img_stack), 1:3)
             @test image == img
             @test idx == i
         end

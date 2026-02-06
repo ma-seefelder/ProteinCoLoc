@@ -131,33 +131,26 @@ mutable struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractStri
 end
 
 """
-    mutable struct MultiChannelImageStack{T <: MultiChannelImage, S <: AbstractString}
+    mutable struct MultiChannelImageStack{T <: AbstractMultiChannelImage, S <: AbstractString}
         img::Vector{T}
         name::S
-        num_images::Int64
 
     This mutable struct represents a stack of multi-channel images.
 
     # Fields
-    - `img`: A Vector of MultiChannelImage representing the images in the stack.
+    - `img`: A Vector of AbstractMultiChannelImage representing the images in the stack.
     - `name`: A string representing the name of the image stack.
-    - `num_images`: An Int64 representing the number of images in the stack.
-
-    # Constructor
-    The constructor takes a Vector of MultiChannelImage and a string as arguments, and sets the `num_images` field to the length of the Vector.
 
     # Notes
     This struct is used to store and manipulate stacks of multi-channel images in the ProteinCoLoc package.
+    Use `length(stack)` to get the number of images.
     """
 mutable struct MultiChannelImageStack{T <: AbstractMultiChannelImage, S <: AbstractString}
     img::Vector{T}
     name::S
-    num_images::Int64 # number of images in the stack
-
-    function MultiChannelImageStack(img::Vector{T}, name::S) where {T <: AbstractMultiChannelImage, S <: AbstractString}
-        new{T, S}(img, name, length(img))
-    end
 end
+
+Base.length(stack::MultiChannelImageStack) = length(stack.img)
 
 # Method definition for struct MultiChannelImageStack
 """
@@ -196,12 +189,9 @@ This function overrides the base iterate function to iterate over the images in 
 
 # Returns
 - A tuple containing the current image and the next state, or nothing if the end of the stack has been reached.
-
-# Notes
-This function checks if the state is greater than the number of images in the stack, and if so, returns nothing. Otherwise, it returns the current image and the next state.
 """
 function Base.iterate(stack::MultiChannelImageStack, state=1)
-    state > stack.num_images && return nothing
+    state > length(stack) && return nothing
     return stack.img[state], state + 1
 end
 ################################################################################
@@ -255,22 +245,6 @@ end
 
 # Apply mask
 """
-    _apply_mask!(img::AbstractMultiChannelImage, mask::Vector{Matrix{Bool}})
-
-This function applies a binary mask to each channel of an AbstractMultiChannelImage, where pixels in the mask that are set to 0 are set to 0 in the image.
-
-# Arguments
-- `img`: An AbstractMultiChannelImage to which to apply the mask.
-- `mask`: A Vector of Matrix{Bool} representing the binary mask for each channel.
-
-# Returns
-- `img`: The AbstractMultiChannelImage with the mask applied.
-
-# Notes
-This function iterates over the channels of the image, multiplies the data of each channel by the corresponding mask, and stores the result back in the image.
-
----
-
     apply_mask!(img::AbstractMultiChannelImage)
 
 This function calculates a binary mask for an AbstractMultiChannelImage and applies it to the image.
@@ -284,14 +258,14 @@ This function calculates a binary mask for an AbstractMultiChannelImage and appl
 # Notes
 This function calls the `_calculate_mask` function to calculate the mask, and then calls the `_apply_mask!` function to apply the mask to the image.
 """
-function _apply_mask!(img, mask)
+function _apply_mask!(img::AbstractMultiChannelImage, mask)
     for channel ∈ 1:length(img.channels)
         img.data[channel] = img.data[channel] .* mask[channel]
     end
     return img
 end
 
-function apply_mask!(img)
+function apply_mask!(img::AbstractMultiChannelImage)
     mask = _calculate_mask(img)
     img = _apply_mask!(img, mask)
 end
