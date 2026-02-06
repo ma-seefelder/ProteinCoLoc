@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # function to patch the image
 """
-    patch(img::Array{Float64, 2}, num_patches::Int64)
+    patch(img::AbstractMatrix{T}, num_patches::Integer) where T <: Union{Float64, Missing}
 
 This function divides an image into a square grid of patches.
 
@@ -34,27 +34,33 @@ This function divides an image into a square grid of patches.
 # Notes
 This function calculates the size of the patches, trims the image to fit an exact number of patches, initializes a 4D array for the patches, loops over the patches, and assigns the corresponding part of the image to each patch.
 """
-function patch(img::Array{Float64, 2}, num_patches::Int64)
-    # calculate the size of the patches
-    patch_size_x = Int64(floor(size(img, 1) / num_patches))
-    patch_size_y = Int64(floor(size(img, 2) / num_patches))
-    
-    # cut the image to the correct size
-    img = img[1:num_patches*patch_size_x, 1:num_patches*patch_size_y]
+function patch(img::AbstractMatrix{T}, num_patches::Integer) where T <: Union{Float64, Missing}
+    rows, cols = size(img)
+    patch_size_x = rows ÷ num_patches
+    patch_size_y = cols ÷ num_patches
 
-    # initialize the patches
-    patches = zeros(Union{Float64, Missing}, num_patches, num_patches, patch_size_x, patch_size_y)
-    # loop over the patches
-    for i in 1:num_patches
-        for j in 1:num_patches
-            patches[i, j, :, :] = img[(i-1)*patch_size_x+1:i*patch_size_x, (j-1)*patch_size_y+1:j*patch_size_y]
+    # View statt Kopie für Trimming
+    trimmed = @view img[1:num_patches*patch_size_x, 1:num_patches*patch_size_y]
+
+    # Union-Typ beibehalten für Kompatibilität
+    patches = Array{Union{Float64, Missing}, 4}(undef, num_patches, num_patches, patch_size_x, patch_size_y)
+
+    # Elementweise Kopie mit @inbounds - vermeidet temporäre Arrays
+    @inbounds for j in 1:num_patches
+        y_start = (j-1)*patch_size_y + 1
+        for i in 1:num_patches
+            x_start = (i-1)*patch_size_x + 1
+            for py in 1:patch_size_y, px in 1:patch_size_x
+                patches[i, j, px, py] = trimmed[x_start + px - 1, y_start + py - 1]
+            end
         end
     end
+
     return patches
 end
 
 """
-    patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
+    patch(img::AbstractMatrix{T}, num_patches_x::Integer, num_patches_y::Integer) where T <: Union{Float64, Missing}
 
 This function divides an image into a specified number of patches.
 
@@ -69,23 +75,31 @@ This function divides an image into a specified number of patches.
 # Notes
 This function calculates the size of the patches, initializes a 4D array for the patches, loops over the patches, and assigns the corresponding part of the image to each patch.
 """
-function patch(img::Array{Float64,2}, num_patches_x::Int64, num_patches_y::Int64)
-    # calculate the size of the patches
-    patch_size_x = Int64(floor(size(img, 1) / num_patches_x))
-    patch_size_y = Int64(floor(size(img, 2) / num_patches_y))
-    # initialize the patches
-    patches = zeros(Union{Float64, Missing}, num_patches_x, num_patches_y, patch_size_x, patch_size_y)
-    # loop over the patches
-    for i in 1:num_patches_x
-        for j in 1:num_patches_y
-            patches[i, j, :, :] = img[(i-1)*patch_size_x+1:i*patch_size_x, (j-1)*patch_size_y+1:j*patch_size_y]
+function patch(img::AbstractMatrix{T}, num_patches_x::Integer, num_patches_y::Integer) where T <: Union{Float64, Missing}
+    rows, cols = size(img)
+    patch_size_x = rows ÷ num_patches_x
+    patch_size_y = cols ÷ num_patches_y
+
+    # View statt Kopie
+    trimmed = @view img[1:num_patches_x*patch_size_x, 1:num_patches_y*patch_size_y]
+
+    patches = Array{Union{Float64, Missing}, 4}(undef, num_patches_x, num_patches_y, patch_size_x, patch_size_y)
+
+    @inbounds for j in 1:num_patches_y
+        y_start = (j-1)*patch_size_y + 1
+        for i in 1:num_patches_x
+            x_start = (i-1)*patch_size_x + 1
+            for py in 1:patch_size_y, px in 1:patch_size_x
+                patches[i, j, px, py] = trimmed[x_start + px - 1, y_start + py - 1]
+            end
         end
     end
+
     return patches
 end
 
 """
-    unpatch(patches::Array{Union{Float64, Missing}, 4}, img_size::Tuple{Int64, Int64})
+    unpatch(patches::AbstractArray{T, 4}, img_size::Tuple{<:Integer, <:Integer}) where T
 
 This function reconstructs an image from its patches.
 
@@ -99,17 +113,22 @@ This function reconstructs an image from its patches.
 # Notes
 This function iterates over the patches, places each patch in the correct position in the image, and returns the reconstructed image.
 """
-function unpatch(patches::Array{Union{Float64, Missing}, 4}, img_size::Tuple{Int64, Int64})
-    # Get the dimensions of the patches
+function unpatch(patches::AbstractArray{T, 4}, img_size::Tuple{<:Integer, <:Integer}) where T
     num_patches_x, num_patches_y, patch_size_x, patch_size_y = size(patches)
-    # Initialize the image
-    img = zeros(Float64, img_size[1], img_size[2])
-    # Loop over the patches
-    for i in 1:num_patches_x
-        for j in 1:num_patches_y
-            img[(i-1)*patch_size_x+1:i*patch_size_x, (j-1)*patch_size_y+1:j*patch_size_y] = patches[i, j, :, :]
+
+    # Float64 für Ausgabe (kein Missing nötig)
+    img = Matrix{Float64}(undef, img_size[1], img_size[2])
+
+    @inbounds for j in 1:num_patches_y
+        y_start = (j-1)*patch_size_y + 1
+        for i in 1:num_patches_x
+            x_start = (i-1)*patch_size_x + 1
+            for py in 1:patch_size_y, px in 1:patch_size_x
+                img[x_start + px - 1, y_start + py - 1] = patches[i, j, px, py]
+            end
         end
     end
+
     return img
 end
 
