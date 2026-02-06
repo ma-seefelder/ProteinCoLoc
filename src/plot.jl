@@ -80,7 +80,7 @@ end
 
 """
     plot(
-    img::LoadImages.MultiChannelImage,
+    img::AbstractMultiChannelImage,
     num_patches::T,
     cor_channel::Vector{T} = [2, 3];
     scale_channels::Bool = true,
@@ -93,7 +93,7 @@ end
     Plot the image with the patches and the correlation of each patch.
 
     # Arguments
-    - `img::LoadImages.MultiChannelImage`: The image to plot.
+    - `img::AbstractMultiChannelImage`: The image to plot.
     - `num_patches::Int64`: The number of patches to use.
     - `cor_channel::Vector{Int64}`: The channels to use for the calculation of correlation.
     - `scale_channels::Bool`: Whether to scale the channels intensities to the range [0, 1].
@@ -117,7 +117,7 @@ end
     ```
 """
 function plot(
-    img::MultiChannelImage,
+    img::AbstractMultiChannelImage,
     num_patches::T,
     cor_channel::Vector{T} = [2, 3];
     scale_channels::Bool = true,
@@ -131,41 +131,44 @@ function plot(
     # check that the number of channels to plot is between 1 and 3
     length(channel_for_plot) <= 3 || @error "Only 1-3 channels are supported for plotting"
     # check that the number of channels_to_plot is <= the number of channels
-    length(channel_for_plot) <= length(img.channels) || @error "The number of channels to plot must be <= the number of channels in the image"
+    length(channel_for_plot) <= num_channels(img) || @error "The number of channels to plot must be <= the number of channels in the image"
+
+    # get image data
+    img_data = image_data(img)
 
     # get patch size
-    patches = patch(img.data[1], num_patches)
+    patches = patch(img_data[1], num_patches)
     patch_size = size(patches)[3:4]
 
     # extract the individual channels and scale them
-    channel = length(img.channels)
-    scale_channels ? c = [minmax_norm!(img.data[i]) for i in 1:channel] : c = img.data
+    n_channels = num_channels(img)
+    scale_channels ? c = [minmax_norm!(img_data[i]) for i in 1:n_channels] : c = img_data
 
     # plot the image
     if length(channel_for_plot) == 3
         img_view = Images.colorview(
-            Images.RGB, 
-            c[channel_for_plot[3]], 
-            c[channel_for_plot[2]], 
+            Images.RGB,
+            c[channel_for_plot[3]],
+            c[channel_for_plot[2]],
             c[channel_for_plot[1]]
             )
 
     elseif length(channel_for_plot)  == 2
         img_view = Images.colorview(
-            Images.RGB, 
+            Images.RGB,
             c[channel_for_plot[2]],
             c[channel_for_plot[1]],
             Images.zeroarray
             )
     elseif length(channel_for_plot)  == 1
         img_view = Images.colorview(
-            Images.Gray, 
+            Images.Gray,
             c[channel_for_plot[1]],
             Images.zeroarray
             )
     end
 
-    fig = GLMakie.Figure(size = (size(img.data[1])[2,],size(img.data[1])[1,]), backgroundcolor = :black)
+    fig = GLMakie.Figure(size = (size(img_data[1])[2,],size(img_data[1])[1,]), backgroundcolor = :black)
     ax1 = GLMakie.Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
     GLMakie.image!(ax1, img_view')
 
@@ -178,8 +181,8 @@ function plot(
     ######################################
     # add correlation values to the image
     ######################################
-    x = img.data[cor_channel[1]]
-    y = img.data[cor_channel[2]]
+    x = img_data[cor_channel[1]]
+    y = img_data[cor_channel[2]]
     # assert that the images are the same size
     @assert size(x) == size(y) "Images are not the same size"
     # patch the image
@@ -205,15 +208,15 @@ function plot(
 end
 
 """
-    plot_mask(img::LoadImages.MultiChannelImage,file::String = "test.png")
+    plot_mask(img::AbstractMultiChannelImage,file::String = "test.png")
     Plot the mask of the image with the channels separated by lines.
     Save the plot to the file and also return it.
 
     # Arguments
-    - `img::LoadImages.MultiChannelImage`: The image to plot.
+    - `img::AbstractMultiChannelImage`: The image to plot.
     - `file::String`: The file to save the plot to. Must end with .png or .svg.
 """
-function plot_mask(img::MultiChannelImage,file::String = "mask.png")
+function plot_mask(img::AbstractMultiChannelImage,file::String = "mask.png")
     mask = _calculate_mask(img)
 
     # initialize subplots
@@ -228,24 +231,28 @@ function plot_mask(img::MultiChannelImage,file::String = "mask.png")
 
     # without x and y axis ticks and labels and with a black background
     fig = GLMakie.Figure(
-        size = (0.3*size(plt)[2,],0.3*size(plt)[1,]), 
+        size = (0.3*size(plt)[2,],0.3*size(plt)[1,]),
         background_color = :black
         )
 
     ax1 = GLMakie.Axis(fig[1, 1], aspect = GLMakie.DataAspect(), yreversed = true)
     GLMakie.image!(ax1, plt')
 
+    # get image data and channel names
+    img_data = image_data(img)
+    channels = channel_names(img)
+
     # add lines to the image to separate the channels
-    for i in 0:length(img.channels)
-        GLMakie.vlines!([i*size(img.data[1])[2,]], color = :white, width = 2)
+    for i in 0:length(channels)
+        GLMakie.vlines!([i*size(img_data[1])[2,]], color = :white, width = 2)
     end
 
     # add the channel names to the bottom corner of each channel
-    for i in 0:(length(img.channels)-1)
+    for i in 0:(length(channels)-1)
         GLMakie.text!(
-            ax1, 
-            (i*size(img.data[1])[2,] +100), 100,
-            text = string(img.channels[i+1]),
+            ax1,
+            (i*size(img_data[1])[2,] +100), 100,
+            text = string(channels[i+1]),
             color = :yellow, fontsize = 20.0
             )
     end
@@ -258,9 +265,9 @@ end
 
 """
     _local_correlation_plot(
-    img::MultiChannelImageStack, 
-    channel_for_plot::Vector{Int}, 
-    num_patches::Int, 
+    img::AbstractMultiChannelImage,
+    channel_for_plot::Vector{Int},
+    num_patches::Int,
     cor_channel::Vector{Int},
     cor_method::Symbol = :pearson
     )::Tuple{Matrix{Float64}, Tuple{Int, Int}}
@@ -268,7 +275,7 @@ end
 This is a low-level function that calculates and returns the local correlation between two channels of a multi-channel image.
 
 # Arguments
-- `img`: A MultiChannelImageStack representing the image.
+- `img`: An AbstractMultiChannelImage representing the image.
 - `channel_for_plot`: A Vector of integers representing the channels to be plotted.
 - `num_patches`: An integer representing the number of patches to be analyzed.
 - `cor_channel`: A Vector of two integers representing the channels for which the correlation is to be calculated.
@@ -315,7 +322,7 @@ end
 
 """
     local_correlation_plot(
-    img::MultiChannelImage,
+    img::AbstractMultiChannelImage,
     num_patches::Int,
     cor_channel::Vector{Int} = [2, 3];
     channel_for_plot::Vector{Int} = [1, 2, 3],
@@ -327,7 +334,7 @@ end
 This function generates a local correlation plot for a multi-channel image.
 
 # Arguments
-- `img`: A MultiChannelImage representing the image.
+- `img`: An AbstractMultiChannelImage representing the image.
 - `num_patches`: An integer representing the number of patches to be analyzed.
 - `cor_channel`: A Vector of two integers representing the channels for which the correlation is to be calculated. Default is [2, 3].
 - `channel_for_plot`: A Vector of integers representing the channels to be plotted. Default is [1, 2, 3].
@@ -346,7 +353,7 @@ This function generates a local correlation plot for a multi-channel image.
 This function calculates the local correlation for each patch, checks that patches with a successful correlation calculation exist, tries a different patch size if necessary, plots the local correlation, and saves the plot to a file if specified.
 """
 function local_correlation_plot(
-    img::MultiChannelImage,
+    img::AbstractMultiChannelImage,
     num_patches::I,
     cor_channel::Vector{I} = [2, 3];
     channel_for_plot::Vector{I} = [1, 2, 3],
@@ -391,7 +398,7 @@ function local_correlation_plot(
         fig[1, 1],
         xlabel = "x position [px]",
         ylabel = "y position [px]",
-        title = "Colocalization between the $(img.channels[cor_channel[1]]) and $(img.channels[cor_channel[2]]) channel",
+        title = "Colocalization between the $(channel_names(img)[cor_channel[1]]) and $(channel_names(img)[cor_channel[2]]) channel",
         yreversed = false,
         limits = (0.0, nothing, 0.0, nothing)
         )

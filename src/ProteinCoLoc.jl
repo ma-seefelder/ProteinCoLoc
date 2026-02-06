@@ -46,7 +46,8 @@ include("main.jl")
 #include("gui.jl")
 include("script.jl")
 
-export MultiChannelImage, MultiChannelImageStack, colocalization
+export AbstractMultiChannelImage, MultiChannelImage, MultiChannelImageStack, colocalization
+export image_data, channel_names, image_name, image_paths, pixel_dimensions, otsu_thresholds, num_channels
 export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult
 export plot, local_correlation_plot,plot_mask, bayesplot, bayes_rangeplot
 end

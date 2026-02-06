@@ -21,13 +21,82 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ################################################################################
 # Data types
 ################################################################################
+abstract type AbstractMultiChannelImage end
+
+# === Interface-Funktionen (erforderlich für alle Subtypen) ===
+"""
+    image_data(img::AbstractMultiChannelImage) -> Vector{Matrix}
+Gibt die Bilddaten als Vector von Matrix pro Kanal zurück.
+"""
+function image_data(img::AbstractMultiChannelImage)
+    hasfield(typeof(img), :data) || throw(ArgumentError(
+        "Typ $(typeof(img)) muss `image_data(img)` implementieren oder ein `data` Feld haben"))
+    return img.data
+end
+
+"""
+    channel_names(img::AbstractMultiChannelImage) -> Vector{<:AbstractString}
+Gibt die Namen der Kanäle zurück.
+"""
+function channel_names(img::AbstractMultiChannelImage)
+    hasfield(typeof(img), :channels) || throw(ArgumentError(
+        "Typ $(typeof(img)) muss `channel_names(img)` implementieren oder ein `channels` Feld haben"))
+    return img.channels
+end
+
+"""
+    image_name(img::AbstractMultiChannelImage) -> AbstractString
+Gibt den Namen des Bildes zurück.
+"""
+function image_name(img::AbstractMultiChannelImage)
+    hasfield(typeof(img), :name) || throw(ArgumentError(
+        "Typ $(typeof(img)) muss `image_name(img)` implementieren oder ein `name` Feld haben"))
+    return img.name
+end
+
+"""
+    image_paths(img::AbstractMultiChannelImage) -> Vector{<:AbstractString}
+Gibt die Dateipfade für jeden Kanal zurück.
+"""
+function image_paths(img::AbstractMultiChannelImage)
+    hasfield(typeof(img), :path) || throw(ArgumentError(
+        "Typ $(typeof(img)) muss `image_paths(img)` implementieren oder ein `path` Feld haben"))
+    return img.path
+end
+
+"""
+    pixel_dimensions(img::AbstractMultiChannelImage) -> Tuple{Integer, Integer}
+Gibt die Pixeldimensionen (Breite, Höhe) zurück.
+"""
+function pixel_dimensions(img::AbstractMultiChannelImage)
+    hasfield(typeof(img), :pixel_size) || throw(ArgumentError(
+        "Typ $(typeof(img)) muss `pixel_dimensions(img)` implementieren oder ein `pixel_size` Feld haben"))
+    return img.pixel_size
+end
+
+"""
+    otsu_thresholds(img::AbstractMultiChannelImage) -> Vector{<:AbstractFloat}
+Gibt die Otsu-Schwellenwerte für jeden Kanal zurück.
+"""
+function otsu_thresholds(img::AbstractMultiChannelImage)
+    hasfield(typeof(img), :otsu_threshold) || throw(ArgumentError(
+        "Typ $(typeof(img)) muss `otsu_thresholds(img)` implementieren oder ein `otsu_threshold` Feld haben"))
+    return img.otsu_threshold
+end
+
+"""
+    num_channels(img::AbstractMultiChannelImage) -> Int
+Gibt die Anzahl der Kanäle zurück.
+"""
+num_channels(img::AbstractMultiChannelImage) = length(channel_names(img))
+
 """
     mutable struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractString, F <: AbstractFloat}
         data::Vector{Matrix{T}}
         channels::Vector{S}
         name::S
         path::Vector{S}
-        pixel_size::Tuple{F, F}
+        pixel_size::Tuple{I, I}
         otsu_threshold::Vector{F}
 
     This mutable struct represents a multi-channel image.
@@ -46,18 +115,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     # Notes
     This struct is used to store and manipulate multi-channel images in the ProteinCoLoc package.
     """
-mutable struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractString, F <: AbstractFloat}
+mutable struct MultiChannelImage{T <: Union{Missing, Float64}, S <: AbstractString, F <: AbstractFloat, I <: Integer} <: AbstractMultiChannelImage
     data::Vector{Matrix{T}}
     channels::Vector{S}
     name::S
     path::Vector{S}
-    pixel_size::Tuple{F, F}
+    pixel_size::Tuple{I, I}
     otsu_threshold::Vector{F}
 
-    function MultiChannelImage(data::Vector{Matrix{T}}, channels::Vector{S}, name::S, path::Vector{S}, pixel_size::Tuple{Int64, Int64}, otsu_threshold::Vector{F}) where {T <: Union{Missing, Float64}, S <: AbstractString, F <: AbstractFloat}
+    function MultiChannelImage(data::Vector{Matrix{T}}, channels::Vector{S}, name::S, path::Vector{S}, pixel_size::Tuple{I, I}, otsu_threshold::Vector{F}) where {T <: Union{Missing, Float64}, S <: AbstractString, F <: AbstractFloat, I <: Int}
         @assert length(data) == length(channels) "Length of data and channels vectors must match"
         @assert length(otsu_threshold) == length(channels) "Length of otsu_threshold vector must match number of channels"
-        new{T, S, F}(data, channels, name, path, pixel_size, otsu_threshold)
+        new{T, S, F, I}(data, channels, name, path, pixel_size, otsu_threshold)
     end
 end
 
@@ -80,12 +149,12 @@ end
     # Notes
     This struct is used to store and manipulate stacks of multi-channel images in the ProteinCoLoc package.
     """
-mutable struct MultiChannelImageStack{T <:MultiChannelImage, S <: AbstractString}
+mutable struct MultiChannelImageStack{T <: AbstractMultiChannelImage, S <: AbstractString}
     img::Vector{T}
     name::S
     num_images::Int64 # number of images in the stack
 
-    function MultiChannelImageStack(img::Vector{T}, name::S) where {T <: MultiChannelImage, S <: AbstractString}
+    function MultiChannelImageStack(img::Vector{T}, name::S) where {T <: AbstractMultiChannelImage, S <: AbstractString}
         new{T, S}(img, name, length(img))
     end
 end
@@ -109,9 +178,11 @@ This function overrides the base getindex function to retrieve an image from a M
 # Notes
 This function checks that `i` is within the bounds of the stack, and returns the image at index `i`.
 """
-function Base.getindex(stack::MultiChannelImageStack, i::Int64)
-    i > stack.num_images && throw(BoundsError(stack, i))
-    return stack.img[i]
+function Base.getindex(stack::MultiChannelImageStack, i::Integer)
+    @boundscheck checkbounds(
+      Bool, stack.img, i
+    ) || throw(BoundsError(stack, i))
+    return @inbounds stack.img[i]
 end
 
 """
@@ -160,12 +231,12 @@ end
 ################################################################################
 # Calculate mask
 """
-    _calculate_mask(img::MultiChannelImage)
+    _calculate_mask(img::AbstractMultiChannelImage)
 
-This function calculates a binary mask for each channel of a MultiChannelImage, where pixels with intensity greater than the Otsu threshold are set to 1 and others are set to 0.
+This function calculates a binary mask for each channel of an AbstractMultiChannelImage, where pixels with intensity greater than the Otsu threshold are set to 1 and others are set to 0.
 
 # Arguments
-- `img`: A MultiChannelImage for which to calculate the mask.
+- `img`: An AbstractMultiChannelImage for which to calculate the mask.
 
 # Returns
 - `mask`: A Vector of Matrix{Bool} representing the binary mask for each channel.
@@ -173,42 +244,42 @@ This function calculates a binary mask for each channel of a MultiChannelImage, 
 # Notes
 This function iterates over the channels of the image, applies the Otsu threshold to the data of each channel, and stores the resulting binary mask.
 """
-function _calculate_mask(img)
-    mask = fill(ones(size(img.data[1])), length(img.channels))
-    for i ∈ 1:length(img.channels)
-        mask[i] = img.data[i] .> img.otsu_threshold[i]
-    end
-    return mask
+function _calculate_mask(img::AbstractMultiChannelImage)
+    return [
+        ch .> thr
+        for (ch, thr) in
+            zip(image_data(img), otsu_thresholds(img))
+    ]
 end
 
 
 # Apply mask
 """
-    _apply_mask!(img::MultiChannelImage, mask::Vector{Matrix{Bool}})
+    _apply_mask!(img::AbstractMultiChannelImage, mask::Vector{Matrix{Bool}})
 
-This function applies a binary mask to each channel of a MultiChannelImage, where pixels in the mask that are set to 0 are set to 0 in the image.
+This function applies a binary mask to each channel of an AbstractMultiChannelImage, where pixels in the mask that are set to 0 are set to 0 in the image.
 
 # Arguments
-- `img`: A MultiChannelImage to which to apply the mask.
+- `img`: An AbstractMultiChannelImage to which to apply the mask.
 - `mask`: A Vector of Matrix{Bool} representing the binary mask for each channel.
 
 # Returns
-- `img`: The MultiChannelImage with the mask applied.
+- `img`: The AbstractMultiChannelImage with the mask applied.
 
 # Notes
 This function iterates over the channels of the image, multiplies the data of each channel by the corresponding mask, and stores the result back in the image.
 
 ---
 
-    apply_mask!(img::MultiChannelImage)
+    apply_mask!(img::AbstractMultiChannelImage)
 
-This function calculates a binary mask for a MultiChannelImage and applies it to the image.
+This function calculates a binary mask for an AbstractMultiChannelImage and applies it to the image.
 
 # Arguments
-- `img`: A MultiChannelImage to which to apply the mask.
+- `img`: An AbstractMultiChannelImage to which to apply the mask.
 
 # Returns
-- `img`: The MultiChannelImage with the mask applied.
+- `img`: The AbstractMultiChannelImage with the mask applied.
 
 # Notes
 This function calls the `_calculate_mask` function to calculate the mask, and then calls the `_apply_mask!` function to apply the mask to the image.
@@ -228,23 +299,24 @@ end
 ################################################################################
 # shuffle individual pixels in each channel of a MultiChannelImage
 """
-    shuffle_pixels(img::MultiChannelImage)
+    shuffle_pixels(img::AbstractMultiChannelImage)
 
-This function shuffles the pixel values in each channel of a MultiChannelImage.
+This function shuffles the pixel values in each channel of an AbstractMultiChannelImage.
 
 # Arguments
-- `img`: A MultiChannelImage whose pixel values are to be shuffled.
+- `img`: An AbstractMultiChannelImage whose pixel values are to be shuffled.
 
 # Returns
-- `img`: The MultiChannelImage with shuffled pixel values.
+- `img`: The AbstractMultiChannelImage with shuffled pixel values.
 
 # Notes
 This function iterates over the channels of the image, shuffles the pixel values in each channel using the `shuffle!` function from the Julia standard library, and stores the result back in the image.
 """
-function shuffle_pixels(img::MultiChannelImage)
-    for channel ∈ 1:length(img.channels)
+function shuffle_pixels(img::AbstractMultiChannelImage)
+    data = image_data(img)
+    for channel ∈ 1:num_channels(img)
         # retrieve pixel values
-        img.data[channel] = shuffle!(img.data[channel])
+        data[channel] = shuffle!(data[channel])
     end
     return img
 end
@@ -252,51 +324,57 @@ end
 # shuffle blocks of pixels in each channel of a MultiChannelImage 
 # with block size block_size to accomodate for autocorrelation
 # use the patch function to create blocks
+
 """
-    shuffle_blocks(img::MultiChannelImage, block_size::Int64)
+    shuffle_blocks!(img::AbstractMultiChannelImage, block_size::Integer)
 
-This function shuffles the blocks of pixel values in each channel of a MultiChannelImage.
-
-# Arguments
-- `img`: A MultiChannelImage whose pixel blocks are to be shuffled.
-- `block_size`: An Int64 representing the size of the blocks to be shuffled.
-
-# Returns
-- `img`: The MultiChannelImage with shuffled pixel blocks.
-
-# Notes
-This function calculates the number of blocks in each channel, retrieves the pixel values, shuffles the blocks, and stores the result back in the image. The shuffling is done by creating a new array with the first two dimensions shuffled. The blocks are then unpatched and the image data is updated.
+Shuffle blocks of pixels in-place to preserve spatial autocorrelation.
+`block_size` is the size length of each square block in pixels.
+Blocks at the image edges that don't fit a full block are included
+in the last block of that row/column (variable-size edge blocks).
 """
-function shuffle_blocks(img::MultiChannelImage, block_size::Int64)
-    # calculate number of blocks
-    img_size = [size(img.data[1])[1], size(img.data[1])[2]]
-    num_blocks = Int.(div.(img_size, sqrt(block_size)))
+function shuffle_blocks!(img::AbstractMultiChannelImage, block_size::Integer)
+    img_data = image_data(img)
+    rows, cols = size(img_data[1])
 
+    # — Compute block boundary ranges once —
+    function make_ranges(total, bs)
+        starts = 1:bs:total
+        return [s:min(s + bs - 1, total) for s in starts]
+    end
 
-    for channel ∈ 1:length(img.channels)
-        # retrieve pixel values
-        data = patch(img.data[channel], num_blocks[1], num_blocks[2])
-        ############################################################
-        # shuffle blocks, i.e. only shuffle the order of the blocks
-        ############################################################
-        # Assume data is a 4D array and shuffle_idx is a 1D array of shuffled indices
-        dims = size(data)
-        indices = CartesianIndices((dims[1], dims[2]))
-        shuffle_idx = indices[randperm(length(indices))]
+    row_ranges = make_ranges(rows, block_size)
+    col_ranges = make_ranges(cols, block_size)
 
-        # Create a new array with the first two dimensions shuffled
-        shuffled_data = similar(data)
-        for i in eachindex(shuffle_idx)
-            shuffled_data[shuffle_idx[i], :, :, :] = data[indices[i], :, :, :]
+    # — Flat list of (row_range, col_range) block coordinates —
+    blocks = [(rr, cr) for rr in row_ranges for cr in col_ranges]
+    n_blocks = length(blocks)
+
+    # — Shuffle once, reuse permutation across channels —
+    perm = randperm(n_blocks)
+
+    for ch in eachindex(img_data)
+        dest = similar(img_data[ch])  # single allocation per channel
+
+        for (dst_idx, src_idx) in enumerate(perm)
+            dst_rr, dst_cr = blocks[dst_idx]
+            src_rr, src_cr = blocks[src_idx]
+            # Copy block — @views avoids any temporary arrays
+            @views dest[dst_rr, dst_cr] .= img_data[ch][src_rr, src_cr]
         end
 
-        ############################################################
-        # unpatch
-        ############################################################
-        img.data[channel] = unpatch(shuffled_data, Int.(img.pixel_size))
+        img_data[ch] = dest
     end
+
     return img
 end
+
+# Non-mutating convenience wrapper
+function shuffle_blocks(img::AbstractMultiChannelImage, block_size::Integer)
+    img_copy = deepcopy(img)
+    return shuffle_blocks!(img_copy, block_size)
+end
+
 
 
 ################################################################################
@@ -387,7 +465,10 @@ function MultiChannelImage(name::S, path::Vector{S}, channels::Vector{S} =[]) wh
         channels = ["channel_$i" for i in 1:length(data)]
     end
 
-    @assert length(data) == length(channels) "Number of channels must match the number of image files"
+
+    if length(data) != length(channels)
+         throw(ArgumentError("Number of channels must match the number of image files"))
+    end
     pixel_size = size(data[1])
     otsu_threshold = Images.otsu_threshold.(data)
     
