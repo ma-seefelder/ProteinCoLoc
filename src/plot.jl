@@ -32,7 +32,11 @@ This function normalizes a 2D image matrix to the range [0, 1].
 # Notes
 This function normalizes the image by subtracting the minimum pixel value from each pixel, and then dividing each pixel by the range of pixel values (maximum - minimum). The normalization is performed in-place, modifying the input image matrix directly.
 """
-minmax_norm!(img::Matrix{Float64}) = (img .- minimum(img)) ./ (maximum(img) - minimum(img))
+function minmax_norm!(img::Matrix{Float64})
+    lo, hi = extrema(img)  # Single pass for min and max
+    img .= (img .- lo) ./ (hi - lo)  # True in-place operation
+    return img
+end
 
 
 """
@@ -363,29 +367,34 @@ function local_correlation_plot(
     ) where {I <: Int}
 
     ρ, patch_size = _local_correlation_plot(img, channel_for_plot, num_patches, cor_channel, cor_method = cor_method)
-    
+
     # check that patches with a successful correlation calculation exist
-    if sum(ismissing.(ρ)) == size(ρ)[1] * size(ρ)[2]
+    # Cache ismissing count to avoid repeated calculations
+    num_missing = count(ismissing, ρ)
+    total_patches = size(ρ, 1) * size(ρ, 2)
+    if num_missing == total_patches
         @warn "No patches with a successful correlation calculation exist at $num_patches patches. A different patch size is tried."
         # try a different patch
         patch_number_range = reverse(collect(10:10:num_patches))
         for pn ∈ patch_number_range
             ρ, patch_size = ProteinCoLoc._local_correlation_plot(img, channel_for_plot, pn, cor_channel)
-            if sum(ismissing.(ρ)) < size(ρ)[1] * size(ρ)[2]
+            num_missing = count(ismissing, ρ)
+            total_patches = size(ρ, 1) * size(ρ, 2)
+            if num_missing < total_patches
                 @info "Found patches with a successful correlation calculation at $pn patches"
                 num_patches = pn
                 break
             end
-            if sum(ismissing.(ρ)) == size(ρ)[1] * size(ρ)[2] && pn == patch_number_range[end]
+            if num_missing == total_patches && pn == patch_number_range[end]
                 @warn "No local correlation plot could be generated."
                 return nothing
             end
         end    
     end
 
-    # plot the local correlation
-    x = [i for i in 1 : (num_patches)] .* patch_size[2]
-    y = [i for i in 1 : (num_patches)] .* patch_size[1]
+    # plot the local correlation - direct range broadcast instead of comprehension
+    x = (1:num_patches) .* patch_size[2]
+    y = (1:num_patches) .* patch_size[1]
     z = [ρ[i, j] for i in 1 : (num_patches), j in 1 : (num_patches)]
 
     # replace missing values with 0
@@ -667,12 +676,27 @@ function bayes_rangeplot(
     dpi::I= 300
     ) where {T <: AbstractFloat, I <: Integer}
 
-    # calculate the bayes factor for each Δρ threshold
+    # Pre-compute KDE distributions once (avoiding repeated computation in loop)
+    Δρ_post = posterior.posterior.μ_sample .- posterior.posterior.μ_control
+    Δρ_prior = prior.posterior.μ_sample .- prior.posterior.μ_control
+    posterior_dist = kde(Δρ_post)
+    prior_dist = kde(Δρ_prior)
+
+    # calculate the bayes factor for each Δρ threshold using cached KDEs
     bf = fill(0.0, length(Δρ))
     for idx in eachindex(Δρ)
-        a, _, _ = compute_BayesFactor(posterior, prior; ρ_threshold = Δρ[idx])
+        ρ_threshold = Δρ[idx]
+        # Compute probability using cached KDE
+        p_post, _ = quadgk(x -> pdf(posterior_dist, x), -Inf, ρ_threshold)
+        p_post = 1 - p_post
+        p_prior, _ = quadgk(x -> pdf(prior_dist, x), -Inf, ρ_threshold)
+        p_prior = 1 - p_prior
+        # Compute Bayes factor
+        prior_odds = p_prior / (1 - p_prior)
+        posterior_odds = p_post / (1 - p_post)
+        a = posterior_odds / prior_odds
         a > 0 ? bf[idx] = a : bf[idx] = NaN
-    end 
+    end
 
     # return if all values are NaN or Inf
     if all(isnan.(bf))

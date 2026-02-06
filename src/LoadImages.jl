@@ -212,10 +212,8 @@ This function loads a TIFF image from a file and converts it to a matrix of Floa
 This function uses the Images.jl package to load the image, convert it to grayscale, and then convert it to a matrix.
 """
 function load_tiff(path::S) where {S<:AbstractString}
-    img = Images.load(path) # load image
-    img = Images.Gray.(img) # convert to grayscale
-    img = Images.convert(Matrix{Float64}, img) # convert to matrix
-    return img
+    # Fused operations to reduce allocations
+    return Float64.(Images.Gray.(Images.load(path)))
 end
 
 ################################################################################
@@ -260,7 +258,7 @@ This function calls the `_calculate_mask` function to calculate the mask, and th
 """
 function _apply_mask!(img::AbstractMultiChannelImage, mask)
     for channel ∈ 1:length(img.channels)
-        img.data[channel] = img.data[channel] .* mask[channel]
+        img.data[channel] .*= mask[channel]  # True in-place multiplication
     end
     return img
 end

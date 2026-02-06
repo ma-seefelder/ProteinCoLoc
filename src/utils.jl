@@ -70,11 +70,13 @@ function get_images(path::S, nchannels::I, stack_name::S; mask::Bool = true) whe
     end
 
     # load images
-    for i in eachindex(images) 
+    for i in eachindex(images)
         image_name = image_names[i]
         channel_files = fill("", nchannels)
         for j in 1:nchannels
-            file_index = findfirst(file -> occursin(image_name * "_c" * string(j), file), files)
+            # Pre-build search pattern outside findfirst predicate
+            search_pattern = string(image_name, "_c", j)
+            file_index = findfirst(file -> occursin(search_pattern, file), files)
             !isnothing(file_index) || error("The image path is not valid.")
             channel_files[j] = joinpath(path, files[file_index])
         end
@@ -286,13 +288,15 @@ This function generates all possible combinations of two elements from 1 to n wi
 This function uses two nested loops to generate all possible combinations of two numbers from 1 to n. It checks to ensure that the combination has not already been added to the list and that the two numbers are not the same.
 """
 function combinations2(n)
-    # generate all possible combinations of two elements from 1:n without repetition 
-    combination = Vector{Vector{Int}}()
-    for i in 1:n
-        for j in 1:n
-            if [j,i] ∉ combination && i != j
-                push!(combination, [i,j])
-            end
+    # Efficient O(n²) algorithm using direct construction
+    # Pre-allocate result vector with exact size: n*(n-1)/2 combinations
+    num_combinations = n * (n - 1) ÷ 2
+    combination = Vector{Vector{Int}}(undef, num_combinations)
+    idx = 0
+    @inbounds for i in 1:n
+        for j in (i+1):n
+            idx += 1
+            combination[idx] = [i, j]
         end
     end
     return combination

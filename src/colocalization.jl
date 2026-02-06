@@ -152,14 +152,20 @@ This function excludes zero and NaN values from two vectors.
 This function finds the indices of zero and NaN values in both vectors, creates a union of these indices, and deletes the values at these indices from both vectors.
 """
 function _exclude_zero(a::Vector{T}, b::Vector{T}) where T <: Number
-    # get the indices of the zero and NaN values
-    zero_indices = sort(union(findall(iszero, a), findall(isnan, a), findall(iszero, b), findall(isnan, b)))
-
-    # exclude all values at the indices in zero_indices
-    deleteat!(a, zero_indices)
-    deleteat!(b, zero_indices)
-
-    return a,b
+    # Single-pass filter with pre-allocation
+    n = length(a)
+    out_a = Vector{T}(undef, n)
+    out_b = Vector{T}(undef, n)
+    k = 0
+    @inbounds for i in 1:n
+        ai, bi = a[i], b[i]
+        if !iszero(ai) && !isnan(ai) && !iszero(bi) && !isnan(bi)
+            k += 1
+            out_a[k] = ai
+            out_b[k] = bi
+        end
+    end
+    return resize!(out_a, k), resize!(out_b, k)
 end
 
 """
@@ -179,21 +185,21 @@ This function excludes zero and NaN values from two vectors.
 This function replaces missing values with zero, finds the indices of zero and NaN values in both vectors, creates a union of these indices, and deletes the values at these indices from both vectors.
 """
 function _exclude_zero(a::Vector{Union{T,Missing}}, b::Vector{Union{T,Missing}}) where T <: Number
-    # change missing values to zero
-    replace!(a, missing => 0)
-    replace!(b, missing => 0)
-
-    # get the indices of the zero and NaN values
-    zero_indices = sort(union(findall(iszero, a), findall(isnan, a), findall(iszero, b), findall(isnan, b)))
-
-    # exclude all values at the indices in zero_indices
-    deleteat!(a, zero_indices)
-    deleteat!(b, zero_indices)
-
-    a = convert(Vector{T}, a)
-    b = convert(Vector{T}, b)
-
-    return a,b
+    # Single-pass filter with pre-allocation, handling missing values
+    n = length(a)
+    out_a = Vector{T}(undef, n)
+    out_b = Vector{T}(undef, n)
+    k = 0
+    @inbounds for i in 1:n
+        ai, bi = a[i], b[i]
+        # Skip missing, zero, and NaN values
+        (ismissing(ai) || ismissing(bi)) && continue
+        (iszero(ai) || isnan(ai) || iszero(bi) || isnan(bi)) && continue
+        k += 1
+        out_a[k] = ai
+        out_b[k] = bi
+    end
+    return resize!(out_a, k), resize!(out_b, k)
 end
 
 """
@@ -220,12 +226,12 @@ function correlation(x::Array{T, 4}, y::Array{T, 4}; method::Symbol = :pearson) 
     num_patches = size(x, 1)
     # initialize the correlation
     ρ = zeros(Union{Float64, Missing},num_patches, num_patches)
-    # loop over the patches
-    for i in 1:num_patches
+    # loop over the patches with @inbounds and vec+view to avoid double allocations
+    @inbounds for i in 1:num_patches
         for j in 1:num_patches
-            a = x[i, j, :, :][:] 
-            b = y[i, j, :, :][:]
-            a,b = _exclude_zero(a,b)
+            a = vec(collect(view(x, i, j, :, :)))
+            b = vec(collect(view(y, i, j, :, :)))
+            a, b = _exclude_zero(a, b)
             length(a) <= 15 ? ρ[i, j] = missing : ρ[i, j] = cor_func(a, b)
         end
     end

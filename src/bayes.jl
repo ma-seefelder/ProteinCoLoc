@@ -177,20 +177,18 @@ function _prepare_data(img::MultiChannelImageStack, channels::Vector{T}, num_pat
 
     sample_data = fill(Vector{Float64}(), n_images)
     for (row, idx) in zip(eachrow(sample_img), 1:n_images)
-        sample_data[idx] = collect(skipmissing(row))
-        # remove NaN values
-        sample_data[idx] = sample_data[idx][.!isnan.(sample_data[idx])]
+        # Single-pass filter: collect non-missing, non-NaN values
+        sample_data[idx] = filter(x -> !isnan(x), collect(skipmissing(row)))
     end
 
-    # remove images with no signal above background
+    # remove images with no signal above background (empty after filtering)
     delete_idx = Int[]
     for idx ∈ 1:n_images
-        size_array = size(sample_data[idx])
-        if ismissing.(sample_data[idx]) == fill(true, size_array)
+        if isempty(sample_data[idx])
             @warn "Image $idx has no signal above background for the selected channels.
             The image is removed from the analysis."
-            push!(delete_idx, idx)              
-        end  
+            push!(delete_idx, idx)
+        end
     end
     length(delete_idx) >= 1 && deleteat!(sample_data, delete_idx)
     
