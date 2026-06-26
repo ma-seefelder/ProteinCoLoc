@@ -1,9 +1,12 @@
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
 ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
+ImageTransformations = "02fcd773-0e25-5acc-982a-7f6622650795"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 NeuralEstimators = "38f6df31-6b4a-4144-b2af-7ace2da57606"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
