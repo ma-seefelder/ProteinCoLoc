@@ -133,7 +133,8 @@ This document evolves at phase transitions and milestone boundaries.
 ## Current State
 
 - **Phase 1 (Environment + Smoke Gate) — Complete (2026-06-26).** Isolated `spike/` env stands up the pre-1.0 NeuralEstimators v0.2.1 + Flux v0.16.10 stack on Julia 1.12.6; the CPU-only NPE smoke is green AND correct (recovered posterior mean within tolerance). Validated: ENV-01, ENV-02, ENV-03, ENV-04. Root baseline frozen at commit `f581d95`; `src/` and root manifests provably untouched. Parent coupling uses the D-01 `include()` fallback (Pkg.develop silently downgraded NeuralEstimators 0.2.1→0.1.4 against the parent's heavy tree — recorded for Phase 4).
-- **Next:** Phase 2 — Forward Simulator + Summary Contract.
+- **Phase 2 (Forward Simulator + Summary Contract) — Complete (2026-06-26).** `simulate_pair(rng,θ)` emits 2-channel `MultiChannelImage` pairs via a 7-stage physics pipeline; a **spike-validated shared-latent smooth-field generator** (a generator de-risk spike rejected the puncta alternative — it couldn't reach the μ-prior range post-degrade) feeds the **unchanged** `patch()`/`correlation()` via a read-only `include()`. The prior is **provably consistent** with the Turing μ-prior (induced-μ calibration: Wasserstein-1 = 0.052 < 0.10) with a quantitative SIM-04 plausibility gate + CairoMakie figures. Validated: SIM-01, SIM-02, SIM-03, SIM-04 (77/77 tests green). Root still byte-identical to baseline `f581d95`; `src/` untouched. Caveat: induced summary is near-Gaussian vs the Turing Student-t ν-prior (μ-consistency holds; documented).
+- **Next:** Phase 3 — Training-Data Pipeline (adds Random123 counter-based seeding for scale).
 
 ---
-*Last updated: 2026-06-26 after Phase 1 completion*
+*Last updated: 2026-06-26 after Phase 2 completion*
