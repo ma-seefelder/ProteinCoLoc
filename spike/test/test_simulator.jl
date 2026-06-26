@@ -150,8 +150,12 @@ end
     # Sweep ρ_true negative → ~zero → positive with the OTHER nuisances fixed and a
     # fixed fresh seed per point, isolating ρ_true's effect through the REAL summary.
     ρ_grid = [-0.7, 0.0, 0.7]
+    # WR-02: average ≥3 replicates per ρ (matching SIM-04a) so a single stochastic
+    # draw landing on the wrong side of zero can no longer flip the ordering.
     μ_ind  = map(ρ_grid) do ρ
-        induced_mu(build_mci(simulate_pair(Random.Xoshiro(2026), _θ(ρ); imsize = (256, 256))))
+        vals = [induced_mu(build_mci(simulate_pair(Random.Xoshiro(2026 + i), _θ(ρ);
+                                                   imsize = (256, 256)))) for i in 0:2]
+        mean(filter(isfinite, vals))
     end
 
     @test all(isfinite, μ_ind)
