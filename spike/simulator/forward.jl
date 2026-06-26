@@ -35,7 +35,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #   (3) fixed Gaussian PSF      imfilter(·, Kernel.gaussian(σ_psf))  [D-05 nuisance, NOT in θ]
 #   (4) 2×2 directional spillover  ch1 += spillover·ch2  (directional, NOT symmetric)
 #   (5) autofluorescence offset + BG_FLOOR  (background stays small-positive, never hard 0.0)
-#   (6) sub-pixel shift ch2 only   warp(ch2, Translation(dx,dy); fillvalue=BG_FLOOR)
+#   (6) sub-pixel shift ch2 only   warp(ch2, Translation(dy,dx); fillvalue=BG_FLOOR)
 #   (7) Poisson(shot) + Gaussian(read) noise   (scaled by θ.noise)  [D-07]
 #
 # Output is a 2-element Vector{Matrix{Float64}} (all finite, ≥ 0, mostly-non-zero)
@@ -153,7 +153,10 @@ function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256)
     ch2 = ch2 .+ θ.autofluorescence .+ BG_FLOOR
 
     # --- (6) sub-pixel registration shift on channel 2 only (fillvalue > 0) ------
-    shifted = warp(ch2, Translation(θ.shift_dx, θ.shift_dy), axes(ch2);
+    # WR-06: Translation(a, b) shifts the FIRST array axis (rows = vertical = dy) by a
+    # and the SECOND (columns = horizontal = dx) by b. Pass (dy, dx) so the named
+    # fields map to their conventional physical axes (dx horizontal, dy vertical).
+    shifted = warp(ch2, Translation(θ.shift_dy, θ.shift_dx), axes(ch2);
                    method = BSpline(Linear()), fillvalue = BG_FLOOR)
     ch2 = Matrix{Float64}(collect(shifted))
 
