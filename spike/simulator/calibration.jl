@@ -177,6 +177,10 @@ function calibrate(rng::AbstractRNG = Random.Xoshiro(2026);
     mu_sd   = similar(ρ_grid)
     for (k, ρ) in enumerate(ρ_grid)
         μs = _induced_mu_samples(rng, ρ, imsize, n_per)
+        if isempty(μs)                                  # WR-01: guard mean/std on empty
+            @warn "all induced_mu non-finite at ρ=$ρ; skipping grid point"
+            mu_mean[k] = NaN; mu_sd[k] = NaN; continue
+        end
         mu_mean[k] = mean(μs)
         mu_sd[k]   = std(μs)
     end
