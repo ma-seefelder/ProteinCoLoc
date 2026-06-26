@@ -201,7 +201,11 @@ end
 
     @testset "induced μ matches Turing μ-prior within tol (realized range, D-16)" begin
         rng = Random.Xoshiro(404)
-        N   = 120
+        # WR-04: match calibration's metric_N=300 (W1 estimator SE ≈ 0.058 << the
+        # pre-declared 0.10 bar) rather than loosen the gate. At N=120 the W1 SE
+        # (≈0.09) nearly equals the tolerance, risking Monte-Carlo false failures;
+        # raising N keeps the honest pre-declared SIM02_W1_TOL intact.
+        N   = 300
         induced = Float64[]
         for _ in 1:N
             θ = sample_prior(rng)
