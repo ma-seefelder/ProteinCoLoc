@@ -56,6 +56,16 @@ using Pkg
         @test !any(p -> occursin("CUDA", p.name), values(Pkg.dependencies()))
         # (c) not loaded as a module at runtime
         @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
+        # (d) RESOLVE-RISK GATE (Phase 2): the Phase-2 imaging/plotting stack
+        #     (Images/ImageFiltering/CairoMakie/HypothesisTests) must NOT have
+        #     downgraded the pinned NeuralEstimators v0.2.1 -- exactly the Phase-1
+        #     GLMakie-co-resolve regression (NOTES §4). Keyed by NeuralEstimators'
+        #     UUID so a rename can't silently mask it.
+        @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
     end
 
 end
+
+# Phase-2 Wave-0 scaffold: the SIM-03 summary-contract testset runs in the same
+# harness so a single `julia --project=spike spike/test/runtests.jl` is the gate.
+include(joinpath(@__DIR__, "test_simulator.jl"))
