@@ -47,8 +47,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Output verifies as a valid `MultiChannelImage` so the existing `correlation()`/`patch()`/`_prepare_data()` apply unchanged (no `src/` edits)
   4. Plausibility plots confirm expected behavior: ρ_true ↑ → patch correlation ↑; spillover and sub-pixel shift visibly affect the pair
 **Plans**: 4 plans (4 waves — serial: env → simulator → calibration → validation)
-- [ ] 02-01-PLAN.md - Extend spike env (StatsBase/Images/ImageFiltering/CairoMakie), re-freeze Manifest, establish the include() contract boundary, prove SIM-03 on a synthetic image (SIM-03)
-- [ ] 02-02-PLAN.md - `simulate_pair` 7-stage forward physics pipeline; SIM-03 on real simulator output (SIM-01, SIM-03)
+- [x] 02-01-PLAN.md - Extend spike env (StatsBase/Images/ImageFiltering/CairoMakie), re-freeze Manifest, establish the include() contract boundary, prove SIM-03 on a synthetic image (SIM-03)
+- [x] 02-02-PLAN.md - `simulate_pair` 7-stage forward physics pipeline; SIM-03 on real simulator output (SIM-01, SIM-03)
 - [ ] 02-03-PLAN.md - Induced-μ calibration (sweep → monotone ĝ), `sample_prior` consistent with the Turing μ-prior, NOTES §3 evidence (SIM-02)
 - [ ] 02-04-PLAN.md - SIM-04 quantitative plausibility gate (monotonicity + paired perturbation) + CairoMakie figures (SIM-04)
 
@@ -114,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Environment + Smoke Gate | 4/4 | Complete   | 2026-06-26 |
-| 2. Forward Simulator + Summary Contract | 0/4 | Planned    |  |
+| 2. Forward Simulator + Summary Contract | 2/4 | In Progress|  |
 | 3. Training-Data Pipeline | 0/TBD | Not started | - |
 | 4. NPE Training + ADVI Benchmark + Ablation | 0/TBD | Not started | - |
 | 5. Validation Bundle (SBC + BF + OOD) | 0/TBD | Not started | - |

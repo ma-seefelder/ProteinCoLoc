@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-06-26T19:02:58.335Z"
+last_updated: "2026-06-26T19:23:13.263Z"
 last_activity: 2026-06-26 -- Phase 2 execution started
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 6
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 2 (Forward Simulator + Summary Contract) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Executing Phase 2
 Last activity: 2026-06-26 -- Phase 2 execution started
 
-Progress: [█████░░░░░] 50%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [█████░░░░░] 50%
 | Phase 01 P03 | 9 | 2 tasks | 2 files |
 | Phase 01 P04 | 13min | 2 tasks | 1 files |
 | Phase 02 P01 | 15min | 2 tasks | 5 files |
+| Phase 02 P02 | 11min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 01-04]: include() fallback chosen over Pkg.develop for ENV-01 — the parent's GLMakie/Makie 0.21 + Turing 0.44 + GraphNeuralNetworks 1.1.0 tree caps NeuralEstimators <0.2.1, silently downgrading the pinned 0.2.1 to 0.1.4 and breaking the v0.2.1-API smoke; later phases reach src/ read-only via include('../src/<file>.jl'). Package boundary deferred to Phase 4 (D-02). Decoupling proven byte-identical to baseline f581d95.
 - [Phase ?]: SIM-03 summary contract proven on a synthetic strictly-positive image via UNCHANGED src/ patch()/correlation() at fixed 8x8 (D-10) before any physics exists
 - [Phase ?]: CairoMakie/Images/ImageFiltering/HypothesisTests/StatsBase co-resolve cleanly with NeuralEstimators 0.2.1 (no downgrade, no CUDA); resolve-risk gate automated in runtests.jl
+- [Phase ?]: Phase 2 simulator: shared-latent standardized-smooth-field generator (D-15) with sign(rho) flip drives monotone, sign-correct induced patch-correlation (-0.43 to +0.60)
 
 ### Pending Todos
 
@@ -98,6 +100,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-26T19:02:44.105Z
+Last session: 2026-06-26T19:20:17.347Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-forward-simulator-summary-contract/02-CONTEXT.md
