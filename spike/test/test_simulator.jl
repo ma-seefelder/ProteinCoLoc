@@ -170,6 +170,9 @@ end
 # prior.jl draws μ*~Truncated(Cauchy(0,0.3),-1,1) and sets ρ_true=ghat(μ*) (the
 # frozen inverse from calibration.jl) so the induced μ matches the Turing μ-prior.
 # Bundles MU_PRIOR + ghat (via ghat.jl) + sample_prior + the pre-declared SIM02_W1_TOL.
+# IN-02: prior.jl transitively includes the FROZEN, GENERATED spike/simulator/ghat.jl.
+# If it is missing you will get a bare `SystemError: opening file ... ghat.jl`. Run the
+# one-time calibration first: `julia --project=spike spike/simulator/calibration.jl`.
 include(joinpath(@__DIR__, "..", "simulator", "prior.jl"))
 
 # Wasserstein-1 between two empirical samples (quantile transport), test-local.
