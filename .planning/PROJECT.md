@@ -130,5 +130,10 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
+## Current State
+
+- **Phase 1 (Environment + Smoke Gate) — Complete (2026-06-26).** Isolated `spike/` env stands up the pre-1.0 NeuralEstimators v0.2.1 + Flux v0.16.10 stack on Julia 1.12.6; the CPU-only NPE smoke is green AND correct (recovered posterior mean within tolerance). Validated: ENV-01, ENV-02, ENV-03, ENV-04. Root baseline frozen at commit `f581d95`; `src/` and root manifests provably untouched. Parent coupling uses the D-01 `include()` fallback (Pkg.develop silently downgraded NeuralEstimators 0.2.1→0.1.4 against the parent's heavy tree — recorded for Phase 4).
+- **Next:** Phase 2 — Forward Simulator + Summary Contract.
+
 ---
-*Last updated: 2026-06-26 after initialization*
+*Last updated: 2026-06-26 after Phase 1 completion*
