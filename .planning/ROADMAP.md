@@ -12,7 +12,7 @@ v2.0 proves and (conditionally) ships amortized simulation-based inference for c
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Environment + Smoke Gate** - Isolated spike env, pinned Manifest, green NeuralEstimators/Flux toy NPE — the hard gate before all downstream investment (completed 2026-06-26)
+- [x] **Phase 1: Environment + Smoke Gate** - Isolated spike env, pinned Manifest, green NeuralEstimators/Flux toy NPE — the hard gate before all downstream investment (completed 2026-06-26)
 - [ ] **Phase 2: Forward Simulator + Summary Contract** - `simulate_pair(θ) → MultiChannelImage` consumed unchanged by the existing summary functions, prior-consistent with the Turing model
 - [ ] **Phase 3: Training-Data Pipeline** - θ~π → simulate → summary → standardized fixed-dim vectors, version-guarded JLD2 cache with leak-free split discipline
 - [ ] **Phase 4: NPE Training + ADVI Benchmark + Ablation** - NPE for ρ_true and Δρ at >100x ADVI speedup, summary-statistic ablation gated on per-parameter RMSE
@@ -46,7 +46,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `sample_prior()` and π(θ) mirror the existing Turing `@model` ranges (μ/ν/σ/τ), documented in `spike/NOTES.md`, so the ADVI benchmark and BF validation share one generative prior
   3. Output verifies as a valid `MultiChannelImage` so the existing `correlation()`/`patch()`/`_prepare_data()` apply unchanged (no `src/` edits)
   4. Plausibility plots confirm expected behavior: ρ_true ↑ → patch correlation ↑; spillover and sub-pixel shift visibly affect the pair
-**Plans**: TBD
+**Plans**: 4 plans (4 waves — serial: env → simulator → calibration → validation)
+- [ ] 02-01-PLAN.md - Extend spike env (StatsBase/Images/ImageFiltering/CairoMakie), re-freeze Manifest, establish the include() contract boundary, prove SIM-03 on a synthetic image (SIM-03)
+- [ ] 02-02-PLAN.md - `simulate_pair` 7-stage forward physics pipeline; SIM-03 on real simulator output (SIM-01, SIM-03)
+- [ ] 02-03-PLAN.md - Induced-μ calibration (sweep → monotone ĝ), `sample_prior` consistent with the Turing μ-prior, NOTES §3 evidence (SIM-02)
+- [ ] 02-04-PLAN.md - SIM-04 quantitative plausibility gate (monotonicity + paired perturbation) + CairoMakie figures (SIM-04)
 
 ### Phase 3: Training-Data Pipeline
 **Goal**: A reproducible, resumable generator turns the prior + simulator + reused summary functions into cached standardized training vectors, with leak-free split discipline baked into the loader structurally
@@ -110,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Environment + Smoke Gate | 4/4 | Complete   | 2026-06-26 |
-| 2. Forward Simulator + Summary Contract | 0/TBD | Not started | - |
+| 2. Forward Simulator + Summary Contract | 0/4 | Planned | - |
 | 3. Training-Data Pipeline | 0/TBD | Not started | - |
 | 4. NPE Training + ADVI Benchmark + Ablation | 0/TBD | Not started | - |
 | 5. Validation Bundle (SBC + BF + OOD) | 0/TBD | Not started | - |
