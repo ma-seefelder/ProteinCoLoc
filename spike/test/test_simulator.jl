@@ -174,7 +174,9 @@ include(joinpath(@__DIR__, "..", "simulator", "prior.jl"))
 
 # Wasserstein-1 between two empirical samples (quantile transport), test-local.
 _w1_test(a::Vector{Float64}, b::Vector{Float64}) = begin
-    n = min(length(a), length(b)); qs = ((1:n) .- 0.5) ./ n
+    n = min(length(a), length(b))
+    n < 5 && return NaN                              # WR-05: match calibration.jl's _w1 guard
+    qs = ((1:n) .- 0.5) ./ n
     mean(abs.(quantile(a, qs) .- quantile(b, qs)))
 end
 
