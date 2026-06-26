@@ -12,7 +12,7 @@ v2.0 proves and (conditionally) ships amortized simulation-based inference for c
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Environment + Smoke Gate** - Isolated spike env, pinned Manifest, green NeuralEstimators/Flux toy NPE — the hard gate before all downstream investment
+- [x] **Phase 1: Environment + Smoke Gate** - Isolated spike env, pinned Manifest, green NeuralEstimators/Flux toy NPE — the hard gate before all downstream investment (completed 2026-06-26)
 - [ ] **Phase 2: Forward Simulator + Summary Contract** - `simulate_pair(θ) → MultiChannelImage` consumed unchanged by the existing summary functions, prior-consistent with the Turing model
 - [ ] **Phase 3: Training-Data Pipeline** - θ~π → simulate → summary → standardized fixed-dim vectors, version-guarded JLD2 cache with leak-free split discipline
 - [ ] **Phase 4: NPE Training + ADVI Benchmark + Ablation** - NPE for ρ_true and Δρ at >100x ADVI speedup, summary-statistic ablation gated on per-parameter RMSE
@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 01-01-PLAN.md - Reconcile the dirty-root precondition; record an agreed frozen baseline ref (ENV-01)
 - [x] 01-02-PLAN.md - Minimal isolated spike env + green CPU-only NeuralEstimators/Flux NPE smoke gate (ENV-02)
 - [x] 01-03-PLAN.md - Pin + commit Manifest, pin Julia version, write stack-decision note (ENV-03, ENV-04)
-- [ ] 01-04-PLAN.md - Pkg.develop coupling (include fallback) + decoupling proof vs baseline (ENV-01)
+- [x] 01-04-PLAN.md - Pkg.develop coupling (include fallback) + decoupling proof vs baseline (ENV-01)
 
 ### Phase 2: Forward Simulator + Summary Contract
 **Goal**: A physics forward-simulator emits real `MultiChannelImage` pairs from θ that the *unmodified* existing summary functions ingest, with a prior provably consistent with the Turing model so every downstream comparison stays valid
@@ -109,7 +109,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Environment + Smoke Gate | 3/4 | In Progress|  |
+| 1. Environment + Smoke Gate | 4/4 | Complete   | 2026-06-26 |
 | 2. Forward Simulator + Summary Contract | 0/TBD | Not started | - |
 | 3. Training-Data Pipeline | 0/TBD | Not started | - |
 | 4. NPE Training + ADVI Benchmark + Ablation | 0/TBD | Not started | - |

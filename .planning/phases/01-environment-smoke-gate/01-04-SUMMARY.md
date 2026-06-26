@@ -94,6 +94,14 @@ None - no external service configuration required.
 - **Phase 4 note:** the Turing ADVI baseline must NOT pull the parent into the lean SBI env (it caps NeuralEstimators <0.2.1); use a separate parent-aware env or a targeted `bayes.jl` include with a minimal Turing dep set.
 - **Phase 6 note:** repeat the decoupling proof `git diff --quiet f581d95 -- Project.toml Manifest.toml src/` for DEMO-02.
 
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/01-environment-smoke-gate/01-04-SUMMARY.md`
+- FOUND: `spike/NOTES.md`
+- FOUND commit: `c2717d9` (Task 1 — coupling outcome)
+- FOUND commit: `b4ae100` (Task 2 — decoupling proof)
+- FOUND commit: `5898b9d` (SUMMARY)
+
 ---
 *Phase: 01-environment-smoke-gate*
 *Completed: 2026-06-26*
