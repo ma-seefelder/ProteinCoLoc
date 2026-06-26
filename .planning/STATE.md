@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: planning
+status: executing
 stopped_at: Phase 1 context gathered
-last_updated: "2026-06-26T13:36:22.076Z"
-last_activity: 2026-06-26 — Roadmap created (7 phases, 27/27 v1 requirements mapped)
+last_updated: "2026-06-26T14:53:56.181Z"
+last_activity: 2026-06-26 -- Phase 01 execution started
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 1 — Environment + Smoke Gate
+**Current focus:** Phase 01 — environment-smoke-gate
 
 ## Current Position
 
-Phase: 1 of 7 (Environment + Smoke Gate)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-06-26 — Roadmap created (7 phases, 27/27 v1 requirements mapped)
+Phase: 01 (environment-smoke-gate) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 01
+Last activity: 2026-06-26 -- Phase 01 execution started
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01 P02 | 22min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,7 @@ Recent decisions affecting current work:
 - [Roadmap]: 7-layer horizontal build order; ENV smoke gate (Phase 1) is the hard gate before all downstream investment (pre-1.0 NeuralEstimators API is the top unknown)
 - [Roadmap]: SBC/BF/OOD grouped into one Phase 5 — sibling plans sharing one θ*~π→simulate→infer harness over the trained nets
 - [Roadmap]: Phase 7 (productionization) is conditional on a Go decision in the Phase 6 memo and is the ONLY phase that edits `src/`; spike phases (1–6) keep `src/` provably untouched
+- [Phase 01-02]: Spike env is minimal+isolated (NeuralEstimators 0.2.1, Flux 0.16.10, Distributions 0.25.128, no CUDA); CPU-only NPE smoke recovers theta within tol=0.3 under a re-runnable stdlib Test gate. CUDA-absence asserted via Pkg.dependencies (installed set) not a Manifest regex, since Flux/NNlib/Zygote/NeuralEstimators declare CUDA as inert weakdep extensions.
 
 ### Pending Todos
 
@@ -89,6 +91,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-26T12:51:32.140Z
+Last session: 2026-06-26T14:52:37.393Z
 Stopped at: Phase 1 context gathered
 Resume file: .planning/phases/01-environment-smoke-gate/01-CONTEXT.md
