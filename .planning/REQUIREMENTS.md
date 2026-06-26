@@ -11,8 +11,8 @@ The v2.0 milestone: a decoupled spike (ENV–DEMO) that gates a conditional prod
 
 - [ ] **ENV-01**: A `spike/` directory exists with its own `Project.toml`, isolated from the main package (`Pkg.activate`), with the main package available read-only via `Pkg.develop` — main `Project.toml`/`Manifest.toml` and `src/` untouched
 - [x] **ENV-02**: A <30-line smoke test (`spike/00_smoke.jl`) trains a `PosteriorEstimator` (NormalisingFlow) on a 1-parameter Gaussian and runs `sampleposterior`, proving the NeuralEstimators + Flux backend works on this machine
-- [ ] **ENV-03**: The resolved `spike/Manifest.toml` is pinned and committed (exact NeuralEstimators/Flux versions) as a reproducibility artifact; smoke test is a hard gate before further investment
-- [ ] **ENV-04**: A stack-decision note records NeuralEstimators.jl as default and BayesFlow (PythonCall) as fallback only
+- [x] **ENV-03**: The resolved `spike/Manifest.toml` is pinned and committed (exact NeuralEstimators/Flux versions) as a reproducibility artifact; smoke test is a hard gate before further investment
+- [x] **ENV-04**: A stack-decision note records NeuralEstimators.jl as default and BayesFlow (PythonCall) as fallback only
 
 ### Simulator (forward physics model)
 
@@ -97,8 +97,8 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 |-------------|-------|--------|
 | ENV-01 | Phase 1 — Environment + Smoke Gate | Pending |
 | ENV-02 | Phase 1 — Environment + Smoke Gate | Complete |
-| ENV-03 | Phase 1 — Environment + Smoke Gate | Pending |
-| ENV-04 | Phase 1 — Environment + Smoke Gate | Pending |
+| ENV-03 | Phase 1 — Environment + Smoke Gate | Complete |
+| ENV-04 | Phase 1 — Environment + Smoke Gate | Complete |
 | SIM-01 | Phase 2 — Forward Simulator + Summary Contract | Pending |
 | SIM-02 | Phase 2 — Forward Simulator + Summary Contract | Pending |
 | SIM-03 | Phase 2 — Forward Simulator + Summary Contract | Pending |

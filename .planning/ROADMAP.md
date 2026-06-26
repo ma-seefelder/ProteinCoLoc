@@ -33,8 +33,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. A stack-decision note records NeuralEstimators.jl as default and BayesFlow (PythonCall) as fallback only
 **Plans**: 4 plans
 - [x] 01-01-PLAN.md - Reconcile the dirty-root precondition; record an agreed frozen baseline ref (ENV-01)
-- [ ] 01-02-PLAN.md - Minimal isolated spike env + green CPU-only NeuralEstimators/Flux NPE smoke gate (ENV-02)
-- [ ] 01-03-PLAN.md - Pin + commit Manifest, pin Julia version, write stack-decision note (ENV-03, ENV-04)
+- [x] 01-02-PLAN.md - Minimal isolated spike env + green CPU-only NeuralEstimators/Flux NPE smoke gate (ENV-02)
+- [x] 01-03-PLAN.md - Pin + commit Manifest, pin Julia version, write stack-decision note (ENV-03, ENV-04)
 - [ ] 01-04-PLAN.md - Pkg.develop coupling (include fallback) + decoupling proof vs baseline (ENV-01)
 
 ### Phase 2: Forward Simulator + Summary Contract
@@ -109,7 +109,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Environment + Smoke Gate | 1/4 | In Progress|  |
+| 1. Environment + Smoke Gate | 3/4 | In Progress|  |
 | 2. Forward Simulator + Summary Contract | 0/TBD | Not started | - |
 | 3. Training-Data Pipeline | 0/TBD | Not started | - |
 | 4. NPE Training + ADVI Benchmark + Ablation | 0/TBD | Not started | - |
