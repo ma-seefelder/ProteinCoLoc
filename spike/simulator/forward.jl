@@ -119,6 +119,17 @@ function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256)
         throw(ArgumentError("all θ fields must be finite, got $θ"))
     (-1.0 ≤ θ.ρ_true ≤ 1.0) ||
         throw(ArgumentError("ρ_true must be in [-1, 1], got $(θ.ρ_true)"))
+    # WR-07: reject physically out-of-range nuisances rather than silently clamping
+    # (label_efficiency) or corrupting downstream stages (negative spillover would
+    # SUBTRACT signal in stage 4; negative autofluorescence/noise are non-physical).
+    (0.0 ≤ θ.spillover ≤ 1.0) ||
+        throw(ArgumentError("spillover must be in [0, 1], got $(θ.spillover)"))
+    (0.0 ≤ θ.autofluorescence) ||
+        throw(ArgumentError("autofluorescence must be ≥ 0, got $(θ.autofluorescence)"))
+    (0.0 ≤ θ.label_efficiency ≤ 1.0) ||
+        throw(ArgumentError("label_efficiency must be in [0, 1], got $(θ.label_efficiency)"))
+    (0.0 ≤ θ.noise) ||
+        throw(ArgumentError("noise must be ≥ 0, got $(θ.noise)"))
 
     ρ = θ.ρ_true
 
