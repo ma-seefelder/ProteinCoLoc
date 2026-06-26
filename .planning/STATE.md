@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-06-26T19:55:28.433Z"
+last_updated: "2026-06-26T20:14:07.643Z"
 last_activity: 2026-06-26 -- Phase 2 execution started
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 6
-  percent: 14
+  completed_plans: 8
+  percent: 29
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: 4 of 4
 Status: Executing Phase 2
 Last activity: 2026-06-26 -- Phase 2 execution started
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [████████░░] 75%
 | Phase 02 P01 | 15min | 2 tasks | 5 files |
 | Phase 02 P02 | 11min | 2 tasks | 4 files |
 | Phase 02 P03 | 32min | 2 tasks | 5 files |
+| Phase 02 P04 | 22min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase ?]: CairoMakie/Images/ImageFiltering/HypothesisTests/StatsBase co-resolve cleanly with NeuralEstimators 0.2.1 (no downgrade, no CUDA); resolve-risk gate automated in runtests.jl
 - [Phase ?]: Phase 2 simulator: shared-latent standardized-smooth-field generator (D-15) with sign(rho) flip drives monotone, sign-correct induced patch-correlation (-0.43 to +0.60)
 - [Phase ?]: SIM-02 (02-03): frozen monotone ĝ (isotonic PAVA + clamped piecewise-linear inverse) maps μ↦ρ_true; induced μ matches Turing μ-prior W1=0.052<0.10 over realized range [-0.68,0.847]; negative μ tail prior-only (real anchor pos=0.33/neg=0.25)
+- [Phase ?]: SIM-04 Spearman monotonicity threshold fixed at 0.95 (achieved 1.0); perturbation effects asserted as paired shared-seed differences with OneSampleTTest p<0.05 (T-02-GATE)
+- [Phase ?]: CairoMakie plausibility figures are spike-local headless (D-13); .gitignore scoped negation tracks spike/figures/plausibility.png as the evidence deliverable
 
 ### Pending Todos
 
@@ -102,6 +105,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-26T19:52:24.534Z
+Last session: 2026-06-26T20:13:43.453Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-forward-simulator-summary-contract/02-CONTEXT.md

@@ -19,7 +19,7 @@ The v2.0 milestone: a decoupled spike (ENV–DEMO) that gates a conditional prod
 - [x] **SIM-01**: `simulate_pair(θ) → MultiChannelImage` generates a 2-channel image pair from θ = (ρ_true, spillover, autofluorescence, label efficiency, sub-pixel shift dx/dy, noise level) via bivariate correlated densities → Bernoulli thinning → PSF convolution → 2×2 spillover mixing → autofluorescence → sub-pixel shift → Poisson/Gaussian noise
 - [x] **SIM-02**: The prior π(θ) and `sample_prior()` are consistent with the existing Turing `@model` prior ranges (μ/ν/σ/τ), documented in `spike/NOTES.md`
 - [x] **SIM-03**: Output verifies as a valid `MultiChannelImage` so the existing `correlation()`/`patch()` functions apply unchanged
-- [ ] **SIM-04**: Plausibility plots confirm expected behavior (ρ_true ↑ → patch correlation ↑; spillover and shift visibly affect the pair)
+- [x] **SIM-04**: Plausibility plots confirm expected behavior (ρ_true ↑ → patch correlation ↑; spillover and shift visibly affect the pair)
 
 ### Training Data
 
@@ -102,7 +102,7 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 | SIM-01 | Phase 2 — Forward Simulator + Summary Contract | Complete |
 | SIM-02 | Phase 2 — Forward Simulator + Summary Contract | Complete |
 | SIM-03 | Phase 2 — Forward Simulator + Summary Contract | Complete |
-| SIM-04 | Phase 2 — Forward Simulator + Summary Contract | Pending |
+| SIM-04 | Phase 2 — Forward Simulator + Summary Contract | Complete |
 | DATA-01 | Phase 3 — Training-Data Pipeline | Pending |
 | DATA-02 | Phase 3 — Training-Data Pipeline | Pending |
 | DATA-03 | Phase 3 — Training-Data Pipeline | Pending |
