@@ -82,6 +82,83 @@ CPU path. The CPU-only contract is enforced both by this absence and by `use_gpu
 
 ---
 
+## 4. Parent-Package Coupling Outcome (ENV-01 / D-01) — Plan 01-04
+
+**Decision: `include()` fallback chosen.** `Pkg.develop(path="..")` was attempted first
+(D-01 develop-first), co-resolved a parent dep tree that is **incompatible with the pinned
+NeuralEstimators v0.2.1**, and **broke the green smoke**. Per D-01 the develop was reverted and
+the `include()` fallback is adopted. The root `Project.toml`/`Manifest.toml`/`src/` were never
+edited; only `spike/Project.toml` + `spike/Manifest.toml` were touched and then reverted to the
+committed Plan 01-03 known-good state.
+
+### Verbatim conflict evidence
+
+`Pkg.develop(path="..")` + `Pkg.resolve()` did **not** raise an exception, but it silently
+**downgraded** NeuralEstimators to satisfy the parent's heavy tree (Turing 0.44.5, GLMakie
+0.10.18 → Makie 0.21, Images 0.26, GraphNeuralNetworks 1.1.0, PackageCompiler 2.4.0):
+
+```
+⌃ [38f6df31] ↓ NeuralEstimators v0.2.1 ⇒ v0.1.4
+  [12345678] + ProteinCoLoc v1.0.1 `...\ProteinCoLoc`
+```
+
+`Pkg.status --outdated -m` confirms 0.2.1 is unreachable alongside the parent tree:
+
+```
+⌃ [38f6df31] NeuralEstimators v0.1.4 (<v0.2.1)
+⌅ [09ab397b] StructArrays v0.6.21 (<v0.7.3): GeometryBasics, ShaderAbstractions
+```
+
+Re-running the smoke against the developed env then **errored** — v0.1.4 ships the OLD
+ApproximateDistributions API, incompatible with the v0.2.1-written smoke:
+
+```
+NeuralEstimators CPU smoke: Error During Test
+  Got exception outside of a @test
+  LoadError: MethodError: no method matching NormalisingFlow(::Int64; num_summaries::Int64)
+  Closest candidates are:
+    NormalisingFlow(::D, ::Vector{<:NeuralEstimators.CouplingLayer})   # v0.1.4 form
+  at spike/00_smoke.jl:62
+Test Summary: NeuralEstimators CPU smoke | Error 1 Total 1   → exit 1
+```
+
+**Root cause:** the parent package transitively constrains NeuralEstimators to `<v0.2.1`
+(the GLMakie 0.10.x / Makie 0.21 / GraphNeuralNetworks 1.1.0 ecosystem the parent pins does
+not co-resolve with NeuralEstimators 0.2.1 / Flux 0.16 / StructArrays 0.7). This is exactly
+Pitfall 3 from 01-RESEARCH.md. Forcing the develop would mean abandoning the pinned, proven
+v0.2.1 stack — unacceptable — so the package boundary is deferred (D-02: re-evaluate at Phase 4,
+which may use a separate parent-aware env for the ADVI baseline rather than dragging the parent
+into the lean SBI env).
+
+### Resolution: revert + `include()` fallback
+
+1. `git checkout -- spike/Project.toml spike/Manifest.toml` → restored the Plan 01-03
+   minimal env (NeuralEstimators 0.2.1, Flux 0.16.10, Distributions 0.25.128, no parent).
+2. `Pkg.instantiate()` + re-ran the smoke → **GREEN** (4/4 pass,
+   recovered `mu_hat ≈ 0.799` vs `theta_true = 0.7`, |delta| < tol = 0.3).
+3. **`include()` fallback (the chosen coupling path):** later phases reach the reusable `src/`
+   assets by `include`-ing the specific source files into the spike env rather than via the
+   package boundary, e.g.:
+   ```julia
+   # Phase 2+ (NOT Phase 1): bring in the summary-statistic contract read-only.
+   include(joinpath(@__DIR__, "..", "src", "colocalization.jl"))  # correlation, patch, _prepare_data
+   ```
+   - `src/colocalization.jl` (`correlation`, `patch`, `_prepare_data`) — the summary-statistic
+     contract Phase 2 needs. It references `corspearman`/`corkendall` (StatsBase) and
+     `mean`/`median`/`quantile` (Statistics), so Phase 2 must add **StatsBase + Statistics** to
+     the spike env (lightweight — does NOT pull GLMakie/Turing) before `include`-ing it.
+   - `src/LoadImages.jl` (`MultiChannelImage`) and `src/bayes.jl` (Turing `colocalization()`
+     model, `compute_BayesFactor`) carry heavier deps (Images, Turing, GLMakie via the module).
+     Phase 4's ADVI baseline will decide between a dedicated parent-aware environment and a
+     targeted `include` of just `bayes.jl` with a minimal Turing-only dep set — out of Phase-1
+     scope.
+   - The `src/` files retain their AGPL module-level imports; `include` is **read-only** — no
+     source file is edited. This keeps the publication baseline frozen (Task 2 proof below).
+
+**Net for ENV-01:** the parent is reachable read-only via the documented `include()` fallback;
+the smoke stays green; the root is byte-identical to the baseline (see §5). Either coupling
+path was a SUCCESS per D-01 — the fallback is pre-authorized, not a failure.
+
 ## 3. Phase-2 seed — Turing prior ranges (OPTIONAL, Phase-2 scope)
 
 Pre-seeded here as a convenience for Phase 2, which will copy these into the simulator prior π(θ)
