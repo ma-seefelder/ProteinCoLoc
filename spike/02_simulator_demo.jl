@@ -87,13 +87,13 @@ const ρ_FIX = 0.3
 spill_grid = collect(range(0.0, 0.2; length = 8))
 corr_spill = [mean_patch_corr(SPILL_RNG, merge(_θ_med(ρ_FIX), (spillover = s,))) for s in spill_grid]
 
-# --- (b) sub-pixel |shift|-effect sweep at fixed ρ_true -------------------------
+# --- (c) sub-pixel |shift|-effect sweep at fixed ρ_true -------------------------
 shift_steps = collect(range(0.0, 1.0; length = 8))           # per-axis shift
 shift_mag   = sqrt.(2.0 .* shift_steps .^ 2)                  # Euclidean |shift|
 corr_shift  = [mean_patch_corr(SHIFT_RNG, merge(_θ_med(ρ_FIX),
                   (shift_dx = s, shift_dy = s))) for s in shift_steps]
 
-# --- (c) induced-μ samples under the FULL prior (sample_prior) -------------------
+# --- (d) induced-μ samples under the FULL prior (sample_prior) -------------------
 μ_samples = Float64[]
 for _ in 1:150
     θ = sample_prior(MU_RNG)
@@ -121,7 +121,7 @@ ax_sweep = CairoMakie.Axis(fig[2, 1]; title = "(a) ρ_true → mean patch-corr",
                 xlabel = "ρ_true", ylabel = "mean patch-corr")
 scatterlines!(ax_sweep, ρ_grid, mean_corr)
 
-ax_mu = CairoMakie.Axis(fig[2, 2]; title = "(c) induced μ vs Turing μ-prior",
+ax_mu = CairoMakie.Axis(fig[2, 2]; title = "(d) induced μ vs Turing μ-prior",
              xlabel = "induced μ", ylabel = "density")
 hist!(ax_mu, μ_samples; normalization = :pdf, bins = 20, color = (:steelblue, 0.6))
 let target = Truncated(Cauchy(0.0, 0.3), GHAT_MU_MIN, GHAT_MU_MAX),
@@ -133,7 +133,7 @@ ax_spill = CairoMakie.Axis(fig[2, 3]; title = "(b) spillover ↑ → corr ↑",
                 xlabel = "spillover", ylabel = "mean patch-corr")
 scatterlines!(ax_spill, spill_grid, corr_spill)
 
-ax_shift = CairoMakie.Axis(fig[2, 4]; title = "(b) |shift| ↑ → corr ↓",
+ax_shift = CairoMakie.Axis(fig[2, 4]; title = "(c) |shift| ↑ → corr ↓",
                 xlabel = "|sub-pixel shift|", ylabel = "mean patch-corr")
 scatterlines!(ax_shift, shift_mag, corr_shift)
 
