@@ -392,16 +392,19 @@ No separate security tasks are needed beyond the existing ENV-03/D-04 requiremen
 | A5 | A generous tolerance (~0.3 on a unit-scale 1-param Gaussian) reliably separates a correct backend from a broken one | Pitfall 5 / Code Examples | Low — tune empirically; widen if a correct run is marginal |
 | A6 | The root `Project.toml`/`Manifest.toml` dirty state is incidental (not a deliberate uncommitted spike pre-step) and should be reconciled | Open Questions Q1 | Medium — if the user intended those changes, the baseline definition changes; must confirm with user |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **The root `Project.toml`/`Manifest.toml` are already modified vs HEAD (`v2.0-baseline`).** `Project.toml` gained a `[compat] GLMakie = "0.10.5"` block and `Manifest.toml` is a full re-resolve (1162 insert / 1073 delete). ENV-01 / DEMO-02's "untouched" proof needs a clean reference.
    - What we know: working tree is dirty on exactly the two files the decoupling guarantee protects; tags `v1.0.2-scirep` and `v2.0-baseline` exist as frozen references.
    - What's unclear: whether these edits are intentional (and should be committed as the new baseline) or accidental (and should be `git restore`d).
    - **Recommendation:** Before any `spike/` work, the plan must include a task to reconcile this with the user — commit or restore the root files — and record the agreed baseline (tag or commit hash). The untouched-proof then asserts byte-identity against that reference. Flag this as a **planning precondition**, not a mid-phase surprise.
+   - **RESOLVED (Plan 01-01):** Reconciliation is a discrete blocking decision checkpoint (commit-as-baseline | restore-to-head | adopt-dirty-snapshot); the chosen baseline ref (commit short-hash, HEAD, or per-file `git hash-object` hashes) is recorded in 01-BASELINE.md, and every later untouched-root proof asserts state-matches-baseline against it.
 
 2. **Does `Pkg.develop(path="..")` co-resolve with Flux 0.16?** Unknown until run. Recommendation: make it a discrete, gated task with the `include()` fallback pre-authorized (D-01); the smoke green-light does not depend on its outcome.
+   - **RESOLVED (Plan 01-04 T1):** `Pkg.develop(path="..")` co-resolve is a discrete gated task with the `include()` fallback pre-authorized per D-01; the smoke gate (Plan 01-02) does not depend on its outcome.
 
 3. **Exact `m`/replicate handling and `q` passing in v0.2.1.** Resolve by reading installed docstrings during implementation (Pattern 1). Low risk to planning; the planner should allocate a "verify API against REPL docstrings" step inside the ENV-02 task.
+   - **RESOLVED (Plan 01-02 T2):** before writing the smoke, a docstring-verification step opens a REPL on the installed env and reads `?PosteriorEstimator` / `?NormalisingFlow` / `?sampleposterior` to confirm the exact v0.2.1 signatures (PosteriorEstimator positional order, N-as-keyword, q-as-instance, and m/replicate handling).
 
 ## Environment Availability
 
