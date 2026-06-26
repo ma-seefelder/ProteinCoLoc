@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: planning
+status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-06-26T17:11:58.960Z"
-last_activity: 2026-06-26 -- Phase 2 planning complete
+last_updated: "2026-06-26T19:02:58.335Z"
+last_activity: 2026-06-26 -- Phase 2 execution started
 progress:
   total_phases: 7
   completed_phases: 1
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 2 — forward simulator + summary contract
+**Current focus:** Phase 2 — Forward Simulator + Summary Contract
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-26 -- Phase 2 planning complete
+Phase: 2 (Forward Simulator + Summary Contract) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 2
+Last activity: 2026-06-26 -- Phase 2 execution started
 
-Progress: [██████████] 100%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [██████████] 100%
 | Phase 01 P02 | 22min | 2 tasks | 4 files |
 | Phase 01 P03 | 9 | 2 tasks | 2 files |
 | Phase 01 P04 | 13min | 2 tasks | 1 files |
+| Phase 02 P01 | 15min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,8 @@ Recent decisions affecting current work:
 - [Phase 01-02]: Spike env is minimal+isolated (NeuralEstimators 0.2.1, Flux 0.16.10, Distributions 0.25.128, no CUDA); CPU-only NPE smoke recovers theta within tol=0.3 under a re-runnable stdlib Test gate. CUDA-absence asserted via Pkg.dependencies (installed set) not a Manifest regex, since Flux/NNlib/Zygote/NeuralEstimators declare CUDA as inert weakdep extensions.
 - [Phase ?]: [Phase 01-03]: Spike env frozen as reproducibility artifact — Julia 1.12.6 pinned via juliaup directory override (enforcing) + spike/.julia-version (doc-only); Manifest pins NeuralEstimators 0.2.1 + Flux 0.16.10, no top-level CUDA. NeuralEstimators default / BayesFlow fallback recorded in spike/NOTES.md (ENV-03, ENV-04).
 - [Phase ?]: [Phase 01-04]: include() fallback chosen over Pkg.develop for ENV-01 — the parent's GLMakie/Makie 0.21 + Turing 0.44 + GraphNeuralNetworks 1.1.0 tree caps NeuralEstimators <0.2.1, silently downgrading the pinned 0.2.1 to 0.1.4 and breaking the v0.2.1-API smoke; later phases reach src/ read-only via include('../src/<file>.jl'). Package boundary deferred to Phase 4 (D-02). Decoupling proven byte-identical to baseline f581d95.
+- [Phase ?]: SIM-03 summary contract proven on a synthetic strictly-positive image via UNCHANGED src/ patch()/correlation() at fixed 8x8 (D-10) before any physics exists
+- [Phase ?]: CairoMakie/Images/ImageFiltering/HypothesisTests/StatsBase co-resolve cleanly with NeuralEstimators 0.2.1 (no downgrade, no CUDA); resolve-risk gate automated in runtests.jl
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-26T16:24:43.530Z
+Last session: 2026-06-26T19:02:44.105Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-forward-simulator-summary-contract/02-CONTEXT.md
