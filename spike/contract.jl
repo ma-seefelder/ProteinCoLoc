@@ -97,4 +97,11 @@ The induced summary mean: `mean(skipmissing(patch_summary(mci)))`. This replicat
 `bayes.jl` (which carries Turing/GLMakie module deps absent from the lean spike
 env) -- decoupling-faithful, not scope reduction (see PLAN <interfaces>).
 """
-induced_mu(mci::MultiChannelImage) = Statistics.mean(skipmissing(patch_summary(mci)))
+function induced_mu(mci::MultiChannelImage)
+    # CR-02: a fully-missing 8×8 summary (every patch below the ≥15-px floor) makes
+    # `mean(skipmissing(...))` throw on an empty collection. Return NaN instead so
+    # callers (calibration/test/demo all filter on isfinite) degrade gracefully.
+    vals = collect(skipmissing(patch_summary(mci)))
+    isempty(vals) && return NaN
+    return Statistics.mean(vals)
+end

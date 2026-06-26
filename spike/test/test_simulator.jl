@@ -112,7 +112,9 @@ _θ(ρ) = merge(θ_BASE, (ρ_true = ρ,))
     @testset "θ / imsize validation rejects bad input (T-02-IV)" begin
         @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), _θ(1.5))         # ρ_true ∉ [-1,1]
         @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), _θ(-1.5))        # ρ_true ∉ [-1,1]
-        @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), θ_BASE; imsize = (4, 4))  # dim < 8
+        @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), θ_BASE; imsize = (4, 4))   # dim < 64
+        @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), θ_BASE; imsize = (8, 8))   # CR-02: 1-px patches → all-missing
+        @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), θ_BASE; imsize = (63, 63)) # CR-02: just below the ≥64 floor
         @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), merge(θ_BASE, (noise = NaN,)))  # non-finite field
     end
 

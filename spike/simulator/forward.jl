@@ -101,13 +101,19 @@ shared component makes anti-correlation reachable at negative ρ_true. Higher
 Returns `[ch1, ch2] :: Vector{Matrix{Float64}}`, each `imsize`, all entries finite
 and ≥ 0 with a small-positive background (no hard zeros), ready for `build_mci`.
 
-Throws `ArgumentError` for `ρ_true ∉ [-1,1]`, any non-finite θ field, or an
-`imsize` with a dimension < 8.
+Throws `ArgumentError` for `ρ_true ∉ [-1,1]`, any out-of-range / non-finite θ
+field, or an `imsize` with a dimension < 64 (CR-02: the 8×8 patch grid needs
+≥ 8 px/patch-side so patches clear the ≥15-px floor).
 """
 function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256))
     # --- θ / imsize validation at entry (T-02-IV: untrusted parameter vector) ---
-    (imsize[1] ≥ 8 && imsize[2] ≥ 8) ||
-        throw(ArgumentError("imsize dims must be ≥ 8, got $imsize"))
+    # CR-02: the 8×8 patch grid divides each axis into 8 patches; src/colocalization.jl
+    # drops a patch to `missing` when it has ≤ 15 surviving pixels. At imsize < 64 a
+    # patch side is < 8 px (< 64 px/patch) and (8,8) gives 1-px patches → an all-missing
+    # summary that crashed induced_mu. Require ≥ 64 so each patch is ≥ 8×8 = 64 px.
+    (imsize[1] ≥ 64 && imsize[2] ≥ 64) ||
+        throw(ArgumentError("imsize dims must be ≥ 64 for the 8×8 patch grid to " *
+                            "produce non-missing patches (>15 px each), got $imsize"))
     all(isfinite, (θ.ρ_true, θ.spillover, θ.autofluorescence, θ.label_efficiency,
                    θ.shift_dx, θ.shift_dy, θ.noise)) ||
         throw(ArgumentError("all θ fields must be finite, got $θ"))
