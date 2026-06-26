@@ -56,6 +56,10 @@ detection.
 - [ ] Integrate amortized NPE/NRE inference into `src/` as a shipped feature of the main package
 - [ ] Make `num_patches` (patch grid) **user-definable** in the productionized API (8×8 was the spike default)
 
+**Backend evaluation (open consideration):**
+
+- [ ] Evaluate migrating the Bayesian backend **Turing → RxInfer.jl** for performance — feasibility against the hierarchical Student-t model (message-passing/conjugacy constraints), benchmarked vs. current ADVI and vs. amortized SBI; decide whether it is complementary to, or made redundant by, amortized inference
+
 ### Out of Scope
 
 <!-- Deliberate boundaries for the spike; some revisited only at full build-out. -->
@@ -107,6 +111,7 @@ detection.
 | Training budget: start 50k, scale to 200k as M2 accuracy demands | Faster first loop; GPU available if needed | — Pending |
 | SBC miscalibration → **tune until calibrated** | Prioritize achieving nominal coverage before reporting | — Pending |
 | NeuralEstimators.jl default, BayesFlow only fallback | Julia-native, Windows-tauglich, single package covers NPE+NRE | — Pending |
+| Evaluate Turing→RxInfer.jl backend migration | Potential baseline-inference speedup; may be complementary to or redundant with amortized SBI | — Pending (research/feasibility) |
 
 ## Evolution
 
