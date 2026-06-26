@@ -84,3 +84,76 @@ include(joinpath(@__DIR__, "..", "contract.jl"))
     end
 
 end
+
+# --- Wave-2 unit under test: the forward physics simulator (SIM-01) -----------
+# include() AFTER contract.jl so build_mci/summary/induced_mu are already in scope.
+include(joinpath(@__DIR__, "..", "simulator", "forward.jl"))
+
+# A literal 7-field θ (D-04). Helper rebuilds it with a swapped ρ_true for sweeps.
+const θ_BASE = (ρ_true = 0.7, spillover = 0.1, autofluorescence = 0.05,
+                label_efficiency = 0.85, shift_dx = 0.3, shift_dy = -0.4,
+                noise = 0.5)
+_θ(ρ) = merge(θ_BASE, (ρ_true = ρ,))
+
+@testset "SIM-01 forward pipeline" verbose = true begin
+
+    out = simulate_pair(Random.Xoshiro(2026), θ_BASE; imsize = (256, 256))
+
+    @testset "shape / type / finiteness (returns 2× 256×256 Matrix{Float64})" begin
+        @test out isa Vector{Matrix{Float64}}
+        @test length(out) == 2
+        @test all(c -> size(c) == (256, 256), out)
+        @test all(c -> all(isfinite, c), out)     # no NaN/Inf (warp fillvalue trap held)
+        @test all(c -> all(>=(0.0), c), out)       # non-negative intensities
+    end
+
+    @testset "θ / imsize validation rejects bad input (T-02-IV)" begin
+        @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), _θ(1.5))         # ρ_true ∉ [-1,1]
+        @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), _θ(-1.5))        # ρ_true ∉ [-1,1]
+        @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), θ_BASE; imsize = (4, 4))  # dim < 8
+        @test_throws ArgumentError simulate_pair(Random.Xoshiro(1), merge(θ_BASE, (noise = NaN,)))  # non-finite field
+    end
+
+    @testset "determinism (equal fresh Xoshiro ⇒ identical output, D-14)" begin
+        @test simulate_pair(Random.Xoshiro(7), _θ(0.3)) ==
+              simulate_pair(Random.Xoshiro(7), _θ(0.3))
+    end
+
+end
+
+@testset "SIM-03 on simulator output" verbose = true begin
+
+    out = simulate_pair(Random.Xoshiro(2026), θ_BASE; imsize = (256, 256))
+    mci = build_mci(out)
+
+    @test mci isa MultiChannelImage
+    @test mci.pixel_size == (256, 256)             # D-11 pixel-dim tuple
+    @test length(mci.channels) == 2
+
+    rho = summary(mci)
+    @test size(rho) == (8, 8)
+    @test eltype(rho) == Union{Float64, Missing}
+    @test count(!ismissing, rho) <= 64             # at most 64 per-patch ρ
+    @test all(isfinite, skipmissing(rho))          # every present ρ finite (no NaN borders)
+    @test count(ismissing, rho) <= 2               # background-not-zero trap held (≥15-px floor)
+    @test isfinite(induced_mu(mci))                # induced μ is a finite Float64
+    @test induced_mu(mci) isa Float64
+
+end
+
+@testset "D-15 monotone ρ_true → induced-correlation (anti-correlation reachable)" verbose = true begin
+
+    # Sweep ρ_true negative → ~zero → positive with the OTHER nuisances fixed and a
+    # fixed fresh seed per point, isolating ρ_true's effect through the REAL summary.
+    ρ_grid = [-0.7, 0.0, 0.7]
+    μ_ind  = map(ρ_grid) do ρ
+        induced_mu(build_mci(simulate_pair(Random.Xoshiro(2026), _θ(ρ); imsize = (256, 256))))
+    end
+
+    @test all(isfinite, μ_ind)
+    @test issorted(μ_ind)        # monotone increasing induced correlation across the grid
+    @test μ_ind[1] < 0.0         # negative ρ_true ⇒ anti-correlation (sign-flip rule, D-15)
+    @test μ_ind[end] > 0.0       # positive ρ_true ⇒ positive correlation
+    @test μ_ind[end] > μ_ind[1]  # the two tails are well-separated (not saturated near 0)
+
+end
