@@ -157,3 +157,55 @@ end
     @test μ_ind[end] > μ_ind[1]  # the two tails are well-separated (not saturated near 0)
 
 end
+
+# --- Wave-2 SIM-02: the prior-consistency gate (D-01/D-02/D-16) ----------------
+# prior.jl draws μ*~Truncated(Cauchy(0,0.3),-1,1) and sets ρ_true=ghat(μ*) (the
+# frozen inverse from calibration.jl) so the induced μ matches the Turing μ-prior.
+# Bundles MU_PRIOR + ghat (via ghat.jl) + sample_prior + the pre-declared SIM02_W1_TOL.
+include(joinpath(@__DIR__, "..", "simulator", "prior.jl"))
+
+# Wasserstein-1 between two empirical samples (quantile transport), test-local.
+_w1_test(a::Vector{Float64}, b::Vector{Float64}) = begin
+    n = min(length(a), length(b)); qs = ((1:n) .- 0.5) ./ n
+    mean(abs.(quantile(a, qs) .- quantile(b, qs)))
+end
+
+@testset "SIM-02 prior consistency" verbose = true begin
+
+    @testset "ĝ monotone over its μ domain (corspearman ≈ 1, clamped tails)" begin
+        μgrid = collect(range(GHAT_MU_MIN, GHAT_MU_MAX; length = 50))
+        ρ     = ghat.(μgrid)
+        @test corspearman(μgrid, ρ) ≥ 0.999     # monotone non-decreasing (T-02-CAL)
+        @test issorted(ρ)
+        @test ghat(-5.0) == ghat(GHAT_MU_MIN)    # clamp below realized range
+        @test ghat(5.0)  == ghat(GHAT_MU_MAX)    # clamp above realized range
+        @test all(-1.0 .≤ ρ .≤ 1.0)              # ρ_true stays in simulate_pair's domain
+    end
+
+    @testset "sample_prior: 7-field θ, in-range ρ_true, deterministic (D-14)" begin
+        θ = sample_prior(Random.Xoshiro(11))
+        @test keys(θ) == (:ρ_true, :spillover, :autofluorescence,
+                          :label_efficiency, :shift_dx, :shift_dy, :noise)
+        @test -1.0 ≤ θ.ρ_true ≤ 1.0
+        @test all(isfinite, values(θ))
+        @test sample_prior(Random.Xoshiro(11)) == sample_prior(Random.Xoshiro(11))
+    end
+
+    @testset "induced μ matches Turing μ-prior within tol (realized range, D-16)" begin
+        rng = Random.Xoshiro(404)
+        N   = 120
+        induced = Float64[]
+        for _ in 1:N
+            θ = sample_prior(rng)
+            m = induced_mu(build_mci(simulate_pair(rng, θ; imsize = (512, 512))))
+            isfinite(m) && push!(induced, m)
+        end
+        # Scope the consistency claim to the physically-realized μ range (D-16):
+        # the negative μ-prior tail past GHAT_MU_MIN is prior-only (real anchor > 0).
+        target = Truncated(Cauchy(0.0, 0.3), GHAT_MU_MIN, GHAT_MU_MAX)
+        ref    = rand(rng, target, length(induced))
+        w1     = _w1_test(induced, ref)
+        @test w1 < SIM02_W1_TOL                  # pre-declared SIM-02 bar (NOT tuned to pass)
+    end
+
+end
