@@ -36,8 +36,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using Test
 using Random
+using HypothesisTests   # SIM-04 (b): paired effect significance (OneSampleTTest)
 
 # include() coupling boundary -> src/ summary functions, read-only (Task 2 impl).
+# Brings StatsBase (corspearman) + Statistics (mean) into scope as well.
 include(joinpath(@__DIR__, "..", "contract.jl"))
 
 @testset "SIM-03 summary contract" verbose = true begin
@@ -206,6 +208,82 @@ end
         ref    = rand(rng, target, length(induced))
         w1     = _w1_test(induced, ref)
         @test w1 < SIM02_W1_TOL                  # pre-declared SIM-02 bar (NOT tuned to pass)
+    end
+
+end
+
+# --- Wave-4 SIM-04: the quantitative plausibility gate (D-12) -------------------
+# Three measurable sub-gates over the SAME sample->simulate->summary chain, all
+# deterministic under fixed Xoshiro seeds (D-14) so the gate is reproducible, not
+# flaky: (a) monotone ρ_true -> mean-patch-corr (Spearman ≥ threshold), (b) spillover
+# RAISES and |shift| LOWERS mean-patch-corr as PAIRED effects beyond Monte-Carlo
+# noise, (c) the perturbation runs still build a valid MultiChannelImage (SIM-03).
+#
+# Chosen Spearman threshold = 0.95 (RESEARCH §Plausibility Gate default; A4/D-12
+# discretion). The construction is strongly monotone -- the seeded demo and this
+# averaged sweep both reach Spearman 1.0 -- so 0.95 leaves headroom without flaking.
+const SIM04_SPEARMAN_THRESH = 0.95
+const SIM04_IMSIZE          = (256, 256)   # quick subset size (seconds), full ρ-sweep still ≥15 pts
+
+# θ with nuisances pinned at prior MEDIANS and zero shift, isolating ρ_true.
+_θ_plaus(ρ) = (ρ_true = ρ, spillover = 0.1, autofluorescence = 0.05,
+               label_efficiency = 0.8, shift_dx = 0.0, shift_dy = 0.0, noise = 0.5)
+
+# One mean per-patch correlation through the REAL summary (single sim, threaded rng).
+_corr1(rng, θ) = induced_mu(build_mci(simulate_pair(rng, θ; imsize = SIM04_IMSIZE)))
+
+@testset "SIM-04 plausibility" verbose = true begin
+
+    @testset "(a) monotonicity: Spearman(ρ_true, mean patch-corr) ≥ $(SIM04_SPEARMAN_THRESH)" begin
+        rng       = Random.Xoshiro(2026)              # one threaded rng -> deterministic sweep
+        ρ_grid    = collect(range(-0.9, 0.9; length = 15))   # ≥15 sweep points (D-12)
+        mean_corr = map(ρ_grid) do ρ
+            mean(_corr1(rng, _θ_plaus(ρ)) for _ in 1:3)       # N=3 MC replicates per point
+        end
+        @test all(isfinite, mean_corr)
+        @test issorted(ρ_grid)
+        @test corspearman(ρ_grid, mean_corr) ≥ SIM04_SPEARMAN_THRESH
+    end
+
+    @testset "(b) spillover RAISES mean patch-corr (paired, beyond MC noise)" begin
+        # Paired over shared seeds: each seed drives an identical base field, so the
+        # ONLY difference between the two runs is the spillover parameter.
+        seeds = 1:8
+        Δ = map(seeds) do s
+            base = _corr1(Random.Xoshiro(s), merge(_θ_plaus(0.3), (spillover = 0.0,)))
+            hi   = _corr1(Random.Xoshiro(s), merge(_θ_plaus(0.3), (spillover = 0.2,)))
+            hi - base                                          # expected > 0 (shared bleed-through)
+        end
+        @test mean(Δ) > 0.02                                   # δ_spill effect size
+        @test pvalue(OneSampleTTest(collect(Δ))) < 0.05        # significant beyond MC noise
+    end
+
+    @testset "(b) |sub-pixel shift| LOWERS mean patch-corr (paired, beyond MC noise)" begin
+        seeds = 1:8
+        Δ = map(seeds) do s
+            base    = _corr1(Random.Xoshiro(s), _θ_plaus(0.3))                       # no shift
+            shifted = _corr1(Random.Xoshiro(s), merge(_θ_plaus(0.3),
+                          (shift_dx = 0.9, shift_dy = 0.9)))                          # |shift| ≈ 1.27 px
+            base - shifted                                     # expected > 0 (decorrelation)
+        end
+        @test mean(Δ) > 0.01                                   # δ_shift effect size
+        @test pvalue(OneSampleTTest(collect(Δ))) < 0.05        # significant beyond MC noise
+    end
+
+    @testset "(c) perturbation runs stay valid MultiChannelImage (SIM-03)" begin
+        for θ in (merge(_θ_plaus(0.3), (spillover = 0.2,)),
+                  merge(_θ_plaus(0.3), (shift_dx = 0.9, shift_dy = 0.9)))
+            out = simulate_pair(Random.Xoshiro(99), θ; imsize = SIM04_IMSIZE)
+            mci = build_mci(out)
+            @test mci isa MultiChannelImage
+            @test mci.pixel_size == SIM04_IMSIZE                # D-11 pixel-dim tuple
+            @test length(mci.channels) == 2 && length(mci.otsu_threshold) == 2
+            rho = summary(mci)
+            @test size(rho) == (8, 8)
+            @test count(!ismissing, rho) ≤ 64                   # ≤64 finite per-patch ρ
+            @test all(isfinite, skipmissing(rho))               # every present ρ finite
+            @test count(ismissing, rho) ≤ 2                      # background-not-zero trap held
+        end
     end
 
 end
