@@ -64,7 +64,7 @@ include(joinpath(@__DIR__, "..", "contract.jl"))
         @test mci.channels == ["ch1", "ch2"]
     end
 
-    rho = summary(mci)
+    rho = patch_summary(mci)
 
     @testset "8x8 contract: <=64 finite rho, background-not-zero trap respected" begin
         @test size(rho) == (8, 8)
@@ -81,7 +81,7 @@ include(joinpath(@__DIR__, "..", "contract.jl"))
         ch1z[1:200, :] .= 0.0                            # zero most rows of both channels
         ch2z[1:200, :] .= 0.0
         mciz = build_mci([ch1z, ch2z]; name = "zero-bg")
-        rhoz = summary(mciz)
+        rhoz = patch_summary(mciz)
         @test count(ismissing, rhoz) > count(ismissing, rho)
     end
 
@@ -132,7 +132,7 @@ end
     @test mci.pixel_size == (256, 256)             # D-11 pixel-dim tuple
     @test length(mci.channels) == 2
 
-    rho = summary(mci)
+    rho = patch_summary(mci)
     @test size(rho) == (8, 8)
     @test eltype(rho) == Union{Float64, Missing}
     @test count(!ismissing, rho) <= 64             # at most 64 per-patch ρ
@@ -278,7 +278,7 @@ _corr1(rng, θ) = induced_mu(build_mci(simulate_pair(rng, θ; imsize = SIM04_IMS
             @test mci isa MultiChannelImage
             @test mci.pixel_size == SIM04_IMSIZE                # D-11 pixel-dim tuple
             @test length(mci.channels) == 2 && length(mci.otsu_threshold) == 2
-            rho = summary(mci)
+            rho = patch_summary(mci)
             @test size(rho) == (8, 8)
             @test count(!ismissing, rho) ≤ 64                   # ≤64 finite per-patch ρ
             @test all(isfinite, skipmissing(rho))               # every present ρ finite

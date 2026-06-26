@@ -53,7 +53,7 @@ using StatsBase                       # corspearman (the D-15 monotonicity metri
 using Distributions                   # MU_PRIOR, Uniform nuisance priors
 using Random                          # Xoshiro, AbstractRNG
 
-include(joinpath(@__DIR__, "..", "contract.jl"))   # build_mci, summary, induced_mu, load_tiff
+include(joinpath(@__DIR__, "..", "contract.jl"))   # build_mci, patch_summary, induced_mu, load_tiff
 include(joinpath(@__DIR__, "..", "simulator", "forward.jl"))  # simulate_pair (shared-latent D-15)
 
 const _REPO_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
@@ -125,7 +125,7 @@ function _patchcorr_diagnostics(rng::AbstractRNG, imsize::Tuple{Int,Int}, n::Int
     for _ in 1:n
         μstar = rand(rng, MU_PRIOR)
         θ = _theta(μstar, _sample_nuisances(rng))   # rough: μ*≈ρ for diagnostics only
-        ρgrid = collect(skipmissing(summary(build_mci(simulate_pair(rng, θ; imsize = imsize)))))
+        ρgrid = collect(skipmissing(patch_summary(build_mci(simulate_pair(rng, θ; imsize = imsize)))))
         isempty(ρgrid) && continue
         append!(vals, ρgrid)
         length(ρgrid) > 1 && push!(within_sd, std(ρgrid))

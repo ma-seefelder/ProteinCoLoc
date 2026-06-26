@@ -48,7 +48,7 @@ using Distributions
 CairoMakie.activate!()                       # headless raster/vector, no OpenGL/display
 
 # --- sample -> simulate -> summary chain (Waves 1-3), read-only src/ via contract --
-include(joinpath(@__DIR__, "contract.jl"))               # build_mci, summary, induced_mu
+include(joinpath(@__DIR__, "contract.jl"))               # build_mci, patch_summary, induced_mu
 include(joinpath(@__DIR__, "simulator", "forward.jl"))   # simulate_pair
 include(joinpath(@__DIR__, "simulator", "prior.jl"))     # sample_prior, MU_PRIOR, ghat, GHAT_MU_*
 

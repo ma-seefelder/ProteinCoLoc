@@ -70,17 +70,19 @@ function build_mci(data::Vector{Matrix{Float64}}; name::String = "sim")
 end
 
 """
-    summary(mci::MultiChannelImage) -> Matrix{Union{Float64,Missing}}
+    patch_summary(mci::MultiChannelImage) -> Matrix{Union{Float64,Missing}}
 
 The SIM-03 summary statistic: the fixed **8x8** per-patch Pearson correlation
 matrix (D-10), computed by the UNCHANGED `src/colocalization.jl` `patch()` and
 `correlation()`. Per patch, `_exclude_zero` drops 0.0/NaN/missing and a patch with
 <=15 survivors becomes `missing` (the two contract traps).
 
-Extends `Base.summary` (dispatched on `MultiChannelImage`) so the plan's
-`summary(mci)` call site works without shadowing Base's generic.
+A plain module-local function (CR-01): do NOT extend `Base.summary`, whose
+contract is `(io, x)::String` for display dispatch -- returning a Matrix there
+silently poisons Julia's `show`/REPL machinery and Test.jl failure formatting.
+`patch_summary` gives the plan's call-site syntax without piggybacking on Base.
 """
-function Base.summary(mci::MultiChannelImage)
+function patch_summary(mci::MultiChannelImage)
     x = mci.data[1]
     y = mci.data[2]
     xp, yp = patch.([x, y], 8)                       # src/colocalization.jl:37, UNCHANGED
@@ -90,9 +92,9 @@ end
 """
     induced_mu(mci::MultiChannelImage) -> Float64
 
-The induced summary mean: `mean(skipmissing(summary(mci)))`. This replicates
+The induced summary mean: `mean(skipmissing(patch_summary(mci)))`. This replicates
 `src/bayes.jl::_prepare_data`'s reshape/!ismissing-filter + mean WITHOUT including
 `bayes.jl` (which carries Turing/GLMakie module deps absent from the lean spike
 env) -- decoupling-faithful, not scope reduction (see PLAN <interfaces>).
 """
-induced_mu(mci::MultiChannelImage) = Statistics.mean(skipmissing(summary(mci)))
+induced_mu(mci::MultiChannelImage) = Statistics.mean(skipmissing(patch_summary(mci)))
