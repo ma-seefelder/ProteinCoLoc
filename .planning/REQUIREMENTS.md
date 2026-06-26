@@ -91,26 +91,46 @@ Deferred / optional; tracked but not gating the v2.0 milestone.
 
 ## Traceability
 
-Populated during roadmap creation.
+Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENV-01..04 | TBD | Pending |
-| SIM-01..04 | TBD | Pending |
-| DATA-01..03 | TBD | Pending |
-| NPE-01..03 | TBD | Pending |
-| ABL-01..02 | TBD | Pending |
-| SBC-01..04 | TBD | Pending |
-| BF-01..02 | TBD | Pending |
-| OOD-01..02 | TBD | Pending |
-| DEMO-01..03 | TBD | Pending |
-| PROD-01..02 | TBD | Pending |
+| ENV-01 | Phase 1 — Environment + Smoke Gate | Pending |
+| ENV-02 | Phase 1 — Environment + Smoke Gate | Pending |
+| ENV-03 | Phase 1 — Environment + Smoke Gate | Pending |
+| ENV-04 | Phase 1 — Environment + Smoke Gate | Pending |
+| SIM-01 | Phase 2 — Forward Simulator + Summary Contract | Pending |
+| SIM-02 | Phase 2 — Forward Simulator + Summary Contract | Pending |
+| SIM-03 | Phase 2 — Forward Simulator + Summary Contract | Pending |
+| SIM-04 | Phase 2 — Forward Simulator + Summary Contract | Pending |
+| DATA-01 | Phase 3 — Training-Data Pipeline | Pending |
+| DATA-02 | Phase 3 — Training-Data Pipeline | Pending |
+| DATA-03 | Phase 3 — Training-Data Pipeline | Pending |
+| NPE-01 | Phase 4 — NPE Training + ADVI Benchmark + Ablation | Pending |
+| NPE-02 | Phase 4 — NPE Training + ADVI Benchmark + Ablation | Pending |
+| NPE-03 | Phase 4 — NPE Training + ADVI Benchmark + Ablation | Pending |
+| ABL-01 | Phase 4 — NPE Training + ADVI Benchmark + Ablation | Pending |
+| ABL-02 | Phase 4 — NPE Training + ADVI Benchmark + Ablation | Pending |
+| SBC-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| SBC-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| SBC-03 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| SBC-04 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| BF-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| BF-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| OOD-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| OOD-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| DEMO-01 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |
+| DEMO-02 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |
+| DEMO-03 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |
+| PROD-01 | Phase 7 — Productionization (conditional on Go) | Pending |
+| PROD-02 | Phase 7 — Productionization (conditional on Go) | Pending |
 
 **Coverage:**
 - v1 requirements: 27 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 27 ⚠️
+- Mapped to phases: 27 ✓
+- Unmapped: 0
+- v2 requirements (BACK-01, BACK-02): deferred, not gating v2.0 — intentionally unmapped
 
 ---
 *Requirements defined: 2026-06-26*
-*Last updated: 2026-06-26 after initial definition*
+*Last updated: 2026-06-26 after roadmap creation (traceability populated, 27/27 v1 mapped)*
