@@ -399,3 +399,6 @@ FodyWeavers.xsd
 
 # Result images
 *.png
+
+# Spike SIM-04 plausibility evidence figures (tracked deliverable, D-13)
+!spike/figures/plausibility.png
