@@ -53,7 +53,12 @@ include(joinpath(@__DIR__, "simulator", "forward.jl"))   # simulate_pair
 include(joinpath(@__DIR__, "simulator", "prior.jl"))     # sample_prior, MU_PRIOR, ghat, GHAT_MU_*
 
 # --- Demo configuration (deterministic, CPU-only) -------------------------------
-const DEMO_RNG    = Random.Xoshiro(2026)     # D-14: explicit, threaded rng
+# WR-03: each sweep gets its OWN seeded rng so adding/removing a point from one
+# panel cannot shift the results of the others (a single mutated rng coupled them).
+const RHO_RNG     = Random.Xoshiro(2026)     # D-14: explicit, threaded rng (ρ sweep)
+const SPILL_RNG   = Random.Xoshiro(2027)     # spillover sweep
+const SHIFT_RNG   = Random.Xoshiro(2028)     # sub-pixel shift sweep
+const MU_RNG      = Random.Xoshiro(2029)     # induced-μ full-prior sample
 const DEMO_IMSIZE = (256, 256)               # modest size -> finishes in minutes on CPU
 const DEMO_NREP   = 3                         # Monte-Carlo replicates averaged per sweep point
 
@@ -75,24 +80,24 @@ end
 
 # --- (a) ρ_true monotonicity sweep (≥15 points) ---------------------------------
 ρ_grid    = collect(range(-0.9, 0.9; length = 15))
-mean_corr = [mean_patch_corr(DEMO_RNG, _θ_med(ρ)) for ρ in ρ_grid]
+mean_corr = [mean_patch_corr(RHO_RNG, _θ_med(ρ)) for ρ in ρ_grid]
 
 # --- (b) spillover-effect sweep at fixed ρ_true ---------------------------------
 const ρ_FIX = 0.3
 spill_grid = collect(range(0.0, 0.2; length = 8))
-corr_spill = [mean_patch_corr(DEMO_RNG, merge(_θ_med(ρ_FIX), (spillover = s,))) for s in spill_grid]
+corr_spill = [mean_patch_corr(SPILL_RNG, merge(_θ_med(ρ_FIX), (spillover = s,))) for s in spill_grid]
 
 # --- (b) sub-pixel |shift|-effect sweep at fixed ρ_true -------------------------
 shift_steps = collect(range(0.0, 1.0; length = 8))           # per-axis shift
 shift_mag   = sqrt.(2.0 .* shift_steps .^ 2)                  # Euclidean |shift|
-corr_shift  = [mean_patch_corr(DEMO_RNG, merge(_θ_med(ρ_FIX),
+corr_shift  = [mean_patch_corr(SHIFT_RNG, merge(_θ_med(ρ_FIX),
                   (shift_dx = s, shift_dy = s))) for s in shift_steps]
 
 # --- (c) induced-μ samples under the FULL prior (sample_prior) -------------------
 μ_samples = Float64[]
 for _ in 1:150
-    θ = sample_prior(DEMO_RNG)
-    m = induced_mu(build_mci(simulate_pair(DEMO_RNG, θ; imsize = DEMO_IMSIZE)))
+    θ = sample_prior(MU_RNG)
+    m = induced_mu(build_mci(simulate_pair(MU_RNG, θ; imsize = DEMO_IMSIZE)))
     isfinite(m) && push!(μ_samples, m)
 end
 
