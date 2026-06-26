@@ -159,6 +159,26 @@ into the lean SBI env).
 the smoke stays green; the root is byte-identical to the baseline (see §5). Either coupling
 path was a SUCCESS per D-01 — the fallback is pre-authorized, not a failure.
 
+## 5. Decoupling Proof (ENV-01 / DEMO-02 pattern) — Plan 01-04 Task 2
+
+**Result: CLEAN.** The frozen publication state under the root manifests and `src/` is
+**byte-identical** to the agreed Plan-01 baseline. `Pkg.develop` targeted only the spike env
+and never wrote to the root; the develop attempt + revert left the protected paths **untouched**.
+
+- **Baseline ref:** `f581d95` (`f581d95dbc3596c5d9a064d6325ed70ca43a79c0`,
+  "chore(baseline): freeze root manifests as v2.0 spike baseline"), recorded in 01-BASELINE.md.
+- **Protected paths:** `Project.toml`, `Manifest.toml`, `src/`.
+- **Proof command (verbatim from 01-BASELINE.md, run from repo root):**
+  ```sh
+  git diff --quiet f581d95 -- Project.toml Manifest.toml src/ && echo "root untouched" \
+    || { echo "ROOT DRIFT vs baseline f581d95"; exit 1; }
+  ```
+  → exited **0** (clean): `root untouched`. Additionally `git diff --quiet HEAD -- src/` → `0`
+  (zero `src/` modifications).
+
+This is the decoupling-proof pattern DEMO-02 repeats at Phase 6. Any future ENV-01 / DEMO-02
+check MUST assert byte-identity against `f581d95` using the command above.
+
 ## 3. Phase-2 seed — Turing prior ranges (OPTIONAL, Phase-2 scope)
 
 Pre-seeded here as a convenience for Phase 2, which will copy these into the simulator prior π(θ)
