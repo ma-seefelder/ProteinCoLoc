@@ -457,19 +457,22 @@ end
 | A6 | The monotone-inverse calibration (transform sampling) makes induced μ match the target up to conditional spread | Calibration | If the ρ_true→μ relation is non-monotone in some regime, isotonic regression still yields a usable map; falls back to quantile matching. |
 | A7 | `warp` with `fillvalue=0.0` keeps the contract clean (zeros dropped, no NaN) | Pattern 3 / Pitfall 5 | If borders introduce NaN, crop to valid region; trivial mitigation. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact ρ_true sweep range for calibration.**
+   - **RESOLVED:** sweep ρ_true ∈ [−0.99, 0.99]; calibration.jl extends if induced μ saturates before the ±0.9 tails (documented in NOTES §3).
    - What we know: induced μ must cover `Truncated(Cauchy(0,0.3),-1,1)` (heavy mass near 0, tails to ±1).
    - What's unclear: the ρ_true span needed to induce μ out to ±0.9 after attenuation by PSF/noise.
    - **Recommendation:** sweep ρ_true ∈ [−0.99, 0.99]; extend if induced μ saturates before reaching the target tails. Determine empirically in the first calibration run; document the chosen span in NOTES §3.
 
 2. **Whether to calibrate at the anchor size (1376×1028) or a smaller size.**
+   - **RESOLVED:** calibrate at 512², then verify induced-μ size-invariance across the sweep set {256²,512²,1024²,1376×1028,2048²}.
    - What we know: calibration needs thousands of sims; large sizes are slower.
    - What's unclear: whether induced μ is size-invariant (it should be — Pearson is sample-size-robust above the 15-px floor).
    - **Recommendation:** calibrate at 512², then **verify size-invariance** of induced μ across the sweep set (a cheap check); if invariant, the 512² map transfers to all sizes.
 
 3. **Does the negative test image actually exhibit low patch-correlation (sanity anchor)?**
+   - **RESOLVED:** OPTIONAL overlay of test/test_images/{positive,negative} induced-μ; sanity-only, not a gate.
    - What we know: `test/test_images/{positive,negative}` are the paper's ground-truth coloc/non-coloc pairs.
    - What's unclear: their exact mean patch-correlation values.
    - **Recommendation:** OPTIONAL — load them via TiffImages, run the real summary, and use their (μ_pos, μ_neg) as plausibility anchors for the simulator's μ range. Not a gate; a nice sanity overlay for the SIM-04 figure.

@@ -42,8 +42,8 @@ created: 2026-06-26
 | 2-02-01 | 02 | 2 | SIM-01 | `simulate_pair(rng,θ)` runs all 7 stages, returns 2× `Matrix{Float64}` from the 7-tuple θ | unit | `julia --project=spike spike/test/runtests.jl` | ❌ W0 | ⬜ pending |
 | 2-02-02 | 02 | 2 | SIM-03 | Sim output builds a valid `MultiChannelImage`; `patch`/`correlation` yield ≤64 finite per-patch ρ (background small-positive, not 0.0; ≥15-px patch floor) | unit | same | ❌ W0 | ⬜ pending |
 | 2-03-01 | 03 | 3 | SIM-02 | Induced-μ KS/Wasserstein distance to `Truncated(Cauchy(0,0.3),-1,1)` < tol; fitted ĝ monotone | integration | same (full) | ❌ W0 | ⬜ pending |
-| 2-04-01 | 04 | 4 | SIM-04 | Spearman(ρ_true, mean patch-corr) ≥ threshold over the sweep | integration | same (full) | ❌ W0 | ⬜ pending |
-| 2-04-02 | 04 | 4 | SIM-04 | Spillover & sub-pixel shift perturb mean patch-corr beyond MC noise (paired) | integration | same (full) | ❌ W0 | ⬜ pending |
+| 2-04-01 | 04 | 4 | SIM-04 | CairoMakie plausibility figures generated headless; the demo script self-asserts `isfile(...png/.pdf)` (PowerShell-safe, no POSIX `test -f`) | integration | `julia --project=spike spike/02_simulator_demo.jl` | ❌ W0 | ⬜ pending |
+| 2-04-02 | 04 | 4 | SIM-04 | Spearman(ρ_true, mean patch-corr) ≥ threshold over the sweep AND spillover/sub-pixel shift perturb mean patch-corr beyond MC noise (paired) | integration | `julia --project=spike spike/test/runtests.jl` (full) | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
