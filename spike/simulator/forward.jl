@@ -83,7 +83,9 @@ carry correlation exactly `sign(ρ)·a² = ρ` into the softplus transform.
 """
 function _smooth_field(rng::AbstractRNG, imsize::Tuple{Int,Int})
     f = imfilter(randn(rng, imsize...), Kernel.gaussian(STRUCT_σ))
-    return (f .- mean(f)) ./ (std(f) + eps())
+    # IN-03: floor the denominator at 1e-10 instead of adding eps()≈2.2e-16; a near-zero
+    # std divided by eps() would explode to ~1e15, whereas max(·,1e-10) caps the blow-up.
+    return (f .- mean(f)) ./ max(std(f), 1e-10)
 end
 
 """
