@@ -50,7 +50,7 @@ created: 2026-06-27
 | SC-3a: no global-standardize path | W3 | DATA-03 | `@test !( :standardize_all in names(DataLoaderModule) )` — no global symbol exported | unit | `…test_data_pipeline.jl` | ❌ W0 | ⬜ pending |
 | SC-3b: fit-on-train-only | W3 | DATA-03 | `Ztr` columns ~0 mean/unit std per row; `Zva` mean/std NOT exactly 0/1 (val not used to fit); mask rows pass through unchanged | unit | `…test_data_pipeline.jl` | ❌ W0 | ⬜ pending |
 | SC-4a: k-fold disjoint+complete | W3 | DATA-03 | `union(folds)==1:N` & pairwise `∩==∅`; reproducible across two loader calls (same master_seed) | unit | `…test_data_pipeline.jl` | ❌ W0 | ⬜ pending |
-| SC-4b: reserved holdout excluded | W3 | DATA-03 | `holdout_idx ∩ every fold == ∅`; `length(holdout) ≥ 20`; holdout key namespace ≠ main (XOR-salt) | unit | `…test_data_pipeline.jl` | ❌ W0 | ⬜ pending |
+| SC-4b: reserved holdout excluded (STRUCTURAL) | W3 | DATA-03 | `size(load_main_pool(d).theta,2)==N` (main pool never counts the holdout); `load_main_pool` never reads `holdout.jld2`; `length(holdout) ≥ 20`; `HOLDOUT_SALT != 0` (disjoint XOR-salted key namespace). Do NOT integer-intersect holdout vs fold indices — both are 1:N-style ranges that overlap by value. | unit | `…test_data_pipeline.jl` | ❌ W0 | ⬜ pending |
 | Thread-count independence | W1 | DATA-02/D-11/D-12 | Generate same small dataset with `nthreads()==1` vs `>1`; `@test` byte-identical θ + summaries | integration | `julia -t1 … ` vs `julia -t4 …` then assert identical | ❌ W0 | ⬜ pending |
 | Spike decoupling (standing) | all | DEMO-02 | `src/` + root manifests byte-identical to baseline `f581d95` | integration | `git diff --quiet f581d95 -- src` (+ manifest check) | ✅ reuse | ⬜ pending |
 
