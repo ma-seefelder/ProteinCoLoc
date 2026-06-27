@@ -592,7 +592,7 @@ end
 | A5 | Hashing the 4 spike source files (+ optionally 2 frozen src files) is sufficient for D-05 | Pattern 3 | LOW — covers all data-defining code; planner confirms the file list |
 | A6 | Mask rows (65:128) should bypass z-scoring | Pattern 6 / D-01 encoding | LOW-MEDIUM — z-scoring a 0/1 mask is standard-incorrect; but Phase-4 net design may prefer otherwise. Flag for the planner |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Δρ target representation (NPE-01 needs ρ_true AND Δρ).**
    - What we know: cache stores the full 7-vector θ (incl. ρ_true); the loader returns θ columns.
@@ -601,6 +601,11 @@ end
    - Recommendation: store full θ + summaries (done); leave Δρ derivation to the Phase-4 loader
      consumer. Confirm with the planner that ρ_true + the summary suffice to construct Δρ downstream
      (likely yes — Δρ is computed from paired/contrastive summaries at train time).
+   - **RESOLVED:** D-07 (store RAW full 7-vector θ + both summary variants) covers this. The
+     generator persists ρ_true within θ; Δρ is a Phase-4 *consumer* concern — Phase 4 constructs
+     contrastive coloc-vs-null pairs from the prior and derives Δρ at train time from the stored
+     raw summaries. **No Phase-3 schema change needed** (confirmed by the planner: plans 03-02/03-03
+     store the full θ-vector and raw summaries, which is sufficient).
 
 2. **Exact NeuralEstimators tensor shape for a fixed-length summary (matrix vs vector-of-arrays).**
    - What we know: θ is d×K (verified); the simple-summary quick-start treats Z column-wise.
@@ -609,6 +614,10 @@ end
    - Recommendation: store column-major RAW (works for both); Phase-4's Wave-0 smoke confirms the exact
      `train` signature against the pinned v0.2.1 (the CLAUDE.md "verify API against dev docs, not memory"
      note). No Phase-3 blocker.
+   - **RESOLVED:** Store column-major RAW (one sample = one column) — this layout feeds either a
+     `feature×K` matrix or a `Vector` of `feature×1` arrays without re-shaping the cache. The exact
+     `train()`/`assess()` Z container is a **Phase-4 Wave-0** smoke-test detail against pinned
+     NeuralEstimators v0.2.1, **explicitly out of Phase-3 scope** and not a Phase-3 blocker.
 
 ## Environment Availability
 
