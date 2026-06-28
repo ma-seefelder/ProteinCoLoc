@@ -37,6 +37,13 @@ using Random
 # scope. Guarded includes inside generate.jl make this safe both standalone and
 # after test_simulator.jl already loaded contract.jl/forward.jl in runtests.jl.
 include(joinpath(@__DIR__, "..", "data", "generate.jl"))
+using JLD2
+
+# Wave-3 unit under test: the content-hash guard + sharded cache (Tasks 1-2).
+# Guarded so this file loads both BEFORE (RED) and AFTER (GREEN) hashguard.jl
+# exists, and stays idempotent once generate.jl pulls cache.jl→hashguard.jl in.
+const _HASHGUARD = joinpath(@__DIR__, "..", "data", "hashguard.jl")
+isfile(_HASHGUARD) && !(@isdefined cache_hash) && include(_HASHGUARD)
 
 # Pre-declared fixture seeds (fixed BEFORE the gate, NOT tuned to pass).
 const DP_SC1_SEED    = 7
@@ -108,6 +115,32 @@ const DP_N_FIXTURE   = 64
         @test isequal(c.theta[:, invp],       a.theta)
         @test isequal(c.summary_min[:, invp], a.summary_min)
         @test isequal(c.summary_aug[:, invp], a.summary_aug)
+    end
+
+    @testset "hashguard content-hash version guard (D-05)" begin
+        # Wave W3 / Task 1: cache_hash is deterministic, config-sensitive, and
+        # source-sensitive with per-file sub-hashes for diagnosability.
+        if !(@isdefined cache_hash)
+            @test false  # RED: spike/data/hashguard.jl not yet implemented
+        else
+            c1 = (N = 64, master_seed = 1, k = 5)
+            c2 = (N = 64, master_seed = 2, k = 5)
+            @test cache_hash(c1) == cache_hash(c1)         # deterministic
+            @test cache_hash(c1) != cache_hash(c2)         # any config field flips it
+            sh = subhashes()
+            @test length(sh) == length(HASH_SRC_FILES)     # one sub-hash per source
+            # Source-byte sensitivity + diagnosability on an ISOLATED temp file
+            # (never perturbs the real frozen sources).
+            mktempdir() do td
+                f = joinpath(td, "src.jl"); write(f, "alpha")
+                cfg = (N = 1,)
+                h1 = cache_hash(cfg; src_files = [f]); s1 = subhashes([f])
+                write(f, "alphabet")                        # perturb source bytes
+                h2 = cache_hash(cfg; src_files = [f]); s2 = subhashes([f])
+                @test h1 != h2                              # source byte flips the hash
+                @test s1[f] != s2[f]                        # the changed file's sub-hash moved
+            end
+        end
     end
 
 end
