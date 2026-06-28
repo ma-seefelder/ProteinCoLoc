@@ -311,3 +311,31 @@ commitment to cache both variants is locked.
 (sign-flip, D-15), so the training pool will be **sparse in the strongly-negative tail**. This is
 documented as a caveat, NOT fixed by stratifying θ (stratification would distort π(θ) and break SBC,
 D-13). Phase-5 SBC/coverage is therefore evaluated honestly over the realized range.
+
+### Per-sample seeding + imsize (D-11 / D-10 / D-03) — `spike/data/seeding.jl`
+
+**Keyed RNG (D-11):** every sample constructs `Philox4x(UInt64, (master_seed, global_index))`. The
+stream is a pure function of `(master_seed, idx)` — thread-count- and order-independent by
+construction (no shared mutable RNG, no `@threads` race). The reserved ADVI holdout (D-10) uses
+`master_seed ⊻ HOLDOUT_SALT` and the Wave-4 fold permutation uses `master_seed ⊻ FOLD_SALT`, three
+provably disjoint key namespaces so the holdout can never collide with a main-pool index.
+
+**imsize categorical (D-03):** drawn per-sample from a fixed cost-aware set (`cost ∝ W·H`):
+
+| imsize | rel. cost (vs 256²) | weight | role |
+|--------|--------------------|--------|------|
+| 256² | 1× | 0.55 | cheap workhorse |
+| 512² | 4× | 0.35 | |
+| 1024² | 16× | 0.05 | |
+| 1376×1028 | ~21.6× | 0.03 | real-data anchor (D-08) |
+| 2048² | 64× | 0.02 | expensive tail |
+
+The ≥1024² fraction is capped at **0.10**; **expected per-sample cost ≈ 4.68×** the 256² baseline
+(`IMSIZE_EXPECTED_COST`). The weighting doubles as the D-12 memory governor — a ~170 MB 2048²
+in-flight pair is hit only ~2% of the time, bounding per-thread peak memory.
+
+**Launch requirement (D-12):** generation parallelism is controlled by Julia's thread count. The
+machine default is `nthreads()==1` (serial). To run threaded generation, launch with `-t auto` (or
+`JULIA_NUM_THREADS=<n>`). Because each sample is keyed by its global index, **any** thread count
+produces a byte-identical dataset (asserted in `test_data_pipeline.jl`); the thread count is a
+performance knob only, never a correctness one.
