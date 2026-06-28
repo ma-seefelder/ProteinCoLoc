@@ -76,9 +76,83 @@ const DP_N_FIXTURE   = 64
     @testset "SC-2 cache round-trip / resume / invalidation" begin
         # Wave W3: cache.jl + hashguard.jl — (a) write→reload array equality,
         # (b) delete one shard, re-run, only it regenerates and the dataset is
-        # identical, (c) perturb a tracked source byte/config field → cache_hash
-        # differs → loader refuses the stale cache.
-        @test_skip true
+        # identical, (c) corrupt the manifest hash → open_or_invalidate refuses it.
+        Ncache = 12
+        seed   = 7
+        ssize  = 5                                   # force 3 shards (5,5,2)
+        root   = mktempdir()
+
+        # in-memory reference for the same keyed seed (1:N, column-major)
+        ref = generate_samples(Ncache; master_seed = seed, parallel = false)
+
+        # reload every shard in dir and hcat in file order
+        _load_pool = function (dir)
+            files = sort(filter(f -> startswith(basename(f), "shard_") &&
+                                     endswith(f, ".jld2"),
+                                readdir(dir; join = true)))
+            th = reduce(hcat, [JLD2.load(f, "theta")        for f in files])
+            sm = reduce(hcat, [JLD2.load(f, "summary_min")  for f in files])
+            sa = reduce(hcat, [JLD2.load(f, "summary_aug")  for f in files])
+            gi = reduce(vcat, [JLD2.load(f, "global_index") for f in files])
+            return (theta = th, summary_min = sm, summary_aug = sa, global_index = gi)
+        end
+
+        # (a) round-trip: reloaded shards == in-memory generator (byte-identical)
+        d = generate_cache(root; N = Ncache, master_seed = seed,
+                           n_holdout = 20, shard_size = ssize)
+        pool = _load_pool(d)
+        p = sortperm(pool.global_index)
+        @test pool.global_index[p] == collect(1:Ncache)
+        @test isequal(pool.theta[:, p],       ref.theta)         # SC-2a
+        @test isequal(pool.summary_min[:, p], ref.summary_min)
+        @test isequal(pool.summary_aug[:, p], ref.summary_aug)
+
+        # holdout (D-10): separate file, ≥20 samples, global_index disjoint from pool
+        @test isfile(joinpath(d, "holdout.jld2"))
+        hold = JLD2.load(joinpath(d, "holdout.jld2"))
+        @test size(hold["theta"], 2) >= 20
+        @test isempty(intersect(Set(pool.global_index), Set(hold["global_index"])))
+
+        # (b) resume-by-skip: delete one shard, re-run, ONLY it regenerates
+        victim     = shard_path(d, 1)
+        keep       = shard_path(d, 2)
+        keep_mtime = mtime(keep)
+        rm(victim)
+        sleep(0.05)
+        d2 = generate_cache(root; N = Ncache, master_seed = seed,
+                            n_holdout = 20, shard_size = ssize)
+        @test d2 == d                                            # same content-hash dir
+        @test isfile(victim)                                     # regenerated
+        @test mtime(keep) == keep_mtime                          # untouched shard NOT rewritten
+        pool2 = _load_pool(d)
+        p2 = sortperm(pool2.global_index)
+        @test isequal(pool2.theta[:, p2],       ref.theta)       # SC-2b: dataset identical
+        @test isequal(pool2.summary_min[:, p2], ref.summary_min)
+        @test isequal(pool2.summary_aug[:, p2], ref.summary_aug)
+
+        # (c) invalidation: cache_hash config-sensitive + corrupted manifest refused
+        cfg_a = generating_config(Ncache; master_seed = seed,     k = 5, shard_size = ssize)
+        cfg_b = generating_config(Ncache; master_seed = seed + 1, k = 5, shard_size = ssize)
+        @test cache_hash(cfg_a) != cache_hash(cfg_b)             # SC-2c precondition
+        meta_path = joinpath(d, "meta.jld2")
+        rm(meta_path)
+        jldsave(meta_path; hash = "deadbeef", subhashes = Dict{String,String}(),
+                config = cfg_a, N = Ncache, shard_size = ssize, schema_version = 1)
+        @test_throws ErrorException open_or_invalidate(root, cfg_a)   # SC-2c: stale refused
+    end
+
+    @testset "committed cache fixture (on-disk schema stability)" begin
+        # A tiny fixture cache (un-ignored via .gitignore negation) pins the
+        # column-major on-disk schema across runs; bulk cache stays ignored.
+        fshard = joinpath(@__DIR__, "..", "data", "cache", "fixture", "shard_0001.jld2")
+        @test isfile(fshard)
+        s = JLD2.load(fshard)
+        @test size(s["theta"], 1)       == 7
+        @test size(s["summary_min"], 1) == 128
+        @test size(s["summary_aug"], 1) == AUG_DIM
+        @test s["schema_version"]       == SCHEMA_VERSION
+        sm = s["summary_min"]
+        @test all(x -> x == 0.0 || x == 1.0, sm[65:128, :])      # mask rows ∈ {0,1}
     end
 
     @testset "SC-3 leak-free standardization" begin
