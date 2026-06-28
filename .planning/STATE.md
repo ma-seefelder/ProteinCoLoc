@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-06-28T09:52:59.434Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-06-28T10:24:11.952Z"
 last_activity: 2026-06-28 -- Phase 03 execution started
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 03 (training-data-pipeline) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Executing Phase 03
 Last activity: 2026-06-28 -- Phase 03 execution started
 
@@ -62,6 +62,7 @@ Progress: [████████░░] 77%
 | Phase 02 P04 | 22min | 2 tasks | 5 files |
 | Phase 03 P01 | 8min | 2 tasks | 4 files |
 | Phase 03 P02 | 12min | 3 tasks | 5 files |
+| Phase 03 P03 | 26min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,7 @@ Recent decisions affecting current work:
 - [Phase ?]: CairoMakie plausibility figures are spike-local headless (D-13); .gitignore scoped negation tracks spike/figures/plausibility.png as the evidence deliverable
 - [Phase ?]: [Phase 03-01]: JLD2 (cache backend, D-04) + Random123 (counter-based seeding, D-11) added to isolated spike env; JLD2 already transitive (promoted to direct), only Random123 v1.7.1 + RandomNumbers v1.6.0 newly installed; NeuralEstimators stays pinned v0.2.1 (no co-resolve downgrade); resolve-risk gate extended to cover both new deps; five-SC MISSING scaffold (test_data_pipeline.jl) wired into single runtests.jl gate
 - [Phase ?]: [Phase 03-02]: DATA-01 generation core — encode_d01 (128-dim: 64 imputed corr + 64 binary mask, fully-missing kept per D-13), encode_aug (AUG_DIM=142, 14 moments, D-02), Philox4x per-sample keyed RNG keyed by (master_seed,idx) with disjoint HOLDOUT/FOLD salts (D-10/D-11), cost-aware imsize sampler (>=1024^2 capped 10%, E[cost]~4.68x, D-03); generate_samples parallel==serial byte-identical across -t 1 and -t 4 (D-12)
+- [Phase ?]: [Phase 03-03]: DATA-02 sharded JLD2 cache — SHA-256 content hash over data-defining source bytes + canonical(config) names the cache dir and lives in meta.jld2 (D-05); atomic .tmp+integrity-check+mv shard writes with shard_done resume-by-skip (D-04/D-06); reserved >=20 ADVI holdout from disjoint XOR-salted holdout_rng into separate holdout.jld2 with negative global_index, structurally disjoint from main pool (D-10)
 
 ### Pending Todos
 
@@ -110,6 +112,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-28T09:52:48.304Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-training-data-pipeline/03-CONTEXT.md
+Last session: 2026-06-28T10:24:11.945Z
+Stopped at: Completed 03-03-PLAN.md
+Resume file: None
