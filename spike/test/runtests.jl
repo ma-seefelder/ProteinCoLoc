@@ -62,6 +62,16 @@ using Pkg
         #     GLMakie-co-resolve regression (NOTES §4). Keyed by NeuralEstimators'
         #     UUID so a rename can't silently mask it.
         @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
+        # (e) RESOLVE-RISK GATE (Phase 3): the Wave-0 dependency additions
+        #     (JLD2 the sharded-cache backend, Random123 the counter-based
+        #     seeding) must be present AND must NOT have co-resolved the pinned
+        #     NeuralEstimators v0.2.1 downward (same GLMakie-class regression as
+        #     (d), now keyed on the Phase-3 deps). Checked by name in the
+        #     resolved set, then the v0.2.1 pin is re-asserted with them present.
+        _deps_by_name = Dict(p.name => p for p in values(Pkg.dependencies()))
+        @test haskey(_deps_by_name, "JLD2")
+        @test haskey(_deps_by_name, "Random123")
+        @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
     end
 
 end
@@ -69,3 +79,8 @@ end
 # Phase-2 Wave-0 scaffold: the SIM-03 summary-contract testset runs in the same
 # harness so a single `julia --project=spike spike/test/runtests.jl` is the gate.
 include(joinpath(@__DIR__, "test_simulator.jl"))
+
+# Phase-3 Wave-0 scaffold: the training-data-pipeline SC-1..SC-4 + thread-repro
+# testsets run in the same harness (as skipped placeholders until later waves
+# fill them) so a single `julia --project=spike spike/test/runtests.jl` stays the gate.
+include(joinpath(@__DIR__, "test_data_pipeline.jl"))
