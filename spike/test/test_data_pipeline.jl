@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using Test
 using Random
+using Statistics      # mean, std (SC-3 standardization assertions)
 
 # Wave W2 unit under test: the in-memory generation core. include() brings the
 # UNCHANGED Phase-2 chain (guarded), seeding.jl, encode.jl, and the generator into
@@ -45,10 +46,26 @@ using JLD2
 const _HASHGUARD = joinpath(@__DIR__, "..", "data", "hashguard.jl")
 isfile(_HASHGUARD) && !(@isdefined cache_hash) && include(_HASHGUARD)
 
+# Wave-4 unit under test: the leak-free k-fold loader (loader.jl, Plan 03-04). It is
+# a `module Loader` with a trailing `using .Loader`, so load_fold/load_main_pool/
+# load_holdout/all_folds are directly callable AND `names(Loader)` is the controlled
+# D-08 public surface the SC-3a assertion introspects. Guarded for idempotent loading.
+isdefined(@__MODULE__, :load_fold) || include(joinpath(@__DIR__, "..", "data", "loader.jl"))
+
 # Pre-declared fixture seeds (fixed BEFORE the gate, NOT tuned to pass).
 const DP_SC1_SEED    = 7
 const DP_REPRO_SEED  = 11
 const DP_N_FIXTURE   = 64
+
+# Loader (SC-3/SC-4) fixture parameters + tolerances (pre-declared, NOT tuned).
+const DP_LOAD_SEED = 3
+const DP_N_LOAD    = 40      # 40 / K=5 ⇒ 8-column val folds; one shard at SHARD_SIZE
+const DP_K         = 5
+const DP_MEAN_TOL  = 1e-6    # Float32 standardized train mean ≈ 0 (worst case ~3.6e-7)
+const DP_STD_TOL   = 1e-3    # corrected std of standardized train ≈ 1
+# One tiny cache shared by the loader gates (keeps the quick gate sub-30s).
+const DP_LOAD_DIR  = generate_cache(mktempdir(); N = DP_N_LOAD,
+                                    master_seed = DP_LOAD_SEED, n_holdout = 20)
 
 @testset "Phase 3 — Training-Data Pipeline" verbose = true begin
 
@@ -156,16 +173,72 @@ const DP_N_FIXTURE   = 64
     end
 
     @testset "SC-3 leak-free standardization" begin
-        # Wave W3: loader.jl — no public `standardize_all`; Ztr rows ≈0 mean/unit
-        # std, Zva NOT exactly 0/1 (fit-on-train only), binary mask rows unchanged.
-        @test_skip true
+        # Wave W4: loader.jl — no public `standardize_all` (D-08); Ztr continuous
+        # rows ≈0 mean/unit std (fit-on-train, D-07), Zva NOT exactly 0/1 (val never
+        # fit), binary mask rows (65:128) passed through UNCHANGED (mask bypass).
+        d    = DP_LOAD_DIR
+        f    = load_fold(d, 1; K = DP_K, master_seed = DP_LOAD_SEED)
+        pool = load_main_pool(d)
+
+        # SC-3a / D-08: NO public global-standardize symbol — leakage impossible by
+        # construction. `names(Loader)` is the controlled public surface.
+        @test !(:standardize_all in names(Loader))
+
+        # SC-3b: fit-on-train ⇒ Ztr continuous rows (1:64) ≈ 0 mean / unit std per row
+        @test all(abs.(mean(f.Ztr[1:64, :], dims = 2)) .< DP_MEAN_TOL)
+        @test all(abs.(std(Float64.(f.Ztr[1:64, :]), dims = 2) .- 1) .< DP_STD_TOL)
+
+        # SC-3b: val never used to fit ⇒ Zva continuous rows NOT all exactly 0/1
+        @test !all(x -> x == 0f0 || x == 1f0, f.Zva[1:64, :])
+
+        # SC-3b: mask bypass — rows 65:128 byte-identical to the RAW mask rows. Recompute
+        # the train/val split with the SAME keyed fold RNG to address the exact columns.
+        N         = size(pool.summary_min, 2)
+        perm      = randperm(fold_rng(DP_LOAD_SEED), N)
+        val_idx   = perm[1:DP_K:end]
+        train_idx = setdiff(1:N, val_idx)
+        @test f.Ztr[65:128, :] == Float32.(pool.summary_min[65:128, train_idx])
+        @test f.Zva[65:128, :] == Float32.(pool.summary_min[65:128, val_idx])
     end
 
     @testset "SC-4 k-fold + reserved holdout" begin
-        # Wave W3: loader.jl — union(folds)==1:N with pairwise ∩==∅, holdout
-        # disjoint from every fold, length(holdout) ≥ 20, reproducible across two
-        # loader calls.
-        @test_skip true
+        # Wave W4: loader.jl — union(folds)==1:N with pairwise ∩==∅ (D-09), the
+        # reserved ≥20 holdout excluded from every fold STRUCTURALLY (D-10), and the
+        # split reproducible across two loader calls.
+        d     = DP_LOAD_DIR
+        folds = all_folds(DP_N_LOAD; K = DP_K, master_seed = DP_LOAD_SEED)
+
+        # SC-4a: disjoint + complete — union is exactly 1:N, every pair empty ∩
+        @test length(folds) == DP_K
+        @test sort(vcat(folds...)) == collect(1:DP_N_LOAD)
+        for i in 1:DP_K, j in (i + 1):DP_K
+            @test isempty(intersect(folds[i], folds[j]))
+        end
+
+        # SC-4a: reproducible (D-09) — same master_seed ⇒ identical membership
+        @test all_folds(DP_N_LOAD; K = DP_K, master_seed = DP_LOAD_SEED) == folds
+        @test load_fold(d, 2; K = DP_K, master_seed = DP_LOAD_SEED).θva ==
+              load_fold(d, 2; K = DP_K, master_seed = DP_LOAD_SEED).θva
+
+        # SC-4b: reserved holdout present, ≥20 stacks, in its OWN file
+        hold = load_holdout(d)
+        @test size(hold.theta, 2) >= 20
+
+        # SC-4b STRUCTURAL exclusion (D-10) — NOT an integer-set intersection (holdout
+        # and fold indices are both 1:N-style ranges that overlap by value):
+        #   (1) the main pool counts EXACTLY the N non-holdout samples, never N+H
+        @test size(load_main_pool(d).theta, 2) == DP_N_LOAD
+        #   (2) load_main_pool never READS holdout.jld2 — hiding the file leaves the
+        #       pool column count unchanged (it only globs shard_*.jld2)
+        hp = joinpath(d, "holdout.jld2")
+        @test isfile(hp)
+        n_before = size(load_main_pool(d).theta, 2)
+        mv(hp, hp * ".hidden")
+        n_after = size(load_main_pool(d).theta, 2)
+        mv(hp * ".hidden", hp)
+        @test n_before == n_after == DP_N_LOAD
+        #   (3) the holdout RNG key namespace is XOR-salted disjoint from the main pool
+        @test HOLDOUT_SALT != 0
     end
 
     @testset "D-11/D-12 order/thread independence" begin
