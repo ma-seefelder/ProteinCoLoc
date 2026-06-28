@@ -46,6 +46,9 @@ isdefined(@__MODULE__, :sample_prior)  || include(joinpath(@__DIR__, "..", "simu
 isdefined(@__MODULE__, :simulate_pair) || include(joinpath(@__DIR__, "..", "simulator", "forward.jl"))
 include(joinpath(@__DIR__, "seeding.jl"))
 include(joinpath(@__DIR__, "encode.jl"))
+# Wave-3 persistence layer (sharded cache + D-05 content-hash guard). Guarded so
+# generate.jl stays loadable both standalone and after the harness pulled it in.
+isdefined(@__MODULE__, :write_shard) || include(joinpath(@__DIR__, "cache.jl"))
 
 # Default master seed (a config value, NOT a secret). Overridable per call.
 const DEFAULT_MASTER_SEED = 0x0000_0000_0000_0001
@@ -131,4 +134,109 @@ function generate_samples(N::Integer; master_seed::Integer = DEFAULT_MASTER_SEED
 
     return (theta = theta, summary_min = summary_min, summary_aug = summary_aug,
             global_index = global_index, imsize = imsize)
+end
+
+# ============================ Wave-3 sharded cache driver ========================
+
+"""
+    generating_config(N; master_seed, k, shard_size=SHARD_SIZE) -> NamedTuple
+
+The canonical generating config hashed by D-05 (`cache_hash`). Carries every
+field whose change must invalidate the cache: N, shard_size, master_seed, k, the
+θ-dim, the imsize-spec (`IMSIZE_SET` + `IMSIZE_WEIGHTS`), the summary-spec (D-01
+128-dim + D-02 `AUG_DIM`/`N_AUG_MOMENTS`), and the on-disk schema version. Field
+ORDER is irrelevant -- `canonical` sorts by name.
+"""
+function generating_config(N::Integer; master_seed::Integer, k::Integer,
+                           shard_size::Integer = SHARD_SIZE)
+    return (
+        N               = Int(N),
+        shard_size      = Int(shard_size),
+        master_seed     = UInt64(master_seed),
+        k               = Int(k),
+        theta_dim       = 7,
+        imsize_set      = IMSIZE_SET,
+        imsize_weights  = IMSIZE_WEIGHTS,
+        summary_min_dim = 128,
+        summary_aug_dim = AUG_DIM,
+        n_aug_moments   = N_AUG_MOMENTS,
+        schema_version  = SCHEMA_VERSION,
+    )
+end
+
+# Reserved ADVI holdout (D-10): drawn from the PROVABLY DISJOINT, XOR-salted
+# `holdout_rng` namespace into a SEPARATE holdout.jld2, NEVER indexed into the
+# main pool. Stored `global_index` is NEGATIVE (-1,-2,…) so it shares no value
+# with the positive 1:N main pool -- disjointness is structural, not by-value.
+function _write_holdout(dir, master_seed::Integer, H::Integer)
+    theta        = Matrix{Float64}(undef, 7, H)
+    summary_min  = Matrix{Float64}(undef, 128, H)
+    summary_aug  = Matrix{Float64}(undef, AUG_DIM, H)
+    global_index = Vector{Int}(undef, H)
+    imsize       = Vector{Tuple{Int,Int}}(undef, H)
+    for j in 1:H
+        rng = holdout_rng(master_seed, j)          # disjoint key namespace (D-10)
+        θ   = sample_prior(rng)                     # i.i.d. π(θ), UNCHANGED prior.jl
+        isz = sample_imsize(rng)
+        mci = build_mci(simulate_pair(rng, θ; imsize = isz))
+        M   = patch_summary(mci)
+        @inbounds theta[:, j]       = collect(values(θ))
+        @inbounds summary_min[:, j] = encode_d01(M)
+        @inbounds summary_aug[:, j] = encode_aug(mci, M)
+        @inbounds global_index[j]   = -j            # negative ⇒ never a main-pool index
+        @inbounds imsize[j]         = isz
+    end
+    path = joinpath(dir, "holdout.jld2")
+    tmp  = path * ".tmp"
+    jldsave(tmp; theta, summary_min, summary_aug, global_index, imsize,
+            schema_version = SCHEMA_VERSION, namespace = "holdout")
+    JLD2.jldopen(tmp, "r") do f
+        @assert haskey(f, "theta") "holdout integrity check failed: $tmp"
+    end
+    mv(tmp, path; force = true)
+    return path
+end
+
+"""
+    generate_cache(cache_root; N, master_seed=DEFAULT_MASTER_SEED, k=5,
+                   n_holdout=20, shard_size=SHARD_SIZE) -> String
+
+The DATA-02 sharded generation driver. Resolves the content-hash-named cache dir
+(`open_or_invalidate`, D-05), partitions `1:N` into `shard_size` chunks, and
+`Threads.@threads` over SHARDS (each shard fills column-major buffers via the
+keyed `generate_samples` and writes atomically) -- SKIPPING shards already done
+(resume-by-skip, D-04). Then draws the reserved ≥20-stack ADVI holdout from the
+disjoint `holdout_rng` namespace into a separate `holdout.jld2` (D-10, also
+resume-skipped) and writes `meta.jld2`. Raising `N` appends new shards without
+regenerating existing ones (D-06). Returns the cache directory.
+
+Launch with `julia -t auto` (or `JULIA_NUM_THREADS`) for parallel generation;
+the result is BYTE-IDENTICAL for any thread count (per-global-index keying, D-12).
+"""
+function generate_cache(cache_root; N::Integer,
+                        master_seed::Integer = DEFAULT_MASTER_SEED,
+                        k::Integer = 5, n_holdout::Integer = 20,
+                        shard_size::Integer = SHARD_SIZE)
+    config = generating_config(N; master_seed = master_seed, k = k,
+                               shard_size = shard_size)
+    dir    = open_or_invalidate(cache_root, config)
+
+    nshards = cld(N, shard_size)
+    Threads.@threads for s in 1:nshards
+        path = shard_path(dir, s)
+        shard_done(path) && continue               # resume-by-skip (D-04/D-06)
+        lo  = (s - 1) * shard_size + 1
+        hi  = min(s * shard_size, N)
+        out = generate_samples(hi - lo + 1; master_seed = master_seed,
+                               indices = lo:hi, parallel = false)
+        write_shard(dir, s, out.theta, out.summary_min, out.summary_aug,
+                    out.global_index, out.imsize)
+    end
+
+    # Reserved disjoint-namespace holdout (D-10); skip if already materialized.
+    hpath = joinpath(dir, "holdout.jld2")
+    _loads_ok(hpath) || _write_holdout(dir, master_seed, max(n_holdout, 20))
+
+    write_meta(dir, config)
+    return dir
 end

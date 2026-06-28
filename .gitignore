@@ -402,3 +402,8 @@ FodyWeavers.xsd
 
 # Spike SIM-04 plausibility evidence figures (tracked deliverable, D-13)
 !spike/figures/plausibility.png
+
+# Phase-3 DATA-02 bulk training cache (large, regenerable, content-hash-named) — gitignored.
+spike/data/cache/*
+# …except the tiny committed round-trip / on-disk-schema fixture (D-04 smoke).
+!spike/data/cache/fixture/
