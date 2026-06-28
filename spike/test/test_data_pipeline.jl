@@ -32,13 +32,38 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using Test
 using Random
 
+# Wave W2 unit under test: the in-memory generation core. include() brings the
+# UNCHANGED Phase-2 chain (guarded), seeding.jl, encode.jl, and the generator into
+# scope. Guarded includes inside generate.jl make this safe both standalone and
+# after test_simulator.jl already loaded contract.jl/forward.jl in runtests.jl.
+include(joinpath(@__DIR__, "..", "data", "generate.jl"))
+
+# Pre-declared fixture seeds (fixed BEFORE the gate, NOT tuned to pass).
+const DP_SC1_SEED    = 7
+const DP_REPRO_SEED  = 11
+const DP_N_FIXTURE   = 64
+
 @testset "Phase 3 — Training-Data Pipeline" verbose = true begin
 
     @testset "SC-1 generator → 128-vector" begin
         # Wave W2: generate.jl + encode.jl produce a (128, N) summary_min whose
         # rows 65:128 are the {0,1} mask, mask=0 ⟺ value row==0, all isfinite, and
-        # θ is the 7-vector. Replaces this placeholder with the real SC-1 gate.
-        @test_skip true
+        # θ is the 7-vector.
+        out = generate_samples(DP_N_FIXTURE; master_seed = DP_SC1_SEED, parallel = false)
+        sm  = out.summary_min
+        @test size(sm) == (128, DP_N_FIXTURE)
+        @test size(out.theta) == (7, DP_N_FIXTURE)
+        mask = sm[65:128, :]
+        vals = sm[1:64, :]
+        @test all(x -> x == 0.0 || x == 1.0, mask)        # rows 65:128 ∈ {0,1}
+        @test all((mask .== 0.0) .== (vals .== 0.0))       # mask=0 ⟺ value row==0
+        @test all(isfinite, sm)                            # every D-01 entry finite
+        @test size(out.summary_aug) == (AUG_DIM, DP_N_FIXTURE)
+        @test length(out.global_index) == DP_N_FIXTURE
+        # surface-don't-swallow (ASVS V5): a bad θ must raise, not corrupt a column.
+        badθ = (ρ_true = 2.0, spillover = 0.0, autofluorescence = 0.0,
+                label_efficiency = 1.0, shift_dx = 0.0, shift_dy = 0.0, noise = 0.0)
+        @test_throws ArgumentError simulate_pair(sample_rng(1, 1), badθ)
     end
 
     @testset "SC-2 cache round-trip / resume / invalidation" begin
@@ -63,10 +88,26 @@ using Random
     end
 
     @testset "D-11/D-12 order/thread independence" begin
-        # Wave W2: seeding.jl + generate.jl — generate with nthreads()==1 and >1
-        # yield byte-identical θ + summaries (counter-based Philox4x keyed per
-        # global index, no shared mutable state).
-        @test_skip true
+        # Wave W2: seeding.jl + generate.jl — the parallel path equals the serial
+        # fallback byte-identically, and a shuffled generation order re-sorts to
+        # identical columns (Philox4x keyed per global index, no shared state).
+        a = generate_samples(DP_N_FIXTURE; master_seed = DP_REPRO_SEED, parallel = false)
+        b = generate_samples(DP_N_FIXTURE; master_seed = DP_REPRO_SEED, parallel = true)
+        @test isequal(a.theta,        b.theta)
+        @test isequal(a.summary_min,  b.summary_min)
+        @test isequal(a.summary_aug,  b.summary_aug)
+        @test a.global_index == b.global_index
+        @test a.imsize       == b.imsize
+
+        # Shuffled-index generation re-sorted by global index == in-order generation.
+        perm = shuffle(MersenneTwister(99), collect(1:DP_N_FIXTURE))
+        c    = generate_samples(DP_N_FIXTURE; master_seed = DP_REPRO_SEED,
+                                indices = perm, parallel = false)
+        invp = sortperm(perm)                                # invp[k] = position of global idx k
+        @test c.global_index[invp] == a.global_index
+        @test isequal(c.theta[:, invp],       a.theta)
+        @test isequal(c.summary_min[:, invp], a.summary_min)
+        @test isequal(c.summary_aug[:, invp], a.summary_aug)
     end
 
 end
