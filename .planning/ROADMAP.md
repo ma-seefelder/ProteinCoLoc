@@ -63,7 +63,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Leak-free k-fold cross-validation (e.g. 5-fold) is wired so reported NPE metrics are cross-validated, with a separate reserved set of ≥20 real-pipeline stacks held out solely for the ADVI benchmark
 **Plans**: 5 plans (5 waves — serial: env scaffold → generation core → cache/hash → leak-free loader → real-run gate)
 - [x] 03-01-PLAN.md — Wave-0 env: add JLD2/Random123, re-freeze Manifest, extend resolve-risk gate, scaffold test_data_pipeline.jl (DATA-02)
-- [ ] 03-02-PLAN.md — DATA-01 generation core: 128-dim D-01 encode + D-02 augmented variant, Random123 keyed seeding, order/thread-independent generator (DATA-01)
+- [x] 03-02-PLAN.md — DATA-01 generation core: 128-dim D-01 encode + D-02 augmented variant, Random123 keyed seeding, order/thread-independent generator (DATA-01)
 - [ ] 03-03-PLAN.md — DATA-02 cache: sharded atomic JLD2, content-hash version guard, resume-by-skip, reserved holdout, N-parameterized scale-up (DATA-02)
 - [ ] 03-04-PLAN.md — DATA-03 loader: leak-free k=5 fold standardization (fit-on-train-only, no global path), mask bypass, reserved-holdout exclusion (DATA-03)
 - [ ] 03-05-PLAN.md — Phase gate: real ≥50k generation run, cross-process thread-repro, full-suite green (DATA-02)
@@ -120,7 +120,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Environment + Smoke Gate | 4/4 | Complete   | 2026-06-26 |
 | 2. Forward Simulator + Summary Contract | 4/4 | Complete   | 2026-06-26 |
-| 3. Training-Data Pipeline | 1/5 | In Progress|  |
+| 3. Training-Data Pipeline | 2/5 | In Progress|  |
 | 4. NPE Training + ADVI Benchmark + Ablation | 0/TBD | Not started | - |
 | 5. Validation Bundle (SBC + BF + OOD) | 0/TBD | Not started | - |
 | 6. Reproducible Demo + Go/No-Go Memo | 0/TBD | Not started | - |

@@ -23,7 +23,7 @@ The v2.0 milestone: a decoupled spike (ENV–DEMO) that gates a conditional prod
 
 ### Training Data
 
-- [ ] **DATA-01**: A generator maps θ~π → `simulate_pair` → existing summary functions → fixed-dimension (8×8 = 64) standardized summary vector
+- [x] **DATA-01**: A generator maps θ~π → `simulate_pair` → existing summary functions → fixed-dimension (8×8 = 64) standardized summary vector
 - [x] **DATA-02**: 50k–200k pairs are produced with a version-guarded JLD2 cache (BayesInteractomics pattern) and a Random123-seeded loader; budget starts at 50k and scales as accuracy demands
 - [ ] **DATA-03**: NPE accuracy/calibration is evaluated by **leak-free k-fold cross-validation** (e.g. 5-fold): standardization statistics are fit on training folds only and applied to the held-out fold, with no standardization or parameter leakage across folds; reported metrics are cross-validated. A separate reserved set of ≥20 real-pipeline stacks is held out solely for the ADVI speed/accuracy benchmark (NPE-02/03)
 
@@ -103,7 +103,7 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 | SIM-02 | Phase 2 — Forward Simulator + Summary Contract | Complete |
 | SIM-03 | Phase 2 — Forward Simulator + Summary Contract | Complete |
 | SIM-04 | Phase 2 — Forward Simulator + Summary Contract | Complete |
-| DATA-01 | Phase 3 — Training-Data Pipeline | Pending |
+| DATA-01 | Phase 3 — Training-Data Pipeline | Complete |
 | DATA-02 | Phase 3 — Training-Data Pipeline | Complete |
 | DATA-03 | Phase 3 — Training-Data Pipeline | Pending |
 | NPE-01 | Phase 4 — NPE Training + ADVI Benchmark + Ablation | Pending |

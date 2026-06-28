@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 3 context gathered
-last_updated: "2026-06-28T09:34:09.999Z"
+last_updated: "2026-06-28T09:52:59.434Z"
 last_activity: 2026-06-28 -- Phase 03 execution started
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 03 (training-data-pipeline) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Executing Phase 03
 Last activity: 2026-06-28 -- Phase 03 execution started
 
-Progress: [███████░░░] 69%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [███████░░░] 69%
 | Phase 02 P03 | 32min | 2 tasks | 5 files |
 | Phase 02 P04 | 22min | 2 tasks | 5 files |
 | Phase 03 P01 | 8min | 2 tasks | 4 files |
+| Phase 03 P02 | 12min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,7 @@ Recent decisions affecting current work:
 - [Phase ?]: SIM-04 Spearman monotonicity threshold fixed at 0.95 (achieved 1.0); perturbation effects asserted as paired shared-seed differences with OneSampleTTest p<0.05 (T-02-GATE)
 - [Phase ?]: CairoMakie plausibility figures are spike-local headless (D-13); .gitignore scoped negation tracks spike/figures/plausibility.png as the evidence deliverable
 - [Phase ?]: [Phase 03-01]: JLD2 (cache backend, D-04) + Random123 (counter-based seeding, D-11) added to isolated spike env; JLD2 already transitive (promoted to direct), only Random123 v1.7.1 + RandomNumbers v1.6.0 newly installed; NeuralEstimators stays pinned v0.2.1 (no co-resolve downgrade); resolve-risk gate extended to cover both new deps; five-SC MISSING scaffold (test_data_pipeline.jl) wired into single runtests.jl gate
+- [Phase ?]: [Phase 03-02]: DATA-01 generation core — encode_d01 (128-dim: 64 imputed corr + 64 binary mask, fully-missing kept per D-13), encode_aug (AUG_DIM=142, 14 moments, D-02), Philox4x per-sample keyed RNG keyed by (master_seed,idx) with disjoint HOLDOUT/FOLD salts (D-10/D-11), cost-aware imsize sampler (>=1024^2 capped 10%, E[cost]~4.68x, D-03); generate_samples parallel==serial byte-identical across -t 1 and -t 4 (D-12)
 
 ### Pending Todos
 
@@ -108,6 +110,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-28T09:33:36.302Z
+Last session: 2026-06-28T09:52:48.304Z
 Stopped at: Phase 3 context gathered
 Resume file: .planning/phases/03-training-data-pipeline/03-CONTEXT.md
