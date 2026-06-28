@@ -270,3 +270,44 @@ E[μ | ρ] averaging over exactly these:
   *permits* near-Gaussian as ν grows large); heavier tails would only arise from outlier patches
   (few-effective-pixel / spillover-driven), which are modest in the clean regime. ν is **induced and
   checked, honestly near-Gaussian here**, not set.
+
+## 5. DATA-01 Encoding Layout (D-01 / D-02) — Plan 03-02
+
+The generation core (`spike/data/encode.jl`) emits two fixed-dimension layouts from the FROZEN 8×8
+`patch_summary(mci)` matrix. The cache stores both RAW (standardization is the loader's job, D-07).
+
+### The 128-dim D-01 vector (`encode_d01`, LOCKED)
+
+| Rows | Content | Encoding |
+|------|---------|----------|
+| 1:64 | per-patch Pearson correlations, **column-major `vec()` order** of the 8×8 grid | `vec(coalesce.(M, 0.0))` — `missing` imputed to `0.0` |
+| 65:128 | the parallel binary present/absent **mask**, same column-major ordering | `vec(Float64.(.!ismissing.(M)))` — `1.0` present, `0.0` missing |
+
+- **Phase-4 input dim is unambiguously 128.** The mask channel (65:128) makes a missing patch
+  self-describing: `mask=0 ⟺ value row==0`. The loader (Wave 4) z-scores ONLY rows 1:64 (and the
+  continuous D-02 moment rows) and passes the binary mask through UNCHANGED (z-scoring a 0/1 mask
+  re-couples folds through the mask mean).
+- **Degeneracy is KEPT, never dropped (D-13).** A fully-missing 8×8 (every patch below the ≥15-px
+  floor) → vals all 0, mask all 0. This mirrors `induced_mu`'s NaN-not-throw choice (contract.jl:104);
+  the sample is cached (the mask encodes the degeneracy). Dropping it would distort the π(θ)-faithful
+  training distribution. It is rare here because `BG_FLOOR` (forward.jl:66) keeps every pixel > 0.
+
+### The D-02 augmented superset (`encode_aug`, `AUG_DIM = 142`)
+
+`encode_aug(mci, M) = vcat(encode_d01(M), moments)`; rows 1:128 are exactly `encode_d01(M)`, rows
+129:142 are `N_AUG_MOMENTS = 14` scalar moments (named constant = the layout contract). In append
+order: **Manders M1, M2** (thresholds = `mci.otsu_threshold`), **whole-image Pearson**, patch-grid
+**median, IQR, mean (=induced_μ), std, skewness, excess-kurtosis**, **fraction-missing**, and
+per-channel intensity **median + IQR** (ch1, ch2). Each `skipmissing` reduction is empty-guarded
+(NaN-safe) the way `induced_mu` is. The augmented set is cached so Phase-4 ABL-01 can slice extra
+features with ZERO re-simulation; the exact moment list is Claude's discretion (D-02), only the
+commitment to cache both variants is locked.
+
+### D-13 negative-correlation-tail caveat (documented, NOT engineered away)
+
+θ is sampled i.i.d. from π(θ) with **no stratification**. Per the SIM-02 real anchor (§3 above), the
+**negative induced-μ tail is prior-only** — real fluorescence data never showed anti-correlation
+(positive control μ≈0.33, negative control μ≈0.25). The simulator *can* generate negative induced μ
+(sign-flip, D-15), so the training pool will be **sparse in the strongly-negative tail**. This is
+documented as a caveat, NOT fixed by stratifying θ (stratification would distort π(θ) and break SBC,
+D-13). Phase-5 SBC/coverage is therefore evaluated honestly over the realized range.
