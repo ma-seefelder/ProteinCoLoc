@@ -190,8 +190,8 @@ function load_fold(dir, fold::Int; K::Int = 5, master_seed, variant::Symbol = :m
     Ztr[mask_rows, :] = Z[mask_rows, train_idx]
     Zva[mask_rows, :] = Z[mask_rows, val_idx]
 
-    return (Ztr = Float32.(Ztr), θtr = θ[:, train_idx],
-            Zva = Float32.(Zva), θva = θ[:, val_idx], zt = zt)
+    return (Ztr = Float32.(Ztr), θtr = Float32.(θ[:, train_idx]),
+            Zva = Float32.(Zva), θva = Float32.(θ[:, val_idx]), zt = zt)
 end
 
 end # module Loader
