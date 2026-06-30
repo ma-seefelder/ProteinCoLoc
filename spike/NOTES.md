@@ -339,3 +339,53 @@ machine default is `nthreads()==1` (serial). To run threaded generation, launch 
 `JULIA_NUM_THREADS=<n>`). Because each sample is keyed by its global index, **any** thread count
 produces a byte-identical dataset (asserted in `test_data_pipeline.jl`); the thread count is a
 performance knob only, never a correctness one.
+
+## 6. DATA-02 At-Scale Real-Run Evidence (D-06 / D-12) — Plan 03-05
+
+The automated tests (`test_data_pipeline.jl`) prove correctness at tiny N (≈12–40). This is the
+**real 50k-default-budget run** that VALIDATION.md lists as a Manual-Only verification (wall-clock +
+disk too large for CI) — the standing pre-`/gsd:verify-work` gate. Executed once; evidence frozen here.
+
+### Run parameters (the canonical 50k generation)
+
+```
+julia -t auto --project=spike -e 'include("spike/data/generate.jl");
+  generate_cache("spike/data/cache"; N=50000, master_seed=20240627, n_holdout=20, shard_size=1000)'
+```
+
+| Field | Value |
+|-------|-------|
+| N (main pool) | **50000** |
+| master_seed | 20240627 |
+| threads used | **32** (`-t auto`, `Threads.nthreads()==32`) |
+| `shard_size` | **1000** → **50 shards** (tuned from the 10k default per D-04 discretion, so all 32 cores stay busy; per-sample data is byte-identical regardless of shard_size — it only changes the content-hash dir name) |
+| wall-clock | **1124.7 s (≈18.7 min)** on 32 threads |
+| cache dir | `spike/data/cache/eca37f54915bd306a2ffd14172908010f3c8a8c42c5963080dcbed71f8182938/` (gitignored bulk; content-hash-named, D-05) |
+| holdout | `holdout.jld2`, **20 stacks** (≥20, D-10), disjoint namespace (all `global_index < 0`) |
+
+### Gate results (all PASS)
+
+1. **At-scale write, no OOM (D-06/D-12).** 50 shards + `holdout.jld2` + `meta.jld2` written; run
+   completed cleanly. The cost-aware imsize weighting (E[cost]≈4.68×, ≥1024² capped at 10%) kept
+   peak per-thread memory bounded — no OOM at 32-way parallelism.
+2. **Reload integrity.** Reopened all 50 shards: `summary_min` is 128 rows, `theta` is 7 rows, column
+   counts sum to **exactly 50000**; main `global_index` is exactly `1:50000`; `holdout.jld2` has 20
+   columns with all-negative `global_index` (value-level disjoint from the main pool).
+3. **Resume-by-skip (D-04).** Deleted `shard_0025.jld2` and re-ran the identical command: **only**
+   shard_0025 was regenerated (its mtime advanced; `shard_0001`/`shard_0050` mtimes **unchanged** →
+   skipped), the shard came back covering exactly indices `24001:25000`, and the total returned to
+   50000. Resume wall-clock for one shard ≈ 124.9 s.
+4. **Cross-process thread independence (D-11/D-12).** Generated N=200, `master_seed=999`,
+   `shard_size=25` (8 shards) once under `julia -t1` (`nthreads==1`, serial) and once under
+   `julia -t auto` (`nthreads==32`, parallel) into separate roots. Index-ordered reconstruction:
+   **`theta` and `summary_min` byte-identical across the two processes** — proving the per-global-index
+   keying makes the dataset independent of thread count across *separate* processes, not just the
+   in-process serial==parallel check the unit tests cover.
+5. **Full suite green.** `julia --project=spike spike/test/runtests.jl` → **EXIT 0** (smoke +
+   simulator SIM-04 + Phase-3 data pipeline **68/68** + resolve-risk gate; NeuralEstimators still v0.2.1).
+6. **Decoupling intact.** `git diff --quiet f581d95 -- src Project.toml Manifest.toml` → clean
+   (`src/` + root manifests byte-identical to baseline across the full long session).
+
+**Verdict:** the DATA-01/02/03 pipeline is proven survivable and correct at the real 50k-default
+budget — shards write + reload + resume at scale, thread-count independence holds across processes,
+the full suite is green, and decoupling is intact. DATA-02 at-scale gate satisfied.

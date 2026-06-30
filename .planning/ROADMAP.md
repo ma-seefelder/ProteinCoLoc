@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Environment + Smoke Gate** - Isolated spike env, pinned Manifest, green NeuralEstimators/Flux toy NPE — the hard gate before all downstream investment (completed 2026-06-26)
 - [x] **Phase 2: Forward Simulator + Summary Contract** - `simulate_pair(θ) → MultiChannelImage` consumed unchanged by the existing summary functions, prior-consistent with the Turing model (completed 2026-06-26)
-- [ ] **Phase 3: Training-Data Pipeline** - θ~π → simulate → summary → standardized fixed-dim vectors, version-guarded JLD2 cache with leak-free split discipline
+- [x] **Phase 3: Training-Data Pipeline** - θ~π → simulate → summary → standardized fixed-dim vectors, version-guarded JLD2 cache with leak-free split discipline (completed 2026-06-30)
 - [ ] **Phase 4: NPE Training + ADVI Benchmark + Ablation** - NPE for ρ_true and Δρ at >100x ADVI speedup, summary-statistic ablation gated on per-parameter RMSE
 - [ ] **Phase 5: Validation Bundle (SBC + Amortized BF + OOD)** - The publishable trifecta off one simulate→infer harness: calibration proof, amortized log-BF, honest misspecification flag
 - [ ] **Phase 6: Reproducible Demo + Go/No-Go Memo** - Seeded end-to-end `demo.jl`, decoupling proof, 2-3 page Go/No-Go decision memo
@@ -66,7 +66,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 03-02-PLAN.md — DATA-01 generation core: 128-dim D-01 encode + D-02 augmented variant, Random123 keyed seeding, order/thread-independent generator (DATA-01)
 - [x] 03-03-PLAN.md — DATA-02 cache: sharded atomic JLD2, content-hash version guard, resume-by-skip, reserved holdout, N-parameterized scale-up (DATA-02)
 - [x] 03-04-PLAN.md — DATA-03 loader: leak-free k=5 fold standardization (fit-on-train-only, no global path), mask bypass, reserved-holdout exclusion (DATA-03)
-- [ ] 03-05-PLAN.md — Phase gate: real ≥50k generation run, cross-process thread-repro, full-suite green (DATA-02)
+- [x] 03-05-PLAN.md — Phase gate: real ≥50k generation run, cross-process thread-repro, full-suite green (DATA-02)
 
 ### Phase 4: NPE Training + ADVI Benchmark + Ablation
 **Goal**: A trained NPE infers both ρ_true and Δρ in a single forward pass, demonstrably >100x faster than per-dataset ADVI at comparable accuracy, with summary-statistic sufficiency measured rather than assumed
@@ -120,7 +120,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Environment + Smoke Gate | 4/4 | Complete   | 2026-06-26 |
 | 2. Forward Simulator + Summary Contract | 4/4 | Complete   | 2026-06-26 |
-| 3. Training-Data Pipeline | 4/5 | In Progress|  |
+| 3. Training-Data Pipeline | 5/5 | Complete   | 2026-06-30 |
 | 4. NPE Training + ADVI Benchmark + Ablation | 0/TBD | Not started | - |
 | 5. Validation Bundle (SBC + BF + OOD) | 0/TBD | Not started | - |
 | 6. Reproducible Demo + Go/No-Go Memo | 0/TBD | Not started | - |
