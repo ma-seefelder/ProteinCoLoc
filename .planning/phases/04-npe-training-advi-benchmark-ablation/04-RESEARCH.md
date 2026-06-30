@@ -444,21 +444,25 @@ Store raw μ **sample vectors** (not just means) so the spike can recompute Δρ
 | A8 | Δρ atomic benchmark unit = a (sample,control) **pair**; >100× headline uses full `vi()` vs 2 NPE passes | Pattern 3 | If a per-single-stack ADVI is expected instead, the timing protocol changes |
 | A9 | BenchmarkTools/Turing/AdvancedVI resolve to current versions without perturbing the pin | Standard Stack | Resolve-risk; mitigated by the gate, but a downgrade would block |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Holdout raw-image reproducibility for the ADVI baseline.**
    - What we know: `generate.jl` uses Random123 keyed-per-`global_index` seeding; `simulate_pair`/`build_mci` are deterministic under a fixed rng; the cache stores θ, `global_index`, and `imsize`.
    - What's unclear: whether the exact per-stack rng key is recoverable from `(global_index, master_seed)` alone to reproduce byte-identical holdout images.
    - Recommendation: in Wave 0, prove round-trip reproducibility (re-simulate a holdout stack, assert summary == cached summary). If it fails, persist raw holdout images alongside `holdout.jld2`.
+   - **RESOLVED:** Planned as 04-01 Task 2 — a Wave-0 round-trip reproducibility gate re-simulates a holdout stack and asserts `summary == cached summary`, with raw-image persistence as the documented fallback if it fails.
 
 2. **ADVI per-stack ρ without a control.**
    - What we know: the Turing model is inherently sample+control; `μ_sample` is the per-condition mean of interest.
    - What's unclear: the cleanest way to score per-stack ρ_true for a stack used as `control` vs `sample`.
    - Recommendation: form pairs (D-04), run one `vi()` per pair, read BOTH `μ_sample` and `μ_control`, map each via `ghat`, and score every stack against its own known ρ_true (Pattern 3). No single-stack ADVI needed.
+   - **RESOLVED:** Planned as 04-04 (Pattern 3) — pairs are formed per D-04, one `vi()` runs per pair, both `μ_sample`/`μ_control` are read and mapped via `ghat`, and each stack is scored against its own known ρ_true. No single-stack ADVI is required.
 
 3. **Constrained vs unconstrained ADVI draws** (Pitfall 3) — resolve empirically in the baseline port with an assertion on μ-support.
+   - **RESOLVED:** Planned as 04-04 Task 1 — the baseline port carries an explicit bijector/μ-support assertion (`μ ∈ [−1,1]`) so the draw space is verified empirically rather than assumed.
 
 4. **Interval-width comparability.** NPE 90% interval (flow quantiles) vs ADVI 90% interval (Gaussian VI) measure different posterior shapes; report both honestly, note mean-field VI tends to under-disperse (a known VI artifact) — consider `q_fullrank_gaussian` as a sensitivity check (A5).
+   - **RESOLVED:** Planned as 04-05 Task 1 — both methods' interval widths are reported honestly side-by-side with the mean-field under-dispersion caveat noted; `q_fullrank_gaussian` remains an available sensitivity check (A5).
 
 ## Environment Availability
 
