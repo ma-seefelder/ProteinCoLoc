@@ -126,6 +126,9 @@ function write_meta(dir, config)
         shard_size     = SHARD_SIZE,
         schema_version = SCHEMA_VERSION,
     )
+    JLD2.jldopen(tmp, "r") do f                            # integrity check before commit
+        @assert haskey(f, "hash") "meta integrity check failed: $tmp missing hash"
+    end
     mv(tmp, path; force = true)
     return path
 end
