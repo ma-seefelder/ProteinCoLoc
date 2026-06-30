@@ -72,7 +72,8 @@ function _loads_ok(path)
             haskey(f, "theta") && haskey(f, "summary_min") &&
                 haskey(f, "summary_aug") && haskey(f, "schema_version")
         end
-    catch
+    catch e
+        e isa InterruptException && rethrow()
         return false
     end
 end
