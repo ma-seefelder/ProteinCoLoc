@@ -217,8 +217,14 @@ const DP_LOAD_DIR  = generate_cache(mktempdir(); N = DP_N_LOAD,
 
         # SC-4a: reproducible (D-09) — same master_seed ⇒ identical membership
         @test all_folds(DP_N_LOAD; K = DP_K, master_seed = DP_LOAD_SEED) == folds
-        @test load_fold(d, 2; K = DP_K, master_seed = DP_LOAD_SEED).θva ==
-              load_fold(d, 2; K = DP_K, master_seed = DP_LOAD_SEED).θva
+        # Two INDEPENDENT load_fold calls (saved to separate vars) — a genuine D-09
+        # reproducibility check, not the tautological f(x)==f(x): same master_seed
+        # must yield identical fold membership, a different seed a different split.
+        fa = load_fold(d, 2; K = DP_K, master_seed = DP_LOAD_SEED)
+        fb = load_fold(d, 2; K = DP_K, master_seed = DP_LOAD_SEED)
+        fc = load_fold(d, 2; K = DP_K, master_seed = DP_LOAD_SEED + 1)
+        @test fa.θva == fb.θva     # same seed → identical fold membership (D-09)
+        @test fa.θva != fc.θva     # different seed → different split
 
         # SC-4b: reserved holdout present, ≥20 stacks, in its OWN file
         hold = load_holdout(d)
