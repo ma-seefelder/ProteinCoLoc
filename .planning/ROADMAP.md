@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Environment + Smoke Gate** - Isolated spike env, pinned Manifest, green NeuralEstimators/Flux toy NPE — the hard gate before all downstream investment (completed 2026-06-26)
 - [x] **Phase 2: Forward Simulator + Summary Contract** - `simulate_pair(θ) → MultiChannelImage` consumed unchanged by the existing summary functions, prior-consistent with the Turing model (completed 2026-06-26)
-- [x] **Phase 3: Training-Data Pipeline** - θ~π → simulate → summary → standardized fixed-dim vectors, version-guarded JLD2 cache with leak-free split discipline (completed 2026-06-30)
+- [x] **Phase 3: Training-Data Pipeline** - θ~π → simulate → summary → standardized fixed-dim vectors, version-guarded JLD2 cache with leak-free split discipline (completed 2026-06-30)
 - [ ] **Phase 4: NPE Training + ADVI Benchmark + Ablation** - NPE for ρ_true and Δρ at >100x ADVI speedup, summary-statistic ablation gated on per-parameter RMSE
 - [ ] **Phase 5: Validation Bundle (SBC + Amortized BF + OOD)** - The publishable trifecta off one simulate→infer harness: calibration proof, amortized log-BF, honest misspecification flag
 - [ ] **Phase 6: Reproducible Demo + Go/No-Go Memo** - Seeded end-to-end `demo.jl`, decoupling proof, 2-3 page Go/No-Go decision memo
@@ -78,7 +78,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Measured NPE wall-clock is **>100x faster** than per-dataset ADVI **at comparable RMSE** (milliseconds vs minutes) — speedup is reported paired with accuracy, never alone
   4. The ablation scores **per-parameter RMSE** for minimal patch-correlation vs augmented (+ Manders/median/IQR moments) as a gating sufficiency diagnostic; a SBC-pass-but-high-RMSE outcome is treated as an insufficiency signal
   5. The chosen summary is justified by the ablation result, with its interaction with OOD detectability explicitly noted (couples to Phase 5)
-**Plans**: TBD
+**Plans**: 7 plans (5 waves — W1 env scaffolds ∥ → W2 NPE train ∥ ADVI artifact → W3 benchmark → W4 ablation → W5 scaling/thread)
+- [ ] 04-01-PLAN.md — Wave-0 spike env: add BenchmarkTools, re-freeze Manifest + resolve-risk gate, test_npe.jl SC1..SC5 scaffold + pre-registered consts + keyed holdout-repro gate (NPE-01)
+- [ ] 04-02-PLAN.md — Isolated spike/baseline/ env (Turing/AdvancedVI + simulator deps) + read-only colocalization @model lift (NPE-02)
+- [ ] 04-03-PLAN.md — NPE architecture + CPU-only fixed-data training + inference surface (ρ̂/Δρ MC-diff/interval/ghat); SC1 (NPE-01)
+- [ ] 04-04-PLAN.md — ADVI port to modern AdvancedVI on raw re-simulated paired holdout → integrity-checked advi_artifact.jld2 (NPE-02, NPE-03)
+- [ ] 04-05-PLAN.md — ρ-space RMSE/interval benchmark + BenchmarkTools >100× speedup gate; SC2/SC3 (NPE-02, NPE-03)
+- [ ] 04-06-PLAN.md — :min vs :aug k=5 CV ablation + pre-registered decision rule + OOD-noted justification; SC4/SC5 (ABL-01, ABL-02)
+- [ ] 04-07-PLAN.md — Scaling curves over N/imsize + CPU thread-count sweep characterization; SC3-scaling (NPE-03)
 
 ### Phase 5: Validation Bundle (SBC + Amortized BF + OOD)
 **Goal**: The publishable trifecta — calibration proof, amortized Bayes factor, and honest misspecification flag — built as sibling plans off one shared θ*~π→simulate→infer harness over the trained nets; the highest-scrutiny phase for scientific honesty
@@ -121,7 +128,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Environment + Smoke Gate | 4/4 | Complete   | 2026-06-26 |
 | 2. Forward Simulator + Summary Contract | 4/4 | Complete   | 2026-06-26 |
 | 3. Training-Data Pipeline | 5/5 | Complete   | 2026-06-30 |
-| 4. NPE Training + ADVI Benchmark + Ablation | 0/TBD | Not started | - |
+| 4. NPE Training + ADVI Benchmark + Ablation | 0/7 | Not started | - |
 | 5. Validation Bundle (SBC + BF + OOD) | 0/TBD | Not started | - |
 | 6. Reproducible Demo + Go/No-Go Memo | 0/TBD | Not started | - |
 | 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
