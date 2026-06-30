@@ -44,8 +44,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 isdefined(@__MODULE__, :build_mci)     || include(joinpath(@__DIR__, "..", "contract.jl"))
 isdefined(@__MODULE__, :sample_prior)  || include(joinpath(@__DIR__, "..", "simulator", "prior.jl"))
 isdefined(@__MODULE__, :simulate_pair) || include(joinpath(@__DIR__, "..", "simulator", "forward.jl"))
-include(joinpath(@__DIR__, "seeding.jl"))
-include(joinpath(@__DIR__, "encode.jl"))
+isdefined(@__MODULE__, :HOLDOUT_SALT)  || include(joinpath(@__DIR__, "seeding.jl"))
+isdefined(@__MODULE__, :N_AUG_MOMENTS) || include(joinpath(@__DIR__, "encode.jl"))
 # Wave-3 persistence layer (sharded cache + D-05 content-hash guard). Guarded so
 # generate.jl stays loadable both standalone and after the harness pulled it in.
 isdefined(@__MODULE__, :write_shard) || include(joinpath(@__DIR__, "cache.jl"))
