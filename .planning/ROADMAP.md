@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Environment + Smoke Gate** - Isolated spike env, pinned Manifest, green NeuralEstimators/Flux toy NPE — the hard gate before all downstream investment (completed 2026-06-26)
 - [x] **Phase 2: Forward Simulator + Summary Contract** - `simulate_pair(θ) → MultiChannelImage` consumed unchanged by the existing summary functions, prior-consistent with the Turing model (completed 2026-06-26)
 - [x] **Phase 3: Training-Data Pipeline** - θ~π → simulate → summary → standardized fixed-dim vectors, version-guarded JLD2 cache with leak-free split discipline (completed 2026-06-30)
-- [ ] **Phase 4: NPE Training + ADVI Benchmark + Ablation** - NPE for ρ_true and Δρ at >100x ADVI speedup, summary-statistic ablation gated on per-parameter RMSE
+- [x] **Phase 4: NPE Training + ADVI Benchmark + Ablation** - NPE for ρ_true and Δρ at >100x ADVI speedup, summary-statistic ablation gated on per-parameter RMSE (completed 2026-07-01)
 - [ ] **Phase 5: Validation Bundle (SBC + Amortized BF + OOD)** - The publishable trifecta off one simulate→infer harness: calibration proof, amortized log-BF, honest misspecification flag
 - [ ] **Phase 6: Reproducible Demo + Go/No-Go Memo** - Seeded end-to-end `demo.jl`, decoupling proof, 2-3 page Go/No-Go decision memo
 - [ ] **Phase 7: Productionization (conditional on Go)** - Integrate amortized inference into `src/` behind a coexisting backend contract with user-definable `num_patches`
@@ -85,7 +85,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-04-PLAN.md — ADVI port to modern AdvancedVI on raw re-simulated paired holdout → integrity-checked advi_artifact.jld2 (NPE-02, NPE-03)
 - [x] 04-05-PLAN.md — ρ-space RMSE/interval benchmark + BenchmarkTools >100× speedup gate; SC2/SC3 (NPE-02, NPE-03)
 - [x] 04-06-PLAN.md — :min vs :aug k=5 CV ablation + pre-registered decision rule + OOD-noted justification; SC4/SC5 (ABL-01, ABL-02)
-- [ ] 04-07-PLAN.md — Scaling curves over N/imsize + CPU thread-count sweep characterization; SC3-scaling (NPE-03)
+- [x] 04-07-PLAN.md — Scaling curves over N/imsize + CPU thread-count sweep characterization; SC3-scaling (NPE-03)
 
 ### Phase 5: Validation Bundle (SBC + Amortized BF + OOD)
 **Goal**: The publishable trifecta — calibration proof, amortized Bayes factor, and honest misspecification flag — built as sibling plans off one shared θ*~π→simulate→infer harness over the trained nets; the highest-scrutiny phase for scientific honesty
@@ -128,7 +128,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Environment + Smoke Gate | 4/4 | Complete   | 2026-06-26 |
 | 2. Forward Simulator + Summary Contract | 4/4 | Complete   | 2026-06-26 |
 | 3. Training-Data Pipeline | 5/5 | Complete   | 2026-06-30 |
-| 4. NPE Training + ADVI Benchmark + Ablation | 6/7 | In Progress|  |
+| 4. NPE Training + ADVI Benchmark + Ablation | 7/7 | Complete   | 2026-07-01 |
 | 5. Validation Bundle (SBC + BF + OOD) | 0/TBD | Not started | - |
 | 6. Reproducible Demo + Go/No-Go Memo | 0/TBD | Not started | - |
 | 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
