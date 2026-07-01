@@ -64,6 +64,9 @@ isdefined(@__MODULE__, :resimulate_holdout) || include(joinpath(@__DIR__, "..", 
 # infer.jl pulls in train_npe.jl (train_fold/save_npe/load_npe) + architecture.jl.
 isdefined(@__MODULE__, :posterior_for) || include(joinpath(@__DIR__, "..", "npe", "infer.jl"))
 
+# Wave-4 ablation units under test (SC4/SC5): ablate + choose_summary (ABL-01/02).
+isdefined(@__MODULE__, :ablate) || include(joinpath(@__DIR__, "..", "npe", "ablation.jl"))
+
 # --- Pre-registered constants (declared BEFORE any reported run; RESEARCH A2/A3) --
 # These are the LOCKED thresholds every later Phase-4 wave scores against. Changing
 # any of them after a run would be data-snooping -- they are committed here first.
@@ -81,6 +84,16 @@ const NPE_REPRO_HOLDOUT = 20           # generate.jl clamps n_holdout to ≥20 (
 const NPE_REPRO_DIR     = generate_cache(mktempdir(); N = NPE_REPRO_N,
                                          master_seed = NPE_MASTER_SEED,
                                          n_holdout = NPE_REPRO_HOLDOUT)
+
+# --- Wave-4 ablation fixture (SC4/SC5): run the :min-vs-:aug k=5 CV ablation ONCE on
+# the small fixture cache (both variants already cached, zero re-simulation, D-06) and
+# share the result across SC4 (RMSE) and SC5 (decision rule) so the 10 tiny trainings
+# happen a single time. Epochs/posterior-draws are kept small for the quick gate; the
+# REPORTED ablation (spike/npe/summary_choice.md) uses the locked training defaults.
+const ABL_FIX_EPOCHS = 30
+const ABL_FIX_N      = 300
+const ABL_FIX_RESULT = ablate(NPE_REPRO_DIR; master_seed = NPE_MASTER_SEED, K = 5,
+                              N = ABL_FIX_N, epochs = ABL_FIX_EPOCHS, batchsize = 64)
 
 @testset "Phase 4 — NPE Training + ADVI Benchmark + Ablation" verbose = true begin
 
@@ -228,17 +241,66 @@ const NPE_REPRO_DIR     = generate_cache(mktempdir(); N = NPE_REPRO_N,
     end
 
     @testset "SC4 (ABL-01)" begin
-        # Later wave (ablation): per-parameter RMSE of the minimal (:min, 128-dim) vs
-        # augmented (:aug, 142-dim) summaries under leak-free k=5 CV, zero re-simulation
-        # (both variants already cached, D-06).
-        @test_skip true
+        # ABL-01: per-parameter RMSE of the minimal (:min, 128-dim) vs augmented
+        # (:aug, 142-dim) summaries under the loader's leak-free k=5 CV, ZERO
+        # re-simulation (both variants already cached, D-06). The SAME build_estimator
+        # architecture + master_seed train both arms — only the cached `variant`
+        # differs — so the comparison isolates the SUMMARY, not the network.
+        r = ABL_FIX_RESULT
+
+        # (a) K×2×7 RMSE table: K folds × {:min,:aug} × 7 θ, all FINITE for BOTH arms.
+        @test size(r.rmse_table) == (5, 2, 7)
+        @test all(isfinite, r.rmse_table)
+        @test r.variants == (:min, :aug)                 # slice 1 = :min, slice 2 = :aug
+        @test r.K == 5
+
+        # (b) all-7 per-parameter RMSE non-negative, per fold per variant.
+        @test all(>=(0), r.rmse_table)
+
+        # (c) the ρ_true (row-1) RMSE headline is present, finite and positive for BOTH
+        #     variants (the D-07 decision inputs).
+        @test isfinite(r.rho_rmse_min) && r.rho_rmse_min > 0
+        @test isfinite(r.rho_rmse_aug) && r.rho_rmse_aug > 0
+        @test size(r.rho_per_fold) == (5, 2)
+        @test all(isfinite, r.rho_per_fold)
+
+        # (d) fold_wins_aug counts folds where :aug beats :min on ρ_true (0..K).
+        @test 0 <= r.fold_wins_aug <= r.K
+        @test r.fold_wins_aug ==
+              count(f -> r.rho_per_fold[f, 2] < r.rho_per_fold[f, 1], 1:r.K)
+
+        # (e) the ablation ran CPU-only — CUDA never entered the process (D-10).
+        @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
     end
 
     @testset "SC5 (ABL-02)" begin
-        # Later wave (ablation decision): the pre-registered rule (ABL_REL_MARGIN +
-        # ABL_FOLD_CONSISTENCY) emits :min or :aug on ρ_true, all 7 θ reported, with the
-        # OOD-detectability note coupling to Phase 5 (D-07).
-        @test_skip true
+        # ABL-02: the pre-registered decision rule (ABL_REL_MARGIN + ABL_FOLD_CONSISTENCY)
+        # emits :min or :aug on the ρ_true RMSE (D-07), and the written justification
+        # (spike/npe/summary_choice.md) records the choice + an OOD-detectability note
+        # coupling to Phase 5.
+        r      = ABL_FIX_RESULT
+        chosen = choose_summary(r)
+
+        # (a) the rule returns exactly one of the two summary variants.
+        @test chosen in (:min, :aug)
+
+        # (b) the choice is CONSISTENT with the pre-registered rule applied to the
+        #     fixture result: :aug IFF it beats :min by the relative margin AND in
+        #     ≥ ABL_FOLD_CONSISTENCY folds; else :min (parsimony default, D-07).
+        aug_margin     = r.rho_rmse_aug <= (1 - ABL_REL_MARGIN) * r.rho_rmse_min
+        aug_consistent = r.fold_wins_aug >= ABL_FOLD_CONSISTENCY
+        expected       = (aug_margin && aug_consistent) ? :aug : :min
+        @test chosen == expected
+
+        # (c) the pre-registered consts are the locked values (declared before any run).
+        @test ABL_REL_MARGIN == 0.05
+        @test ABL_FOLD_CONSISTENCY == 4
+
+        # (d) the ABL-02 deliverable exists and names the OOD-detectability coupling.
+        choice_doc = joinpath(@__DIR__, "..", "npe", "summary_choice.md")
+        @test isfile(choice_doc)                          # the written justification
+        doc = read(choice_doc, String)
+        @test occursin("OOD", doc)                        # the Phase-5 coupling note
     end
 
     @testset "Wave-0 holdout raw-image reproducibility" begin
