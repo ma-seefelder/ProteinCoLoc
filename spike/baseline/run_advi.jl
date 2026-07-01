@@ -162,3 +162,132 @@ function ensure_holdout(dir = DEFAULT_HOLDOUT_DIR;
     isfile(joinpath(dir, "holdout.jld2")) || _write_holdout(dir, master_seed, H)
     return dir
 end
+
+# ============================ paired holdout sweep ================================
+"""
+    run_all_pairs(dir=DEFAULT_HOLDOUT_DIR; master_seed=NPE_MASTER_SEED,
+                  iter=ITER, posterior_samples=N) -> NamedTuple
+
+Run ADVI over the reserved holdout formed into consecutive (sample, control) PAIRS (D-04):
+holdout entries (1,2), (3,4), … become pair i's (sample, control) stacks. Each stack is
+RE-SIMULATED byte-for-byte from its stored key via `resimulate_holdout` (Pitfall 4 — ADVI
+runs on RAW images, never on cached summaries), then `advi_pair` fits both jointly with one
+`vi()` call (Pattern 3: ADVI is inherently paired).
+
+Per pair it collects: full μ SAMPLE VECTORS (`mu_sample`/`mu_control`, length
+`posterior_samples`), their ρ-space images via the frozen `ghat` (`rho_sample`/`rho_control`),
+90% ρ intervals, the `vi()`-only `wall_clock` (D-08), the `(sample, control)` holdout
+`global_index` tuple (so 04-05 joins by index), and the known `delta_rho_true =
+ρ_true(sample) − ρ_true(control)` (D-04 ground truth).
+"""
+function run_all_pairs(dir = DEFAULT_HOLDOUT_DIR;
+                       master_seed = NPE_MASTER_SEED,
+                       iter = ITER, posterior_samples = N)
+    ho     = load_holdout(dir)
+    H      = size(ho.theta, 2)
+    npairs = div(H, 2)
+    npairs >= 1 || error("run_all_pairs: holdout has $H stacks (< 2); cannot form a pair.")
+
+    mu_sample      = Vector{Vector{Float64}}(undef, npairs)
+    mu_control     = Vector{Vector{Float64}}(undef, npairs)
+    rho_sample     = Vector{Vector{Float64}}(undef, npairs)
+    rho_control    = Vector{Vector{Float64}}(undef, npairs)
+    rho_s_interval = Vector{Vector{Float64}}(undef, npairs)   # [lo, hi] at 5%/95%
+    rho_c_interval = Vector{Vector{Float64}}(undef, npairs)
+    wall_clock     = Vector{Float64}(undef, npairs)
+    pairs          = Vector{Tuple{Int,Int}}(undef, npairs)    # (sample_gidx, control_gidx)
+    delta_rho_true = Vector{Float64}(undef, npairs)
+
+    # WARM-UP (measurement fidelity): the FIRST vi() call JIT-compiles the whole
+    # AdvancedVI/ForwardDiff specialization for the coloc_model type, inflating a single-shot
+    # time_ns by seconds. Every pair reuses that same compiled path, so the per-pair
+    # wall_clock the >100× headline (D-08, read by 04-05) pairs against the NPE must be the
+    # STEADY-STATE vi() time, not the one-time compile. A cheap throwaway vi() on the
+    # dependency-light smoke pair warms that path without touching the timed measurements.
+    let mw = build_coloc_model(smoke_mci_pair()..., CHANNELS, NUM_PATCHES)
+        vi(mw, FAMILY, 2; adtype = ADTYPE, show_progress = false)
+    end
+
+    for i in 1:npairs
+        js = 2i - 1
+        jc = 2i
+        rs = resimulate_holdout(dir, js; master_seed = master_seed)   # RAW sample stack
+        rc = resimulate_holdout(dir, jc; master_seed = master_seed)   # RAW control stack
+
+        r = advi_pair(rs.mci_sample, rc.mci_sample;
+                      iter = iter, posterior_samples = posterior_samples)
+
+        mu_sample[i]      = r.mu_sample
+        mu_control[i]     = r.mu_control
+        rho_sample[i]     = ghat.(r.mu_sample)
+        rho_control[i]    = ghat.(r.mu_control)
+        rho_s_interval[i] = collect(quantile(rho_sample[i],  [0.05, 0.95]))
+        rho_c_interval[i] = collect(quantile(rho_control[i], [0.05, 0.95]))
+        wall_clock[i]     = r.wall_clock
+        pairs[i]          = (rs.global_index, rc.global_index)
+        delta_rho_true[i] = rs.theta[1] - rc.theta[1]
+    end
+
+    return (pairs = pairs,
+            mu_sample = mu_sample, mu_control = mu_control,
+            rho_sample = rho_sample, rho_control = rho_control,
+            rho_s_interval = rho_s_interval, rho_c_interval = rho_c_interval,
+            wall_clock = wall_clock, delta_rho_true = delta_rho_true)
+end
+
+# ============================ integrity-checked artifact ==========================
+"""
+    write_advi_artifact(path=ARTIFACT_PATH; dir=DEFAULT_HOLDOUT_DIR,
+                        master_seed=NPE_MASTER_SEED, iter=ITER, posterior_samples=N) -> path
+
+Materialize the holdout (if absent), run ADVI over all pairs, and serialize the ONLY
+cross-env hand-off (D-02) `advi_artifact.jld2` using the `cache.jl` ATOMIC idiom:
+`jldsave(tmp; …)` → reopen and `@assert haskey(f, "mu_sample") && haskey(f, "wall_clock")`
+→ `mv(tmp, path; force=true)`. A crash before the `mv` leaves only a discardable `.tmp`; a
+half-written file never becomes the artifact (T-04-ARTIFACT).
+
+`meta` tags provenance (Turing version, adtype, family, iter, posterior_samples,
+master_seed, bayes git ref, timestamp) so 04-05 can verify what produced the numbers.
+"""
+function write_advi_artifact(path = ARTIFACT_PATH;
+                             dir = DEFAULT_HOLDOUT_DIR,
+                             master_seed = NPE_MASTER_SEED,
+                             iter = ITER, posterior_samples = N)
+    ensure_holdout(dir; master_seed = master_seed)
+    R = run_all_pairs(dir; master_seed = master_seed,
+                      iter = iter, posterior_samples = posterior_samples)
+
+    meta = (turing_version    = string(pkgversion(Turing)),
+            adtype            = "AutoForwardDiff",
+            family            = "q_meanfield_gaussian",
+            iter              = iter,
+            posterior_samples = posterior_samples,
+            master_seed       = UInt64(master_seed),
+            bayes_git_ref     = BAYES_GIT_REF,
+            generated         = string(Dates.now()))
+
+    tmp = path * ".tmp"
+    jldsave(tmp;
+        schema_version = 1,
+        meta           = meta,
+        pairs          = R.pairs,
+        mu_sample      = R.mu_sample,  mu_control  = R.mu_control,
+        rho_sample     = R.rho_sample, rho_control = R.rho_control,
+        rho_s_interval = R.rho_s_interval, rho_c_interval = R.rho_c_interval,
+        wall_clock     = R.wall_clock,
+        delta_rho_true = R.delta_rho_true)
+    JLD2.jldopen(tmp, "r") do f            # reopen-assert BEFORE the atomic commit
+        @assert haskey(f, "mu_sample") && haskey(f, "wall_clock") (
+            "artifact integrity check failed: $tmp missing mu_sample/wall_clock")
+    end
+    mv(tmp, path; force = true)            # filesystem-atomic commit
+    return path
+end
+
+# Regenerate the artifact when this file is RUN as a script (not when merely included, so the
+# Task-1/Task-2 `include(...)` verify calls stay side-effect-free).
+if abspath(PROGRAM_FILE) == @__FILE__
+    @info "Generating ADVI artifact" ARTIFACT_PATH ITER N HOLDOUT_H
+    write_advi_artifact()
+    @info "ADVI artifact written" ARTIFACT_PATH
+end
