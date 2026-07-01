@@ -81,8 +81,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 7 plans (5 waves — W1 env scaffolds ∥ → W2 NPE train ∥ ADVI artifact → W3 benchmark → W4 ablation → W5 scaling/thread)
 - [x] 04-01-PLAN.md — Wave-0 spike env: add BenchmarkTools, re-freeze Manifest + resolve-risk gate, test_npe.jl SC1..SC5 scaffold + pre-registered consts + keyed holdout-repro gate (NPE-01)
 - [x] 04-02-PLAN.md — Isolated spike/baseline/ env (Turing/AdvancedVI + simulator deps) + read-only colocalization @model lift (NPE-02)
-- [ ] 04-03-PLAN.md — NPE architecture + CPU-only fixed-data training + inference surface (ρ̂/Δρ MC-diff/interval/ghat); SC1 (NPE-01)
-- [ ] 04-04-PLAN.md — ADVI port to modern AdvancedVI on raw re-simulated paired holdout → integrity-checked advi_artifact.jld2 (NPE-02, NPE-03)
+- [x] 04-03-PLAN.md — NPE architecture + CPU-only fixed-data training + inference surface (ρ̂/Δρ MC-diff/interval/ghat); SC1 (NPE-01)
+- [x] 04-04-PLAN.md — ADVI port to modern AdvancedVI on raw re-simulated paired holdout → integrity-checked advi_artifact.jld2 (NPE-02, NPE-03)
 - [ ] 04-05-PLAN.md — ρ-space RMSE/interval benchmark + BenchmarkTools >100× speedup gate; SC2/SC3 (NPE-02, NPE-03)
 - [ ] 04-06-PLAN.md — :min vs :aug k=5 CV ablation + pre-registered decision rule + OOD-noted justification; SC4/SC5 (ABL-01, ABL-02)
 - [ ] 04-07-PLAN.md — Scaling curves over N/imsize + CPU thread-count sweep characterization; SC3-scaling (NPE-03)
@@ -128,7 +128,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Environment + Smoke Gate | 4/4 | Complete   | 2026-06-26 |
 | 2. Forward Simulator + Summary Contract | 4/4 | Complete   | 2026-06-26 |
 | 3. Training-Data Pipeline | 5/5 | Complete   | 2026-06-30 |
-| 4. NPE Training + ADVI Benchmark + Ablation | 2/7 | In Progress|  |
+| 4. NPE Training + ADVI Benchmark + Ablation | 4/7 | In Progress|  |
 | 5. Validation Bundle (SBC + BF + OOD) | 0/TBD | Not started | - |
 | 6. Reproducible Demo + Go/No-Go Memo | 0/TBD | Not started | - |
 | 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
