@@ -72,6 +72,17 @@ using Pkg
         @test haskey(_deps_by_name, "JLD2")
         @test haskey(_deps_by_name, "Random123")
         @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
+        # (f) RESOLVE-RISK GATE (Phase 4): the Wave-0 BenchmarkTools add (the
+        #     >100× wall-clock claim, NPE-03) must be present AND must NOT have
+        #     co-resolved the pinned NeuralEstimators v0.2.1 downward (RESEARCH
+        #     Pitfall 2, the same GLMakie-class regression as (d)/(e), now keyed
+        #     on the Phase-4 dep). Turing/AdvancedVI/ForwardDiff must NEVER enter
+        #     the spike env (they live only in the isolated spike/baseline/ env,
+        #     D-01) -- co-resolving Turing here would cap NeuralEstimators below
+        #     the pin (the Phase-1 landmine). Asserted absent to lock the boundary.
+        @test haskey(_deps_by_name, "BenchmarkTools")
+        @test !haskey(Pkg.project().dependencies, "Turing")
+        @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
     end
 
 end
@@ -84,3 +95,9 @@ include(joinpath(@__DIR__, "test_simulator.jl"))
 # testsets run in the same harness (as skipped placeholders until later waves
 # fill them) so a single `julia --project=spike spike/test/runtests.jl` stays the gate.
 include(joinpath(@__DIR__, "test_data_pipeline.jl"))
+
+# Phase-4 Wave-0 scaffold: the NPE-training / ADVI-benchmark / ablation SC1..SC5
+# testsets (skipped placeholders until later waves fill them) plus the passing
+# Wave-0 holdout raw-image reproducibility gate (Open Question 1) run in the same
+# harness so a single `julia --project=spike spike/test/runtests.jl` stays the gate.
+include(joinpath(@__DIR__, "test_npe.jl"))
