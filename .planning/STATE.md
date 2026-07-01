@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-07-01T17:57:53.697Z"
+status: ready_to_plan
+stopped_at: Phase 04 complete (7/7) — ready to discuss Phase 5
+last_updated: 2026-07-01T21:26:49.493Z
 last_activity: 2026-07-01 -- Phase 04 execution started
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 20
-  completed_plans: 13
+  completed_plans: 20
   percent: 43
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 04 — npe-training-advi-benchmark-ablation
+**Current focus:** Phase 5 — validation bundle (sbc + amortized bf + ood)
 
 ## Current Position
 
-Phase: 04 (npe-training-advi-benchmark-ablation) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 04
-Last activity: 2026-07-01 -- Phase 04 execution started
+Phase: 5
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-01
 
 Progress: [█████████░] 92%
 
@@ -36,7 +36,7 @@ Progress: [█████████░] 92%
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 20
 - Average duration: - min
 - Total execution time: 0.0 hours
 
@@ -47,6 +47,7 @@ Progress: [█████████░] 92%
 | 01 | 4 | - | - |
 | 02 | 4 | - | - |
 | 03 | 5 | - | - |
+| 04 | 7 | - | - |
 
 **Recent Trend:**
 
