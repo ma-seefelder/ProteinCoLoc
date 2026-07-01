@@ -183,3 +183,33 @@ function ablate(dir; master_seed = NPE_MASTER_SEED, K::Integer = 5, N::Integer =
             variants      = ABL_VARIANTS,
             K             = K)
 end
+
+"""
+    choose_summary(result; rel_margin = ABL_REL_MARGIN,
+                   fold_consistency = ABL_FOLD_CONSISTENCY) -> Symbol
+
+The pre-registered summary-choice decision rule (D-07 / RESEARCH A3), applied to an
+`ablate` result. Returns `:aug` IFF **both**
+
+  1. `rho_rmse_aug ≤ (1 − rel_margin) · rho_rmse_min`  (materially better on ρ_true by
+     the relative margin `rel_margin`, default `ABL_REL_MARGIN = 0.05`), **and**
+  2. `fold_wins_aug ≥ fold_consistency`  (aug beats min on ρ_true in ≥ `fold_consistency`
+     of the K folds, default `ABL_FOLD_CONSISTENCY = 4`),
+
+otherwise returns `:min` (parsimony + OOD detectability -- the tie/insufficient-margin
+default). The rule is deliberately ρ_true-led (the colocalization knob the phase
+reports); all 7 θ RMSE are reported by `ablate` but the GATE is on ρ_true.
+
+IMPORTANT (D-07): this rule scores ACCURACY. A downstream SBC-pass-but-high-RMSE
+outcome must be treated as an INSUFFICIENCY signal, NOT a pass -- calibration on an
+insufficient summary can be nominally covered yet uninformative. The tie defaulting to
+`:min` is intentional: the minimal patch-correlation summary is more parsimonious and
+its discrepancy channel is more orthogonal-detectable, which couples to Phase-5 OOD
+power (see spike/npe/summary_choice.md).
+"""
+function choose_summary(result; rel_margin = ABL_REL_MARGIN,
+                        fold_consistency = ABL_FOLD_CONSISTENCY)
+    aug_beats_margin = result.rho_rmse_aug <= (1 - rel_margin) * result.rho_rmse_min
+    aug_consistent   = result.fold_wins_aug >= fold_consistency
+    return (aug_beats_margin && aug_consistent) ? :aug : :min
+end
