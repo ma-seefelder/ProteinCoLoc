@@ -303,6 +303,75 @@ const ABL_FIX_RESULT = ablate(NPE_REPRO_DIR; master_seed = NPE_MASTER_SEED, K = 
         @test occursin("OOD", doc)                        # the Phase-5 coupling note
     end
 
+    @testset "SC3-scaling (NPE-03 characterization)" begin
+        # D-12/D-13: the amortized thesis IS a scaling claim. The >100× is presented as a
+        # CURVE over the dataset count N and the input size (imsize), with empirical log-log
+        # exponents (NPE flat/amortized vs ADVI ~linear over N), plus a CPU thread-count
+        # sweep run as SEPARATE julia -t N processes (Pitfall 7) and aggregated, with the
+        # headline stated at the fixed BENCH_THREADS (D-13). This is CHARACTERIZATION, not a
+        # pass/fail gate -- small grids / cached timings keep it fast (the full {1,2,4,8}
+        # process sweep is the reported artifact, not a CI gate).
+        isdefined(@__MODULE__, :scaling_over_N) ||
+            include(joinpath(@__DIR__, "..", "npe", "scaling.jl"))
+        isdefined(@__MODULE__, :aggregate_thread_sweep) ||
+            include(joinpath(@__DIR__, "..", "npe", "run_thread_sweep.jl"))
+
+        artifact = joinpath(@__DIR__, "..", "baseline", "advi_artifact.jld2")
+        holdir   = joinpath(@__DIR__, "..", "baseline", "holdout")
+        tmp      = mktempdir()
+
+        # (a) N-axis amortization curve: NPE total (C_train + N·t_fwd) vs ADVI (N·t_advi).
+        #     train_cost supplied (the baseline/holdout dir has no CV folds to time against);
+        #     the reported run measures C_train from a full cache instead.
+        rN = scaling_over_N(holdir; master_seed = NPE_MASTER_SEED,
+                            Ns = [1, 5, 10, 20], train_cost = 5.0,
+                            artifact_path = artifact, bench_N = 20, bench_seconds = 0.2,
+                            save_path = joinpath(tmp, "scaling_N.jld2"))
+        @test length(rN.N_grid) == 4
+        @test all(isfinite, rN.npe_time_N)  && all(>(0), rN.npe_time_N)
+        @test all(isfinite, rN.advi_time_N) && all(>(0), rN.advi_time_N)
+        @test isfinite(rN.npe_exponent_N) && isfinite(rN.advi_exponent_N)
+        # ADVI is ~linear in N (exponent ≈ 1); NPE is materially FLATTER post-training
+        # (amortized O(1)/dataset -- the C_train offset flattens its log-log slope).
+        @test rN.advi_exponent_N > 0.9
+        @test rN.npe_exponent_N < rN.advi_exponent_N     # qualitative amortization check
+        @test isfile(joinpath(tmp, "scaling_N.jld2"))    # curve persisted atomically
+
+        # (b) input-size curve: finite exponents for BOTH methods (imsize characterization).
+        rS = scaling_over_imsize(holdir; master_seed = NPE_MASTER_SEED,
+                                 sizes = [(128, 128), (256, 256)],
+                                 artifact_path = artifact, bench_N = 20, bench_seconds = 0.2,
+                                 save_path = joinpath(tmp, "scaling_imsize.jld2"))
+        @test length(rS.imsize_grid) == 2
+        @test all(isfinite, rS.npe_time_sz)  && all(>(0), rS.npe_time_sz)
+        @test all(isfinite, rS.advi_time_sz) && all(>(0), rS.advi_time_sz)
+        @test isfinite(rS.npe_exponent_sz) && isfinite(rS.advi_exponent_sz)
+        @test isfile(joinpath(tmp, "scaling_imsize.jld2"))
+
+        # (c) thread-sweep aggregation (D-13). The full {1,2,4,8} sweep runs as SEPARATE
+        #     `julia -t N` processes in the reported artifact (run_thread_sweep spawn=true --
+        #     Pitfall 7: nthreads() is immutable per process). Here the aggregation MACHINERY
+        #     + atomic file production is exercised on cached per-N results written by the real
+        #     worker writer path (_atomic_jldsave), keeping the gate fast (plan: cached timings).
+        for (n, sp) in ((1, 300.0), (2, 170.0), (4, 95.0), (8, 60.0))
+            _atomic_jldsave(joinpath(tmp, "thread_$(n).jld2");
+                threads = n, median_speedup = sp, full_median_speedup = sp / 20,
+                t_npe_median = 0.5 / n, t_advi_median = 0.5,
+                rmse_ratio_ok = true, use_gpu = false)
+        end
+        agg = aggregate_thread_sweep([joinpath(tmp, "thread_$(n).jld2") for n in (1, 2, 4, 8)];
+                                     outpath = joinpath(tmp, "thread_sweep.jld2"),
+                                     bench_threads = BENCH_THREADS)
+        @test isfile(joinpath(tmp, "thread_sweep.jld2"))   # aggregation artifact produced
+        @test agg.threads == [1, 2, 4, 8]                  # sorted per-N thread-scaling table
+        @test agg.headline_threads == BENCH_THREADS        # headline at the fixed count (D-13)
+        @test isfinite(agg.headline_speedup)
+        @test length(agg.parallel_speedup) == 4 && all(isfinite, agg.parallel_speedup)
+
+        # (d) CPU-only throughout (D-10).
+        @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
+    end
+
     @testset "Wave-0 holdout raw-image reproducibility" begin
         # Open Question 1 (RESEARCH): the reserved ADVI holdout stores SUMMARIES, not
         # raw images. Prove each reserved stack is byte-reproducible from its stored
