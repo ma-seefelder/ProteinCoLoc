@@ -181,6 +181,17 @@ function load_fold(dir, fold::Int; K::Int = 5, master_seed, variant::Symbol = :m
     # ◄ FIT ON TRAIN ONLY (continuous rows). Never touches the val columns (D-07).
     zt = fit(ZScoreTransform, Z[cont_rows, train_idx]; dims = 2)
 
+    # ZERO-VARIANCE GUARD: a continuous feature that is CONSTANT across the fold's
+    # train columns has std 0, so the z-score `(x .- mean) ./ scale` divides by zero
+    # and yields NaN, poisoning that feature for every consumer. Map such a feature to
+    # its centered value (0) by setting its scale to 1 (also guards a non-finite scale).
+    # This surfaces on the :aug variant -- e.g. the `frac_missing` moment is constant
+    # when no fold-train stack has a missing patch -- and is harmless for :min (whose
+    # continuous correlation rows vary). Leak-free: the fit still sees only train columns.
+    @inbounds for i in eachindex(zt.scale)
+        (iszero(zt.scale[i]) || !isfinite(zt.scale[i])) && (zt.scale[i] = one(eltype(zt.scale)))
+    end
+
     Ztr = Matrix{Float64}(undef, size(Z, 1), length(train_idx))
     Zva = Matrix{Float64}(undef, size(Z, 1), length(val_idx))
     # continuous rows: standardized with the train-fit transform
