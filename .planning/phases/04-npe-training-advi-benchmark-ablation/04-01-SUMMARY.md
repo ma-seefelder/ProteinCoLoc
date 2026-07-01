@@ -107,6 +107,10 @@ The five SC1..SC5 `@test_skip true` testsets are intentional Wave-0 placeholders
 - The six pre-registered constants are committed before any reported run, discharging the "tune until calibrated" data-snooping blocker for Phase 4's own thresholds.
 - SC1..SC5 are enumerated in the single `runtests.jl` gate, ready to be filled by subsequent Phase-4 waves.
 
+## Self-Check: PASSED
+
+All created/modified files present on disk and all three commits (`4001de5`, `67953e5`, `c02b5be`) exist in the branch history.
+
 ---
 *Phase: 04-npe-training-advi-benchmark-ablation*
 *Completed: 2026-07-01*
