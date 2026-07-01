@@ -138,17 +138,93 @@ const NPE_REPRO_DIR     = generate_cache(mktempdir(); N = NPE_REPRO_N,
     end
 
     @testset "SC2 (NPE-02)" begin
-        # Later wave (ADVI benchmark): per-parameter RMSE + interval width of the NPE
-        # vs the isolated-baseline ADVI artifact (advi_artifact.jld2), in ρ-space via
-        # the frozen ghat, CV-reported over the reserved holdout (D-02/D-04).
-        @test_skip true
+        # NPE-02: per-parameter RMSE + 90% interval width of the trained NPE vs the
+        # isolated-baseline ADVI artifact (advi_artifact.jld2), scored in ρ-space via
+        # the frozen ghat and joined STRICTLY on holdout global_index (D-02/D-04).
+        # The comparable-RMSE gate is the PRE-REGISTERED tolerance D-09: NPE ρ_true
+        # RMSE ≤ NPE_RMSE_TOLERANCE × ADVI ρ_true RMSE (locked BEFORE this run, 04-01).
+        #
+        # Fixtures are the COMMITTED cross-env hand-off: the baseline holdout (whose
+        # global_index -1..-20 match the artifact pairs) and advi_artifact.jld2.
+        isdefined(@__MODULE__, :rmse_report) ||
+            include(joinpath(@__DIR__, "..", "npe", "benchmark.jl"))
+
+        artifact = joinpath(@__DIR__, "..", "baseline", "advi_artifact.jld2")
+        holdir   = joinpath(@__DIR__, "..", "baseline", "holdout")
+        @test isfile(artifact)                         # the D-02 cross-env hand-off
+        @test isfile(joinpath(holdir, "holdout.jld2")) # the global_index join source
+
+        rr = rmse_report(holdir; master_seed = NPE_MASTER_SEED,
+                         artifact_path = artifact, N = 2000)
+
+        # ≥20 stacks (10 pairs) scored on both methods (NPE-02 holdout requirement).
+        @test rr.n_stacks >= 20
+        @test rr.n_pairs  >= 10
+
+        # ρ-space RMSE finite and non-negative for both methods; ADVI is the reference.
+        @test isfinite(rr.npe_rho_rmse)  && rr.npe_rho_rmse  >= 0
+        @test isfinite(rr.advi_rho_rmse) && rr.advi_rho_rmse >  0
+
+        # THE GATE (D-09): NPE ρ_true RMSE within the pre-registered tolerance of ADVI.
+        @test rr.npe_rho_rmse <= NPE_RMSE_TOLERANCE * rr.advi_rho_rmse
+
+        # All 7 θ per-parameter RMSE produced (ρ_true is the headline; D-07 reports all).
+        @test length(rr.npe_all7_rmse) == 7
+        @test all(isfinite, rr.npe_all7_rmse)
+        @test rr.npe_all7_rmse[1] == rr.npe_rho_rmse   # row 1 IS the ρ_true headline
+
+        # 90% interval widths reported for BOTH methods (finite, positive).
+        @test isfinite(rr.npe_interval_width)  && rr.npe_interval_width  > 0
+        @test isfinite(rr.advi_interval_width) && rr.advi_interval_width > 0
+
+        # Δρ RMSE scored on identical pairs for both methods (D-04).
+        @test isfinite(rr.delta_rho_rmse_npe)
+        @test isfinite(rr.delta_rho_rmse_advi)
+
+        # CPU-only: CUDA never entered the process (D-10).
+        @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
     end
 
     @testset "SC3 (NPE-03)" begin
-        # Later wave (speedup benchmark): t_advi / t_npe > SPEEDUP_GATE at comparable
-        # RMSE (≤ NPE_RMSE_TOLERANCE) at BENCH_THREADS, plus the scaling curves over N
-        # and imsize (D-08/D-09/D-12/D-13), timed with BenchmarkTools.@belapsed.
-        @test_skip true
+        # NPE-03: the amortized NPE is >SPEEDUP_GATE (100×) faster than per-dataset
+        # ADVI at COMPARABLE RMSE (D-08/D-09). Speedup is asserted ONLY jointly with
+        # the SC2 comparable-RMSE condition -- never alone (D-08). The headline is
+        # stated at the pre-registered BENCH_THREADS thread count (D-13), CPU-only.
+        #
+        # NPE clock = summary extraction + forward pass from the RE-SIMULATED raw stack
+        # (training excluded); ADVI clock = the per-pair vi() wall_clock in the artifact.
+        # Both are "to-posterior": ADVI's clock excludes rand(q,100k), so the NPE clock
+        # times the forward pass at a lightweight bench_N (bulk draws are the excluded
+        # analog); accuracy is scored at the full N in the paired rmse result.
+        isdefined(@__MODULE__, :speedup_report) ||
+            include(joinpath(@__DIR__, "..", "npe", "benchmark.jl"))
+
+        artifact = joinpath(@__DIR__, "..", "baseline", "advi_artifact.jld2")
+        holdir   = joinpath(@__DIR__, "..", "baseline", "holdout")
+
+        # The headline is only valid at the pre-registered thread count (D-13).
+        @test Threads.nthreads() == BENCH_THREADS
+
+        sr = speedup_report(holdir; master_seed = NPE_MASTER_SEED,
+                            artifact_path = artifact, N = 2000, bench_N = 50,
+                            bench_seconds = 0.4)
+
+        # Recorded at the fixed, reported thread count, CPU-only (D-13/D-10).
+        @test sr.threads == BENCH_THREADS
+        @test sr.use_gpu == false
+
+        # THE GATE (NPE-03): median speedup > SPEEDUP_GATE ...
+        @test sr.median_speedup > SPEEDUP_GATE
+        # ... asserted JOINTLY with the comparable-RMSE condition (D-08 -- never alone).
+        @test sr.rmse.npe_rho_rmse <= NPE_RMSE_TOLERANCE * sr.rmse.advi_rho_rmse
+
+        # The pairing is real: per-pair speedups and a finite ADVI wall-clock exist.
+        @test length(sr.speedups) == sr.n_pairs
+        @test all(isfinite, sr.t_advi) && all(>(0), sr.t_advi)
+        @test isfinite(sr.full_median_speedup)   # conservative full-N lower bound reported
+
+        # CPU-only gate: CUDA not loaded (D-10).
+        @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
     end
 
     @testset "SC4 (ABL-01)" begin
