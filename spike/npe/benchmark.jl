@@ -49,11 +49,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # through the guarded infer.jl / resimulate.jl chains. The ADVI artifact is the ONLY
 # cross-env hand-off (D-02) -- this file READS it, never runs Turing.
 
-using JLD2         # read the cross-env ADVI artifact + the trained NPE
-using Statistics   # mean, median
-using Random       # reproducible NPE posterior sampling
-using StatsBase    # transform / reconstruct (frozen θ-standardization)
-using NeuralEstimators   # assess, rmse
+using JLD2           # read the cross-env ADVI artifact + the trained NPE
+using Statistics     # mean, median
+using Random         # reproducible NPE posterior sampling
+using StatsBase      # transform / reconstruct (frozen θ-standardization)
+using NeuralEstimators   # assess, rmse (qualified at call site; name collides with Images)
+using BenchmarkTools     # @belapsed -- warmup+median wall-clock (required for >100×, D-08)
 
 # --- ORDER MATTERS: infer.jl (posterior surface + load_npe/load_holdout + ghat via
 #     its own chain), then resimulate.jl (raw-stack re-sim + patch_summary/encode_d01
@@ -201,4 +202,151 @@ function rmse_report(dir; master_seed, artifact_path = DEFAULT_ADVI_ARTIFACT,
             delta_rho_rmse_advi = delta_rho_rmse_advi,
             n_stacks            = length(stack_cols),
             n_pairs             = npairs)
+end
+
+"""
+    _cuda_available() -> Bool
+
+True only if a CUDA package is already loaded AND reports a functional device. Never
+forces a CUDA import (D-10 / Pitfall 1) -- the CPU path is the gate; GPU is a bonus.
+"""
+function _cuda_available()
+    for (id, mod) in Base.loaded_modules
+        if id.name == "CUDA"
+            try
+                return Bool(Base.invokelatest(getfield(mod, :functional)))
+            catch
+                return false
+            end
+        end
+    end
+    return false
+end
+
+"""
+    _time_npe_pair(est, mci_s, mci_c, zt, variant, bench_N; bench_seconds) -> Float64
+
+The D-08 NPE clock for ONE (sample, control) pair: `@belapsed` over {summary
+extraction (`patch_summary` → `encode_d01`) → frozen-`zt` standardization → TWO
+`sampleposterior` forward passes}. The raw `MultiChannelImage`s are re-simulated
+OUTSIDE the timed block (setup), so the clock starts from the raw stack and measures
+summary extraction + forward pass ONLY -- training is EXCLUDED (the amortized claim).
+
+`bench_N` is the number of posterior draws the timed forward pass instantiates: the
+amortized inference cost is the network/flow FORWARD PASS (an O(1), N-independent
+network evaluation that conditions the flow); drawing draws from the conditioned flow
+is O(N) POST-inference sampling -- the direct analog of ADVI's `rand(q, ·)`, which the
+`vi()`-only ADVI clock likewise EXCLUDES. `bench_N` is therefore kept lightweight so
+both clocks compare "to-posterior" symmetrically (see `speedup_report`); accuracy
+(RMSE/intervals) is scored separately at the full `N`. `@belapsed` reports the MINIMUM
+elapsed, filtering transient contention. `use_gpu=false` (CPU-only, D-10).
+"""
+function _time_npe_pair(est, mci_s, mci_c, zt, variant, bench_N; bench_seconds = 0.5)
+    return @belapsed begin
+        Zs = standardize_summary(encode_d01(patch_summary($mci_s)), $zt, $variant)
+        Zc = standardize_summary(encode_d01(patch_summary($mci_c)), $zt, $variant)
+        posterior_for($est, Zs; N = $bench_N, use_gpu = false)
+        posterior_for($est, Zc; N = $bench_N, use_gpu = false)
+    end seconds=bench_seconds
+end
+
+"""
+    speedup_report(dir; master_seed, artifact_path = DEFAULT_ADVI_ARTIFACT,
+                   model_path = DEFAULT_NPE_MODEL, N = 2000, bench_N = 50,
+                   bench_seconds = 0.5) -> NamedTuple
+
+The NPE-03 wall-clock speedup, ALWAYS paired with the NPE-02 RMSE result (D-08 --
+speedup is never reported alone). For each artifact pair the NPE clock (`t_npe`) is
+measured from the RE-SIMULATED raw holdout stacks (D-04 shared re-sim path) as summary
+extraction + forward pass, and the ADVI clock (`t_advi`) is the per-pair `vi()`
+`wall_clock` read from the artifact (steady-state, JIT-excluded; 04-04).
+`speedup = t_advi / t_npe` per pair; the headline is the median.
+
+SYMMETRIC "TO-POSTERIOR" CLOCK (D-08): the ADVI `wall_clock` times the `vi()`
+optimization that PRODUCES the fitted posterior `q` and EXCLUDES the subsequent
+`rand(q, 100_000)` draw (04-04 / INFER-3). The fair NPE analog is the amortized
+FORWARD PASS that produces the conditioned posterior -- so the timed forward pass
+draws a lightweight `bench_N` posterior (the forward pass is O(1); bulk draws are the
+excluded analog of ADVI's `rand`). Accuracy (RMSE + intervals) is scored at the full
+`N` in the paired `rmse` result. `full_median_speedup` additionally reports the
+speedup when the timed NPE clock draws the full `N` posterior (a conservative
+lower bound; the `vi()`-only ADVI clock itself under-counts real per-dataset ADVI,
+which also runs a 100k prior chain + 100k posterior draw -- the "minutes" in ms-vs-min).
+
+The active `Threads.nthreads()` is recorded so SC3 can assert it equals `BENCH_THREADS`
+for the headline (D-13; >100× stated at one fixed, reported thread count). GPU timing is
+a separate opt-in branch, populated only if a functional CUDA device is present
+(`gpu_speedup`), never gating (D-10).
+
+Returns `(median_speedup, full_median_speedup, speedups, t_npe, t_advi, bench_N, N,
+threads, use_gpu, gpu_available, gpu_speedup, n_pairs, rmse)`.
+"""
+function speedup_report(dir; master_seed, artifact_path = DEFAULT_ADVI_ARTIFACT,
+                        model_path = DEFAULT_NPE_MODEL, N::Integer = 2000,
+                        bench_N::Integer = 50, bench_seconds = 0.5)
+    m   = load_npe(model_path)
+    art = _load_artifact(artifact_path)
+    ho  = load_holdout(dir)
+
+    gi_to_col = Dict(Int(ho.global_index[j]) => j for j in 1:length(ho.global_index))
+    pairs  = art["pairs"]
+    npairs = length(pairs)
+    t_advi = Float64.(art["wall_clock"])
+
+    t_npe      = Vector{Float64}(undef, npairs)   # forward-pass latency (bench_N draws)
+    t_npe_full = Vector{Float64}(undef, npairs)   # full-N posterior latency (transparency)
+    speedups   = Vector{Float64}(undef, npairs)
+    full_speedups = Vector{Float64}(undef, npairs)
+    for p in 1:npairs
+        js = gi_to_col[Int(pairs[p][1])]           # holdout entry index (column) for re-sim
+        jc = gi_to_col[Int(pairs[p][2])]
+        # Re-simulate the raw stacks OUTSIDE the timed block (setup; D-08 clock starts
+        # from the raw MultiChannelImage). Shared re-sim path with the ADVI baseline (D-04).
+        mci_s = resimulate_holdout(dir, js; master_seed = master_seed).mci_sample
+        mci_c = resimulate_holdout(dir, jc; master_seed = master_seed).mci_sample
+        t_npe[p]      = _time_npe_pair(m.estimator, mci_s, mci_c, m.zt, m.variant, bench_N;
+                                       bench_seconds = bench_seconds)
+        t_npe_full[p] = _time_npe_pair(m.estimator, mci_s, mci_c, m.zt, m.variant, N;
+                                       bench_seconds = bench_seconds)
+        speedups[p]      = t_advi[p] / t_npe[p]
+        full_speedups[p] = t_advi[p] / t_npe_full[p]
+    end
+
+    # Optional GPU bonus (D-10): only if a functional CUDA device is already loaded.
+    gpu_speedup = nothing
+    if _cuda_available()
+        gpu_t = Vector{Float64}(undef, npairs)
+        for p in 1:npairs
+            js = gi_to_col[Int(pairs[p][1])]; jc = gi_to_col[Int(pairs[p][2])]
+            mci_s = resimulate_holdout(dir, js; master_seed = master_seed).mci_sample
+            mci_c = resimulate_holdout(dir, jc; master_seed = master_seed).mci_sample
+            gt = @belapsed begin
+                Zs = standardize_summary(encode_d01(patch_summary($mci_s)), $(m.zt), $(m.variant))
+                Zc = standardize_summary(encode_d01(patch_summary($mci_c)), $(m.zt), $(m.variant))
+                posterior_for($(m.estimator), Zs; N = $bench_N, use_gpu = true)
+                posterior_for($(m.estimator), Zc; N = $bench_N, use_gpu = true)
+            end seconds=bench_seconds
+            gpu_t[p] = t_advi[p] / gt
+        end
+        gpu_speedup = median(gpu_t)
+    end
+
+    # The RMSE result the speedup is paired with (D-08 -- never speedup alone).
+    rr = rmse_report(dir; master_seed = master_seed, artifact_path = artifact_path,
+                     model_path = model_path, N = N)
+
+    return (median_speedup      = median(speedups),
+            full_median_speedup = median(full_speedups),
+            speedups            = speedups,
+            t_npe               = t_npe,
+            t_npe_full          = t_npe_full,
+            t_advi              = t_advi,
+            bench_N             = bench_N,
+            N                   = N,
+            threads             = Threads.nthreads(),
+            use_gpu             = false,
+            gpu_available       = _cuda_available(),
+            gpu_speedup         = gpu_speedup,
+            n_pairs             = npairs,
+            rmse                = rr)
 end
