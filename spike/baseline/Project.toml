@@ -1,0 +1,10 @@
+[deps]
+AdvancedVI = "b5ca4192-6429-45e5-a2d9-87aec30a685c"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
+Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+Random123 = "74087812-796a-5b5d-8853-05524746bad3"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
