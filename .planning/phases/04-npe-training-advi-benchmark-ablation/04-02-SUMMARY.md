@@ -118,6 +118,12 @@ None - no external service configuration required (offline, CPU-only research sp
 ## Threat Surface
 No new threats. Both threat-model entries satisfied: T-04-SC2 (all deps flagship JuliaStats/TuringLang, pinned Manifest committed) and T-04-DECOUPLE (no src/ writes — `git status src/` clean; coupling via read-only include() only).
 
+## Self-Check: PASSED
+
+- Files verified present: spike/baseline/Project.toml, spike/baseline/Manifest.toml, spike/baseline/model.jl, 04-02-SUMMARY.md
+- Commits verified: ede3f69 (Task 1), 216e9ad (Task 2), 3d9b883 (SUMMARY)
+- src/ and spike/ env (Project.toml/Manifest.toml) byte-clean — decoupling and isolation intact
+
 ---
 *Phase: 04-npe-training-advi-benchmark-ablation*
 *Completed: 2026-07-01*
