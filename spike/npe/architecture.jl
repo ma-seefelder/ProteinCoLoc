@@ -77,7 +77,7 @@ function build_estimator(d_in::Integer, D::Integer = NPE_D;
 
     # MLP summary net: Dense(d_in→width, gelu) then (depth-1) width→width gelu
     # blocks, then a linear width→dstar projection to the learned summaries.
-    layers = Any[Dense(d_in, width, gelu)]
+    layers = Dense[Dense(d_in, width, gelu)]   # concretely-typed (IN-06), not Any[...]
     for _ in 2:depth
         push!(layers, Dense(width, width, gelu))
     end
