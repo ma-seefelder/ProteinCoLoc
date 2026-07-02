@@ -97,6 +97,20 @@ using Pkg
         @test !haskey(Pkg.project().dependencies, "PythonCall")
         @test !haskey(Pkg.project().dependencies, "CondaPkg")
         @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
+        # (h) RESOLVE-RISK GATE (Phase 5): the validation bundle (SBC/BF/OOD) adds NO
+        #     new package — every runtime dep (NeuralEstimators/Flux/HypothesisTests/
+        #     JLD2/Random123/StatsBase/CairoMakie/Distributions) is already present from
+        #     Phases 1–4. The amortized BF uses NeuralEstimators' BUILT-IN NormalisingFlow
+        #     (British spelling) and the OOD ROC is hand-rolled, so NO ROC/normalizing-flow
+        #     package may enter the env (CLAUDE.md "What NOT to Use"; RESEARCH Pitfall 7
+        #     co-resolve landmine). Turing must stay absent (it caps NeuralEstimators below
+        #     the pin). Then the v0.2.1 pin is re-asserted with the Phase-5 code loadable.
+        @test !haskey(Pkg.project().dependencies, "ROCAnalysis")
+        @test !haskey(Pkg.project().dependencies, "MLJ")
+        @test !haskey(Pkg.project().dependencies, "NormalizingFlows")
+        @test !haskey(Pkg.project().dependencies, "InvertibleNetworks")
+        @test !haskey(Pkg.project().dependencies, "Turing")
+        @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
     end
 
 end
@@ -115,6 +129,13 @@ include(joinpath(@__DIR__, "test_data_pipeline.jl"))
 # Wave-0 holdout raw-image reproducibility gate (Open Question 1) run in the same
 # harness so a single `julia --project=spike spike/test/runtests.jl` stays the gate.
 include(joinpath(@__DIR__, "test_npe.jl"))
+
+# Phase-5 scaffold: the validation bundle (SBC filled by this plan 05-01; BF/OOD
+# skipped placeholders until Plans 05-02/05-03) runs in the same harness so a single
+# `julia --project=spike spike/test/runtests.jl` stays the gate.
+include(joinpath(@__DIR__, "test_sbc.jl"))
+include(joinpath(@__DIR__, "test_bf.jl"))
+include(joinpath(@__DIR__, "test_ood.jl"))
 
 # Phase-9 Wave-0 scaffold: the cross-method comparator CMP-01..08 testsets (skipped
 # placeholders until later Phase-9 waves fill them) run in the same harness so a single
