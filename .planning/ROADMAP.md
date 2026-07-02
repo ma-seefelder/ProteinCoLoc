@@ -153,7 +153,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 6. Reproducible Demo + Go/No-Go Memo | 0/TBD | Not started | - |
 | 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
 | 8. External Physical Ground-Truth Corpus | 0/TBD | Not started | - |
-| 9. Cross-Method Comparator Harness | 2/6 | In Progress|  |
+| 9. Cross-Method Comparator Harness | 3/6 | In Progress|  |
 | 10. Manuscript Skeleton + Related-Work Positioning | 4/5 | In Progress|  |
 | 11. Registration + Chromatic Uncertainty as Latent | 0/TBD | Not started | - |
 | 12. Spatial Colocalization Map (GP/CAR) | 0/TBD | Not started | - |
@@ -184,7 +184,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 **Plans**: 6 plans (4 waves: foundation -> {estimators, inputs, Tapqir} -> table/audit -> entry point + gate)
 - [x] 09-01-PLAN.md - Wave-0 foundation: promote DataFrames/CSV, pre-declare D-14 consts (config.jl), scaffold test_comparator.jl + resolve-risk gate (CMP-04, CMP-09)
 - [x] 09-02-PLAN.md - Classical estimator battery + seeded Costes block-scramble p-value (CMP-01, CMP-02)
-- [ ] 09-03-PLAN.md - Seeded regime-labelled shared-input builder, input-source-agnostic (CMP-03)
+- [x] 09-03-PLAN.md - Seeded regime-labelled shared-input builder, input-source-agnostic (CMP-03)
 - [ ] 09-04-PLAN.md - Isolated Tapqir sub-env + graceful skip-with-flag bridge + anchor capture (CMP-06)
 - [ ] 09-05-PLAN.md - Comparison table + divergence/traffic-light + content-addressed CSV/JLD2 + audit (CMP-01, CMP-04, CMP-05, CMP-07)
 - [ ] 09-06-PLAN.md - Seeded run_comparator entry point + filled D-13 test gate (CMP-08, CMP-09)
