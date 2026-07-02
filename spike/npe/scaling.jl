@@ -166,10 +166,17 @@ halved to per-stack), then builds the total-wall-clock-from-cold curves
     npe_time_N  = C_train + Ns .* t_fwd_per_dataset      (one-time training amortized)
     advi_time_N = Ns .* t_advi_per_dataset               (linear -- no amortization)
 
-and fits each empirical scaling exponent by `_loglog_slope`. `C_train` (the amortized
-NPE training investment) is either supplied via `train_cost` or MEASURED by timing a
-single `train_fold(dir, 1; epochs = train_epochs)` when `train_cost === nothing`
-(the reported run; requires a full CV cache at `dir`). Returns
+and fits a log-log slope of each. WR-04 -- HONESTY NOTE: `npe_exponent_N`/`advi_exponent_N`
+are the slopes of these two CLOSED-FORM ANALYTIC curves, NOT empirical exponents measured
+from repeated end-to-end runs. Because `advi_time_N` is exactly linear and `npe_time_N` is
+affine with a positive `C_train` intercept, `npe_exponent_N < advi_exponent_N` holds BY
+CONSTRUCTION for any `C_train > 0` -- it is an analytic amortization MODEL, not a
+measurement. The MEASURED inputs are `t_fwd_per_dataset`, `t_advi_per_dataset` and
+(optionally) `C_train`; those, and the `crossover_N` they imply, are the honest quantities
+to interrogate (see the SC3 test, which asserts on them rather than on the tautological
+exponent ordering). `C_train` (the amortized NPE training investment) is either supplied via
+`train_cost` or MEASURED by timing a single `train_fold(dir, 1; epochs = train_epochs)` when
+`train_cost === nothing` (the reported run; requires a full CV cache at `dir`). Returns
 `(N_grid, npe_time_N, advi_time_N, npe_exponent_N, advi_exponent_N, train_cost,
 t_fwd_per_dataset, t_advi_per_dataset, crossover_N, threads)`. `use_gpu = false`
 throughout. Characterization only -- no pass/fail here.
@@ -208,6 +215,8 @@ function scaling_over_N(dir; master_seed, Ns = SCALING_N_GRID, train_cost = noth
     npe_time_N  = C_train .+ Ngrid .* t_fwd_per_dataset       # amortized (train + N passes)
     advi_time_N = Ngrid .* t_advi_per_dataset                 # linear (per-dataset vi())
 
+    # Slopes of the ANALYTIC model curves above (WR-04): npe < advi holds by construction
+    # for C_train > 0 -- an amortization MODEL, not a measured empirical exponent.
     npe_exponent_N  = _loglog_slope(Ngrid, npe_time_N)        # < 1 (flattened by C_train)
     advi_exponent_N = _loglog_slope(Ngrid, advi_time_N)       # ≈ 1 (pure linear)
 

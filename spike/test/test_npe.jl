@@ -331,10 +331,18 @@ const ABL_FIX_RESULT = ablate(NPE_REPRO_DIR; master_seed = NPE_MASTER_SEED, K = 
         @test all(isfinite, rN.npe_time_N)  && all(>(0), rN.npe_time_N)
         @test all(isfinite, rN.advi_time_N) && all(>(0), rN.advi_time_N)
         @test isfinite(rN.npe_exponent_N) && isfinite(rN.advi_exponent_N)
-        # ADVI is ~linear in N (exponent ≈ 1); NPE is materially FLATTER post-training
-        # (amortized O(1)/dataset -- the C_train offset flattens its log-log slope).
-        @test rN.advi_exponent_N > 0.9
-        @test rN.npe_exponent_N < rN.advi_exponent_N     # qualitative amortization check
+        # WR-04: npe_exponent_N/advi_exponent_N are log-log slopes of the CLOSED-FORM
+        # analytic curves (npe = C_train + N·t_fwd; advi = N·t_advi), so their ordering
+        # is true by construction and a `<` assertion cannot fail regardless of code
+        # correctness. Assert instead on the MEASURED inputs that make amortization real:
+        # a positive one-time training cost, a per-dataset NPE forward pass strictly
+        # cheaper than a per-dataset ADVI run, and the finite positive crossover N those
+        # imply (beyond which the amortized NPE undercuts ADVI).
+        @test rN.train_cost > 0                          # here supplied as 5.0
+        @test rN.t_fwd_per_dataset > 0
+        @test rN.t_advi_per_dataset > 0
+        @test rN.t_fwd_per_dataset < rN.t_advi_per_dataset   # measured amortization premise
+        @test isfinite(rN.crossover_N) && rN.crossover_N > 0
         @test isfile(joinpath(tmp, "scaling_N.jld2"))    # curve persisted atomically
 
         # (b) input-size curve: finite exponents for BOTH methods (imsize characterization).
