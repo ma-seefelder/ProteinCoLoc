@@ -116,7 +116,7 @@ function build_bf_pair(m, rng, Δρ_target; imsize = SBC_IMSIZE, N::Integer = BF
 
     Zs = standardize_summary(encode_d01(patch_summary(build_mci(simulate_pair(rng, θs; imsize = imsize)))), m.zt, :min)
     Zc = standardize_summary(encode_d01(patch_summary(build_mci(simulate_pair(rng, θc; imsize = imsize)))), m.zt, :min)
-    Z_pair = vcat(Zs, Zc)
+    Z_pair = pair_encode(Zs, Zc)   # research A7 difference encoding (concat + contrast); train_ratio.jl
 
     ρs_draws = rho_draws(m.estimator, Zs, m.θzt; N = N, use_gpu = false)
     ρc_draws = rho_draws(m.estimator, Zc, m.θzt; N = N, use_gpu = false)

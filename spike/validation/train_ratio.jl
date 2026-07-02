@@ -63,6 +63,8 @@ using JLD2               # atomic model persistence
 using StatsBase          # (mean etc. come through Statistics/harness)
 using Statistics         # mean
 using Dates              # UTC-labeled artifact timestamp
+using Random123          # Philox4x (deterministic, disjoint cache-pairing stream)
+using Random             # rand over ranges / randperm on an AbstractRNG
 
 # --- ORDER MATTERS: consts first, then the shared harness (load_frozen_model +
 #     sample_prior/simulate_pair/build_mci/patch_summary/encode_d01 + standardize_summary
@@ -75,28 +77,70 @@ if !isdefined(@__MODULE__, :RATIO_MODEL_SCHEMA)
     const RATIO_MODEL_SCHEMA = 1
 
     # Summary-network output width (num_summaries): the 256-dim paired summary is
-    # compressed to this many learned summaries before the inference MLP.
-    const RATIO_NUM_SUMMARIES = 32
+    # compressed to this many learned summaries before the inference MLP. PHASE-5
+    # BF ITERATION: 32→64 to mirror the NPE lever (dstar 32→64) — more capacity in the
+    # learned-summary bottleneck to sharpen the model-index classifier.
+    const RATIO_NUM_SUMMARIES = 64
 
-    # The paired-summary input dimension: two 128-dim :min encodings concatenated
-    # (research A7 allows a symmetric/difference encoding; we start with concat).
-    const RATIO_INPUT_DIM = 256
+    # Summary-network hidden width. PHASE-5 BF ITERATION: 64→256 (the NPE's 2×128→3×256
+    # conditioner scale-up, mirrored on the NRE side).
+    const RATIO_SUMMARY_WIDTH = 256
+
+    # The paired-summary input dimension (research A7 difference encoding): the two
+    # 128-dim :min encodings concatenated PLUS the 64-dim CONTINUOUS-ROW contrast
+    # (Zs−Zc on rows 1:64) — 128+128+64 = 320. The contrast is the exact per-patch
+    # correlation-difference signal the D-07 model index depends on, so exposing it
+    # directly sharpens the near-threshold classifier (PHASE-5 BF ITERATION).
+    const RATIO_CONT_ROWS = 64
+    const RATIO_INPUT_DIM  = 320
 
     # D-07 coloc/null split threshold on the ρ_true CONTRAST Δρ_ρ = ρ_true_s − ρ_true_c.
     # It is 0.0 (NOT ghat(0)) because the baseline threshold on the induced-mean contrast
     # Δμ is 0 and ghat is strictly monotone through both stacks (see file banner).
     const RATIO_SPLIT_THRESHOLD = 0.0
 
-    # Reported small-training defaults (NOT anti-snooping thresholds — training
-    # hyperparameters, tunable; the pass/fail BF thresholds live in consts.jl). The
-    # FULL reported ratio-net training is owned by Wave-3 (05-04); these produce the
-    # per-task persisted net.
-    const RATIO_TRAIN_N = 3000     # paired (θ_s,θ_c) draws for training
-    const RATIO_EPOCHS  = 100      # max epochs (early-stopped at stopping_epochs=10)
+    # Reported training defaults (NOT anti-snooping thresholds — training hyperparameters,
+    # tunable; the pass/fail BF thresholds live in consts.jl). PHASE-5 BF ITERATION: the
+    # net is now trained on PAIRS assembled from the SAME 50k (θ, summary) cache the NPE
+    # trained on (assemble_ratio_data_cache) — leak-free (cache gen-seed 0x134d8f3 is
+    # DISJOINT from VAL_MASTER_SEED and NPE_MASTER_SEED) and 16× more data than the prior
+    # 3k fresh-sim pairs — with the NPE-mirrored stabler recipe (LR 2.5e-4, batch 128,
+    # 300 epochs / patience 40).
+    const RATIO_TRAIN_N = 48000    # cache-paired (Z_s,Z_c) training columns
+    const RATIO_EPOCHS  = 300      # max epochs (early-stopped at stopping_epochs=40)
     const RATIO_LPO_N   = 20000    # prior label draws for the measured log_prior_odds
+
+    # Deterministic, disjoint stream for CACHE PAIRING (which two cache columns form a
+    # training pair + the train/val split). Distinct from VAL_MASTER_SEED / VAL_FIX_SEED /
+    # NPE_MASTER_SEED and from the cache generation seed, so the assembled training pairs
+    # never coincide with the reported BF eval stream (D-02 spirit).
+    const RATIO_PAIR_SEED = 0x00000000004A7107
 
     # Default on-disk path for the persisted trained ratio net (large binary, gitignored).
     const RATIO_MODEL_PATH = joinpath(@__DIR__, "trained_ratio.jld2")
+end
+
+"""
+    resolve_cache_dir() -> String
+
+Locate the single 50k main-pool cache directory (the one the NPE trained on): the
+`spike/data/cache/<hash>/` subdir that contains both `meta.jld2` and `shard_0001.jld2`
+(the tiny `fixture/` cache and any stray dir are excluded by requiring a real shard +
+meta). Errors if zero or more than one such directory exists, so the ratio net can never
+silently train on the wrong pool.
+"""
+function resolve_cache_dir()
+    root = joinpath(@__DIR__, "..", "data", "cache")
+    isdir(root) || error("resolve_cache_dir: no cache root at $root")
+    hits = String[]
+    for d in readdir(root; join = true)
+        isdir(d) || continue
+        (isfile(joinpath(d, "meta.jld2")) && isfile(joinpath(d, "shard_0001.jld2"))) &&
+            push!(hits, d)
+    end
+    length(hits) == 1 ||
+        error("resolve_cache_dir: expected exactly one main-pool cache dir, found $(length(hits)): $hits")
+    return hits[1]
 end
 
 """
@@ -122,8 +166,64 @@ function assemble_ratio_data(m, n::Integer; rng = val_rng(), imsize = SBC_IMSIZE
         θc = sample_prior(rng)
         Zs = standardize_summary(encode_d01(patch_summary(build_mci(simulate_pair(rng, θs; imsize = imsize)))), m.zt, :min)
         Zc = standardize_summary(encode_d01(patch_summary(build_mci(simulate_pair(rng, θc; imsize = imsize)))), m.zt, :min)
-        Z_pair[:, j] = vcat(Zs, Zc)
+        Z_pair[:, j] = pair_encode(Zs, Zc)
         model_index[j] = Float32((θs.ρ_true - θc.ρ_true) > RATIO_SPLIT_THRESHOLD)
+    end
+    return Z_pair, model_index
+end
+
+"""
+    pair_encode(Zs, Zc) -> Vector{Float32}
+
+The paired-summary encoding for the model-comparison ratio net (research A7 difference
+encoding): `vcat(Zs, Zc, Zs[1:RATIO_CONT_ROWS] − Zc[1:RATIO_CONT_ROWS])` — the two 128-dim
+frozen-`m.zt` summaries concatenated PLUS the 64-dim continuous-row (correlation) CONTRAST.
+The contrast row block is the direct per-patch Δcorrelation signal the D-07 coloc/null model
+index is a function of. Used IDENTICALLY by the trainer (`assemble_ratio_data*`) and the
+amortized BF read (`bf.jl::build_bf_pair`), so training and inference share one input space.
+"""
+function pair_encode(Zs::AbstractVector, Zc::AbstractVector)
+    d = @view(Zs[1:RATIO_CONT_ROWS]) .- @view(Zc[1:RATIO_CONT_ROWS])
+    return Float32.(vcat(Zs, Zc, d))
+end
+
+"""
+    assemble_ratio_data_cache(m, n; cache_dir = resolve_cache_dir(),
+                              rng = Philox4x(UInt64, (RATIO_PAIR_SEED, UInt64(0))),
+                              variant = :min) -> (Z_pair, model_index)
+
+Build `n` paired training columns for the model-comparison ratio net (BF-01, D-07) by
+PAIRING the SAME 50k (θ, summary) cache the NPE trained on — NOT re-simulating (16× more
+data, no simulation cost, and provably leak-free: the cache generation seed 0x134d8f3 is
+disjoint from VAL_MASTER_SEED/NPE_MASTER_SEED, so these training pairs never coincide with
+the reported BF eval stream). Loads the RAW main pool once, standardizes ALL summaries with
+the FROZEN `m.zt` (`standardize_summary`, the deployed NPE input space, never re-fit), then
+for each of `n` columns draws two DISTINCT cache indices `(i,j)` from `rng`, sets the column
+to `vcat(Z_i, Z_j)` (256-dim) and the label to `Float32((ρ_i − ρ_j) > RATIO_SPLIT_THRESHOLD)`
+— the D-07 coloc/null split on the ρ_true contrast (row 1 of θ). Because `(i,j)` are i.i.d.
+over the pool, P(ρ_i > ρ_j) ≈ 0.5, so labels are balanced by construction.
+
+Returns `(Z_pair::Matrix{Float32} 256×n, model_index::Vector{Float32} length n)`. CPU-only.
+"""
+function assemble_ratio_data_cache(m, n::Integer; cache_dir = resolve_cache_dir(),
+                                   rng = Philox4x(UInt64, (RATIO_PAIR_SEED, UInt64(0))),
+                                   variant::Symbol = :min)
+    pool = Loader.load_main_pool(cache_dir)
+    Zstd = standardize_summary(pool.summary_min, m.zt, variant)   # 128×N in the frozen space
+    ρ    = Float64.(pool.theta[1, :])                             # ρ_true row (D-07 contrast)
+    N    = size(Zstd, 2)
+    N ≥ 2 || error("assemble_ratio_data_cache: need ≥2 cache columns, got $N")
+
+    Z_pair = Matrix{Float32}(undef, RATIO_INPUT_DIM, n)
+    model_index = Vector{Float32}(undef, n)
+    for j in 1:n
+        i1 = rand(rng, 1:N)
+        i2 = rand(rng, 1:N)
+        while i2 == i1
+            i2 = rand(rng, 1:N)
+        end
+        Z_pair[:, j] = pair_encode(view(Zstd, :, i1), view(Zstd, :, i2))
+        model_index[j] = Float32((ρ[i1] - ρ[i2]) > RATIO_SPLIT_THRESHOLD)
     end
     return Z_pair, model_index
 end
@@ -176,12 +276,22 @@ loss is hard-coded `logitbinarycrossentropy`). `use_gpu=true` HARD-THROWS (CPU-o
 every NeuralEstimators call passes use_gpu=false.
 """
 function train_ratio(m; n::Integer = RATIO_TRAIN_N, epochs::Integer = RATIO_EPOCHS,
-                     batchsize::Integer = 64, use_gpu::Bool = false,
-                     imsize = SBC_IMSIZE, val_frac::Real = 0.2,
+                     batchsize::Integer = 128, use_gpu::Bool = false,
+                     imsize = SBC_IMSIZE, val_frac::Real = 0.15,
+                     learning_rate::Real = 2.5e-4, weight_decay::Real = 1e-4,
+                     stopping_epochs::Integer = 40,
+                     from_cache::Bool = true, cache_dir = nothing,
+                     pair_rng = Philox4x(UInt64, (RATIO_PAIR_SEED, UInt64(0))),
                      rng = val_rng(), verbose::Bool = false)
     use_gpu && throw(ArgumentError("train_ratio: use_gpu=true out of scope (CPU-only gate, D-10)"))
 
-    Z_pair, model_index = assemble_ratio_data(m, n; rng = rng, imsize = imsize)
+    # PHASE-5 BF ITERATION: default to cache-paired data (leak-free, 16× the prior 3k
+    # fresh-sim pairs). `from_cache=false` restores the original online-simulation path.
+    Z_pair, model_index = from_cache ?
+        assemble_ratio_data_cache(m, n;
+            cache_dir = cache_dir === nothing ? resolve_cache_dir() : cache_dir,
+            rng = pair_rng) :
+        assemble_ratio_data(m, n; rng = rng, imsize = imsize)
 
     # Train/val split (contiguous — the stream is already i.i.d. across columns).
     nval = clamp(round(Int, val_frac * n), 1, n - 1)
@@ -191,17 +301,22 @@ function train_ratio(m; n::Integer = RATIO_TRAIN_N, epochs::Integer = RATIO_EPOC
     midx_tr = reshape(model_index[1:ntr], 1, :)         # 1×ntr (num_parameters = 1)
     midx_va = reshape(model_index[ntr+1:end], 1, :)
 
-    summary_network = Chain(Dense(RATIO_INPUT_DIM, 64, gelu),
-                            Dense(64, 64, gelu),
-                            Dense(64, RATIO_NUM_SUMMARIES))
+    # PHASE-5 BF ITERATION: higher-capacity summary conditioner mirroring the NPE lever
+    # (64-wide → 3×256-wide + a 64-dim learned-summary bottleneck).
+    W = RATIO_SUMMARY_WIDTH
+    summary_network = Chain(Dense(RATIO_INPUT_DIM, W, gelu),
+                            Dense(W, W, gelu),
+                            Dense(W, W, gelu),
+                            Dense(W, RATIO_NUM_SUMMARIES))
     est = RatioEstimator(summary_network, 1; num_summaries = RATIO_NUM_SUMMARIES)
 
     # FIXED-DATA train form (mirrors train_npe.jl). AdamW args are Float64 to match
-    # NeuralEstimators' Float64 CosAnneal lr_schedule (Optimisers.adjust! gotcha).
+    # NeuralEstimators' Float64 CosAnneal lr_schedule (Optimisers.adjust! gotcha). Stabler
+    # NPE-mirrored recipe: lower LR (2.5e-4), larger batch (128), 300 epochs / patience 40.
     est = train(est, midx_tr, midx_va, Z_tr, Z_va;
                 epochs = epochs, batchsize = batchsize, use_gpu = false,
-                optimiser = Flux.Optimisers.AdamW(5e-4, (0.9, 0.999), 1e-4),
-                stopping_epochs = 10, verbose = verbose)
+                optimiser = Flux.Optimisers.AdamW(learning_rate, (0.9, 0.999), weight_decay),
+                stopping_epochs = stopping_epochs, verbose = verbose)
     return est
 end
 
