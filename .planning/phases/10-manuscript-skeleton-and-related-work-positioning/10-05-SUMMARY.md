@@ -100,3 +100,10 @@ load-bearing content the assertions check. YAML `#` comments are never grepped f
 
 None — the gates assert against the fully-merged, completed Wave-2/3 manuscript content; no
 placeholder or empty-value stubs were introduced.
+
+## Self-Check: PASSED
+
+- FOUND: manuscript/build.ps1
+- FOUND: manuscript/build.sh
+- FOUND: .planning/phases/10-manuscript-skeleton-and-related-work-positioning/10-05-SUMMARY.md
+- FOUND commit 4b65f3b (feat), 18f4960 (docs)
