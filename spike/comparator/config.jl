@@ -55,11 +55,21 @@ const DIVERGENCE_FAIL = 0.60             # red band lower edge (severe disagreem
 # table is bit-reproducible across runs and thread counts, exactly like the Phase-3 cache.
 const MASTER_SEED = 0x00000000_00C0FFEE  # comparator harness Philox master seed
 
-# --- Tapqir sanity-anchor placeholders (D-07; pinned by 09-04) ------------------
-# The Tapqir bridge reproduces a PUBLISHED Tapqir tutorial dataset and checks the
-# recovered quantity against the published value (a sanity anchor only, NOT a comparator
-# column on our simulator images — D-07). The published reference value is captured ONCE
-# by running the tutorial in plan 09-04; until then it is NaN, which documents "not yet
-# captured" rather than silently pinning a guessed number (D-14 discipline).
-const TAPQIR_PUBLISHED_VALUE = NaN       # placeholder — plan 09-04 pins the real published value
-const TAPQIR_TOL             = 0.05      # provisional acceptance tolerance (confirmed in 09-04)
+# --- Tapqir sanity-anchor value (D-07/D-08; resolved by 09-04) ------------------
+# The Tapqir bridge reproduces a PUBLISHED Tapqir tutorial dataset (eLife 2022 11:e73860,
+# Part II `cosmos` sample data set) and checks the recovered quantity against the published
+# value (a sanity anchor only, NOT a comparator column on our simulator images — D-07). The
+# published reference value is captured ONCE by running the tutorial in an isolated Conda
+# env; the capture records published ground truth and is NOT a tuned threshold (D-14).
+#
+# CLEAN-SKIP PATH TAKEN (09-04, this machine — Windows). No Conda backend is available
+# (conda/mamba/micromamba absent from PATH; JULIA_CONDAPKG_BACKEND unset), and materializing
+# tapqir 1.1.19 (2023) would require a large, likely-failing network install (the system
+# Python is 3.14, unsupported by that Tapqir release). Per D-08 the anchor is optional and
+# must never gate the classical battery, so we DELIBERATELY leave TAPQIR_PUBLISHED_VALUE as
+# NaN. This is the documented clean-skip, NOT a silently guessed number (D-14 discipline):
+# with NaN the bridge cannot assess an anchor and returns status=:skipped, which the 09-06
+# D-13 gate accepts (status ∈ {:passed, :skipped}). To pin a real value later, materialize
+# spike/comparator/tapqir_env/ on a machine with Conda and re-run 09-04 Task 2.
+const TAPQIR_PUBLISHED_VALUE = NaN       # documented clean-skip (no Conda backend); pin a real value by re-running 09-04 Task 2 with a materialized env
+const TAPQIR_TOL             = 0.05      # provisional acceptance tolerance for the anchor when a value is pinned
