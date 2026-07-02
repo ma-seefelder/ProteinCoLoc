@@ -14,11 +14,16 @@
 // unique <fig:...> label. Labels are DEFINED here but not @-referenced (Pitfall 2: an @ref to a
 // missing target fails the build; a defined-but-unreferenced label is fine).
 
+// Import the ONE worked reference figure (definition only; #import emits nothing and does not run
+// f1_speedup.typ's standalone `#set page` / trailing preview — template module contract).
+#import "f1_speedup.typ": f1-speedup-figure
+
 // ---------------------------------------------------------------------------
-// F1 — Speedup vs RMSE  (Phase 4; figures/f1_speedup.{yaml,typ})
-// F1 carries the Phase-4 HONEST caveat (median ~325× forward-pass, ~16× full-workload, ADVI
-// ~0.5 s/pair, RMSE parity, wider NPE intervals) — never the bare >100× headline (RESEARCH
-// §Honest Headline Numbers). Task 2 renders this spec end-to-end.
+// F1 — Speedup vs RMSE  (RENDERED exemplar; Phase 4; figures/f1_speedup.{yaml,typ})
+// The spec block documents the contract; the RENDERED panel follows it, drawn entirely from
+// figures/f1_speedup.yaml via lib/figstyle.typ (D-14/D-16). F1 carries the Phase-4 HONEST caveat
+// (median ~325× forward-pass, ~16× full-workload, ADVI ~0.5 s/pair, RMSE parity, wider NPE
+// intervals) — never the bare >100× headline (RESEARCH §Honest Headline Numbers).
 // ---------------------------------------------------------------------------
 #figure(
   rect(width: 100%, stroke: (dash: "dashed"), inset: 8pt)[
@@ -30,9 +35,20 @@
     Honest caveat: median ~325× forward-pass (min pair ~125×), ~16× on the full posterior-sample
     (N=2000) workload, against a realized ADVI baseline ~0.5 s/pair — reported PAIRED with RMSE
     parity (0.1271 vs 0.1270) and the wider NPE 90% intervals (0.884 vs 0.605). NOT a bare >100×. \
-    YAML: figures/f1_speedup.yaml + figures/f1_speedup.typ. Status: PENDING.
+    YAML: figures/f1_speedup.yaml + figures/f1_speedup.typ. Status: RENDERED (panel below).
   ],
-  caption: [Placeholder — the producing phase renders the panel via its per-figure YAML.],
+  caption: [F1 spec — the rendered panel follows; its every graphical value flows from
+    figures/f1_speedup.yaml via lib/figstyle.typ (D-14/D-16).],
+) <fig:f1_speedup_spec>
+
+#figure(
+  f1-speedup-figure,
+  caption: [Speedup vs RMSE — amortized NPE vs per-dataset ADVI. Honest Phase-4 numbers: median
+    ~325× forward-pass speedup (min pair ~125×), dropping to ~16× on the full posterior-sample
+    (N=2000) workload, against a realized ADVI baseline of ~0.5 s/pair. The speedup is only
+    meaningful PAIRED with RMSE parity in ρ-space (NPE 0.1271 vs ADVI 0.1270) and reported beside
+    the wider NPE 90% intervals (0.884 vs ADVI 0.605 — mean-field VI under-disperses). Not a bare
+    >100× headline.],
 ) <fig:f1_speedup>
 
 // ---------------------------------------------------------------------------

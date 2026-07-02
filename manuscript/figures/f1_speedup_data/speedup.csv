@@ -1,0 +1,4 @@
+method,regime,rmse,interval_width,wall_clock_s,speedup
+ADVI,per-dataset,0.1270,0.605,0.5,1
+NPE,forward-pass,0.1271,0.884,0.0015,325
+NPE,full-workload,0.1271,0.884,0.031,16

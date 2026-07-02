@@ -1,0 +1,65 @@
+# f1_speedup.yaml — ALL graphical parameters for Figure F1 (speedup-vs-RMSE), the ONE worked
+# reference figure (D-16). Edit any visual aspect of F1 HERE — nothing graphical is hard-coded in
+# f1_speedup.typ (D-14). Numeric data lives in f1_speedup_data/speedup.csv. Colours are named by
+# palette ROLE, resolved against /colours.yaml via lib/figstyle.typ (single source of hex, D-15);
+# each series may carry an optional "#rrggbb" override (left commented) instead of a role.
+#
+# Schema (see lib/figstyle.typ top-of-file comment for the full key/type/default table):
+#   panel: width/height in cm, scale unitless
+#   axes:  xlim/ylim [lo,hi]; xticks/yticks lists; xlabel/ylabel/title strings; yscale "log"|"linear"
+#   series: list; each has key (matched in the .typ to a CSV regime), color (role), thickness (pt),
+#           dash, mark, label (legend text)
+#   legend: position, cols
+#   text:  size in pt
+
+panel:
+  width: 8.5      # cm
+  height: 6.0     # cm
+  scale: 1.0
+
+axes:
+  xlim: [0.120, 0.135]
+  ylim: [0.7, 500]
+  yscale: "log"
+  xticks: [0.120, 0.125, 0.130, 0.135]
+  yticks: [1, 10, 100]
+  xlabel: "RMSE (ρ)"
+  ylabel: "Speedup (×, log)"
+  title: "Speedup vs RMSE — NPE vs ADVI (Phase 4)"
+
+# Series styling. `key` links each entry to how the .typ plots it (a CSV regime or the reference
+# line). Colours are palette roles from /colours.yaml; swap the role or uncomment a "#rrggbb"
+# override to restyle without touching Typst.
+series:
+  - key: advi_baseline          # the 1× ADVI reference line
+    color: "reference.chance_line"
+    # color: "#bbbbbb"          # <- optional explicit hex override (D-14)
+    thickness: 0.8
+    dash: "dashed"
+    mark: "none"
+    label: "ADVI 1× baseline"
+  - key: advi                    # ADVI point (RMSE parity, 1×)
+    color: "reference.axis_chrome"
+    thickness: 1.5
+    dash: "solid"
+    mark: "o"
+    label: "ADVI (per-dataset)"
+  - key: npe_full                # NPE full posterior-sample (N=2000) workload, ~16×
+    color: "model_series.meta_learner_unc"
+    thickness: 1.5
+    dash: "solid"
+    mark: "s"
+    label: "NPE full workload (~16×)"
+  - key: npe_forward             # NPE amortized forward pass, ~325×
+    color: "model_series.meta_learner"
+    thickness: 1.5
+    dash: "solid"
+    mark: "o"
+    label: "NPE forward pass (~325×)"
+
+legend:
+  position: "bottom"
+  cols: 2
+
+text:
+  size: 9
