@@ -411,3 +411,10 @@ spike/data/cache/*
 # graphify scratch output at repo root — machine-local (contains an absolute-path
 # root marker) and fully regenerable. The GSD-canonical graph lives in .planning/graphs/.
 graphify-out/
+
+# Phase-9 Tapqir bridge (09-04): the CondaPkg materialized on-disk env — large and
+# machine-local. The env SPEC (tapqir_env/Project.toml + Manifest.toml) stays tracked.
+spike/comparator/tapqir_env/.CondaPkg/
+# Phase-9 (09-01) inertness-check scratch: the pre-promotion Manifest snapshot used to
+# prove the DataFrames/CSV promotion did not drift versions — not a deliverable.
+spike/.manifest_baseline.toml
