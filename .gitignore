@@ -411,3 +411,8 @@ spike/data/cache/*
 # graphify scratch output at repo root — machine-local (contains an absolute-path
 # root marker) and fully regenerable. The GSD-canonical graph lives in .planning/graphs/.
 graphify-out/
+
+# Compiled manuscript output (Phase 10) — regenerable via manuscript/build.{ps1,sh}.
+# Only the top-level build product is ignored; per-figure PDFs (e.g. the D-16 F1 figure)
+# remain trackable deliverables.
+manuscript/main.pdf

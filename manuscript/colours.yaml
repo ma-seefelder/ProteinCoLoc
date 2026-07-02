@@ -1,0 +1,212 @@
+# Manuscript colour palette — single source of truth.
+#
+# Read in Typst via:
+#
+#   #let palette = yaml("/colours.yaml")
+#   #let c-string = rgb(palette.feature_family.string_in_species)
+#
+# (When compiled from a spike-prototype subdirectory, use
+#  `typst compile --root .` so absolute paths resolve.)
+#
+# Every figure prototype and every section of the manuscript must pull
+# colours from here. Adding a one-off rgb("#...") in a figure file is an
+# anti-pattern — extend this file with a new semantic role instead, and
+# the writer reusing the same role elsewhere gets coherence for free.
+#
+# Convention: hex strings as 7-character `#rrggbb`. No alpha channel here
+# (alphas vary per-use and should be applied at the call site).
+
+# ---------------------------------------------------------------------------
+# Model-comparison series  — used when plotting multiple model variants on
+# the same axes (ROC, PR, reliability, calibration curves, training-loss).
+# Stay neutral / printer-safe / colour-blind-aware.
+# ---------------------------------------------------------------------------
+model_series:
+  dnn_only:           "#7f7f7f"   # neutral grey   — deep-learning prior alone
+  meta_learner:       "#1f77b4"   # tab10 blue     — multi-evidence stack (tr_ddi)
+  meta_learner_unc:   "#d62728"   # tab10 red      — stack + dropout uncertainty (tr_ddi_mc)
+
+# ---------------------------------------------------------------------------
+# Tool series — the four comparator systems plotted head-to-head in Phase-4
+# benchmark figures (ROC/PR/reliability over SAINTexpress, CompPASS, MiST,
+# BayesInteractomics). BayesInteractomics is the hero, so it carries the deep
+# lilac signature that anchors the manuscript's visual identity; the three
+# comparators take muted, printer-safe, colour-blind-aware hues that read as
+# reference systems, not rivals for the eye. (Introduced Spike 004.2; executes
+# Spike 004.1's deferred decision to add per-tool roles. Distinct from
+# `model_series`, which colours BayesInteractomics' OWN internal model variants.)
+# ---------------------------------------------------------------------------
+tool_series:
+  bayesinteractomics: "#5b21b6"   # deep violet  — hero (matches lilac identity)
+  saintexpress:       "#2c7fb8"   # steel blue   — comparator
+  comppass:           "#d9843b"   # muted amber  — comparator
+  mist:               "#5a9e6f"   # muted green  — comparator
+
+# ---------------------------------------------------------------------------
+# Evidence streams — the THREE experimental AP-MS evidence channels the
+# Bayesian (copula + latent-class) layer fuses: enrichment, abundance
+# correlation, detection frequency. Introduced for the redesigned Figure 1
+# (two-engine overview) and reused wherever the three streams appear as
+# colour-coded entities (Fig 1 schematic; ablation stream rows). A distinct
+# Wong colour-blind-safe trio kept SEPARATE from `tool_series` so that within
+# one figure a stream hue is never confusable with a comparator-tool hue.
+# ---------------------------------------------------------------------------
+evidence_stream:
+  enrichment:            "#D55E00"   # vermilion (Wong)    — enrichment stream
+  abundance_correlation: "#0072B2"   # sky blue (Wong)     — abundance-correlation stream
+  detection:             "#009E73"   # bluish green (Wong) — detection-frequency stream
+
+# ---------------------------------------------------------------------------
+# Detectability tiers — colour the composition of a curated PPI reference by
+# how much usable AP-MS signal each "true" positive actually carries in the
+# data (Spike 004.6 recall-ceiling analysis). A traffic-light register: green
+# = recoverable signal, amber = borderline, grey = no signal (a forced false
+# negative for every method). Deliberately NOT tool colours — these label
+# evidence quality, not a system. (Introduced Spike 004.6.)
+# ---------------------------------------------------------------------------
+detectability_tier:
+  well_supported:     "#4c9f70"   # green  — >=1 log2 enrichment + detected
+  weak:               "#e0a458"   # amber  — borderline (0.5-1 log2 or <50% det.)
+  background_like:    "#9aa0a6"   # grey   — <0.5 log2 enrichment, no usable signal
+
+# ---------------------------------------------------------------------------
+# Feature-family palette — used to colour-code feature groups (per-feature
+# importance bars, family aggregates, ablation trajectories). Desaturated,
+# pastel-leaning hues in the RColorBrewer Pastel1/Pastel2 register so the
+# figures read as scientific paper plates rather than dashboards. Hue
+# character still lilac-anchored: STRING in-species sits at a dusty
+# violet because that channel is the manuscript's substantive talking point.
+# ---------------------------------------------------------------------------
+feature_family:
+  dnn:                "#7e6499"   # dusty purple   — DNN prior score
+  base_pred:          "#cbc1de"   # pale lavender  — base-model OOF preds
+  string_in_species:  "#a995c7"   # dusty violet   — STRING evidence channels (7)
+  string_transferred: "#bcb7d8"   # soft periwinkle — STRING transferred (4)
+  ddi:                "#d9a3b1"   # dusty rose     — Pfam domain-domain int.
+  subcellular_loc:    "#a8c3d9"   # soft sky       — UniProt subcellular loc.
+  go_semantic:        "#b0c9a6"   # soft sage      — GO Wang semantic sim.
+
+# ---------------------------------------------------------------------------
+# Reference / chrome — chance lines, gridlines, class-prior markers,
+# table rules. Keep neutral and at low contrast so they recede behind the
+# data.
+# ---------------------------------------------------------------------------
+reference:
+  chance_line:        "#bbbbbb"   # ROC diagonal, class-prior horizontal
+  axis_chrome:        "#666666"   # tick labels, axis annotations
+  caption_text:       "#555555"   # provenance subtitle under titles
+  grid_soft:          "#e5e7eb"   # background gridlines (use sparingly)
+
+# ---------------------------------------------------------------------------
+# Sequential / diverging — for heatmaps, gradients, BFDR / posterior
+# probability maps. Lilac sequential matches the lilac feature-family
+# theme so a heatmap and a bar chart on the same page read as one figure.
+# ---------------------------------------------------------------------------
+sequential_lilac:
+  s_50:               "#f5f3ff"   # lightest
+  s_200:              "#ddd6fe"
+  s_400:              "#a78bfa"
+  s_600:              "#7c3aed"
+  s_800:              "#5b21b6"
+  s_900:              "#4c1d95"   # darkest
+
+diverging_bfdr:
+  positive_strong:    "#5b21b6"   # high posterior (interactor)
+  positive_mid:       "#a78bfa"
+  neutral:            "#f5f3ff"
+  negative_mid:       "#fca5a5"
+  negative_strong:    "#b91c1c"   # high posterior non-interactor
+
+# ---------------------------------------------------------------------------
+# Highlight / annotation — for callouts, baseline reference markers,
+# best-config stars, "drop" arrows on trajectory plots. Desaturated muted
+# variants of the saturated `tab10`-style accent palette so highlights
+# read as gentle emphasis on a scientific plate, not signage.
+# ---------------------------------------------------------------------------
+highlight:
+  best_config:        "#e5c163"   # muted gold     — best-configuration bar
+  drop_marker:        "#b87474"   # muted brick    — "performance drop" arrows
+  baseline_marker:    "#94a3b8"   # slate grey     — baseline reference line
+
+# ---------------------------------------------------------------------------
+# Sample role — for real-data AP-MS figures distinguishing bait IPs from
+# control IPs (Spike 005.x onward). Bait sits at the deep tab10 blue used
+# elsewhere for the "model of interest"; control at the same slate as the
+# baseline_marker so reference-vs-signal reads consistently across the
+# manuscript.
+# ---------------------------------------------------------------------------
+sample_role:
+  bait:               "#1f77b4"   # tab10 blue     — bait-protein pull-down IPs
+  control:            "#94a3b8"   # slate grey     — control IPs (IgG, beads-only)
+
+# ---------------------------------------------------------------------------
+# Architectural ablation — colours the BayesInteractomics components dropped or
+# swapped in the Phase-4 architectural-ablation figure (fig_ablation). full = the
+# hero violet (matches tool_series.bayesinteractomics); the DNN prior, the three
+# evidence streams, and the copula-family knob take distinct desaturated hues so
+# each component's bar is identifiable against the full-model reference line.
+# Distinct from feature_family (which colours meta-learner FEATURE groups, D-09).
+# (Introduced Phase 4 / Plan 04-08.)
+# ---------------------------------------------------------------------------
+ablation:
+  full:               "#5b21b6"   # hero violet  — full model reference
+  dnn_prior:          "#7e6499"   # dusty purple — DNN-prior drop
+  enrichment:         "#4c9f70"   # green        — enrichment-stream drop
+  correlation:        "#2c7fb8"   # steel blue   — correlation-stream drop
+  detection:          "#d9843b"   # amber        — detection-stream drop
+  copula_family:      "#b87474"   # muted brick  — copula-family swap (→Gaussian)
+
+# ---------------------------------------------------------------------------
+# Differential interactomics — colours the calibrated directional differential
+# call in the gained/lost interactor figure (fig_differential, Spike 005.4,
+# DIF-02). The signed log10 dBF axis splits prey into those stronger in the
+# WT-length condition (lost in the mutant) and those stronger in the expanded
+# condition (gained in the mutant); unchanged prey carry no differential
+# evidence. The figure EXCLUDES the bait (HTT) — it is the bait, not a prey
+# interactor — but the bait role is defined here for palette coherence with
+# any future per-bait overlay.
+# ---------------------------------------------------------------------------
+differential:
+  lost_in_mutant:     "#2c7fb8"   # steel blue   — stronger in 20Q/WT (lost in the mutant)
+  gained_in_mutant:   "#d9843b"   # amber        — stronger in 140Q (gained in the mutant)
+  unchanged:          "#c2c2c2"   # neutral grey — no differential evidence
+  bait:               "#5b21b6"   # hero violet  — bait identity (excluded from the prey volcano)
+
+# ---------------------------------------------------------------------------
+# Integration recovery — colours the cross-study integration-recovery figure
+# (fig_integration_recovery, INT-01; Spike 005.5 promoted). A methods-repo re-frame
+# of the companion HTT_meta Suppl. Fig. 8, BI-INTERNAL: the integrated model vs a
+# naive per-study reproducibility rule (no SAINTexpress/CompPASS/MiST). Panel A bins
+# credible interactors by number of supporting studies — those recovered ONLY by
+# integration (<= 1 study) take the accent violet; those a naive ">= 2 studies"
+# consensus would keep take a neutral grey. Panel B draws per-method recovery bars
+# (accent violet) over the full 247-call backdrop (pale). The accent matches the
+# manuscript's lilac signature so the integration argument reads as the hero result.
+# (Introduced Phase 5 / INT-01.)
+# ---------------------------------------------------------------------------
+integration_recovery:
+  integration_only:    "#6a51a3"   # accent  — interactors supported by <= 1 study (recovered only by integration)
+  naive_reproducible:  "#9e9e9e"   # grey    — supported by >= 2 studies (a naive reproducibility filter would keep these)
+  recovery_bar:        "#6a51a3"   # accent  — per-method recovery bar (Panel B)
+  backdrop:            "#ececec"   # pale    — 247-call backdrop bar (Panel B)
+
+# ---------------------------------------------------------------------------
+# Cross-study homogeneity — colours the homogeneity panels of @fig_differentiators
+# (replaces the old 0/275 recovery bars). A methods-repo re-frame of the companion
+# HTT_meta spike 014: per-study control-corrected differential (DiD) effect estimates
+# are statistically homogeneous (Cochran-Q / I^2) though each is individually
+# under-powered — so the integrated model amplifies consistent signal, not noise.
+# The three genotype-split studies take colour-blind-safe Okabe-Ito hues (re-roled
+# here as study identities, NOT comparator tools); the inverse-variance pooled
+# estimate is black; the I^2 histogram colours homogeneous calls (Q p >= 0.05) in
+# the manuscript accent and the flagged heterogeneous tail in a pale lilac.
+# (Introduced for the homogeneity-panel swap.)
+# ---------------------------------------------------------------------------
+homogeneity:
+  study_greco:         "#0072b2"   # Okabe-Ito blue   — Greco 2022 (genotype-split control)
+  study_justice:       "#009e73"   # Okabe-Ito green  — Justice 2025 (genotype-split control)
+  study_sap:           "#e69f00"   # Okabe-Ito amber  — Sap 2021 (pooled control -> bait-only DiD)
+  pooled:              "#000000"   # black            — inverse-variance pooled estimate
+  homogeneous:         "#6a51a3"   # accent           — calls with no significant heterogeneity (Q p >= 0.05)
+  heterogeneous:       "#cfc7e0"   # pale lilac       — the Q-flagged heterogeneous tail (~5%)
+  zero_line:           "#9aa0a6"   # grey             — DiD = 0 reference / chrome
