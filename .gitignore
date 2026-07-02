@@ -423,3 +423,10 @@ spike/comparator/tapqir_env/.CondaPkg/
 # Phase-9 (09-01) inertness-check scratch: the pre-promotion Manifest snapshot used to
 # prove the DataFrames/CSV promotion did not drift versions — not a deliverable.
 spike/.manifest_baseline.toml
+
+# Phase-5 (05-02) amortized-BF artifacts — large/regenerable caches, NOT deliverables.
+# The trained ratio net + the Δρ-sweep hand-off draws + the KDE-baseline log-BF artifact
+# are all reproducible from train_ratio.jl / bf.jl + spike/baseline/run_bf_baseline.jl.
+spike/validation/trained_ratio.jld2
+spike/validation/bf_sweep_draws.jld2
+spike/baseline/bf_baseline_artifact.jld2
