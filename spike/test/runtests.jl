@@ -83,6 +83,20 @@ using Pkg
         @test haskey(_deps_by_name, "BenchmarkTools")
         @test !haskey(Pkg.project().dependencies, "Turing")
         @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
+        # (g) RESOLVE-RISK GATE (Phase 9): the Wave-0 tabular promotions (DataFrames the
+        #     per-method comparison-table backend, CSV the human-readable artifact, D-09)
+        #     must be present AND must NOT have co-resolved the pinned NeuralEstimators
+        #     v0.2.1 downward (RESEARCH Pitfall; the same GLMakie-class regression as
+        #     (d)/(e)/(f), now keyed on the Phase-9 deps). ADDITIONALLY the optional Tapqir
+        #     bridge's Python stack (PythonCall/CondaPkg, D-08) must NEVER enter the MAIN
+        #     spike env — it lives only in the isolated spike/comparator/tapqir_env (T-09-03
+        #     elevation boundary). Asserted absent to lock the boundary, then the v0.2.1 pin
+        #     is re-asserted with DataFrames/CSV present.
+        @test haskey(_deps_by_name, "DataFrames")
+        @test haskey(_deps_by_name, "CSV")
+        @test !haskey(Pkg.project().dependencies, "PythonCall")
+        @test !haskey(Pkg.project().dependencies, "CondaPkg")
+        @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
     end
 
 end
@@ -101,3 +115,8 @@ include(joinpath(@__DIR__, "test_data_pipeline.jl"))
 # Wave-0 holdout raw-image reproducibility gate (Open Question 1) run in the same
 # harness so a single `julia --project=spike spike/test/runtests.jl` stays the gate.
 include(joinpath(@__DIR__, "test_npe.jl"))
+
+# Phase-9 Wave-0 scaffold: the cross-method comparator CMP-01..08 testsets (skipped
+# placeholders until later Phase-9 waves fill them) run in the same harness so a single
+# `julia --project=spike spike/test/runtests.jl` stays the gate.
+include(joinpath(@__DIR__, "test_comparator.jl"))
