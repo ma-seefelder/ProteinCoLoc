@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 # The D-13 acceptance gate for the cross-method comparator harness, wired into the single
 # `julia --project=spike spike/test/runtests.jl` entry point. This plan (09-06) REPLACES
-# the Wave-0 `@test_skip` placeholders with the real assertions that prove SC1 (per-method
+# the Wave-0 skipped placeholders with the real assertions that prove SC1 (per-method
 # finite table on shared inputs), SC2 (Tapqir anchor-or-skip), and SC3 (BayesInteractomics-
 # pattern, seeded/reproducible).
 #
