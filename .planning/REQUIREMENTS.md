@@ -52,8 +52,8 @@ The v2.0 milestone: a decoupled spike (ENV–DEMO) that gates a conditional prod
 
 ### OOD / Misspecification Flag
 
-- [ ] **OOD-01**: An OOD score (summary-density Mahalanobis / flow-likelihood + posterior-predictive mismatch) flags misspecified inputs and stays quiet in-distribution
-- [ ] **OOD-02**: Validation is a controlled experiment (ROC over a misspecification grid) with **positive AND summary-orthogonal negative controls**; the structural blind spot (discrepancies orthogonal to the fixed summary) is measured and named, not hidden
+- [x] **OOD-01**: An OOD score (summary-density Mahalanobis / flow-likelihood + posterior-predictive mismatch) flags misspecified inputs and stays quiet in-distribution
+- [x] **OOD-02**: Validation is a controlled experiment (ROC over a misspecification grid) with **positive AND summary-orthogonal negative controls**; the structural blind spot (discrepancies orthogonal to the fixed summary) is measured and named, not hidden
 
 ### Demo & Decision
 
@@ -132,8 +132,8 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 | SBC-04 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
 | BF-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
 | BF-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
-| OOD-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
-| OOD-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| OOD-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
+| OOD-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
 | DEMO-01 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |
 | DEMO-02 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |
 | DEMO-03 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |

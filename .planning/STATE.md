@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-02T11:01:11.620Z"
+last_updated: "2026-07-02T11:56:18.322Z"
 last_activity: 2026-07-02 -- Phase 05 execution started
 progress:
   total_phases: 16
   completed_phases: 6
   total_plans: 35
-  completed_plans: 33
+  completed_plans: 34
   percent: 38
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 05 (validation-bundle-sbc-amortized-bf-ood) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Executing Phase 05
 Last activity: 2026-07-02 -- Phase 05 execution started
 
-Progress: [█████████░] 94%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [█████████░] 94%
 | Phase 03 PP04 | 18min | 2 tasks tasks | 2 files files |
 | Phase 05 P01 | 22min | 3 tasks | 8 files |
 | Phase 05 P05-02 | 19min | 2 tasks | 7 files |
+| Phase 05 P05-03 | 70min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Recent decisions affecting current work:
 - [Phase 05-02]: amortized log-BF = logratio(m=1)-logratio(m=0)-measured_log_prior_odds via NRE model-comparison (v0.2.1 has no l-POP; honest relabel)
 - [Phase 05-02]: KDE compute_BayesFactor math ported verbatim to isolated spike/baseline/ env; shared spike/ env untouched (NeuralEstimators 0.2.1)
 - [Phase 05-02]: fixture reproduction corr=0.961 (D-08a PASS) but max|dlogBF|=3.18 (D-08b NOT met at fixture scale) - reported honestly, consts not tuned; reported gate is 05-04
+- [Phase 05]: [Phase 05-03]: two-channel OOD flag (train-only Mahalanobis density + posterior-predictive per-feature discrepancy, OR-fused); ID-quantile operating point committed on a HELD-OUT ID pool (out-of-sample honest ~5% FPR); hand-rolled ROC/AUC, no new package
+- [Phase 05]: [Phase 05-03]: fixed-summary OOD power structurally bounded — TWO measured named blind spots: D-04 correlation-preserving transforms (affine exact, block-permute residual) AND detector-noise mismatch (density+PP AUC~0); optics/PSF robustly detected; full four-family ROC is 05-04 reported job
 
 ### Roadmap Evolution
 
@@ -137,6 +140,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-02T10:58:10.030Z
+Last session: 2026-07-02T11:54:01.581Z
 Stopped at: Phase 5 context gathered
 Resume file: .planning/phases/05-validation-bundle-sbc-amortized-bf-ood/05-CONTEXT.md
