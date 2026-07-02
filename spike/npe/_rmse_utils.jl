@@ -35,15 +35,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     _rmse_vector(rmse_df) -> Vector{Float64}
 
 Extract the per-parameter RMSE from a NeuralEstimators `rmse(assessment)` DataFrame
-into a vector in θ field order (ρ_true first). Keyed by the default parameter names
-`θ1..θ7` so a re-ordered DataFrame cannot scramble the parameter axis. Uses plain
-`getproperty`/`getindex` on the DataFrame (no `using DataFrames`, a transitive dep).
+into an `NPE_D`-vector in θ field order (ρ_true first). Keyed by the default parameter
+names `θ1..θNPE_D` (NPE_D = 7 today, from architecture.jl) so a re-ordered DataFrame
+cannot scramble the parameter axis, and the extraction tracks the true θ dimension
+rather than a hardcoded 7 (IN-03). Uses plain `getproperty`/`getindex` on the DataFrame
+(no `using DataFrames`, a transitive dep).
 """
 function _rmse_vector(rmse_df)
     names  = rmse_df.parameter
     values = rmse_df.rmse
     lut    = Dict(String(names[i]) => Float64(values[i]) for i in 1:length(values))
-    return [lut["θ$i"] for i in 1:7]
+    return [lut["θ$i"] for i in 1:NPE_D]   # track the true θ dimension, not a magic 7 (IN-03)
 end
 
 """
