@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-02T09:15:20.839Z"
-last_activity: 2026-07-02 -- Phase 10 execution started
+last_updated: "2026-07-02T09:42:09.041Z"
+last_activity: 2026-07-02 -- Phase 05 execution started
 progress:
   total_phases: 16
   completed_phases: 4
   total_plans: 35
-  completed_plans: 20
+  completed_plans: 24
   percent: 25
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 10 — manuscript-skeleton-and-related-work-positioning
+**Current focus:** Phase 05 — validation-bundle-sbc-amortized-bf-ood
 
 ## Current Position
 
-Phase: 10 (manuscript-skeleton-and-related-work-positioning) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 10
-Last activity: 2026-07-02 -- Phase 10 execution started
+Phase: 05 (validation-bundle-sbc-amortized-bf-ood) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 05
+Last activity: 2026-07-02 -- Phase 05 execution started
 
 Progress: [█████████░] 92%
 
