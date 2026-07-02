@@ -96,12 +96,61 @@ downstream experiment phases (5–9, 11–15) are shaped by the claims they must
   PDF, with the claim table and related-work matrix rendering. This compile check should be
   runnable/scriptable so later phases can regression-check that the skeleton still builds.
 
+### Template adoption + per-figure YAML convention (added 2026-07-02, user directive)
+
+> These decisions were added after initial planning at the user's explicit request and
+> **supersede the from-scratch layout implied by D-04**. The manuscript is now based on the
+> user's existing Typst template and adds a new per-figure-YAML styling convention the user
+> discovered while writing the BI method paper (it is NOT present in that template — it is new here).
+
+- **D-13 (Template adoption):** Base `manuscript/` on the Typst template at
+  `C:/Users/Manuel/Documents/GitHub/BayesInteractomics_Method_paper` (**read-only source — never
+  edit that repo**). **Copy** into `manuscript/`: `lib/` (`template.typ` = the `project()`
+  page/text/heading/figure rules; `helpers.typ` = `figp`/`plab`/`panel2/3`/`widefig`/`suppfig`;
+  `curves.typ`; `tiered-bib.typ` = Nature-Methods two-tier bibliography; `abbreviations.typ`),
+  `styles/nature.csl`, `fonts/` (bundled Libertinus family), `colours.yaml` (the shared palette —
+  **single source of truth for hex**), and `build.ps1`. **Adapt** `main.typ` to ProteinCoLoc
+  (title/authors/abstract via `#show: project.with(...)`, `#show: tiered-bib(bib: "refs.bib",
+  style: "styles/nature.csl", read: path => read(path))`, `#include` our section set). Decoupling
+  holds: `manuscript/` is a new tree of copies; `src/`, `spike/`, and the BI template repo stay
+  untouched.
+- **D-14 (Per-figure YAML — the user's core ask):** Every figure gets a sibling
+  `manuscript/figures/<name>.yaml` declaring **all** graphical parameters so the user can change
+  any visual aspect without touching Typst code: geometry (panel `width`/`height`, grid gutters,
+  overall `scale`), axes (`xlim`/`ylim`, tick lists, axis + title labels), per-series styling
+  (stroke thickness/dash, bar width/offsets, marks), legend layout, and **color assignments by
+  palette role** (role names resolved against `colours.yaml`) with an **optional explicit hex
+  override** per element. The figure's `.typ` pulls every graphical value from the YAML — **nothing
+  graphical is hard-coded in the `.typ`** (numeric data still lives in CSV under `<name>_data/`).
+- **D-15 (figstyle loader):** Add `manuscript/lib/figstyle.typ` exporting `figstyle(name)` which
+  loads `figures/<name>.yaml`, merges it over documented defaults, and resolves each color role
+  against `colours.yaml` (role → hex, honoring per-figure overrides), returning a dict the `.typ`
+  reads (e.g. `fs.panel.width`, `fs.color("series_a")`, `fs.xlim`). Top-of-file comment documents
+  the YAML schema/keys so later phases author `<name>.yaml` files without re-deriving it.
+- **D-16 (One worked reference figure):** Build exactly **one** real figure end-to-end as the
+  copy-able exemplar — **F1 speedup-vs-RMSE** — from `figures/f1_speedup.yaml` +
+  `figures/f1_speedup.typ` + `figures/f1_speedup_data/*.csv`, using `figstyle` + `colours.yaml`
+  roles, seeded with the **honest Phase-4 numbers** (median ~325× forward-pass, ~16× full
+  posterior-sample workload, ADVI ~0.5 s/pair, RMSE parity 0.1271 vs 0.1270, NPE intervals wider
+  0.884 vs 0.605). It compiles standalone AND placed in the manuscript. Figures **F2–F7 stay as
+  specs** (D-10), but each spec now names its future `figures/<name>.yaml` + `.typ` target so later
+  phases (5, 9, 11–15/16) clone the F1 pattern.
+- **D-17 (Dual build):** Provide `build.ps1` (primary, Windows — `typst compile --font-path fonts
+  --root manuscript ...` so `/colours.yaml` and `/figures/*.yaml` root-absolute lookups resolve)
+  and `build.sh` (fallback/CI mirror, same flags). Both are exit-code-correct (no pipe) and carry
+  the content assertions. Reconcile the Typst version to the **installed 0.15.0** (template pins
+  0.14 via `$env:TYPST`; keep the override hook, default to the installed binary).
+
 ### Claude's Discretion
 - Exact Typst version-pinning approach (note installed 0.15.0; a simple version comment is fine).
 - Precise section ordering nuances and stub wording.
 - Whether the claim table lives inline in a `.typ` or in a small data file rendered by a Typst
   function — planner picks based on Typst ergonomics.
 - Exact figure count/IDs beyond the claim-table-implied minimum.
+- The exact `<name>.yaml` key names/nesting and default values in `figstyle.typ` (D-14/D-15),
+  provided all of geometry/axes/series/legend/color are covered and documented.
+- Which template `lib/` helpers are trimmed if unused by our section set (D-13) — but `template.typ`,
+  `tiered-bib.typ`, and `helpers.typ` are load-bearing and must be copied.
 </decisions>
 
 <specifics>
