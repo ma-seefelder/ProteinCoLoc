@@ -1,0 +1,18 @@
+# spike/comparator/tapqir_env/Project.toml --- CMP-06: ISOLATED Tapqir sub-env (D-07/D-08).
+#
+# DECOUPLING (hard constraint, CLAUDE.md + Phase-9 threat T-09-10/T-09-11): the Python
+# bridge stack (PythonCall + CondaPkg) lives ONLY here, in its own Project/Manifest, and
+# MUST NEVER be added to the main `spike/Project.toml`. This mirrors the `spike/baseline/`
+# precedent (Turing/AdvancedVI isolated in their own env, D-01). The main spike
+# resolve-risk gate (runtests.jl gate (g)) asserts PythonCall/CondaPkg are absent from the
+# main env; keeping them here is what makes the classical battery run green with zero
+# Python present. The materialized CondaPkg on-disk env (.CondaPkg/) is git-ignored; this
+# Project.toml + the resolved Manifest.toml are the tracked reproducibility artifact.
+[deps]
+CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
+PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
+
+[compat]
+CondaPkg = "0.2"
+PythonCall = "0.9"
+julia = "1.12"
