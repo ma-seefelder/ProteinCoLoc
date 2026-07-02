@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **v2.0 feature expansion (Phases 8–16) — all downstream of a Phase-6 Go:**
 - [ ] **Phase 8: External Physical Ground-Truth Corpus** - Non-circular validation anchors (physical 100%-coloc + segregated constructs); CBS ingested as labelled-simulated; versioned data contract — parallelizable now
-- [ ] **Phase 9: Cross-Method Comparator Harness** - Costes/Manders/Pearson/Spearman + Tapqir bridge on shared inputs; "knows when the classics are wrong" — parallelizable now
+- [x] **Phase 9: Cross-Method Comparator Harness** - Costes/Manders/Pearson/Spearman + Tapqir bridge on shared inputs; "knows when the classics are wrong" — parallelizable now
 - [x] **Phase 10: Manuscript Skeleton + Related-Work Positioning** - Compiling Typst skeleton, explicit Tapqir/Costes/Manders delta, figure specs — parallelizable now (completed 2026-07-02)
 - [ ] **Phase 11: Registration + Chromatic Uncertainty as Latent** - Promote dx/dy (+ chromatic warp) to inferred θ; posterior widens honestly under registration uncertainty
 - [ ] **Phase 12: Spatial Colocalization Map (GP/CAR)** - Lattice prior over the correlation grid → amortized per-region Δρ map + uncertainty (descope-to-v2.1 candidate)
@@ -153,7 +153,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 6. Reproducible Demo + Go/No-Go Memo | 0/TBD | Not started | - |
 | 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
 | 8. External Physical Ground-Truth Corpus | 0/TBD | Not started | - |
-| 9. Cross-Method Comparator Harness | 3/6 | In Progress|  |
+| 9. Cross-Method Comparator Harness | 6/6 | Complete   | 2026-07-02 |
 | 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |
 | 11. Registration + Chromatic Uncertainty as Latent | 0/TBD | Not started | - |
 | 12. Spatial Colocalization Map (GP/CAR) | 0/TBD | Not started | - |
@@ -185,9 +185,9 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 09-01-PLAN.md - Wave-0 foundation: promote DataFrames/CSV, pre-declare D-14 consts (config.jl), scaffold test_comparator.jl + resolve-risk gate (CMP-04, CMP-09)
 - [x] 09-02-PLAN.md - Classical estimator battery + seeded Costes block-scramble p-value (CMP-01, CMP-02)
 - [x] 09-03-PLAN.md - Seeded regime-labelled shared-input builder, input-source-agnostic (CMP-03)
-- [ ] 09-04-PLAN.md - Isolated Tapqir sub-env + graceful skip-with-flag bridge + anchor capture (CMP-06)
-- [ ] 09-05-PLAN.md - Comparison table + divergence/traffic-light + content-addressed CSV/JLD2 + audit (CMP-01, CMP-04, CMP-05, CMP-07)
-- [ ] 09-06-PLAN.md - Seeded run_comparator entry point + filled D-13 test gate (CMP-08, CMP-09)
+- [x] 09-04-PLAN.md - Isolated Tapqir sub-env + graceful skip-with-flag bridge + anchor capture (CMP-06)
+- [x] 09-05-PLAN.md - Comparison table + divergence/traffic-light + content-addressed CSV/JLD2 + audit (CMP-01, CMP-04, CMP-05, CMP-07)
+- [x] 09-06-PLAN.md - Seeded run_comparator entry point + filled D-13 test gate (CMP-08, CMP-09)
 
 ### Phase 10: Manuscript Skeleton and Related-Work Positioning
 **Goal**: A compiling manuscript skeleton with related-work positioning drafted early — especially the explicit delta versus Tapqir/Costes/Manders — so experiments are shaped by the claims they must support
