@@ -203,6 +203,106 @@ function pp_mismatch_score(m, Z_obs::AbstractVector; reps::Integer = OOD_PP_REPS
 end
 
 # ============================================================================
+# Channel 3 — image-noise Mahalanobis (narrows the detector-noise blind spot)
+# ============================================================================
+#
+# WHY (05-03 named the detector-NOISE mismatch as a MEASURED blind spot of the fixed 8×8
+# patch-Pearson summary: salt-and-pepper + heavy-tailed corruption DECORRELATES patches
+# toward a central summary, so the correlation-only summary — and every channel built on
+# it (density, PP) — is structurally near-blind to it, AUC≈0). This channel adds AUXILIARY
+# noise-sensitive features computed DIRECTLY FROM THE IMAGES (NOT from the frozen 8×8
+# summary, which is the UNCHANGED NPE/NRE inference input and MUST NOT change) and OR-fuses
+# them into the OOD detector.
+#
+# FIRST-PRINCIPLES DESIGN (SC5 — designed from the TRAINING distribution, NOT from the
+# held-out noise test set): the simulator (forward.jl) produces SMOOTH images — STRUCT_σ=6
+# Gaussian fields ≫ the σ_psf=1.3 PSF — with only bounded Poisson(GAIN=50) + tiny
+# Gaussian(READ_NOISE·θ.noise, θ.noise∈[0,1]) noise. So an in-distribution image has LOW
+# high-frequency energy, near-Gaussian local statistics, few pixel-scale outliers, and HIGH
+# nearest-neighbour autocorrelation. The misspec_noise family injects pixel-scale
+# salt-and-pepper spikes + heavy-tailed (cubic) additive noise — exactly the high-frequency,
+# heavy-tailed, low-autocorrelation signature the training distribution lacks.
+#
+# INVARIANCE (honesty-critical): every feature is a RATIO or a normalized moment or a
+# correlation, so it is INVARIANT to the affine (a·x+b, a>0) and rotation/permutation
+# negative-control transforms (D-04) — the noise channel therefore stays quiet on the
+# summary-orthogonal blind-spot transforms BY CONSTRUCTION, exactly as the density channel
+# does, so the OR-fused detector does not false-fire on them (verified on DEV).
+
+# Median absolute deviation (robust scale). Hand-rolled (no new dependency).
+_mad(v) = (mv = median(v); median(abs.(v .- mv)))
+
+"""
+    noise_features(pair) -> Vector{Float64}
+
+Per-channel scale/rotation/permutation-INVARIANT noise-sensitivity features for a
+2-channel image `pair::Vector{Matrix{Float64}}` (10 features = 5 per channel):
+
+  f1 = high-frequency ENERGY ratio  var(∇²x) / var(x)                (smooth⇒low, noisy⇒high)
+  f2 = robust HF scale ratio        MAD(∇²x) / MAD(x)                (robust twin of f1)
+  f3 = pixel-outlier fraction       mean(|∇²x| > 6·MAD(∇²x))         (salt-and-pepper⇒high)
+  f4 = HF excess kurtosis           kurtosis(∇²x)                    (heavy tails⇒high)
+  f5 = lag-1 spatial autocorrelation ½(corr_h + corr_v) of x        (smooth⇒~1, noisy⇒low)
+
+`∇²x` is the interior 5-point finite-difference Laplacian (no FFT/dependency). Every feature
+is a ratio / normalized moment / correlation, hence invariant to `x → a·x + b` (a>0) and to
+grid rotation/permutation. Non-finite guards map degenerate (constant-slice) values to 0.
+"""
+function noise_features(pair)
+    feats = Float64[]
+    for ch in pair
+        X = Float64.(ch)
+        H, W = size(X)
+        lap = @views 4.0 .* X[2:H-1, 2:W-1] .- X[1:H-2, 2:W-1] .- X[3:H, 2:W-1] .-
+                     X[2:H-1, 1:W-2] .- X[2:H-1, 3:W]
+        lv  = vec(lap)
+        xv  = vec(X)
+        madl = _mad(lv); madx = _mad(xv)
+        f1 = var(lv) / (var(xv) + 1e-12)
+        f2 = madl / (madx + 1e-12)
+        f3 = mean(abs.(lv) .> 6.0 * madl + 1e-12)
+        f4 = StatsBase.kurtosis(lv)                                   # excess kurtosis
+        ah = cor(vec(@view X[1:H-1, :]), vec(@view X[2:H, :]))
+        av = cor(vec(@view X[:, 1:W-1]), vec(@view X[:, 2:W]))
+        f5 = 0.5 * (ah + av)
+        for f in (f1, f2, f3, f4, f5)
+            push!(feats, isfinite(f) ? f : 0.0)
+        end
+    end
+    return feats
+end
+
+"""
+    fit_noise_null(F) -> NamedTuple
+
+Fit the image-noise Mahalanobis null on the TRAIN-ONLY feature matrix `F` (`nfeat×Ntrain`,
+one column per fit image; SC5 — never misspec data). Features are first z-standardized
+(per-feature mean/std, a constant feature guarded to scale 1) so the covariance ridge is
+meaningful across the heterogeneous feature scales; returns `(μ, σ, C)` with
+`C = cholesky(Symmetric(Σ_std + 1e-6·I))`.
+"""
+function fit_noise_null(F::AbstractMatrix)
+    μ = vec(mean(F; dims = 2))
+    σ = vec(std(F; dims = 2)); @inbounds for i in eachindex(σ); (σ[i] < 1e-8) && (σ[i] = 1.0); end
+    Fs = (F .- μ) ./ σ
+    Σ  = cov(Fs; dims = 2)
+    C  = cholesky(Symmetric(Σ + 1e-6 * I))
+    return (μ = μ, σ = σ, C = C)
+end
+
+"""
+    noise_score(nn, pair) -> Float64
+
+Squared Mahalanobis distance of an image pair's `noise_features` to the train noise null
+`nn` (fit_noise_null), in the standardized feature space. In-distribution (smooth) images
+score LOW; salt-and-pepper / heavy-tailed detector-noise mismatch scores HIGH.
+"""
+function noise_score(nn, pair)
+    f = (noise_features(pair) .- nn.μ) ./ nn.σ
+    return sum(abs2, nn.C.L \ f)
+end
+
+# ============================================================================
 # ROC / AUC (hand-rolled — NO new package, Pitfall 7) + operating points
 # ============================================================================
 
@@ -489,69 +589,111 @@ end
                       n_id = 100, n_pos = 40, rng = val_rng(), imsize = SBC_IMSIZE,
                       with_pp = true, pp_reps = OOD_PP_REPS) -> NamedTuple
 
-The controlled ROC/AUC experiment (OOD-02). Draws `n_id` FRESH in-distribution negatives
-and, for each positive-control family × magnitude level, `n_pos` fully-external positives
-(SC5), scoring the summary-density (Mahalanobis) channel — and, when `with_pp`, the
-posterior-predictive channel — for each. Returns, per family, the per-level `roc_auc` and
-the OR-flag fire-rate at the PRE-REGISTERED ID-quantile operating point (`id_threshold`,
-committed before misspec data, D-06); plus the pooled strongest-level combined ROC curve
-(for `plot_ood_roc`), the in-distribution fire-rate, and the POST-HOC `youden_j` reference
-(never the gate). The full OOD_GRID_LEVELS reported run is owned by Wave-3 (05-04); the
-fast gate calls this with small `n_id`/`n_pos`/`with_pp=false`.
+The controlled ROC/AUC experiment (OOD-02). Draws `n_fit` FRESH train-only ID images to fit
+the image-noise null (Channel 3) and the per-channel robust-z fusion reference, `n_id` FRESH
+in-distribution negatives, and, for each positive-control family × magnitude level, `n_pos`
+fully-external positives (SC5). For every sample it scores BOTH the summary-density
+(Mahalanobis) channel and the image-noise (Mahalanobis) channel and OR-FUSES them into one
+detector (per-sample max of robust-z scores, D-05); when `with_pp` the posterior-predictive
+channel additionally contributes to the flag.
+
+`maha_auc[fam]` is the REPORTED (gated) per-level AUC of the OR-FUSED density∨noise detector
+— renamed in spirit from the pure-density channel because 05-03 named the detector-noise
+family a MEASURED blind spot of the correlation-only summary, which this fused detector now
+NARROWS. `density_auc[fam]` / `noise_auc[fam]` are the two standalone channels, returned for
+transparency. Also returns the OR-flag fire-rate at the PRE-REGISTERED ID-quantile operating
+point (`id_threshold` on the FUSED ID scores, committed before misspec data, D-06); the
+DENSITY threshold `maha_thr` (still used by the run_ood negative-control flag); the pooled
+strongest-level combined ROC curve (for `plot_ood_roc`); the in-distribution fire-rate; the
+`noise_null` + `zref` (so a caller can reconstruct the fused flag on arbitrary images); and
+the POST-HOC `youden_j` reference (never the gate). The full OOD_GRID_LEVELS reported run is
+owned by Wave-3 (05-04); the fast gate calls this with small `n_id`/`n_pos`/`with_pp=false`.
 """
 function ood_roc_over_grid(m, nulls; families = OOD_FAMILIES, levels::Integer = OOD_GRID_LEVELS,
-                           n_id::Integer = 100, n_pos::Integer = 40, rng = val_rng(),
-                           imsize = SBC_IMSIZE, with_pp::Bool = true, pp_reps::Integer = OOD_PP_REPS)
-    # --- ID negatives (fresh in-distribution draws) -----------------------------
-    Zid = [id_summary(m, rng; imsize = imsize) for _ in 1:n_id]
-    id_maha = [maha_score(nulls, z) for z in Zid]
-    maha_thr = id_threshold(id_maha)
+                           n_id::Integer = 100, n_pos::Integer = 40, n_fit::Integer = n_id,
+                           rng = val_rng(), imsize = SBC_IMSIZE,
+                           with_pp::Bool = true, pp_reps::Integer = OOD_PP_REPS)
+    # --- (A) TRAIN-ONLY noise null + per-channel robust-z reference (SC5/D-06) -----
+    #     A fresh ID image pool, DISJOINT from the ROC negatives drawn next off the same
+    #     sequential stream. It fits the image-noise Mahalanobis null AND the density/noise
+    #     robust-z medians/scales used to put the two channels on a comparable footing for
+    #     OR-fusion. Fit on ID (training-distribution) draws ONLY — never on misspec data.
+    fit_pairs = [simulate_pair(rng, sample_prior(rng); imsize = imsize) for _ in 1:n_fit]
+    Ffit  = reduce(hcat, [noise_features(p) for p in fit_pairs])
+    nnull = fit_noise_null(Ffit)
+    fit_maha  = [maha_score(nulls, frozen_summary(m, p)) for p in fit_pairs]
+    fit_noise = [noise_score(nnull, p) for p in fit_pairs]
+    med_d = median(fit_maha);  scl_d = _mad(fit_maha)  + 1e-12
+    med_n = median(fit_noise); scl_n = _mad(fit_noise) + 1e-12
+    # OR-fusion score (D-05): the per-sample max of the two channels' robust-z scores —
+    # the continuous analogue of "fire iff EITHER channel exceeds its ID-quantile point".
+    zfuse(sd, sn) = max((sd - med_d) / scl_d, (sn - med_n) / scl_n)
+
+    # --- (B) ID negatives (fresh; the ROC negatives + the pre-registered operating point) -
+    id_pairs = [simulate_pair(rng, sample_prior(rng); imsize = imsize) for _ in 1:n_id]
+    Zid      = [frozen_summary(m, p) for p in id_pairs]
+    id_maha  = [maha_score(nulls, z) for z in Zid]
+    maha_thr = id_threshold(id_maha)                   # density threshold (run_ood neg-ctrl)
+    id_noise = [noise_score(nnull, p) for p in id_pairs]
+    id_fused = [zfuse(id_maha[k], id_noise[k]) for k in 1:n_id]
+    fused_thr = id_threshold(id_fused)                 # OR-fused operating point (D-06)
     id_pp = with_pp ?
         [pp_mismatch_score(m, z; reps = pp_reps, rng = val_rng(), imsize = imsize) for z in Zid] :
         Float64[]
     pp_thr = with_pp ? id_threshold(id_pp) : Inf
 
-    fam_names = keys(families)
-    maha_auc  = Dict{Symbol,Vector{Float64}}()
-    pp_auc    = Dict{Symbol,Vector{Float64}}()
-    fire_rate = Dict{Symbol,Vector{Float64}}()
+    fam_names   = keys(families)
+    maha_auc    = Dict{Symbol,Vector{Float64}}()       # REPORTED detector = density∨noise fusion
+    density_auc = Dict{Symbol,Vector{Float64}}()       # standalone density channel (transparency)
+    noise_auc   = Dict{Symbol,Vector{Float64}}()       # standalone image-noise channel (transparency)
+    pp_auc      = Dict{Symbol,Vector{Float64}}()
+    fire_rate   = Dict{Symbol,Vector{Float64}}()
 
-    pooled_pos_maha = Float64[]                        # strongest level, all families (for the ROC curve)
+    pooled_pos_fused = Float64[]                        # strongest level, all families (ROC curve)
     for fam in fam_names
         gen = families[fam]
-        maha_auc[fam]  = Float64[]
-        pp_auc[fam]    = Float64[]
-        fire_rate[fam] = Float64[]
+        maha_auc[fam]    = Float64[]
+        density_auc[fam] = Float64[]
+        noise_auc[fam]   = Float64[]
+        pp_auc[fam]      = Float64[]
+        fire_rate[fam]   = Float64[]
         for lvl in 1:levels
-            pos_maha = Float64[]; pos_pp = Float64[]; fires = 0
+            pos_maha = Float64[]; pos_noise = Float64[]; pos_fused = Float64[]
+            pos_pp = Float64[]; fires = 0
             for _ in 1:n_pos
-                θ   = sample_prior(rng)
-                Zp  = frozen_summary(m, gen(rng, θ; imsize = imsize, level = lvl))
-                ms  = maha_score(nulls, Zp)
-                push!(pos_maha, ms)
-                fired = ms > maha_thr
+                θ    = sample_prior(rng)
+                img  = gen(rng, θ; imsize = imsize, level = lvl)
+                Zp   = frozen_summary(m, img)
+                ms   = maha_score(nulls, Zp);   push!(pos_maha,  ms)
+                ns   = noise_score(nnull, img); push!(pos_noise, ns)
+                fs   = zfuse(ms, ns);           push!(pos_fused, fs)
+                fired = fs > fused_thr
                 if with_pp
                     ps = pp_mismatch_score(m, Zp; reps = pp_reps, rng = val_rng(), imsize = imsize)
                     push!(pos_pp, ps)
                     fired = fired || (ps > pp_thr)
                 end
                 fires += fired ? 1 : 0
-                lvl == levels && append!(pooled_pos_maha, ms)
+                lvl == levels && push!(pooled_pos_fused, fs)
             end
-            push!(maha_auc[fam],  roc_auc(id_maha, pos_maha)[3])
+            push!(maha_auc[fam],    roc_auc(id_fused, pos_fused)[3])   # FUSED — the gated AUC
+            push!(density_auc[fam], roc_auc(id_maha,  pos_maha)[3])
+            push!(noise_auc[fam],   roc_auc(id_noise, pos_noise)[3])
             with_pp && push!(pp_auc[fam], roc_auc(id_pp, pos_pp)[3])
             push!(fire_rate[fam], fires / n_pos)
         end
     end
 
-    id_fire_rate = mean(id_maha .> maha_thr)
-    fpr, tpr, or_auc = roc_auc(id_maha, pooled_pos_maha)
+    id_fire_rate = mean(id_fused .> fused_thr)
+    fpr, tpr, or_auc = roc_auc(id_fused, pooled_pos_fused)
     yj = youden_j(fpr, tpr)                            # POST-HOC reference only (D-06)
 
     return (levels = collect(1:levels), families = fam_names,
-            maha_thr = maha_thr, pp_thr = pp_thr,
-            maha_auc = maha_auc, pp_auc = pp_auc, fire_rate = fire_rate,
-            id_fire_rate = id_fire_rate,
+            maha_thr = maha_thr, pp_thr = pp_thr, fused_thr = fused_thr,
+            maha_auc = maha_auc, density_auc = density_auc, noise_auc = noise_auc,
+            pp_auc = pp_auc, fire_rate = fire_rate,
+            id_fire_rate = id_fire_rate, noise_null = nnull,
+            zref = (med_d = med_d, scl_d = scl_d, med_n = med_n, scl_n = scl_n),
             roc_fpr = fpr, roc_tpr = tpr, combined_auc = or_auc,
             youden = yj, auc_min = OOD_AUC_MIN, id_quantile = OOD_ID_QUANTILE)
 end
