@@ -108,10 +108,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A `RatioEstimator`/Evidence-Network (NRE-as-model-comparison over a binary model index m∈{0,1}; the l-POP loss does NOT exist in NeuralEstimators v0.2.1 and is honestly re-labeled as this standard-NRE reduction, l-POP a documented fallback only) produces an amortized log-BF in one forward pass and reproduces `compute_BayesFactor()` in the well-specified regime, on identical Δρ and prior, without quadgk/KDE/shuffle
   4. The OOD flag fires on misspecified inputs and stays quiet in-distribution, validated as a controlled ROC experiment over a misspecification grid with **positive AND summary-orthogonal negative controls** plus a posterior-predictive channel; the structural blind spot (discrepancies orthogonal to the fixed summary) is measured and named, not hidden
   5. All preprocessing (standardization, OOD covariance/flow) is frozen from the training split only; misspecified test images are fully external
-**Plans**: 3 plans (2 waves — W1 shared harness + pre-registration + SBC; W2 amortized BF ∥ OOD)
-- [ ] 05-01-PLAN.md — Shared θ*~π→simulate→infer harness + pre-registered consts + SBC (rank histograms 7θ+Δρ, KS/χ², coverage, ECE/MCE traffic-light) (SBC-01..04)
+**Plans**: 4 plans (3 waves — W1 shared harness + pre-registration + SBC; W2 amortized BF ∥ OOD; W3 reported trifecta runs)
+- [ ] 05-01-PLAN.md — Shared θ*~π→simulate→infer harness + pre-registered consts + SBC machinery (rank histograms 7θ+Δρ, KS/χ², coverage, ECE/MCE traffic-light) (SBC-01..04)
 - [ ] 05-02-PLAN.md — Amortized Bayes factor: RatioEstimator model-index net + one-pass log-BF reproducing compute_BayesFactor over a held-out Δρ sweep (BF-01, BF-02)
 - [ ] 05-03-PLAN.md — OOD/misspecification flag: Mahalanobis + PP channels, ROC over the 4-family positive grid + summary-orthogonal negative control (named blind spot) (OOD-01, OOD-02)
+- [ ] 05-04-PLAN.md — Reported trifecta runs at locked pre-registered consts on the fresh reserved stream: run_sbc.jl (M=2000/L=999) + run_bf.jl (full Δρ sweep) + run_ood.jl (full 4-family grid), each gating on its thresholds (SBC-01..04, BF-01/02, OOD-01/02)
 
 ### Phase 6: Reproducible Demo + Go/No-Go Memo
 **Goal**: The spike closes with a falsifiable, reproducible verdict — a single seeded script chains every layer and a memo states the metrics and a concrete full-build-out decision
