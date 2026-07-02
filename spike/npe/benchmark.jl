@@ -160,7 +160,7 @@ CPU-only (`use_gpu=false`); `master_seed` seeds the NPE sampling for reproducibi
 """
 function rmse_report(dir; master_seed, artifact_path = DEFAULT_ADVI_ARTIFACT,
                      model_path = DEFAULT_NPE_MODEL, N::Integer = 2000)
-    Random.seed!(UInt32(master_seed % 0xFFFFFFFF))   # reproducible posterior draws
+    Random.seed!(UInt32(master_seed & 0xFFFFFFFF))   # reproducible posterior draws (low 32 bits; IN-01)
     m   = load_npe(model_path)
     art = _load_artifact(artifact_path)
     ho  = load_holdout(dir)
