@@ -42,6 +42,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using Statistics     # cor, mean (whole-image Pearson, patch-grid reduction)
 using StatsBase      # corspearman (whole-image Spearman)
+using Random123      # Philox4x — disjoint COSTES_SALT scramble stream (mirror seeding.jl)
+using Random         # randperm(rng, n) — reproducible block-position permutation
 
 # Empty-collection-safe reduction: mirror the `_safe` NaN-not-throw idiom from
 # encode.jl:80 (itself mirroring induced_mu, contract.jl:104). A reduction over
@@ -109,4 +111,85 @@ function patch_correlation(mci; method::Symbol = :spearman)
     xp, yp = patch.([x, y], 8)                    # src/colocalization.jl:37 (frozen, via contract.jl)
     ρ = correlation(xp, yp; method = method)      # src/colocalization.jl:221 (frozen, via contract.jl)
     return _safe(mean, collect(skipmissing(ρ)))
+end
+
+# --- Costes randomization significance p-value (NEW, D-05 / CMP-02) -------------
+# Costes et al. 2004, Biophys J 86:3993-4003. The canonical colocalization
+# significance null: scramble one channel in BLOCKS the size of the resolution
+# element (NOT individual pixels), recompute the correlation, repeat n times, and
+# report the fraction of scrambles whose correlation ≥ the observed one. BLOCK
+# scrambling is essential — pixel scrambling destroys spatial autocorrelation and
+# yields falsely tiny (over-significant) p-values (RESEARCH Pitfall 2). Statistic
+# is whole-image Pearson, matching `pearson_whole` so the observed and null
+# statistics are identical in kind.
+
+"""
+    costes_rng(master_seed, idx) -> Philox4x
+
+The Costes scramble RNG, keyed by `(master_seed ⊻ COSTES_SALT, idx)` — a Philox
+stream PROVABLY DISJOINT from `sample_rng`/`holdout_rng`/`fold_rng` (seeding.jl),
+so the Costes null draws never collide with the data/CV streams (D-10). `COSTES_SALT`
+is declared in comparator/config.jl (not redeclared here). Two constructions with
+the same args produce identical draw sequences ⇒ `costes_p` is bit-reproducible.
+"""
+costes_rng(master_seed, idx) =
+    Philox4x(UInt64, (UInt64(master_seed) ⊻ COSTES_SALT, UInt64(idx)))
+
+# Partition `ch2` into a grid of square blocks of side `block` and randomly permute
+# the block POSITIONS on that grid (a grid-cell position permutation), preserving
+# each block's within-block spatial autocorrelation — the canonical Costes null.
+# This is a BLOCK scramble, NOT a pixel scramble. Edge blocks are partial; the copy
+# is clamped to the min overlap of source/destination cells (image bounds), and the
+# output is seeded from a copy of ch2 so no pixel is ever left unassigned.
+function _block_permute(rng, ch2, block)
+    W, H = size(ch2)
+    nbx  = cld(W, block)
+    nby  = cld(H, block)
+    ncell = nbx * nby
+    rowrange(bi) = ((bi - 1) * block + 1):min(bi * block, W)
+    colrange(bj) = ((bj - 1) * block + 1):min(bj * block, H)
+    perm = randperm(rng, ncell)                    # reproducible block-position permutation
+    scr  = copy(ch2)
+    @inbounds for dst in 1:ncell
+        src = perm[dst]
+        dbi, dbj = fldmod1(dst, nby)               # dst linear -> (block-row, block-col)
+        sbi, sbj = fldmod1(src, nby)               # src linear -> (block-row, block-col)
+        dr = rowrange(dbi); dc = colrange(dbj)
+        sr = rowrange(sbi); sc = colrange(sbj)
+        nr = min(length(dr), length(sr))           # clamp partial edge blocks to bounds
+        nc = min(length(dc), length(sc))
+        scr[dr[1:nr], dc[1:nc]] = ch2[sr[1:nr], sc[1:nc]]
+    end
+    return scr
+end
+
+"""
+    costes_p(master_seed, idx, mci; n=COSTES_N_SCRAMBLE, block=COSTES_BLOCK_PX) -> Float64
+
+The Costes randomization significance p-value for `mci` (Costes et al. 2004). Draws
+`n` BLOCK-scramble nulls of channel 2 (block side `block` ≈ one resolution element —
+a grid-cell position permutation, NOT a pixel scramble), recomputes whole-image
+Pearson on each, and returns
+
+    p = (#{ r_scramble ≥ r_obs } + 1) / (n + 1)
+
+with the Davison–Hinkley `+1/+1` Monte-Carlo correction so `p` is never 0 and always
+lies in `[1/(n+1), 1]`. Seeded via `costes_rng(master_seed, idx)` (disjoint Philox
+stream) ⇒ bit-reproducible. Returns `NaN` when the observed correlation is non-finite
+(degenerate input, D-06). Non-finite scramble correlations are treated as not-exceeding.
+"""
+function costes_p(master_seed, idx, mci; n = COSTES_N_SCRAMBLE, block = COSTES_BLOCK_PX)
+    ch1 = mci.data[1]
+    ch2 = mci.data[2]
+    r_obs = cor(vec(ch1), vec(ch2))
+    isfinite(r_obs) || return NaN
+    rng = costes_rng(master_seed, idx)
+    c1 = vec(ch1)
+    ge = 0
+    for _ in 1:n
+        scr = _block_permute(rng, ch2, block)      # block-position permutation (not pixel)
+        r   = cor(c1, vec(scr))
+        (isfinite(r) && r >= r_obs) && (ge += 1)
+    end
+    return (ge + 1) / (n + 1)                       # Davison–Hinkley +1/+1
 end
