@@ -18,6 +18,11 @@
 // f1_speedup.typ's standalone `#set page` / trailing preview — template module contract).
 #import "f1_speedup.typ": f1-speedup-figure
 
+// widefig = place(top, scope: "parent", float: true) + figure: figures span BOTH columns rather
+// than being confined to the two-column body. This is the standard placement for every figure in
+// this manuscript — later phases rendering F2–F7 clone this pattern (parent scope by default).
+#import "../lib/helpers.typ": widefig
+
 // ---------------------------------------------------------------------------
 // F1 — Speedup vs RMSE  (RENDERED exemplar; Phase 4; figures/f1_speedup.{yaml,typ})
 // The spec block documents the contract; the RENDERED panel follows it, drawn entirely from
@@ -25,7 +30,7 @@
 // (median ~325× forward-pass, ~16× full-workload, ADVI ~0.5 s/pair, RMSE parity, wider NPE
 // intervals) — never the bare >100× headline (RESEARCH §Honest Headline Numbers).
 // ---------------------------------------------------------------------------
-#figure(
+#widefig(
   rect(width: 100%, stroke: (dash: "dashed"), inset: 8pt)[
     #set align(left)
     *SPEC F1 — Speedup vs RMSE (amortized NPE vs per-dataset ADVI)* \
@@ -41,9 +46,10 @@
   ],
   caption: [F1 spec — the rendered panel follows; its every graphical value flows from
     figures/f1_speedup.yaml via lib/figstyle.typ (D-14/D-16).],
-) <fig:f1_speedup_spec>
+  lbl: "fig:f1_speedup_spec",
+)
 
-#figure(
+#widefig(
   f1-speedup-figure,
   caption: [Speedup vs RMSE — amortized NPE vs per-dataset ADVI. Honest Phase-4 numbers: median
     ~325× forward-pass speedup (min pair ~125×), dropping to ~16× on the full posterior-sample
@@ -51,12 +57,13 @@
     meaningful PAIRED with RMSE parity in ρ-space (NPE 0.1271 vs ADVI 0.1270) and reported beside
     the wider NPE 90% intervals (0.884 vs ADVI 0.605 — mean-field VI under-disperses). Not a bare
     >100× headline.],
-) <fig:f1_speedup>
+  lbl: "fig:f1_speedup",
+)
 
 // ---------------------------------------------------------------------------
 // F2 — SBC rank histograms + coverage  (Phase 5; figures/f2_sbc.{yaml,typ})
 // ---------------------------------------------------------------------------
-#figure(
+#widefig(
   rect(width: 100%, stroke: (dash: "dashed"), inset: 8pt)[
     #set align(left)
     *SPEC F2 — SBC rank histograms + coverage* \
@@ -68,12 +75,13 @@
     YAML: figures/f2_sbc.yaml + figures/f2_sbc.typ. Status: PENDING.
   ],
   caption: [Placeholder — Phase 5 renders the SBC panel via its per-figure YAML.],
-) <fig:f2_sbc>
+  lbl: "fig:f2_sbc",
+)
 
 // ---------------------------------------------------------------------------
 // F3 — OOD ROC over the misspecification grid  (Phase 5; figures/f3_ood.{yaml,typ})
 // ---------------------------------------------------------------------------
-#figure(
+#widefig(
   rect(width: 100%, stroke: (dash: "dashed"), inset: 8pt)[
     #set align(left)
     *SPEC F3 — OOD / misspecification ROC* \
@@ -85,12 +93,13 @@
     YAML: figures/f3_ood.yaml + figures/f3_ood.typ. Status: PENDING.
   ],
   caption: [Placeholder — Phase 5 renders the OOD ROC panel via its per-figure YAML.],
-) <fig:f3_ood>
+  lbl: "fig:f3_ood",
+)
 
 // ---------------------------------------------------------------------------
 // F4 — Cross-method comparison  (Phase 9 + Phase-8 corpus; figures/f4_comparator.{yaml,typ})
 // ---------------------------------------------------------------------------
-#figure(
+#widefig(
   rect(width: 100%, stroke: (dash: "dashed"), inset: 8pt)[
     #set align(left)
     *SPEC F4 — Cross-method comparison (vs Costes / Manders / Pearson)* \
@@ -102,12 +111,13 @@
     YAML: figures/f4_comparator.yaml + figures/f4_comparator.typ. Status: PENDING.
   ],
   caption: [Placeholder — Phases 8/9 render the comparator panel via its per-figure YAML.],
-) <fig:f4_comparator>
+  lbl: "fig:f4_comparator",
+)
 
 // ---------------------------------------------------------------------------
 // F5 — Registration-UQ posterior widening  (Phase 11; figures/f5_registration.{yaml,typ})
 // ---------------------------------------------------------------------------
-#figure(
+#widefig(
   rect(width: 100%, stroke: (dash: "dashed"), inset: 8pt)[
     #set align(left)
     *SPEC F5 — Registration-UQ posterior widening* \
@@ -119,12 +129,13 @@
     YAML: figures/f5_registration.yaml + figures/f5_registration.typ. Status: PENDING.
   ],
   caption: [Placeholder — Phase 11 renders the registration-UQ panel via its per-figure YAML.],
-) <fig:f5_registration>
+  lbl: "fig:f5_registration",
+)
 
 // ---------------------------------------------------------------------------
 // F6 — Spatial per-region Δρ map + uncertainty  (Phase 12; figures/f6_spatial.{yaml,typ})
 // ---------------------------------------------------------------------------
-#figure(
+#widefig(
   rect(width: 100%, stroke: (dash: "dashed"), inset: 8pt)[
     #set align(left)
     *SPEC F6 — Spatial per-region Δρ map + uncertainty* \
@@ -135,12 +146,13 @@
     YAML: figures/f6_spatial.yaml + figures/f6_spatial.typ. Status: PENDING.
   ],
   caption: [Placeholder — Phase 12 renders the spatial-map panel via its per-figure YAML.],
-) <fig:f6_spatial>
+  lbl: "fig:f6_spatial",
+)
 
 // ---------------------------------------------------------------------------
 // F7 — Three-hypothesis Bayes factor simplex  (Phase 13; figures/f7_threebf.{yaml,typ})
 // ---------------------------------------------------------------------------
-#figure(
+#widefig(
   rect(width: 100%, stroke: (dash: "dashed"), inset: 8pt)[
     #set align(left)
     *SPEC F7 — Three-hypothesis Bayes factor simplex* \
@@ -152,4 +164,5 @@
     YAML: figures/f7_threebf.yaml + figures/f7_threebf.typ. Status: PENDING.
   ],
   caption: [Placeholder — Phase 13 renders the three-hypothesis BF panel via its per-figure YAML.],
-) <fig:f7_threebf>
+  lbl: "fig:f7_threebf",
+)

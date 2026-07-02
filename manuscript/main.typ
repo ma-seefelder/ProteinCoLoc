@@ -16,6 +16,7 @@
 
 #import "lib/template.typ": *
 #import "lib/tiered-bib.typ": *
+#import "lib/helpers.typ": landscapetable
 #import "claims.typ": claims, claim_table
 
 #show: project.with(
@@ -80,12 +81,15 @@
 
 = Claims
 
-#figure(
+// Wide 6-column spine — placed on its own landscape page (D-user: large tables may be landscape
+// on a separate page) so every column reads without cramping.
+#landscapetable(
   claim_table(claims),
   caption: [Claim spine — the contract mapping each scientific claim to its differentiator
     axis, supporting phase(s), figure/experiment ID, and status. Later plans populate the full
     claim set; a status column distinguishes _supported (measured)_ from _reserved slot_.],
-) <tab:claims>
+  lbl: "tab:claims",
+)
 
 = Figure Specifications
 

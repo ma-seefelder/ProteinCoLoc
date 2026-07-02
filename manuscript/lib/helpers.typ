@@ -42,6 +42,19 @@
   #if lbl != none { label(lbl) }
 ]
 
+// ---------- large full-page LANDSCAPE table helper ----------
+// For main-text tables too wide even for the two-column parent scope (e.g. the claim
+// spine, the related-work capability matrix): emit a DEDICATED landscape page (single
+// column) so the table gets the full page height as its width. kind: table -> numbered
+// "Table N" with the template's top caption. This is the standard placement for oversized
+// tables — prefer it over cramming a wide table into the two-column body.
+#let landscapetable(body, caption: none, lbl: none) = [
+  #page(flipped: true, columns: 1)[
+    #figure(body, caption: caption, kind: table)
+    #if lbl != none { label(lbl) }
+  ]
+]
+
 // ---------- supplementary figure helper (own counter, spans both columns) ----------
 // kind: "supplement_figure" gets an independent "Supplementary Figure N" counter;
 // cross-references render accordingly. Floating variant for the two-column main body.

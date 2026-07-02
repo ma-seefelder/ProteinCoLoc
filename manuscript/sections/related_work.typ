@@ -62,7 +62,10 @@ data. @tab:related-work positions ProteinCoLoc v2.0 against these methods across
 seven capability axes; the three Tapqir cells were verified against the primary
 source (see the provenance note in this file's source).
 
-#place(top, scope: "parent", float: true)[
+// Wide 8-column matrix — placed on its own landscape page (equivalent to lib/helpers.typ
+// landscapetable) so the seven capability columns read without cramping, rather than being
+// squeezed into the two-column body.
+#page(flipped: true, columns: 1)[
   #figure(
     kind: table,
     caption: [Capability comparison of colocalization-analysis methods across
@@ -73,7 +76,7 @@ source (see the provenance note in this file's source).
       (DOI 10.7554/eLife.73860); ProteinCoLoc v2.0 entries flagged with a phase
       number are _reserved slots_ that later phases substantiate, not yet-proven
       results. v2.0 calibration is stated as holding _under the simulator_.],
-    text(size: 7pt)[
+    text(size: 9pt)[
       #table(
         columns: (1.5fr, 1fr, 1.5fr, 1.5fr, 1.3fr, 1.3fr, 1.1fr, 1.2fr),
         align: (left, left, left, left, left, left, left, left),
