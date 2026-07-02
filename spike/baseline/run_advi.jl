@@ -270,7 +270,7 @@ function write_advi_artifact(path = ARTIFACT_PATH;
             posterior_samples = posterior_samples,
             master_seed       = UInt64(master_seed),
             bayes_git_ref     = BAYES_GIT_REF,
-            generated         = string(Dates.now()))
+            generated         = string(Dates.now(Dates.UTC)) * "Z")   # UTC, Z-labeled (IN-07)
 
     tmp = path * ".tmp"
     jldsave(tmp;

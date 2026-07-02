@@ -52,6 +52,7 @@ using NeuralEstimators   # train
 using Flux               # Flux.Optimisers.AdamW
 using StatsBase          # ZScoreTransform, fit, transform, reconstruct
 using JLD2               # atomic model persistence
+using Dates              # UTC-labeled artifact timestamp (IN-07)
 
 # --- ORDER MATTERS: architecture first (build_estimator + the NPE_* consts), then
 #     the loader (load_fold, the SOLE Z standardization path). Guarded for idempotency.
@@ -163,9 +164,11 @@ function save_npe(path, result::NamedTuple; master_seed, fold)
     return path
 end
 
-# Tiny timestamp helper (avoids a Dates dependency in the header `using` list while
-# still tagging the artifact with a generation time).
-Dates_now() = Base.Libc.strftime("%Y-%m-%dT%H:%M:%S", time())
+# Artifact generation timestamp. UTC, explicitly Z-labeled (IN-07): the previous
+# strftime(..., time()) rendered LOCAL time with no timezone marker, in a different,
+# unlabeled base than the ADVI artifact -- complicating any cross-env ordering/repro
+# audit. Both artifacts now use a UTC source (run_advi.jl likewise).
+Dates_now() = string(Dates.now(Dates.UTC)) * "Z"
 
 """
     load_npe(path) -> NamedTuple
