@@ -127,9 +127,17 @@ if (-not (Test-Path $figstylePath)) { Fail "D-14: lib/figstyle.typ missing" }
 if (-not (Select-String -Path $figstylePath -Pattern 'figstyle' -Quiet)) { Fail "D-14: figstyle loader not defined in lib/figstyle.typ" }
 if (-not (Test-Path $f1YamlPath)) { Fail "D-14: figures/f1_speedup.yaml missing" }
 if (-not (Select-String -Path $f1TypPath -Pattern 'figstyle\("f1_speedup"\)' -Quiet)) { Fail "D-16: f1_speedup.typ does not load its YAML via figstyle(`"f1_speedup`")" }
-# F1 must be fully YAML-driven: no hard-coded geometry (cm) and no inline hex in code lines.
+# F1 must be fully YAML-driven: NO hard-coded graphical length in ANY unit (cm/mm/in/pt/em) and
+# NO inline hex colour. The ONLY sanctioned way a length literal appears is a unit-conversion idiom
+# applied to a YAML value: `* 10mm` (via _cm), `* 1pt`, or `* 1em`. Strip those, then flag any
+# REMAINING numeric length literal — so a future `width: 5mm` / `width: 200pt` (units the old
+# cm-only check missed, WR-04) trips the gate. Nothing graphical may be hard-coded (D-14).
 $f1 = Get-NonComment $f1TypPath
-if ($f1 -match '[0-9]+(\.[0-9]+)?cm') { Fail "D-14: f1_speedup.typ contains hard-coded cm geometry (must come from the YAML)" }
+$f1stripped = $f1 -replace '\*\s*10mm', '' -replace '\*\s*1pt', '' -replace '\*\s*1em', ''
+if ($f1stripped -match '[0-9]+(\.[0-9]+)?(cm|mm|in|pt|em)') { Fail "D-14: f1_speedup.typ hard-codes a graphical length (cm/mm/in/pt/em) outside the sanctioned '* 10mm' / '* 1pt' / '* 1em' idioms — geometry must come from the YAML" }
+# Positive assertion: the panel width/height are explicitly YAML-driven (fs.panel.* via _cm).
+if (-not ($f1 -match 'width:\s*_cm\(fs\.panel\.'))  { Fail "D-14: f1_speedup.typ panel width is not YAML-driven (expected _cm(fs.panel.width))" }
+if (-not ($f1 -match 'height:\s*_cm\(fs\.panel\.')) { Fail "D-14: f1_speedup.typ panel height is not YAML-driven (expected _cm(fs.panel.height))" }
 if ($f1 -match 'rgb\("#')            { Fail "D-14: f1_speedup.typ contains an inline hex colour (must come from the palette role)" }
 
 Write-Host "OK: DoD met — compiles + claim table + matrix + >=7 specs ($specCount) + YAML-driven F1" -ForegroundColor Green

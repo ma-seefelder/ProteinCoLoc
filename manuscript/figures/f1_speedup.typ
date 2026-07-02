@@ -66,22 +66,28 @@
   _point("npe_forward", fwd-x, fwd-y),
 )
 
-// --- manual legend (labels/colours/cols all from the YAML) ------------------
-#let _swatch(s) = box(width: 0.9em, height: 0.9em, radius: 1pt, fill: (fs.color)(s.color), baseline: 0.12em)
-#let _leg-entry(s) = box[#_swatch(s) #h(3pt)#s.label]
+// --- manual legend (labels/colours/cols/spacing all from the YAML) ----------
+// Every length below is a YAML value with the unit applied via a sanctioned idiom
+// (`* 1em`, `* 1pt`, `_cm(...)`), so nothing graphical is hard-coded here (D-14).
+#let _swatch(s) = box(
+  width: fs.legend.swatch_size * 1em, height: fs.legend.swatch_size * 1em,
+  radius: fs.legend.swatch_radius * 1pt, fill: (fs.color)(s.color),
+  baseline: fs.legend.swatch_baseline * 1em,
+)
+#let _leg-entry(s) = box[#_swatch(s) #h(fs.legend.swatch_gap * 1pt)#s.label]
 #let _legend = {
   set text(size: fs.text.size * 1pt)
   align(center, grid(
     columns: (auto,) * fs.legend.cols,
-    column-gutter: 1.6em, row-gutter: 0.5em,
+    column-gutter: fs.legend.col_gutter * 1em, row-gutter: fs.legend.row_gutter * 1em,
     align: left + horizon,
     ..fs.series.map(_leg-entry),
   ))
 }
 
 #let _body = {
-  if fs.legend.position == "top" { _legend; v(2mm); _panel }
-  else if fs.legend.position == "bottom" { _panel; v(2mm); _legend }
+  if fs.legend.position == "top" { _legend; v(_cm(fs.legend.panel_gap)); _panel }
+  else if fs.legend.position == "bottom" { _panel; v(_cm(fs.legend.panel_gap)); _legend }
   else { _panel }
 }
 
@@ -91,7 +97,7 @@
 )
 
 // --- standalone preview (discarded when this file is #imported as a module) --
-#set page(width: auto, height: auto, margin: 4pt)
+#set page(width: auto, height: auto, margin: fs.panel.preview_margin * 1pt)
 #set text(font: ("Libertinus Serif", "Linux Libertine", "DejaVu Serif", "Times New Roman"),
   size: fs.text.size * 1pt, lang: "en", region: "GB")
 #f1-speedup-figure

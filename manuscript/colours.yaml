@@ -27,6 +27,22 @@ model_series:
   meta_learner_unc:   "#d62728"   # tab10 red      — stack + dropout uncertainty (tr_ddi_mc)
 
 # ---------------------------------------------------------------------------
+# Inference method — the colocalization-native series roles for AmortizedColoc
+# figures (F1 speedup-vs-RMSE and later accuracy plots): amortized NPE (forward
+# pass / full posterior-sample workload) vs the per-dataset ADVI baseline. Named
+# by COLOCALIZATION-INFERENCE semantics — NOT the AP-MS `model_series` roles
+# (`meta_learner*`), whose "multi-evidence stack" meaning is unrelated here — so an
+# editor recolouring an NPE curve edits a role whose name actually means "NPE". This
+# is the first colocalization-native role group in the copied palette; added by
+# EXTENDING the file (its own header sanctions "extend with a new semantic role"),
+# not by re-meaning an existing role. (Introduced Phase 10 / WR-05.)
+# ---------------------------------------------------------------------------
+inference_method:
+  npe_forward:        "#1f77b4"   # tab10 blue     — amortized NPE forward pass (~325×)
+  npe_full:           "#d62728"   # tab10 red      — NPE full posterior-sample (N=2000) workload (~16×)
+  advi:               "#666666"   # neutral grey   — per-dataset ADVI baseline point
+
+# ---------------------------------------------------------------------------
 # Tool series — the four comparator systems plotted head-to-head in Phase-4
 # benchmark figures (ROC/PR/reliability over SAINTexpress, CompPASS, MiST,
 # BayesInteractomics). BayesInteractomics is the hero, so it carries the deep

@@ -71,10 +71,23 @@ grep -q "figstyle" "$MAN/lib/figstyle.typ" || fail "D-14: figstyle loader not de
 [ -f "$MAN/figures/f1_speedup.yaml" ] || fail "D-14: figures/f1_speedup.yaml missing"
 grep -q 'figstyle("f1_speedup")' "$MAN/figures/f1_speedup.typ" \
   || fail "D-16: f1_speedup.typ does not load its YAML via figstyle(\"f1_speedup\")"
-# F1 must be fully YAML-driven: no hard-coded geometry (cm) and no inline hex in code lines.
-if noc "$MAN/figures/f1_speedup.typ" | grep -qE '[0-9]+(\.[0-9]+)?cm'; then
-  fail "D-14: f1_speedup.typ contains hard-coded cm geometry (must come from the YAML)"
+# F1 must be fully YAML-driven: NO hard-coded graphical length in ANY unit (cm/mm/in/pt/em) and
+# NO inline hex colour. The ONLY sanctioned way a length literal appears in the .typ is a
+# unit-conversion idiom applied to a YAML value: `* 10mm` (cm->length, via _cm), `* 1pt`, or
+# `* 1em`. We strip those idioms, then flag any REMAINING numeric length literal — so a future
+# figure hard-coding e.g. `width: 5mm` or `width: 200pt` (units the old `cm`-only check missed,
+# WR-04) trips the gate. Nothing graphical may be hard-coded in the figure .typ (D-14).
+if noc "$MAN/figures/f1_speedup.typ" \
+     | sed -E 's/\*[[:space:]]*10mm//g; s/\*[[:space:]]*1pt//g; s/\*[[:space:]]*1em//g' \
+     | grep -qE '[0-9]+(\.[0-9]+)?(cm|mm|in|pt|em)'; then
+  fail "D-14: f1_speedup.typ hard-codes a graphical length (cm/mm/in/pt/em) outside the sanctioned '* 10mm' / '* 1pt' / '* 1em' idioms — geometry must come from the YAML"
 fi
+# Positive assertion: the panel width/height are explicitly YAML-driven (fs.panel.* via _cm), so
+# a figure that swaps in a hard-coded size (removing the sanctioned expression) also trips.
+noc "$MAN/figures/f1_speedup.typ" | grep -qE 'width:[[:space:]]*_cm\(fs\.panel\.' \
+  || fail "D-14: f1_speedup.typ panel width is not YAML-driven (expected _cm(fs.panel.width))"
+noc "$MAN/figures/f1_speedup.typ" | grep -qE 'height:[[:space:]]*_cm\(fs\.panel\.' \
+  || fail "D-14: f1_speedup.typ panel height is not YAML-driven (expected _cm(fs.panel.height))"
 if noc "$MAN/figures/f1_speedup.typ" | grep -qE 'rgb\("#'; then
   fail "D-14: f1_speedup.typ contains an inline hex colour (must come from the palette role)"
 fi

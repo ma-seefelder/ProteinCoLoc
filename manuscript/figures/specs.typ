@@ -29,8 +29,10 @@
   rect(width: 100%, stroke: (dash: "dashed"), inset: 8pt)[
     #set align(left)
     *SPEC F1 — Speedup vs RMSE (amortized NPE vs per-dataset ADVI)* \
-    Panels: (a) speedup factor (log) vs ρ-space RMSE, NPE regimes against the ADVI 1× baseline;
-    (b) paired 90% interval width, NPE vs ADVI. \
+    Panel: (a) speedup factor (log) vs ρ-space RMSE, NPE regimes against the ADVI 1× baseline.
+    SINGLE panel — the honesty-critical 90% interval-width comparison (NPE 0.884 vs ADVI 0.605,
+    the `interval_width` column of speedup.csv) is reported in the caveat/caption below, not as a
+    separate rendered panel, so this spec matches the one-diagram implementation exactly. \
     Data: Phase 4. Supports: C1, C2. \
     Honest caveat: median ~325× forward-pass (min pair ~125×), ~16× on the full posterior-sample
     (N=2000) workload, against a realized ADVI baseline ~0.5 s/pair — reported PAIRED with RMSE
