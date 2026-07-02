@@ -13,9 +13,10 @@
 #   text:  size in pt
 
 panel:
-  width: 8.5      # cm
-  height: 6.0     # cm
+  width: 8.5             # cm
+  height: 6.0            # cm
   scale: 1.0
+  preview_margin: 4      # pt — standalone-preview page margin (discarded on #import)
 
 axes:
   xlim: [0.120, 0.135]
@@ -60,6 +61,14 @@ series:
 legend:
   position: "bottom"
   cols: 2
+  # Legend chrome — every graphical length is YAML-driven (D-14); the .typ only applies units.
+  swatch_size: 0.9       # em — colour-swatch box side
+  swatch_radius: 1       # pt — swatch corner radius
+  swatch_baseline: 0.12  # em — swatch vertical baseline nudge
+  swatch_gap: 3          # pt — gap between swatch and label
+  col_gutter: 1.6        # em — inter-column gutter
+  row_gutter: 0.5        # em — inter-row gutter
+  panel_gap: 0.2         # cm — gap between the legend and the panel
 
 text:
   size: 9

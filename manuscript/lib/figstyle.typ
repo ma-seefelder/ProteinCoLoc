@@ -30,6 +30,7 @@
 //     height:  <number>  cm     (default 6)    overall panel height in cm
 //     gutter:  <number>  pt      (default 10)   inter-panel grid gutter in pt
 //     scale:   <number>  unitless(default 1.0) global scale factor
+//     preview_margin: <number> pt (default 4)  margin of the standalone-preview page
 //
 //   axes:
 //     xlim:   <array[2] number | null>  (default null)  x-axis limits (lo, hi)
@@ -58,6 +59,13 @@
 //   legend:
 //     position: <string>  "top" | "bottom" | "left" | "right" | "none"  (default "top")
 //     cols:     <number>  legend columns                                 (default 1)
+//     swatch_size:     <number> em (default 0.9)  legend colour-swatch box side
+//     swatch_radius:   <number> pt (default 1)    legend swatch corner radius
+//     swatch_baseline: <number> em (default 0.12) legend swatch vertical baseline nudge
+//     swatch_gap:      <number> pt (default 3)    gap between swatch and its label
+//     col_gutter:      <number> em (default 1.6)  legend inter-column gutter
+//     row_gutter:      <number> em (default 0.5)  legend inter-row gutter
+//     panel_gap:       <number> cm (default 0.2)  gap between the legend and the panel
 //
 //   text:
 //     size: <number>  body text size in pt  (default 9)
@@ -71,14 +79,19 @@
 // Documented defaults covering ALL graphical groups (D-14). Geometry as plain numbers so YAML
 // round-trips; the figure `.typ` applies units.
 #let _DEFAULTS = (
-  panel: (width: 8, height: 6, gutter: 10, scale: 1.0),
+  panel: (width: 8, height: 6, gutter: 10, scale: 1.0, preview_margin: 4),
   axes: (
     xlim: none, ylim: none, xticks: none, yticks: none,
     xlabel: none, ylabel: none, title: none,
     yscale: "linear", xscale: "linear",   // consumed by the figure .typ (e.g. lq.diagram yscale)
   ),
   series: (),
-  legend: (position: "top", cols: 1),
+  legend: (
+    position: "top", cols: 1,
+    swatch_size: 0.9, swatch_radius: 1, swatch_baseline: 0.12,   // legend chrome (em/em/pt)
+    swatch_gap: 3, col_gutter: 1.6, row_gutter: 0.5,             // legend chrome (pt/em/em)
+    panel_gap: 0.2,                                              // legend<->panel gap (cm)
+  ),
   text: (size: 9),
 )
 
