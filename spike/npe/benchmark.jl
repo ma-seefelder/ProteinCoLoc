@@ -107,6 +107,35 @@ function _load_artifact(path)
 end
 
 """
+    _holdout_summary(ho, variant::Symbol) -> AbstractMatrix
+
+Select the RAW holdout summary matrix that matches the trained model's `variant`
+(WR-01): `:min` → the 128-dim `summary_min`, `:aug` → the AUG_DIM `summary_aug`.
+Threading `variant` through here (instead of hardcoding `summary_min`) keeps the
+benchmark correct for an `:aug` model -- a valid `choose_summary` ablation outcome --
+whose summary net expects AUG_DIM inputs, not 128.
+"""
+_holdout_summary(ho, variant::Symbol) =
+    variant === :aug ? ho.summary_aug :
+    variant === :min ? ho.summary_min :
+    error("_holdout_summary: unknown variant $variant (use :min or :aug)")
+
+"""
+    _encode_variant(mci, variant::Symbol) -> Vector{Float64}
+
+Extract the RAW summary vector for one raw stack in the encoding that matches the
+model `variant` (WR-01): `:min` → the 128-dim `encode_d01(patch_summary(mci))`,
+`:aug` → the AUG_DIM `encode_aug(mci, patch_summary(mci))`. `patch_summary` is
+computed once and shared, so the timed on-the-fly NPE clock measures the full
+variant-correct summary extraction (never the wrong 128-dim `:min` vector for an
+`:aug` net).
+"""
+_encode_variant(mci, variant::Symbol) =
+    variant === :aug ? encode_aug(mci, patch_summary(mci)) :
+    variant === :min ? encode_d01(patch_summary(mci)) :
+    error("_encode_variant: unknown variant $variant (use :min or :aug)")
+
+"""
     rmse_report(dir; master_seed, artifact_path = DEFAULT_ADVI_ARTIFACT,
                 model_path = DEFAULT_NPE_MODEL, N = 2000) -> NamedTuple
 
@@ -157,7 +186,8 @@ function rmse_report(dir; master_seed, artifact_path = DEFAULT_ADVI_ARTIFACT,
 
     θ_ho   = ho.theta[:, stack_cols]                # 7×K raw θ (joined order)
     ρ_true = Float64.(θ_ho[1, :])                   # known ρ_true per stack
-    Z      = standardize_summary(ho.summary_min[:, stack_cols], m.zt, m.variant)  # 128×K std
+    summ   = _holdout_summary(ho, m.variant)        # variant-correct raw summary (WR-01)
+    Z      = standardize_summary(summ[:, stack_cols], m.zt, m.variant)  # d_in×K std
 
     # --- NPE per-parameter RMSE (assess/rmse, standardized) → physical units. ---
     θ_std = Float32.(StatsBase.transform(m.θzt, Float32.(θ_ho)))    # 7×K standardized
@@ -184,8 +214,8 @@ function rmse_report(dir; master_seed, artifact_path = DEFAULT_ADVI_ARTIFACT,
     for p in 1:npairs
         cs = gi_to_col[Int(pairs[p][1])]
         cc = gi_to_col[Int(pairs[p][2])]
-        Zs = standardize_summary(ho.summary_min[:, cs], m.zt, m.variant)
-        Zc = standardize_summary(ho.summary_min[:, cc], m.zt, m.variant)
+        Zs = standardize_summary(summ[:, cs], m.zt, m.variant)   # variant-correct (WR-01)
+        Zc = standardize_summary(summ[:, cc], m.zt, m.variant)
         push!(Δnpe,  delta_rho(m.estimator, Zs, Zc, m.θzt; N = N, use_gpu = false))
         push!(Δadvi, mean(art["rho_sample"][p] .- art["rho_control"][p]))
         push!(Δtrue, ho.theta[1, cs] - ho.theta[1, cc])
@@ -243,8 +273,8 @@ elapsed, filtering transient contention. `use_gpu=false` (CPU-only, D-10).
 """
 function _time_npe_pair(est, mci_s, mci_c, zt, variant, bench_N; bench_seconds = 0.5)
     return @belapsed begin
-        Zs = standardize_summary(encode_d01(patch_summary($mci_s)), $zt, $variant)
-        Zc = standardize_summary(encode_d01(patch_summary($mci_c)), $zt, $variant)
+        Zs = standardize_summary(_encode_variant($mci_s, $variant), $zt, $variant)
+        Zc = standardize_summary(_encode_variant($mci_c, $variant), $zt, $variant)
         posterior_for($est, Zs; N = $bench_N, use_gpu = false)
         posterior_for($est, Zc; N = $bench_N, use_gpu = false)
     end seconds=bench_seconds
@@ -321,8 +351,8 @@ function speedup_report(dir; master_seed, artifact_path = DEFAULT_ADVI_ARTIFACT,
             mci_s = resimulate_holdout(dir, js; master_seed = master_seed).mci_sample
             mci_c = resimulate_holdout(dir, jc; master_seed = master_seed).mci_sample
             gt = @belapsed begin
-                Zs = standardize_summary(encode_d01(patch_summary($mci_s)), $(m.zt), $(m.variant))
-                Zc = standardize_summary(encode_d01(patch_summary($mci_c)), $(m.zt), $(m.variant))
+                Zs = standardize_summary(_encode_variant($mci_s, $(m.variant)), $(m.zt), $(m.variant))
+                Zc = standardize_summary(_encode_variant($mci_c, $(m.variant)), $(m.zt), $(m.variant))
                 posterior_for($(m.estimator), Zs; N = $bench_N, use_gpu = true)
                 posterior_for($(m.estimator), Zc; N = $bench_N, use_gpu = true)
             end seconds=bench_seconds

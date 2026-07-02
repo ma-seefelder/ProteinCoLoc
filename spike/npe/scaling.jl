@@ -275,12 +275,12 @@ function scaling_over_imsize(dir; master_seed, sizes = SCALING_IMSIZE_GRID,
     t_summary = Vector{Float64}(undef, length(szv))
     for (i, sz) in enumerate(szv)
         mci = _simulate_at_imsize(master_seed, i, sz)
-        t_summary[i] = @belapsed encode_d01(patch_summary($mci)) seconds = bench_seconds
+        t_summary[i] = @belapsed _encode_variant($mci, $(m.variant)) seconds = bench_seconds
     end
 
     # imsize-INDEPENDENT NPE forward-pass latency, measured once on a fixed summary vector.
     mci_ref = _simulate_at_imsize(master_seed, length(szv) + 1, first(szv))
-    Zref    = standardize_summary(encode_d01(patch_summary(mci_ref)), m.zt, m.variant)
+    Zref    = standardize_summary(_encode_variant(mci_ref, m.variant), m.zt, m.variant)  # variant-correct (WR-01)
     t_fwd   = @belapsed posterior_for($(m.estimator), $Zref; N = $bench_N, use_gpu = false) seconds = bench_seconds
 
     npe_time_sz  = t_summary .+ t_fwd
