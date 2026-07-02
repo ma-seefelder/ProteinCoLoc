@@ -266,8 +266,18 @@ const ABL_FIX_RESULT = ablate(NPE_REPRO_DIR; master_seed = NPE_MASTER_SEED, K = 
 
         # (d) fold_wins_aug counts folds where :aug beats :min on ρ_true (0..K).
         @test 0 <= r.fold_wins_aug <= r.K
-        @test r.fold_wins_aug ==
-              count(f -> r.rho_per_fold[f, 2] < r.rho_per_fold[f, 1], 1:r.K)
+        # IN-04: anchor the fold-win COUNTING PREDICATE to hand-built fixtures with a
+        # KNOWN number of aug-wins (an independent oracle with fixed expected outcomes),
+        # rather than re-deriving on the real result the exact formula `ablate` uses
+        # (which passes by construction and would not catch a `<`/`>` sign error copied
+        # into both the function and the test). rho_per_fold[:,1]=min, [:,2]=aug.
+        aug_wins(m) = count(f -> m[f, 2] < m[f, 1], 1:size(m, 1))
+        @test aug_wins([1.0 0.5; 1.0 0.5; 1.0 0.5; 1.0 2.0; 1.0 2.0]) == 3  # aug wins folds 1-3
+        @test aug_wins([1.0 2.0; 1.0 2.0; 1.0 2.0; 1.0 2.0; 1.0 2.0]) == 0  # aug never wins
+        @test aug_wins([1.0 0.5; 1.0 0.5; 1.0 0.5; 1.0 0.5; 1.0 0.5]) == 5  # aug wins all folds
+        # ablate's returned fold_wins_aug must agree with that fixture-verified predicate
+        # applied to its own per-fold ρ_true RMSE table (catches a wrong column / flip).
+        @test r.fold_wins_aug == aug_wins(r.rho_per_fold)
 
         # (e) the ablation ran CPU-only — CUDA never entered the process (D-10).
         @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
@@ -284,13 +294,23 @@ const ABL_FIX_RESULT = ablate(NPE_REPRO_DIR; master_seed = NPE_MASTER_SEED, K = 
         # (a) the rule returns exactly one of the two summary variants.
         @test chosen in (:min, :aug)
 
-        # (b) the choice is CONSISTENT with the pre-registered rule applied to the
-        #     fixture result: :aug IFF it beats :min by the relative margin AND in
-        #     ≥ ABL_FOLD_CONSISTENCY folds; else :min (parsimony default, D-07).
-        aug_margin     = r.rho_rmse_aug <= (1 - ABL_REL_MARGIN) * r.rho_rmse_min
-        aug_consistent = r.fold_wins_aug >= ABL_FOLD_CONSISTENCY
-        expected       = (aug_margin && aug_consistent) ? :aug : :min
-        @test chosen == expected
+        # (b) IN-04: exercise choose_summary against HAND-BUILT result fixtures with
+        #     KNOWN expected outcomes (an independent oracle), instead of re-deriving the
+        #     rule's own formula against the fixture result (which cannot catch a sign
+        #     error present in both the function and the test). The rule returns :aug IFF
+        #     aug beats min by the relative margin AND wins ≥ ABL_FOLD_CONSISTENCY folds.
+        #   - clearly wins: 40% better on ρ_true (≫5% margin) AND wins all 5 folds  → :aug
+        @test choose_summary((rho_rmse_min = 1.0, rho_rmse_aug = 0.6,
+                              fold_wins_aug = 5)) === :aug
+        #   - margin too small: only 1% better though it wins every fold             → :min
+        @test choose_summary((rho_rmse_min = 1.0, rho_rmse_aug = 0.99,
+                              fold_wins_aug = 5)) === :min
+        #   - inconsistent: 40% better yet wins only 3 (<4) folds                    → :min
+        @test choose_summary((rho_rmse_min = 1.0, rho_rmse_aug = 0.6,
+                              fold_wins_aug = 3)) === :min
+        #   - boundary: exactly at the margin AND exactly at the consistency threshold → :aug
+        @test choose_summary((rho_rmse_min = 1.0, rho_rmse_aug = 1.0 - ABL_REL_MARGIN,
+                              fold_wins_aug = ABL_FOLD_CONSISTENCY)) === :aug
 
         # (c) the pre-registered consts are the locked values (declared before any run).
         @test ABL_REL_MARGIN == 0.05
