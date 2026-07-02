@@ -154,13 +154,20 @@ _theta_tuple(v) = (
 
 Posterior-predictive mismatch (D-05): infer θ̂ = posterior mean from `Z_obs` (one
 `posterior_for` pass, un-standardized with the frozen `m.θzt`), re-simulate `reps`
-summaries from θ̂ through `simulate_pair → frozen_summary`, and return the Mahalanobis
-distance of `Z_obs`'s continuous rows to that posterior-predictive summary cloud (a
-LOCAL mean/cov fit on the cloud, ridge 1e-6). Grows when the inferred θ̂ regenerates
+summaries from θ̂ through `simulate_pair → frozen_summary`, and return the mean squared
+PER-FEATURE z-score of `Z_obs`'s continuous rows against that posterior-predictive
+summary cloud: `mean_f ((z_f − μc_f) / σc_f)²`. Grows when the inferred θ̂ regenerates
 summaries INCONSISTENT with the observed summary -- reaching some summary-orthogonal
-cases the density channel misses. CPU-only (`use_gpu = false`). The re-simulation cloud
-is a POSTERIOR-PREDICTIVE reference for THIS observation, not a train null, so it is not
-subject to the train-only-freeze (it depends only on θ̂ and the frozen simulator).
+cases the density channel misses.
+
+A DIAGONAL (per-feature) discrepancy is used deliberately, NOT a full-covariance
+Mahalanobis (RESEARCH §PP "per-feature z-score" option): the PP cloud has only `reps`
+samples, and with `reps < 64` (the continuous-row dimension -- true even at the reported
+OOD_PP_REPS=50) a full 64×64 cloud covariance is RANK-DEFICIENT and ridge-dominated,
+producing meaningless ~1e7 scores. The per-feature variance is well-conditioned at any
+`reps ≥ 2`. CPU-only (`use_gpu = false`). The PP cloud is a posterior-predictive
+reference for THIS observation, not a train null, so it is not subject to the
+train-only-freeze (it depends only on θ̂ and the frozen simulator).
 """
 function pp_mismatch_score(m, Z_obs::AbstractVector; reps::Integer = OOD_PP_REPS,
                            rng = val_rng(), imsize = SBC_IMSIZE, N::Integer = 200)
@@ -178,11 +185,11 @@ function pp_mismatch_score(m, Z_obs::AbstractVector; reps::Integer = OOD_PP_REPS
         cloud[:, r] = Float64.(Zr[cont])
     end
 
+    # Diagonal (per-feature) discrepancy -- well-conditioned for reps < dim (ridge on σ²).
     μc = vec(mean(cloud; dims = 2))
-    Σc = cov(cloud; dims = 2)
-    Cc = cholesky(Symmetric(Σc + 1e-6 * I))
-    rr = Float64.(Z_obs[cont]) .- μc
-    return sum(abs2, Cc.L \ rr)
+    σ2 = vec(var(cloud; dims = 2)) .+ 1e-6
+    z  = (Float64.(Z_obs[cont]) .- μc) .^ 2 ./ σ2
+    return mean(z)
 end
 
 # ============================================================================
@@ -246,16 +253,308 @@ end
 
 """
     ood_flag(nulls, m, Z; maha_thr, pp_thr, rng = val_rng(),
-             reps = OOD_PP_REPS, imsize = SBC_IMSIZE) -> Bool
+             reps = OOD_PP_REPS, imsize = SBC_IMSIZE, N = 200) -> Bool
 
 The OR-combined OOD flag (D-05): fires iff EITHER the summary-density channel
 (`maha_score > maha_thr`) OR the posterior-predictive channel
 (`pp_mismatch_score > pp_thr`) exceeds its PRE-REGISTERED ID-quantile threshold. Both
 thresholds come from `id_threshold(id_scores; q = OOD_ID_QUANTILE)` fit on train/ID data
-BEFORE misspec data (D-06). CPU-only.
+BEFORE misspec data (D-06). `reps`/`N`/`imsize` MUST match the values the `pp_thr` was
+computed with, so the PP channel is scored on the same footing as its threshold. CPU-only.
 """
 function ood_flag(nulls, m, Z::AbstractVector; maha_thr::Real, pp_thr::Real,
-                  rng = val_rng(), reps::Integer = OOD_PP_REPS, imsize = SBC_IMSIZE)
+                  rng = val_rng(), reps::Integer = OOD_PP_REPS, imsize = SBC_IMSIZE,
+                  N::Integer = 200)
     (maha_score(nulls, Z) > maha_thr) && return true
-    return pp_mismatch_score(m, Z; reps = reps, rng = rng, imsize = imsize) > pp_thr
+    return pp_mismatch_score(m, Z; reps = reps, rng = rng, imsize = imsize, N = N) > pp_thr
+end
+
+# ============================================================================
+# Misspecification grid — POSITIVE controls (D-03, four families)
+# ============================================================================
+#
+# All four families produce FULLY EXTERNAL image pairs (SC5) that the shared-latent
+# smooth-Gaussian-field simulator CANNOT produce, each swept over OOD_GRID_LEVELS
+# magnitudes for a dose-response ROC. Every generator mirrors simulate_pair's entry
+# guard (imsize dims ≥ 64, T-05-09) and returns finite, non-negative channels.
+
+# Shared imsize≥64 guard (mirrors simulate_pair's entry validation; T-05-09 / CR-02).
+function _guard_misspec_imsize(imsize)
+    (imsize[1] ≥ 64 && imsize[2] ≥ 64) ||
+        throw(ArgumentError("misspec imsize dims must be ≥ 64 for the 8×8 patch grid, " *
+                            "got $imsize"))
+    return nothing
+end
+
+# Sparse Gaussian-puncta field: `nspots` bright impulses smoothed at scale σ. The
+# building block of the texture family — sharp, sparse spots the SMOOTH-field simulator
+# structurally cannot generate (Phase-2 rejected puncta, D-15 — the canonical real-world
+# OOD since real immunofluorescence is punctate).
+function _puncta_field(rng, imsize, nspots::Integer, σ::Real)
+    f = zeros(Float64, imsize...)
+    H, W = imsize
+    for _ in 1:nspots
+        f[rand(rng, 1:H), rand(rng, 1:W)] += 0.5 + rand(rng)
+    end
+    return imfilter(f, Kernel.gaussian(σ))
+end
+
+"""
+    misspec_texture(rng, θ; imsize = SBC_IMSIZE, level = OOD_GRID_LEVELS)
+        -> Vector{Matrix{Float64}}
+
+Family 1 (D-03) — TEXTURE-model mismatch. A NEW puncta/granular generator (a shared +
+private Gaussian-spot mixture, NOT `simulate_pair`): higher `level` ⇒ more, sharper
+spots ⇒ further from the smooth-field training manifold. θ.ρ_true drives the shared spot
+weight (with `sign(ρ)` on channel 2, mirroring the simulator's anti-correlation path) so
+the OOD image still carries a colocalization structure. The canonical real-world OOD
+positive control.
+"""
+function misspec_texture(rng, θ; imsize = SBC_IMSIZE, level::Integer = OOD_GRID_LEVELS)
+    _guard_misspec_imsize(imsize)
+    ρ = clamp(θ.ρ_true, -1.0, 1.0)
+    σ = max(0.8, 3.0 - 0.5 * level)              # sharper (more un-smooth) at higher level
+    a = sqrt(abs(ρ)); b = sqrt(1.0 - abs(ρ))
+    shared = _puncta_field(rng, imsize, 30 * level, σ)
+    p1     = _puncta_field(rng, imsize, 20 * level, σ)
+    p2     = _puncta_field(rng, imsize, 20 * level, σ)
+    ch1 = BG_FLOOR .+ a .* shared .+ b .* p1
+    ch2 = BG_FLOOR .+ sign(ρ) .* a .* shared .+ b .* p2
+    return [Matrix{Float64}(max.(ch1, 0.0)), Matrix{Float64}(max.(ch2, 0.0))]
+end
+
+"""
+    misspec_noise(rng, θ; imsize = SBC_IMSIZE, level = OOD_GRID_LEVELS)
+        -> Vector{Matrix{Float64}}
+
+Family 2 (D-03) — NOISE-model mismatch. Corrupts a `simulate_pair` base with
+salt-and-pepper spikes plus heavy-tailed (cubic) additive noise BEYOND the simulator's
+Poisson+Gaussian model; `level` scales both the spike fraction and the amplitude.
+"""
+function misspec_noise(rng, θ; imsize = SBC_IMSIZE, level::Integer = OOD_GRID_LEVELS)
+    _guard_misspec_imsize(imsize)
+    base  = simulate_pair(rng, θ; imsize = imsize)
+    frac  = 0.02 * level
+    scale = 2.0 * level
+    out = map(base) do ch
+        c  = copy(ch)
+        mx = maximum(c)
+        @inbounds for idx in eachindex(c)
+            rand(rng) < frac && (c[idx] = rand(rng) < 0.5 ? 0.0 : mx * (1 + scale))
+        end
+        c .+= scale .* mx .* (rand(rng, size(c)...) .- 0.5) .^ 3   # heavy-tailed, non-Gaussian
+        Matrix{Float64}(max.(c, 0.0))
+    end
+    return collect(out)
+end
+
+"""
+    misspec_optics(rng, θ; imsize = SBC_IMSIZE, level = OOD_GRID_LEVELS)
+        -> Vector{Matrix{Float64}}
+
+Family 3 (D-03) — OPTICS/PSF mismatch. Convolves a `simulate_pair` base with a strongly
+ANISOTROPIC/aberrated Gaussian PSF (σy ≫ σx) far beyond the fixed isotropic `σ_psf`;
+`level` scales the anisotropy the simulator cannot produce.
+"""
+function misspec_optics(rng, θ; imsize = SBC_IMSIZE, level::Integer = OOD_GRID_LEVELS)
+    _guard_misspec_imsize(imsize)
+    base = simulate_pair(rng, θ; imsize = imsize)
+    σy   = σ_psf + 2.0 * level                    # ≫ σ_psf — aberrated/out-of-focus
+    σx   = σ_psf + 0.2 * level
+    return [Matrix{Float64}(max.(imfilter(ch, Kernel.gaussian((σy, σx))), 0.0)) for ch in base]
+end
+
+"""
+    misspec_background(rng, θ; imsize = SBC_IMSIZE, level = OOD_GRID_LEVELS)
+        -> Vector{Matrix{Float64}}
+
+Family 4 (D-03) — BACKGROUND/illumination mismatch. Applies a multiplicative
+illumination gradient + radial vignette and an autofluorescence bleed BEYOND the
+simulator's `Uniform(0,0.1)` offset; `level` scales the gradient, vignette and bleed.
+"""
+function misspec_background(rng, θ; imsize = SBC_IMSIZE, level::Integer = OOD_GRID_LEVELS)
+    _guard_misspec_imsize(imsize)
+    base = simulate_pair(rng, θ; imsize = imsize)
+    H, W = imsize
+    gy   = reshape(range(-1.0, 1.0; length = H), H, 1)   # H×1
+    gx   = reshape(range(-1.0, 1.0; length = W), 1, W)   # 1×W
+    grad  = 1.0 .+ (0.5 * level) .* gy .+ (0.3 * level) .* gx           # H×W
+    vign  = 1.0 .- (0.2 * level) .* (gy .^ 2 .+ gx .^ 2)               # H×W
+    bleed = 0.1 + 0.3 * level                                          # beyond U(0,0.1)
+    return [Matrix{Float64}(max.(ch .* max.(grad, 0.0) .* max.(vign, 0.0) .+ bleed, 0.0))
+            for ch in base]
+end
+
+# The four positive-control families, in fixed order (the reported ROC grid, D-03).
+const OOD_FAMILIES = (texture    = misspec_texture,
+                      noise      = misspec_noise,
+                      optics     = misspec_optics,
+                      background = misspec_background)
+
+# ============================================================================
+# Summary-orthogonal NEGATIVE control (D-04) — the named blind spot
+# ============================================================================
+#
+# Correlation-preserving transforms of IN-DISTRIBUTION images. The 8×8 patch-Pearson
+# summary is (exactly, for affine; as a value-multiset, for rotate/permute) UNCHANGED, so
+# the flag stays quiet BY CONSTRUCTION — measuring and NAMING the structural blind spot of
+# the fixed summary (paired with SBC-04's "under the simulator" caveat).
+
+"""
+    negctrl_affine(pair; a = 2.0, b = 0.5) -> Vector{Matrix{Float64}}
+
+Per-channel positive affine `a·x + b` (a > 0) applied to the SIGNAL pixels (x > 0),
+leaving the exact-zero (dead/undershoot-clamped) pixels at zero. Pearson is exactly
+scale/shift invariant, so the 8×8 summary is UNCHANGED — the strongest theoretical
+guarantee. Preserving the zero set is load-bearing: a blanket `+b` would turn the
+`max(·,0)` read-noise zeros into signal and change which pixels the src `_exclude_zero`
+drops per patch, perturbing a few patch correlations (empirically ~3/64). Gating the
+shift on `x > 0` keeps the excluded set identical, so per-patch Pearson is invariant and
+KS ≈ 0 robustly. `b ≥ 0` keeps signal pixels positive.
+"""
+function negctrl_affine(pair; a::Real = 2.0, b::Real = 0.5)
+    a > 0 || throw(ArgumentError("negctrl_affine: slope a must be > 0, got $a"))
+    return [Matrix{Float64}(map(v -> v > 0 ? a * v + b : v, ch)) for ch in pair]
+end
+
+"""
+    negctrl_rotate_flip(pair; k = 1) -> Vector{Matrix{Float64}}
+
+Global 90°·k rotation (no interpolation). On a square image this permutes WHICH patch is
+where but preserves the SET of 8×8 per-patch correlation values, so the summary
+DISTRIBUTION is unchanged (KS on the 64 values passes).
+"""
+function negctrl_rotate_flip(pair; k::Integer = 1)
+    rot(x) = (kk = mod(k, 4); kk == 0 ? x : kk == 1 ? rotl90(x) : kk == 2 ? rot180(x) : rotr90(x))
+    return [Matrix{Float64}(rot(ch)) for ch in pair]
+end
+
+"""
+    negctrl_block_permute(rng, pair; blocks = 8) -> Vector{Matrix{Float64}}
+
+Distribution-preserving spatial rearrangement: partition into `blocks × blocks` tiles and
+apply the SAME random tile permutation to BOTH channels. Each patch's paired pixels move
+together, so the per-patch correlation values are preserved as a SET (KS-invariant). With
+`blocks = 8` the tiles align with the 8×8 patch grid.
+"""
+function negctrl_block_permute(rng, pair; blocks::Integer = 8)
+    H, W = size(pair[1])
+    (H % blocks == 0 && W % blocks == 0) ||
+        throw(ArgumentError("negctrl_block_permute: $((H, W)) not divisible by blocks=$blocks"))
+    bh = H ÷ blocks; bw = W ÷ blocks
+    perm = randperm(rng, blocks * blocks)             # SAME permutation for both channels
+    function permute(x)
+        out = similar(x)
+        for (dst, src) in enumerate(perm)
+            di, dj = fldmod1(dst, blocks); si, sj = fldmod1(src, blocks)
+            out[(di-1)*bh+1:di*bh, (dj-1)*bw+1:dj*bw] = x[(si-1)*bh+1:si*bh, (sj-1)*bw+1:sj*bw]
+        end
+        return out
+    end
+    return [Matrix{Float64}(permute(ch)) for ch in pair]
+end
+
+"""
+    verify_summary_invariance(pair, transform) -> Float64
+
+Empirically verify (D-04) that `transform` leaves the 8×8 patch-Pearson summary
+statistically UNCHANGED: compute the summary before and after, then return the
+two-sample KS statistic (`ApproximateTwoSampleKSTest.δ`) between the two multisets of
+non-missing correlation values. A correlation-preserving transform gives δ ≈ 0; call
+sites assert `δ < OOD_KS_EPS`. Returns `NaN` if either summary is fully missing.
+"""
+function verify_summary_invariance(pair, transform)
+    v0 = Float64.(collect(skipmissing(patch_summary(build_mci(pair)))))
+    v1 = Float64.(collect(skipmissing(patch_summary(build_mci(transform(pair))))))
+    (isempty(v0) || isempty(v1)) && return NaN
+    return ApproximateTwoSampleKSTest(v0, v1).δ
+end
+
+# ============================================================================
+# ROC over the misspecification grid (D-03/D-04/D-06) — reported by 05-04
+# ============================================================================
+
+"""
+    ood_roc_over_grid(m, nulls; families = OOD_FAMILIES, levels = OOD_GRID_LEVELS,
+                      n_id = 100, n_pos = 40, rng = val_rng(), imsize = SBC_IMSIZE,
+                      with_pp = true, pp_reps = OOD_PP_REPS) -> NamedTuple
+
+The controlled ROC/AUC experiment (OOD-02). Draws `n_id` FRESH in-distribution negatives
+and, for each positive-control family × magnitude level, `n_pos` fully-external positives
+(SC5), scoring the summary-density (Mahalanobis) channel — and, when `with_pp`, the
+posterior-predictive channel — for each. Returns, per family, the per-level `roc_auc` and
+the OR-flag fire-rate at the PRE-REGISTERED ID-quantile operating point (`id_threshold`,
+committed before misspec data, D-06); plus the pooled strongest-level combined ROC curve
+(for `plot_ood_roc`), the in-distribution fire-rate, and the POST-HOC `youden_j` reference
+(never the gate). The full OOD_GRID_LEVELS reported run is owned by Wave-3 (05-04); the
+fast gate calls this with small `n_id`/`n_pos`/`with_pp=false`.
+"""
+function ood_roc_over_grid(m, nulls; families = OOD_FAMILIES, levels::Integer = OOD_GRID_LEVELS,
+                           n_id::Integer = 100, n_pos::Integer = 40, rng = val_rng(),
+                           imsize = SBC_IMSIZE, with_pp::Bool = true, pp_reps::Integer = OOD_PP_REPS)
+    # --- ID negatives (fresh in-distribution draws) -----------------------------
+    Zid = [id_summary(m, rng; imsize = imsize) for _ in 1:n_id]
+    id_maha = [maha_score(nulls, z) for z in Zid]
+    maha_thr = id_threshold(id_maha)
+    id_pp = with_pp ?
+        [pp_mismatch_score(m, z; reps = pp_reps, rng = val_rng(), imsize = imsize) for z in Zid] :
+        Float64[]
+    pp_thr = with_pp ? id_threshold(id_pp) : Inf
+
+    fam_names = keys(families)
+    maha_auc  = Dict{Symbol,Vector{Float64}}()
+    pp_auc    = Dict{Symbol,Vector{Float64}}()
+    fire_rate = Dict{Symbol,Vector{Float64}}()
+
+    pooled_pos_maha = Float64[]                        # strongest level, all families (for the ROC curve)
+    for fam in fam_names
+        gen = families[fam]
+        maha_auc[fam]  = Float64[]
+        pp_auc[fam]    = Float64[]
+        fire_rate[fam] = Float64[]
+        for lvl in 1:levels
+            pos_maha = Float64[]; pos_pp = Float64[]; fires = 0
+            for _ in 1:n_pos
+                θ   = sample_prior(rng)
+                Zp  = frozen_summary(m, gen(rng, θ; imsize = imsize, level = lvl))
+                ms  = maha_score(nulls, Zp)
+                push!(pos_maha, ms)
+                fired = ms > maha_thr
+                if with_pp
+                    ps = pp_mismatch_score(m, Zp; reps = pp_reps, rng = val_rng(), imsize = imsize)
+                    push!(pos_pp, ps)
+                    fired = fired || (ps > pp_thr)
+                end
+                fires += fired ? 1 : 0
+                lvl == levels && append!(pooled_pos_maha, ms)
+            end
+            push!(maha_auc[fam],  roc_auc(id_maha, pos_maha)[3])
+            with_pp && push!(pp_auc[fam], roc_auc(id_pp, pos_pp)[3])
+            push!(fire_rate[fam], fires / n_pos)
+        end
+    end
+
+    id_fire_rate = mean(id_maha .> maha_thr)
+    fpr, tpr, or_auc = roc_auc(id_maha, pooled_pos_maha)
+    yj = youden_j(fpr, tpr)                            # POST-HOC reference only (D-06)
+
+    return (levels = collect(1:levels), families = fam_names,
+            maha_thr = maha_thr, pp_thr = pp_thr,
+            maha_auc = maha_auc, pp_auc = pp_auc, fire_rate = fire_rate,
+            id_fire_rate = id_fire_rate,
+            roc_fpr = fpr, roc_tpr = tpr, combined_auc = or_auc,
+            youden = yj, auc_min = OOD_AUC_MIN, id_quantile = OOD_ID_QUANTILE)
+end
+
+"""
+    plot_ood_roc(fpr, tpr, auc; filename = "ood_roc.png") -> String
+
+Write the OOD ROC PNG by CALLING figures.jl's owned `plot_roc` (D-05 figure). figures.jl
+is loaded LAZILY here so the fast test gate never pulls the CairoMakie stack (figures are
+script artifacts, not gate assertions — HARD RULE in figures.jl). Called by the reported
+Wave-3 run (05-04), never by test_ood.jl.
+"""
+function plot_ood_roc(fpr, tpr, auc; filename::AbstractString = "ood_roc.png")
+    isdefined(@__MODULE__, :plot_roc) || include(joinpath(@__DIR__, "figures.jl"))
+    return plot_roc(fpr, tpr, auc; filename = filename)
 end
