@@ -115,6 +115,11 @@ Optional only. To report the Tapqir anchor in the manuscript, install a Conda ba
 - 09-06 D-13 gate can assert `status ∈ {:passed, :skipped}` — on this machine it will observe `:skipped`.
 - No blockers. STATE.md / ROADMAP.md intentionally NOT modified (orchestrator owns those writes in worktree mode).
 
+## Self-Check: PASSED
+- All 5 created/modified files present on disk.
+- All 3 commits present in git history (`7e8ce9c`, `45a3a6d`, `60d1734`).
+- PythonCall/CondaPkg confirmed ABSENT from the committed main `spike/Project.toml`.
+
 ---
 *Phase: 09-cross-method-comparator-harness*
 *Completed: 2026-07-02*
