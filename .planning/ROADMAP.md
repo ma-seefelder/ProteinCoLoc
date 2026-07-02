@@ -183,13 +183,17 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 ### Phase 10: Manuscript Skeleton and Related-Work Positioning
 **Goal**: A compiling manuscript skeleton with related-work positioning drafted early — especially the explicit delta versus Tapqir/Costes/Manders — so experiments are shaped by the claims they must support
 **Depends on**: Nothing (parallelizable now)
-**Requirements**: TBD
+**Requirements**: TBD (claims derive from existing REQ outcomes; plans tag CONTEXT decisions D-01..D-12 + success criteria SC1/SC2/SC3)
 **Success Criteria** (what must be TRUE):
   1. A Typst skeleton compiles with section scaffolding and a claim table
   2. Related work drafts the Tapqir differentiation (amortization + SBC + registration-UQ + spatial map)
   3. Figure specifications enumerate the panels each later phase must deliver
-**Plans**: TBD
-- [ ] TBD (run /gsd:plan-phase 10 to break down)
+**Plans**: 5 plans (3 waves)
+- [ ] 10-01-PLAN.md — Compiling venue-neutral Typst skeleton: main.typ + section stubs + seeded refs.bib + claim_table machinery + compile gate (D-01..D-05, D-11, D-12)
+- [ ] 10-02-PLAN.md — Claim spine content: honestly-caveated claim table rows with per-row axis/phase/figure/status (D-06, D-07)
+- [ ] 10-03-PLAN.md — Related-work matrix + four-axis Tapqir differentiation, ASSUMED cells verified vs eLife 73860 (D-08, D-09)
+- [ ] 10-04-PLAN.md — Figure specifications enumerating per-phase panels linked to claim rows (D-10)
+- [ ] 10-05-PLAN.md — Integration regression: content-asserting compile gate + final DoD (D-12)
 
 ### Phase 11: Registration and Chromatic Uncertainty as Latent
 **Goal**: Promote sub-pixel registration (and an optional chromatic warp) from a fixed simulator nuisance to an inferred latent, so the coloc posterior widens honestly under registration uncertainty instead of reporting false confidence
