@@ -196,7 +196,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
   1. A Typst skeleton compiles with section scaffolding and a claim table
   2. Related work drafts the Tapqir differentiation (amortization + SBC + registration-UQ + spatial map)
   3. Figure specifications enumerate the panels each later phase must deliver
-**Plans**: 5 plans (3 waves)
+**Plans**: 5 plans (4 waves)
 - [ ] 10-01-PLAN.md — Compiling venue-neutral Typst skeleton: main.typ + section stubs + seeded refs.bib + claim_table machinery + compile gate (D-01..D-05, D-11, D-12)
 - [ ] 10-02-PLAN.md — Claim spine content: honestly-caveated claim table rows with per-row axis/phase/figure/status (D-06, D-07)
 - [ ] 10-03-PLAN.md — Related-work matrix + four-axis Tapqir differentiation, ASSUMED cells verified vs eLife 73860 (D-08, D-09)

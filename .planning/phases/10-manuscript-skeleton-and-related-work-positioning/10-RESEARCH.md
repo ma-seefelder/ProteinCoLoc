@@ -474,14 +474,14 @@ The claim-table row for speedup and the F1 (speedup-vs-RMSE) figure spec must re
 
 ## Open Questions
 
-1. **Does Tapqir perform formal SBC and/or emit an explicit Bayes factor?**
+1. **Does Tapqir perform formal SBC and/or emit an explicit Bayes factor?** (RESOLVED — Plan 10-03 Task 1 verifies the three ⚠ cells against Ordabayev et al. 2022 / DOI 10.7554/eLife.73860 and records a per-cell verdict before locking prose.)
    - What we know: physics-based Bayesian generative model, per-spot probabilities, per-dataset SVI (eLife abstract).
    - What's unclear: formal SBC rank-uniformity? explicit BF? registration uncertainty propagated to the coloc call?
    - Recommendation: planner adds a task to read Ordabayev et al. 2022 (methods) and confirm the ⚠ matrix cells before locking `related_work.typ` prose (D-09).
-2. **Claim data location: `claims.typ` array vs external `claims.json`?**
+2. **Claim data location: `claims.typ` array vs external `claims.json`?** (RESOLVED — plan set uses the `claims.typ` array-of-dicts idiom consistently across Plans 10-01/10-02, per Claude's Discretion under D-06; no non-Typst machine-read requirement exists.)
    - What we know: both compile (`#json()` is supported); array-of-dicts is simplest and diffable.
    - Recommendation: use `claims.typ` array-of-dicts unless a non-Typst downstream agent must machine-read claims, in which case `claims.json` + `#json()`. (Claude's Discretion per D-06.)
-3. **Scientific Reports self-citation DOI** — not in the repo. Recommendation: TODO placeholder now; source before Phase 16 submission.
+3. **Scientific Reports self-citation DOI** — not in the repo. (RESOLVED as allowed TODO placeholder per D-11 — Plan 10-01 seeds refs.bib with a clearly-marked TODO DOI; source before Phase 16 submission. Non-blocking for compile since the key is uncited until then.)
 
 ## Environment Availability
 

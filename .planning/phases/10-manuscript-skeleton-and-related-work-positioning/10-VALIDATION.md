@@ -2,7 +2,7 @@
 phase: 10
 slug: manuscript-skeleton-and-related-work-positioning
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-02
 ---
@@ -46,10 +46,12 @@ created: 2026-07-02
 | 10-01-xx | 01 | 1 | SC1 (compile) | — | N/A (docs phase) | build/smoke | `typst compile manuscript/main.typ manuscript/main.pdf; echo $?` (==0) | ❌ W0 | ⬜ pending |
 | 10-02-xx | 02 | 2 | D-06 claim table | — | N/A | build + source | `test -f manuscript/claims.typ` + compile | ❌ W0 | ⬜ pending |
 | 10-03-xx | 03 | 2 | SC2 Tapqir 4-axis | — | N/A | content check | `grep -qi "amortiz\|SBC\|registration\|spatial" manuscript/sections/related_work.typ` | ❌ W0 | ⬜ pending |
-| 10-04-xx | 04 | 2 | SC3 figure specs | — | N/A | content check | `grep -c "F[0-9]" manuscript/figures/specs.typ` ≥ 7 | ❌ W0 | ⬜ pending |
-| 10-05-xx | 05 | 3 | D-12 gate script | — | N/A | build | `bash manuscript/build.sh; echo $?` (==0) | ❌ W0 | ⬜ pending |
+| 10-04-xx | 04 | 3 | SC3 figure specs | — | N/A | content check | `grep -c "F[0-9]" manuscript/figures/specs.typ` ≥ 7 | ❌ W0 | ⬜ pending |
+| 10-05-xx | 05 | 4 | D-12 gate script | — | N/A | build | `bash manuscript/build.sh; echo $?` (==0) | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky. Exact task IDs finalized by the planner.*
+
+> **Revision note (post-checker):** All 7 tasks across the 5 plans now use the project `<verify><automated>...</automated></verify>` schema. Wave chain finalized as 10-01 (w1) -> 10-02/10-03 (w2) -> 10-04 (w3, depends_on 10-01+10-02) -> 10-05 (w4). Plan 10-05 gate additionally cross-checks that every figure-spec `Supports: Cx` token resolves to a claim id in claims.typ (D-07).
 
 ---
 
@@ -79,11 +81,11 @@ created: 2026-07-02
 
 ## Validation Sign-Off
 
-- [ ] All tasks have an automated compile/content verify or a Wave 0 dependency
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags (`typst watch` not used in gate)
-- [ ] Feedback latency < 5s
-- [ ] `nyquist_compliant: true` set in frontmatter once plans satisfy the above
+- [x] All tasks have an automated compile/content verify or a Wave 0 dependency
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags (`typst watch` not used in gate)
+- [x] Feedback latency < 5s
+- [x] `nyquist_compliant: true` set in frontmatter once plans satisfy the above
 
-**Approval:** pending
+**Approval:** approved (planner) — all sign-off criteria met after checker-revision; `nyquist_compliant: true`. `wave_0_complete` remains false until execution creates the manuscript/ files.
