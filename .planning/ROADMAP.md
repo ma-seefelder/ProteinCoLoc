@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **v2.0 feature expansion (Phases 8–16) — all downstream of a Phase-6 Go:**
 - [ ] **Phase 8: External Physical Ground-Truth Corpus** - Non-circular validation anchors (physical 100%-coloc + segregated constructs); CBS ingested as labelled-simulated; versioned data contract — parallelizable now
 - [ ] **Phase 9: Cross-Method Comparator Harness** - Costes/Manders/Pearson/Spearman + Tapqir bridge on shared inputs; "knows when the classics are wrong" — parallelizable now
-- [ ] **Phase 10: Manuscript Skeleton + Related-Work Positioning** - Compiling Typst skeleton, explicit Tapqir/Costes/Manders delta, figure specs — parallelizable now
+- [x] **Phase 10: Manuscript Skeleton + Related-Work Positioning** - Compiling Typst skeleton, explicit Tapqir/Costes/Manders delta, figure specs — parallelizable now (completed 2026-07-02)
 - [ ] **Phase 11: Registration + Chromatic Uncertainty as Latent** - Promote dx/dy (+ chromatic warp) to inferred θ; posterior widens honestly under registration uncertainty
 - [ ] **Phase 12: Spatial Colocalization Map (GP/CAR)** - Lattice prior over the correlation grid → amortized per-region Δρ map + uncertainty (descope-to-v2.1 candidate)
 - [ ] **Phase 13: Three-Hypothesis Amortized Bayes Factor** - Evidence network extended to coloc/random/exclusion; replaces KDE+quadgk BF
@@ -154,7 +154,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
 | 8. External Physical Ground-Truth Corpus | 0/TBD | Not started | - |
 | 9. Cross-Method Comparator Harness | 3/6 | In Progress|  |
-| 10. Manuscript Skeleton + Related-Work Positioning | 4/5 | In Progress|  |
+| 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |
 | 11. Registration + Chromatic Uncertainty as Latent | 0/TBD | Not started | - |
 | 12. Spatial Colocalization Map (GP/CAR) | 0/TBD | Not started | - |
 | 13. Three-Hypothesis Amortized Bayes Factor | 0/TBD | Not started | - |
@@ -202,7 +202,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 10-02-PLAN.md — Claim spine content: honestly-caveated claim table rows with per-row axis/phase/figure/status (D-06, D-07)
 - [x] 10-03-PLAN.md — Related-work matrix + four-axis Tapqir differentiation, ASSUMED cells verified vs eLife 73860 (D-08, D-09)
 - [x] 10-04-PLAN.md — Figure specifications enumerating per-phase panels linked to claim rows (D-10)
-- [ ] 10-05-PLAN.md — Integration regression: content-asserting compile gate + final DoD (D-12)
+- [x] 10-05-PLAN.md — Integration regression: content-asserting compile gate + final DoD (D-12)
 
 ### Phase 11: Registration and Chromatic Uncertainty as Latent
 **Goal**: Promote sub-pixel registration (and an optional chromatic warp) from a fixed simulator nuisance to an inferred latent, so the coloc posterior widens honestly under registration uncertainty instead of reporting false confidence
