@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-02T11:56:18.322Z"
+last_updated: "2026-07-02T12:31:25.945Z"
 last_activity: 2026-07-02 -- Phase 05 execution started
 progress:
   total_phases: 16
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 35
-  completed_plans: 34
-  percent: 38
+  completed_plans: 35
+  percent: 44
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: 4 of 4
 Status: Executing Phase 05
 Last activity: 2026-07-02 -- Phase 05 execution started
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [██████████] 97%
 | Phase 05 P01 | 22min | 3 tasks | 8 files |
 | Phase 05 P05-02 | 19min | 2 tasks | 7 files |
 | Phase 05 P05-03 | 70min | 2 tasks | 2 files |
+| Phase 05 P05-04 | 60min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,8 @@ None yet.
 - [Phase 1]: NeuralEstimators v0.2.x is pre-1.0 and the Julia ML ecosystem is mid Flux→Lux/Reactant migration — the CPU-only Flux path must be confirmed exercised at the smoke gate; pinned Manifest is the mitigation
 - [Phase 5]: OOD detection power is structurally bounded by the fixed patch-correlation summary — summary-orthogonal misspecifications are provably undetectable and must be named, not hidden
 - [Phase 5]: "Tune until calibrated" is a data-snooping hazard — M and SBC threshold must be pre-registered before Phase 5 planning runs
+- [Phase 5-04]: ALL THREE reported pre-registered gates FAIL at locked consts on fresh VAL_MASTER_SEED (honest negatives, consts.jl untouched): SBC every-parameter KS/chi2 p~0 (overconfident/miscalibrated NPE); BF corr=0.886<0.95 AND max|dlogBF|=3.60>0.5; OOD density pooled AUC=0.730<0.80 (noise family AUC=0 blind spot). Feeds Phase-6 Go/No-Go as No-Go-or-iterate.
+- [Phase 5-04]: OOD PP channel non-viable on frozen net (non-finite posterior theta-hat on strong misspec crashes pp re-simulation); excluded from OR-fusion. Root-cause guard belongs in ood.jl (Phase-6/7 gap-closure).
 
 ## Deferred Items
 
@@ -140,6 +143,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-02T11:54:01.581Z
+Last session: 2026-07-02T12:31:13.443Z
 Stopped at: Phase 5 context gathered
 Resume file: .planning/phases/05-validation-bundle-sbc-amortized-bf-ood/05-CONTEXT.md
