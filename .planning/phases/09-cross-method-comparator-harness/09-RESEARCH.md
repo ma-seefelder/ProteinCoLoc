@@ -435,21 +435,24 @@ traffic_light(d) = d < DIVERGENCE_WARN ? :green : d < DIVERGENCE_FAIL ? :amber :
 | A4 | The optional NPE_ρ̂ / OOD columns (D-09) can reuse the Phase-4 `infer.jl` surface directly on comparator inputs | Pitfall 6 | If the trained net expects a specific standardization frozen from training folds, the column needs the loader's frozen stats; may require the Phase-3 standardization artifact. |
 | A5 | Isolating PythonCall/CondaPkg in a sub-env (like `spike/baseline/`) is sufficient for graceful degradation on Windows | Pitfall 5 | If PythonCall must load in the main process to marshal data, a subprocess-based bridge may be needed instead. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact Tapqir tutorial dataset + published anchor value (SC2).**
    - What we know: Tapqir (Ordabayev et al., eLife 2022; `gelles-brandeis/tapqir`, Apache-2.0, v1.1.19) ships a Part II tutorial that runs the `cosmos` model on a "sample data set"; the model outputs per-frame/per-location target-specific spot probabilities and global parameters.
    - What's unclear: the precise sample-dataset identifier, which scalar to check, and its published value + acceptable tolerance.
    - Recommendation: In the first planning wave, run the tutorial once in the isolated env to capture the recovered scalar; pin it as `TAPQIR_PUBLISHED_VALUE`/`TAPQIR_TOL` in `config.jl` (pre-declared). Until captured, the D-13 test accepts "anchor passed within tol OR skipped-with-flag."
+   - RESOLVED: Plan 09-04 Task 2 attempts the tutorial run to capture-and-pin `TAPQIR_PUBLISHED_VALUE`/`TAPQIR_TOL` in `config.jl`, or leaves a documented `NaN` clean-skip when Conda is unavailable; the 09-06 D-13 gate accepts `status ∈ (:passed,:skipped)`.
 
 2. **Bridge mechanism: in-process PythonCall vs subprocess.**
    - What we know: BayesInteractomics has a CondaPkg precedent (project stack notes); PythonCall works in-process.
    - What's unclear: whether in-process PythonCall in the main harness risks env contamination on Windows.
    - Recommendation: Prefer a **subprocess** invocation of a script run under the isolated `tapqir_env` (or a pre-built Conda env), returning the recovered scalar via stdout/JSON — fully decoupled and trivially skip-with-flag. Keep in-process PythonCall as fallback.
+   - RESOLVED: Plan 09-04 Task 1 mandates subprocess-only invocation under the isolated `tapqir_env` (no in-process PythonCall in the main harness); the acceptance criteria assert subprocess isolation.
 
 3. **Does the divergence column require the NPE, or is ground-truth-only sufficient for SC1?**
    - What we know: D-10 says diverge "from the simulator ground-truth (and, where available, from the NPE)."
    - Recommendation: Make the NPE columns **optional** (present when the Phase-4 net + frozen standardization are available; `missing` otherwise). SC1 and the core positioning are satisfiable from ground-truth alone; the NPE comparison is an enhancement, keeping Phase 9 independent of Phase-4 artifact availability.
+   - RESOLVED: Plan 09-05 Task 1 makes the NPE columns optional (`missing` when no NPE artifact is supplied); divergence is computed from ground-truth regime alone, keeping Phase 9 independent of Phase-4 artifact availability.
 
 ## Environment Availability
 
