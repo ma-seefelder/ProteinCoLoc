@@ -430,3 +430,11 @@ spike/.manifest_baseline.toml
 spike/validation/trained_ratio.jld2
 spike/validation/bf_sweep_draws.jld2
 spike/baseline/bf_baseline_artifact.jld2
+
+# Phase-5 (05-04) REPORTED-run artifacts — regenerable from run_sbc.jl / run_bf.jl /
+# run_ood.jl at the LOCKED consts on VAL_MASTER_SEED. The committed deliverables are the
+# run scripts; the .jld2 reports + PNG figures are reproducible outputs (numbers recorded
+# verbatim in 05-04-SUMMARY.md).
+spike/validation/sbc_report.jld2
+spike/validation/bf_report.jld2
+spike/validation/ood_report.jld2
