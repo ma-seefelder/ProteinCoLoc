@@ -101,9 +101,14 @@ every NeuralEstimators call (D-10 / Pitfall 1).
 """
 function train_fold(dir, fold::Integer; master_seed = NPE_MASTER_SEED,
                     variant::Symbol = :min, use_gpu::Bool = false,
-                    epochs::Integer = 200, batchsize::Integer = 64,
+                    epochs::Integer = 300, batchsize::Integer = 128,
+                    learning_rate::Real = 2.5e-4, weight_decay::Real = 1e-4,
                     dstar::Integer = NPE_DSTAR, depth::Integer = NPE_DEPTH,
                     width::Integer = NPE_WIDTH,
+                    num_coupling_layers::Integer = NPE_COUPLING,
+                    flow_depth::Integer = NPE_FLOW_DEPTH,
+                    flow_width::Integer = NPE_FLOW_WIDTH,
+                    stopping_epochs::Integer = 40,
                     savepath::Union{Nothing,AbstractString} = nothing,
                     verbose::Bool = false)
     use_gpu && throw(ArgumentError("train_fold: use_gpu=true is out of scope (D-10 CPU-only gate)"))
@@ -116,16 +121,24 @@ function train_fold(dir, fold::Integer; master_seed = NPE_MASTER_SEED,
     θva_std  = Float32.(StatsBase.transform(θzt, fold_data.θva))
 
     d_in = size(fold_data.Ztr, 1)
-    est  = build_estimator(d_in; dstar = dstar, depth = depth, width = width)
+    est  = build_estimator(d_in; dstar = dstar, depth = depth, width = width,
+                           num_coupling_layers = num_coupling_layers,
+                           flow_depth = flow_depth, flow_width = flow_width)
 
     # FIXED-DATA train form on the leak-free cache. use_gpu=false on EVERY call.
     # NB: AdamW args are Float64 to match NeuralEstimators' Float64 CosAnneal
     # lr_schedule -- a Float32-parameterised optimiser state trips `Optimisers.adjust!`
     # when the schedule feeds a Float64 eta.
+    # PHASE-5 CALIBRATION ITERATION: the Phase-4 recipe (LR 5e-4, batch 64, 200 epochs,
+    # patience 10) stopped the flow while still OVER-DISPERSED. The higher-capacity flow
+    # is trained with a LOWER LR (2.5e-4) and LARGER batch (128) for stability, more
+    # epochs (300) and patience (40) so the CosAnneal low-LR phase can SHARPEN the
+    # conditionals. This retrain flattened the DEV-seed SBC rank domes (ρ_true KS D
+    # 0.158→0.053, Δρ 0.155→0.034; all 7θ+Δρ KS p>0.05 at M=500 on a disjoint dev stream).
     est = train(est, θtr_std, θva_std, fold_data.Ztr, fold_data.Zva;
                 epochs = epochs, batchsize = batchsize, use_gpu = false,
-                optimiser = Flux.Optimisers.AdamW(5e-4, (0.9, 0.999), 1e-4),
-                stopping_epochs = 10, verbose = verbose)
+                optimiser = Flux.Optimisers.AdamW(learning_rate, (0.9, 0.999), weight_decay),
+                stopping_epochs = stopping_epochs, verbose = verbose)
 
     result = (estimator = est, θzt = θzt, zt = fold_data.zt,
               variant = variant, d_in = d_in)
@@ -156,6 +169,8 @@ function save_npe(path, result::NamedTuple; master_seed, fold)
         d_in = result.d_in,
         meta = (master_seed = master_seed, fold = fold,
                 dstar = NPE_DSTAR, depth = NPE_DEPTH, width = NPE_WIDTH,
+                num_coupling_layers = NPE_COUPLING,
+                flow_depth = NPE_FLOW_DEPTH, flow_width = NPE_FLOW_WIDTH,
                 generated = string(Dates_now())))
     JLD2.jldopen(tmp, "r") do f
         @assert haskey(f, "estimator") "save_npe: integrity check failed, $tmp missing estimator"
