@@ -66,29 +66,11 @@ isdefined(@__MODULE__, :resimulate_holdout) || include(joinpath(@__DIR__, "resim
 const DEFAULT_NPE_MODEL     = joinpath(@__DIR__, "trained_npe.jld2")
 const DEFAULT_ADVI_ARTIFACT = joinpath(@__DIR__, "..", "baseline", "advi_artifact.jld2")
 
-"""
-    _rmse_vector(rmse_df) -> Vector{Float64}
-
-Extract the per-parameter RMSE from a NeuralEstimators `rmse(assessment)` DataFrame
-into a 7-vector in θ field order (ρ_true first). Keyed by the default parameter
-names `θ1..θ7` so a re-ordered DataFrame cannot scramble the parameter axis. Uses
-plain `getproperty`/`getindex` on the DataFrame (no `using DataFrames`, a transitive
-dep) so the spike env's direct-dep set is unchanged.
-"""
-function _rmse_vector(rmse_df)
-    names  = rmse_df.parameter
-    values = rmse_df.rmse
-    lut    = Dict(String(names[i]) => Float64(values[i]) for i in 1:length(values))
-    return [lut["θ$i"] for i in 1:7]
-end
-
-"""
-    _theta_scale(θzt) -> Vector{Float64}
-
-The per-parameter scale of the frozen θ `ZScoreTransform`, used to map a
-standardized-space RMSE back to physical units (RMSE_phys = RMSE_std · scale).
-"""
-_theta_scale(θzt) = collect(Float64.(θzt.scale))
+# Shared post-assess helpers (`_rmse_vector` / `_theta_scale`), single-sourced in
+# _rmse_utils.jl (IN-02) so benchmark.jl and ablation.jl cannot drift. Guarded so a
+# second include (e.g. under runtests.jl after ablation.jl has already loaded it) is
+# a silent no-op.
+isdefined(@__MODULE__, :_rmse_vector) || include(joinpath(@__DIR__, "_rmse_utils.jl"))
 
 """
     _load_artifact(path) -> Dict

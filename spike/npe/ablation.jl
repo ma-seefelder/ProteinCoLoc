@@ -74,30 +74,12 @@ end
 # The two ablation arms (D-06). Order is fixed so `rmse_table` slice 1 is always :min.
 const ABL_VARIANTS = (:min, :aug)
 
-"""
-    _abl_rmse_vector(rmse_df) -> Vector{Float64}
-
-Extract the per-parameter RMSE from a NeuralEstimators `rmse(assessment)` DataFrame
-into a 7-vector in θ field order (ρ_true first), keyed by the default parameter names
-`θ1..θ7` so a re-ordered DataFrame cannot scramble the parameter axis. Mirrors
-benchmark.jl `_rmse_vector` (kept local so ablation.jl does not pull the heavier
-benchmark.jl chain -- BenchmarkTools / resimulate). No `using DataFrames` (transitive).
-"""
-function _abl_rmse_vector(rmse_df)
-    names  = rmse_df.parameter
-    values = rmse_df.rmse
-    lut    = Dict(String(names[i]) => Float64(values[i]) for i in 1:length(values))
-    return [lut["θ$i"] for i in 1:7]
-end
-
-"""
-    _abl_theta_scale(θzt) -> Vector{Float64}
-
-The per-parameter scale of the frozen θ `ZScoreTransform`, used to map a
-standardized-space RMSE back to physical units (RMSE_phys = RMSE_std · scale). Mirrors
-benchmark.jl `_theta_scale`.
-"""
-_abl_theta_scale(θzt) = collect(Float64.(θzt.scale))
+# Shared post-assess helpers (`_rmse_vector` / `_theta_scale`), single-sourced in
+# _rmse_utils.jl (IN-02). Previously ablation.jl kept byte-identical `_abl_*` copies to
+# avoid pulling the heavier benchmark.jl chain; the helpers live in their own tiny file
+# now, so both callers share ONE definition (no drift). Guarded so a second include
+# (e.g. under runtests.jl after benchmark.jl has already loaded it) is a silent no-op.
+isdefined(@__MODULE__, :_rmse_vector) || include(joinpath(@__DIR__, "_rmse_utils.jl"))
 
 """
     fold_rmse(dir, fold, variant; master_seed, K, N, epochs, batchsize,
@@ -128,8 +110,8 @@ function fold_rmse(dir, fold::Integer, variant::Symbol; master_seed,
     # assess on the validation fold in standardized θ-space, then scale to physical units.
     θva_std = Float32.(StatsBase.transform(res.θzt, fd.θva))
     a       = NeuralEstimators.assess(res.estimator, θva_std, fd.Zva; use_gpu = false, N = N)
-    rmse_std = _abl_rmse_vector(NeuralEstimators.rmse(a))
-    return rmse_std .* _abl_theta_scale(res.θzt)      # 7-vector, physical units
+    rmse_std = _rmse_vector(NeuralEstimators.rmse(a))
+    return rmse_std .* _theta_scale(res.θzt)          # 7-vector, physical units
 end
 
 """
