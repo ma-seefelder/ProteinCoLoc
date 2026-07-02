@@ -119,6 +119,13 @@ None - no external service configuration required. Typst 0.15.0 is preinstalled;
 - `main.typ` is fully wired so later plans edit only their own files (section stubs, claims.typ, figures/*), avoiding merge collisions.
 - No blockers. TYPST-COMPAT constraint satisfied without degradation (no figure disabled, no from-scratch fallback, no YAML-loader bypass).
 
+## Self-Check: PASSED
+
+- All claimed files exist (main.typ, figstyle.typ, claims.typ, refs.bib, build.ps1, build.sh, specs.typ, colours.yaml, nature.csl, 14 fonts, 6 section stubs, SUMMARY.md).
+- All task commits present: `e38c82a` (Task 1), `4a0c2f5` (Task 2), `c5f19de` (SUMMARY).
+- STATE.md / ROADMAP.md untouched (orchestrator owns those in worktree mode).
+- BI template repo git status clean (0 changes); src/, spike/, bayes.jl, colocalization.jl untouched.
+
 ---
 *Phase: 10-manuscript-skeleton-and-related-work-positioning*
 *Completed: 2026-07-02*
