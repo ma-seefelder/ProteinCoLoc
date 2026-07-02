@@ -20,6 +20,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Reproducible Demo + Go/No-Go Memo** - Seeded end-to-end `demo.jl`, decoupling proof, 2-3 page Go/No-Go decision memo
 - [ ] **Phase 7: Productionization (conditional on Go)** - Integrate amortized inference into `src/` behind a coexisting backend contract with user-definable `num_patches`
 
+**v2.0 feature expansion (Phases 8–16) — all downstream of a Phase-6 Go:**
+- [ ] **Phase 8: External Physical Ground-Truth Corpus** - Non-circular validation anchors (physical 100%-coloc + segregated constructs); CBS ingested as labelled-simulated; versioned data contract — parallelizable now
+- [ ] **Phase 9: Cross-Method Comparator Harness** - Costes/Manders/Pearson/Spearman + Tapqir bridge on shared inputs; "knows when the classics are wrong" — parallelizable now
+- [ ] **Phase 10: Manuscript Skeleton + Related-Work Positioning** - Compiling Typst skeleton, explicit Tapqir/Costes/Manders delta, figure specs — parallelizable now
+- [ ] **Phase 11: Registration + Chromatic Uncertainty as Latent** - Promote dx/dy (+ chromatic warp) to inferred θ; posterior widens honestly under registration uncertainty
+- [ ] **Phase 12: Spatial Colocalization Map (GP/CAR)** - Lattice prior over the correlation grid → amortized per-region Δρ map + uncertainty (descope-to-v2.1 candidate)
+- [ ] **Phase 13: Three-Hypothesis Amortized Bayes Factor** - Evidence network extended to coloc/random/exclusion; replaces KDE+quadgk BF
+- [ ] **Phase 14: Decision + Abstention Layer** - {coloc/not/ABSTAIN} at controlled Bayesian FDR; abstains on OOD/disagreement/ambiguity
+- [ ] **Phase 15: Calibration Operating Envelope + CI Gate** - Adversarial nuisance sweep → domain-of-applicability; OOD-before-break; SBC regression gate in CI
+- [ ] **Phase 16: External Validation + Manuscript Assembly** - Blind eval vs physical corpus + comparators; figures assembled; one-command repro + Zenodo
+
 ## Phase Details
 
 ### Phase 1: Environment + Smoke Gate
@@ -121,7 +132,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+Spike (Phases 1–7) executes in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7.
+v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstream of a Phase-6 **Go**:
+- Wave A {8, 9, 10} — no code dependency; parallelizable **now**, alongside Phases 5–7
+- Wave B: after Phase 7 (the AP1 API spine), run 11 ∥ 13 as parallel workstreams; 12 follows 11 (shared estimator/training code — serialized to avoid a merge collision)
+- Wave C {14, 15} — converge the features
+- Wave D {16} — external validation + manuscript assembly
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -132,3 +148,112 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Validation Bundle (SBC + BF + OOD) | 0/TBD | Not started | - |
 | 6. Reproducible Demo + Go/No-Go Memo | 0/TBD | Not started | - |
 | 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
+| 8. External Physical Ground-Truth Corpus | 0/TBD | Not started | - |
+| 9. Cross-Method Comparator Harness | 0/TBD | Not started | - |
+| 10. Manuscript Skeleton + Related-Work Positioning | 0/TBD | Not started | - |
+| 11. Registration + Chromatic Uncertainty as Latent | 0/TBD | Not started | - |
+| 12. Spatial Colocalization Map (GP/CAR) | 0/TBD | Not started | - |
+| 13. Three-Hypothesis Amortized Bayes Factor | 0/TBD | Not started | - |
+| 14. Decision + Abstention Layer | 0/TBD | Not started | - |
+| 15. Calibration Operating Envelope + CI Gate | 0/TBD | Not started | - |
+| 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
+
+### Phase 8: External Physical Ground-Truth Corpus
+**Goal**: Assemble a non-circular validation corpus whose truth does not come from the model's own simulator, so v2.0's calibration can be checked against external reality rather than mere self-consistency
+**Depends on**: Nothing (parallelizable now, alongside Phases 5–7)
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. ≥1 physical 100%-coloc anchor (single-protein-two-channel / tandem fluorophore) and ≥1 segregated anchor (nuclear-vs-membrane) archived with provenance + content hashes
+  2. The Colocalization Benchmark Source is ingested and explicitly flagged as simulated/secondary, never conflated with the physical anchors
+  3. A versioned validation data contract + manifest (schema, provenance, split policy) is checked in
+**Plans**: TBD
+- [ ] TBD (run /gsd:plan-phase 8 to break down)
+
+### Phase 9: Cross-Method Comparator Harness
+**Goal**: A reproducible harness that runs the classical estimators and a Tapqir bridge on shared inputs, so v2.0 can be positioned as "knows when the classics are wrong," not merely "agrees with them"
+**Depends on**: Nothing (parallelizable now)
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. Costes-p, Manders M1/M2, Pearson, Spearman all run on one shared input and emit a per-method comparison table
+  2. A Tapqir bridge reproduces a published Tapqir example as a sanity anchor
+  3. The harness reuses the BayesInteractomics comparator/audit pattern and is seeded/reproducible
+**Plans**: TBD
+- [ ] TBD (run /gsd:plan-phase 9 to break down)
+
+### Phase 10: Manuscript Skeleton and Related-Work Positioning
+**Goal**: A compiling manuscript skeleton with related-work positioning drafted early — especially the explicit delta versus Tapqir/Costes/Manders — so experiments are shaped by the claims they must support
+**Depends on**: Nothing (parallelizable now)
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. A Typst skeleton compiles with section scaffolding and a claim table
+  2. Related work drafts the Tapqir differentiation (amortization + SBC + registration-UQ + spatial map)
+  3. Figure specifications enumerate the panels each later phase must deliver
+**Plans**: TBD
+- [ ] TBD (run /gsd:plan-phase 10 to break down)
+
+### Phase 11: Registration and Chromatic Uncertainty as Latent
+**Goal**: Promote sub-pixel registration (and an optional chromatic warp) from a fixed simulator nuisance to an inferred latent, so the coloc posterior widens honestly under registration uncertainty instead of reporting false confidence
+**Depends on**: Phase 7
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. dx/dy (+ optional 1-param chromatic warp) is added to θ (extending `spike/simulator/forward.jl` stage 6 + `prior.jl`) and the NPE is retrained on the extended prior
+  2. Posterior width increases monotonically with injected registration uncertainty on a controlled sweep
+  3. Deliberately mis-registered test images are handled without silent overconfidence
+**Plans**: TBD
+- [ ] TBD (run /gsd:plan-phase 11 to break down)
+
+### Phase 12: Spatial Colocalization Map (GP/CAR)
+**Goal**: Replace exchangeable patch pooling with a spatial lattice prior over the correlation grid, producing an amortized per-region Δρ map with calibrated per-region uncertainty — the feature that makes v2.0 "spatial" and differentiates it from Tapqir
+**Depends on**: Phases 7, 11 (file overlap: both retrain/modify the shared PosteriorEstimator + simulator/training path — serialized to avoid a merge collision; spatial map trains on the registration-aware θ)
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. A lattice prior (CAR vs. AbstractGPs, chosen by mini-spike) is placed over the `correlation()` grid with a CNN/DeepSet summary
+  2. `coloc_map(...)` returns a Δρ map + uncertainty map, amortized in a forward pass
+  3. The spatial (CAR) model beats independent pooling in coverage on ≥1 real image
+  *(Highest effort-risk phase; the natural descope-to-v2.1 candidate if amortization stalls.)*
+**Plans**: TBD
+- [ ] TBD (run /gsd:plan-phase 12 to break down)
+
+### Phase 13: Three-Hypothesis Amortized Bayes Factor
+**Goal**: Extend the amortized evidence network from two- to three-way model comparison — colocalized / random / mutually-exclusive — so segregation becomes a first-class testable hypothesis, replacing the fragile KDE+quadgk Bayes factor
+**Depends on**: Phase 7
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. A 3-way `RatioEstimator`/evidence network emits a log-BF simplex over {coloc, random, exclusion} in one forward pass
+  2. It reproduces `compute_BayesFactor()` (`src/bayes.jl:109`) in the overlapping 2-way regime without quadgk/KDE
+  3. The exclusion hypothesis is validated on segregated ground-truth inputs
+**Plans**: TBD
+- [ ] TBD (run /gsd:plan-phase 13 to break down)
+
+### Phase 14: Decision and Abstention Layer
+**Goal**: Turn calibrated posteriors + the 3-way BF into an actionable batch decision {coloc / not / ABSTAIN} at a controlled Bayesian FDR, abstaining exactly when the tool should be silent
+**Depends on**: Phases 11, 12, 13
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. `decide_coloc(...)` emits calibrated calls at a user-set Bayesian FDR across a batch, using conformal sets (ConformalPrediction.jl) + decision-risk
+  2. Abstention triggers on OOD ∨ cross-method disagreement ∨ ambiguous conformal set
+  3. A monotone risk-coverage curve shows abstention concentrates on hard/OOD cases
+**Plans**: TBD
+- [ ] TBD (run /gsd:plan-phase 14 to break down)
+
+### Phase 15: Calibration Operating Envelope and CI Gate
+**Goal**: Map the tool's domain of applicability by adversarially sweeping nuisances until coverage breaks, prove the OOD flag fires before it does, and lock calibration into CI as a regression gate
+**Depends on**: Phases 11, 12
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. An adversarial sweep over spillover/PSF/autofluorescence/registration yields a domain-of-applicability map
+  2. The OOD flag demonstrably fires before empirical coverage breaks ("OOD-before-break")
+  3. An SBC/coverage regression test fails CI on calibration drift after a code change
+**Plans**: TBD
+- [ ] TBD (run /gsd:plan-phase 15 to break down)
+
+### Phase 16: External Validation and Manuscript Assembly
+**Goal**: Close v2.0 with a blind external evaluation against the physical corpus and comparator harness, and assemble the reproducible manuscript package
+**Depends on**: Phases 8, 9, 10, 14, 15
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. v2.0 is blind-evaluated against the physical anchors (Phase 8) and comparator harness (Phase 9); results reported honestly, including the simulator-validated mid-range caveat
+  2. All manuscript figures are assembled into the Phase-10 skeleton
+  3. `run_v2.jl` reproduces the end-to-end result from a fixed seed; a Zenodo/DOI release is prepared
+**Plans**: TBD
+- [ ] TBD (run /gsd:plan-phase 16 to break down)

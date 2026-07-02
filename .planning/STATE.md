@@ -91,6 +91,20 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03-03]: DATA-02 sharded JLD2 cache — SHA-256 content hash over data-defining source bytes + canonical(config) names the cache dir and lives in meta.jld2 (D-05); atomic .tmp+integrity-check+mv shard writes with shard_done resume-by-skip (D-04/D-06); reserved >=20 ADVI holdout from disjoint XOR-salted holdout_rng into separate holdout.jld2 with negative global_index, structurally disjoint from main pool (D-10)
 - [Phase ?]: [Phase 03-04]: DATA-03 leak-free loader — module Loader is the SOLE standardization path; ZScoreTransform fit on TRAIN columns only (D-07), no standardize_all symbol exists so leakage is impossible by construction (D-08), deterministic k=5 folds from fold_rng(master_seed XOR FOLD_SALT) (D-09), mask rows 65:128 bypass, holdout excluded structurally (D-10)
 
+### Roadmap Evolution
+
+- v2.0 feature expansion appended to the current milestone (Phases 8–16), derived from `next_project_analysis/11_plan_proteincoloc_v2.md` + scope decision log. Consolidated as ONE v2.0 paper (not split); multiplex/copula deferred to v2.1; expert-concordance dropped.
+- Phase 8 added: External Physical Ground-Truth Corpus (Depends on: nothing — parallelizable now)
+- Phase 9 added: Cross-Method Comparator Harness (Depends on: nothing — parallelizable now)
+- Phase 10 added: Manuscript Skeleton + Related-Work Positioning (Depends on: nothing — parallelizable now)
+- Phase 11 added: Registration + Chromatic Uncertainty as Latent (Depends on: Phase 7)
+- Phase 12 added: Spatial Colocalization Map (GP/CAR) (Depends on: Phases 7, 11 — serialized behind 11 due to shared PosteriorEstimator/training code; descope-to-v2.1 candidate)
+- Phase 13 added: Three-Hypothesis Amortized Bayes Factor (Depends on: Phase 7)
+- Phase 14 added: Decision + Abstention Layer (Depends on: Phases 11, 12, 13)
+- Phase 15 added: Calibration Operating Envelope + CI Gate (Depends on: Phases 11, 12)
+- Phase 16 added: External Validation + Manuscript Assembly (Depends on: Phases 8, 9, 10, 14, 15)
+- Dependency analysis (analyze-dependencies): sole correction vs. draft was serializing Phase 12 behind Phase 11 (file overlap on the estimator); Waves — A {8,9,10} now, B {11 ∥ 13, then 12}, C {14,15}, D {16}.
+
 ### Pending Todos
 
 [From .planning/todos/pending/ — ideas captured during sessions]
