@@ -1,0 +1,3277 @@
+{
+  "version": 1,
+  "timestamp": "2026-06-28T09:29:47.931Z",
+  "nodes": [
+    {
+      "label": "00_smoke.jl",
+      "file_type": "code",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L1",
+      "id": "spike_00_smoke_jl",
+      "community": 1,
+      "norm_label": "00_smoke.jl"
+    },
+    {
+      "label": "NeuralEstimators",
+      "file_type": "code",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L39",
+      "id": "neuralestimators",
+      "community": 1,
+      "norm_label": "neuralestimators"
+    },
+    {
+      "label": "Flux",
+      "file_type": "code",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L39",
+      "id": "flux",
+      "community": 1,
+      "norm_label": "flux"
+    },
+    {
+      "label": "Distributions",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L27",
+      "id": "distributions",
+      "community": 1,
+      "norm_label": "distributions"
+    },
+    {
+      "label": "Random",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L34",
+      "id": "random",
+      "community": 1,
+      "norm_label": "random"
+    },
+    {
+      "label": "prior_sampler()",
+      "file_type": "code",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L51",
+      "id": "spike_00_smoke_prior_sampler",
+      "community": 1,
+      "norm_label": "prior_sampler()"
+    },
+    {
+      "label": "gaussian_simulator()",
+      "file_type": "code",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L55",
+      "id": "spike_00_smoke_gaussian_simulator",
+      "community": 1,
+      "norm_label": "gaussian_simulator()"
+    },
+    {
+      "label": "02_simulator_demo.jl",
+      "file_type": "code",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L1",
+      "id": "spike_02_simulator_demo_jl",
+      "community": 0,
+      "norm_label": "02_simulator_demo.jl"
+    },
+    {
+      "label": "CairoMakie",
+      "file_type": "code",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L42",
+      "id": "cairomakie",
+      "community": 0,
+      "norm_label": "cairomakie"
+    },
+    {
+      "label": "StatsBase",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L23",
+      "id": "statsbase",
+      "community": 0,
+      "norm_label": "statsbase"
+    },
+    {
+      "label": "Statistics",
+      "file_type": "code",
+      "source_file": "test/runtests.jl",
+      "source_location": "L7",
+      "id": "statistics",
+      "community": 0,
+      "norm_label": "statistics"
+    },
+    {
+      "label": "_θ_med()",
+      "file_type": "code",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L68",
+      "id": "spike_02_simulator_demo_med",
+      "community": 0,
+      "norm_label": "_θ_med()"
+    },
+    {
+      "label": "mean_patch_corr()",
+      "file_type": "code",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L72",
+      "id": "spike_02_simulator_demo_mean_patch_corr",
+      "community": 0,
+      "norm_label": "mean_patch_corr()"
+    },
+    {
+      "label": "contract.jl",
+      "file_type": "code",
+      "source_file": "spike/contract.jl",
+      "source_location": "L1",
+      "id": "spike_contract_jl",
+      "community": 0,
+      "norm_label": "contract.jl"
+    },
+    {
+      "label": "Images",
+      "file_type": "code",
+      "source_file": "test/runtests.jl",
+      "source_location": "L6",
+      "id": "images",
+      "community": 0,
+      "norm_label": "images"
+    },
+    {
+      "label": "build_mci()",
+      "file_type": "code",
+      "source_file": "spike/contract.jl",
+      "source_location": "L60",
+      "id": "spike_contract_build_mci",
+      "community": 0,
+      "norm_label": "build_mci()"
+    },
+    {
+      "label": "patch_summary()",
+      "file_type": "code",
+      "source_file": "spike/contract.jl",
+      "source_location": "L85",
+      "id": "spike_contract_patch_summary",
+      "community": 0,
+      "norm_label": "patch_summary()"
+    },
+    {
+      "label": "induced_mu()",
+      "file_type": "code",
+      "source_file": "spike/contract.jl",
+      "source_location": "L100",
+      "id": "spike_contract_induced_mu",
+      "community": 0,
+      "norm_label": "induced_mu()"
+    },
+    {
+      "label": "calibration.jl",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L1",
+      "id": "spike_simulator_calibration_jl",
+      "community": 5,
+      "norm_label": "calibration.jl"
+    },
+    {
+      "label": "_sample_nuisances()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L78",
+      "id": "simulator_calibration_sample_nuisances",
+      "community": 5,
+      "norm_label": "_sample_nuisances()"
+    },
+    {
+      "label": "_theta()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L87",
+      "id": "simulator_calibration_theta",
+      "community": 5,
+      "norm_label": "_theta()"
+    },
+    {
+      "label": "_isotonic_increasing()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L92",
+      "id": "simulator_calibration_isotonic_increasing",
+      "community": 5,
+      "norm_label": "_isotonic_increasing()"
+    },
+    {
+      "label": "_induced_mu_samples()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L111",
+      "id": "simulator_calibration_induced_mu_samples",
+      "community": 5,
+      "norm_label": "_induced_mu_samples()"
+    },
+    {
+      "label": "_patchcorr_diagnostics()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L122",
+      "id": "simulator_calibration_patchcorr_diagnostics",
+      "community": 5,
+      "norm_label": "_patchcorr_diagnostics()"
+    },
+    {
+      "label": "_w1()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L138",
+      "id": "simulator_calibration_w1",
+      "community": 5,
+      "norm_label": "_w1()"
+    },
+    {
+      "label": "_ks_stat()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L146",
+      "id": "simulator_calibration_ks_stat",
+      "community": 5,
+      "norm_label": "_ks_stat()"
+    },
+    {
+      "label": "_real_anchor()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L157",
+      "id": "simulator_calibration_real_anchor",
+      "community": 5,
+      "norm_label": "_real_anchor()"
+    },
+    {
+      "label": "calibrate()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L169",
+      "id": "simulator_calibration_calibrate",
+      "community": 5,
+      "norm_label": "calibrate()"
+    },
+    {
+      "label": "_fmt()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L248",
+      "id": "simulator_calibration_fmt",
+      "community": 5,
+      "norm_label": "_fmt()"
+    },
+    {
+      "label": "emit_ghat()",
+      "file_type": "code",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L250",
+      "id": "simulator_calibration_emit_ghat",
+      "community": 5,
+      "norm_label": "emit_ghat()"
+    },
+    {
+      "label": "forward.jl",
+      "file_type": "code",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L1",
+      "id": "spike_simulator_forward_jl",
+      "community": 8,
+      "norm_label": "forward.jl"
+    },
+    {
+      "label": "ImageFiltering",
+      "file_type": "code",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L48",
+      "id": "imagefiltering",
+      "community": 8,
+      "norm_label": "imagefiltering"
+    },
+    {
+      "label": "ImageTransformations",
+      "file_type": "code",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L49",
+      "id": "imagetransformations",
+      "community": 8,
+      "norm_label": "imagetransformations"
+    },
+    {
+      "label": "CoordinateTransformations",
+      "file_type": "code",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L50",
+      "id": "coordinatetransformations",
+      "community": 8,
+      "norm_label": "coordinatetransformations"
+    },
+    {
+      "label": "Interpolations",
+      "file_type": "code",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L51",
+      "id": "interpolations",
+      "community": 8,
+      "norm_label": "interpolations"
+    },
+    {
+      "label": "_softplus()",
+      "file_type": "code",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L69",
+      "id": "simulator_forward_softplus",
+      "community": 8,
+      "norm_label": "_softplus()"
+    },
+    {
+      "label": "_smooth_field()",
+      "file_type": "code",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L84",
+      "id": "simulator_forward_smooth_field",
+      "community": 8,
+      "norm_label": "_smooth_field()"
+    },
+    {
+      "label": "simulate_pair()",
+      "file_type": "code",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L110",
+      "id": "simulator_forward_simulate_pair",
+      "community": 8,
+      "norm_label": "simulate_pair()"
+    },
+    {
+      "label": "ghat.jl",
+      "file_type": "code",
+      "source_file": "spike/simulator/ghat.jl",
+      "source_location": "L1",
+      "id": "spike_simulator_ghat_jl",
+      "community": 13,
+      "norm_label": "ghat.jl"
+    },
+    {
+      "label": "ghat()",
+      "file_type": "code",
+      "source_file": "spike/simulator/ghat.jl",
+      "source_location": "L59",
+      "id": "simulator_ghat_ghat",
+      "community": 13,
+      "norm_label": "ghat()"
+    },
+    {
+      "label": "prior.jl",
+      "file_type": "code",
+      "source_file": "spike/simulator/prior.jl",
+      "source_location": "L1",
+      "id": "spike_simulator_prior_jl",
+      "community": 1,
+      "norm_label": "prior.jl"
+    },
+    {
+      "label": "sample_prior()",
+      "file_type": "code",
+      "source_file": "spike/simulator/prior.jl",
+      "source_location": "L71",
+      "id": "simulator_prior_sample_prior",
+      "community": 1,
+      "norm_label": "sample_prior()"
+    },
+    {
+      "label": "runtests.jl",
+      "file_type": "code",
+      "source_file": "spike/test/runtests.jl",
+      "source_location": "L1",
+      "id": "spike_test_runtests_jl",
+      "community": 1,
+      "norm_label": "runtests.jl"
+    },
+    {
+      "label": "Test",
+      "file_type": "code",
+      "source_file": "test/runtests.jl",
+      "source_location": "L11",
+      "id": "test",
+      "community": 1,
+      "norm_label": "test"
+    },
+    {
+      "label": "Pkg",
+      "file_type": "code",
+      "source_file": "spike/test/runtests.jl",
+      "source_location": "L41",
+      "id": "pkg",
+      "community": 1,
+      "norm_label": "pkg"
+    },
+    {
+      "label": "test_data_pipeline.jl",
+      "file_type": "code",
+      "source_file": "spike/test/test_data_pipeline.jl",
+      "source_location": "L1",
+      "id": "spike_test_test_data_pipeline_jl",
+      "community": 1,
+      "norm_label": "test_data_pipeline.jl"
+    },
+    {
+      "label": "test_simulator.jl",
+      "file_type": "code",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L1",
+      "id": "spike_test_test_simulator_jl",
+      "community": 1,
+      "norm_label": "test_simulator.jl"
+    },
+    {
+      "label": "HypothesisTests",
+      "file_type": "code",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L39",
+      "id": "hypothesistests",
+      "community": 1,
+      "norm_label": "hypothesistests"
+    },
+    {
+      "label": "_θ()",
+      "file_type": "code",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L98",
+      "id": "test_test_simulator",
+      "community": 1,
+      "norm_label": "_θ()"
+    },
+    {
+      "label": "_w1_test()",
+      "file_type": "code",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L179",
+      "id": "test_test_simulator_w1_test",
+      "community": 1,
+      "norm_label": "_w1_test()"
+    },
+    {
+      "label": "_θ_plaus()",
+      "file_type": "code",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L244",
+      "id": "test_test_simulator_plaus",
+      "community": 1,
+      "norm_label": "_θ_plaus()"
+    },
+    {
+      "label": "_corr1()",
+      "file_type": "code",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L248",
+      "id": "test_test_simulator_corr1",
+      "community": 1,
+      "norm_label": "_corr1()"
+    },
+    {
+      "label": "bayes.jl",
+      "file_type": "code",
+      "source_file": "src/bayes.jl",
+      "source_location": "L1",
+      "id": "src_bayes_jl",
+      "community": 12,
+      "norm_label": "bayes.jl"
+    },
+    {
+      "label": "CoLocResult",
+      "file_type": "code",
+      "source_file": "src/bayes.jl",
+      "source_location": "L75",
+      "id": "src_bayes_colocresult",
+      "community": 12,
+      "norm_label": "colocresult"
+    },
+    {
+      "label": "compute_BayesFactor()",
+      "file_type": "code",
+      "source_file": "src/bayes.jl",
+      "source_location": "L109",
+      "id": "src_bayes_compute_bayesfactor",
+      "community": 12,
+      "norm_label": "compute_bayesfactor()"
+    },
+    {
+      "label": "colocalization.jl",
+      "file_type": "code",
+      "source_file": "src/colocalization.jl",
+      "source_location": "L1",
+      "id": "src_colocalization_jl",
+      "community": 16,
+      "norm_label": "colocalization.jl"
+    },
+    {
+      "label": "compile.jl",
+      "file_type": "code",
+      "source_file": "src/compile.jl",
+      "source_location": "L1",
+      "id": "src_compile_jl",
+      "community": 14,
+      "norm_label": "compile.jl"
+    },
+    {
+      "label": "PackageCompiler",
+      "file_type": "code",
+      "source_file": "src/compile.jl",
+      "source_location": "L21",
+      "id": "packagecompiler",
+      "community": 14,
+      "norm_label": "packagecompiler"
+    },
+    {
+      "label": "gui.jl",
+      "file_type": "code",
+      "source_file": "src/gui.jl",
+      "source_location": "L1",
+      "id": "src_gui_jl",
+      "community": 15,
+      "norm_label": "gui.jl"
+    },
+    {
+      "label": "gui()",
+      "file_type": "code",
+      "source_file": "src/gui.jl",
+      "source_location": "L21",
+      "id": "src_gui_gui",
+      "community": 15,
+      "norm_label": "gui()"
+    },
+    {
+      "label": "gui_css.jl",
+      "file_type": "code",
+      "source_file": "src/gui_css.jl",
+      "source_location": "L1",
+      "id": "src_gui_css_jl",
+      "community": 17,
+      "norm_label": "gui_css.jl"
+    },
+    {
+      "label": "LoadImages.jl",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L1",
+      "id": "src_loadimages_jl",
+      "community": 3,
+      "norm_label": "loadimages.jl"
+    },
+    {
+      "label": "AbstractMultiChannelImage",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L24",
+      "id": "src_loadimages_abstractmultichannelimage",
+      "community": 3,
+      "norm_label": "abstractmultichannelimage"
+    },
+    {
+      "label": "image_data()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L31",
+      "id": "src_loadimages_image_data",
+      "community": 3,
+      "norm_label": "image_data()"
+    },
+    {
+      "label": "channel_names()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L41",
+      "id": "src_loadimages_channel_names",
+      "community": 3,
+      "norm_label": "channel_names()"
+    },
+    {
+      "label": "image_name()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L51",
+      "id": "src_loadimages_image_name",
+      "community": 3,
+      "norm_label": "image_name()"
+    },
+    {
+      "label": "image_paths()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L61",
+      "id": "src_loadimages_image_paths",
+      "community": 3,
+      "norm_label": "image_paths()"
+    },
+    {
+      "label": "pixel_dimensions()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L71",
+      "id": "src_loadimages_pixel_dimensions",
+      "community": 3,
+      "norm_label": "pixel_dimensions()"
+    },
+    {
+      "label": "otsu_thresholds()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L81",
+      "id": "src_loadimages_otsu_thresholds",
+      "community": 3,
+      "norm_label": "otsu_thresholds()"
+    },
+    {
+      "label": "num_channels()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L91",
+      "id": "src_loadimages_num_channels",
+      "community": 3,
+      "norm_label": "num_channels()"
+    },
+    {
+      "label": "_calculate_mask()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L235",
+      "id": "src_loadimages_calculate_mask",
+      "community": 3,
+      "norm_label": "_calculate_mask()"
+    },
+    {
+      "label": "_apply_mask!()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L259",
+      "id": "src_loadimages_apply_mask",
+      "community": 3,
+      "norm_label": "_apply_mask!()"
+    },
+    {
+      "label": "shuffle_pixels()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L287",
+      "id": "src_loadimages_shuffle_pixels",
+      "community": 3,
+      "norm_label": "shuffle_pixels()"
+    },
+    {
+      "label": "shuffle_blocks!()",
+      "file_type": "code",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L308",
+      "id": "src_loadimages_shuffle_blocks",
+      "community": 3,
+      "norm_label": "shuffle_blocks!()"
+    },
+    {
+      "label": "main.jl",
+      "file_type": "code",
+      "source_file": "src/main.jl",
+      "source_location": "L1",
+      "id": "src_main_jl",
+      "community": 18,
+      "norm_label": "main.jl"
+    },
+    {
+      "label": "plot.jl",
+      "file_type": "code",
+      "source_file": "src/plot.jl",
+      "source_location": "L1",
+      "id": "src_plot_jl",
+      "community": 10,
+      "norm_label": "plot.jl"
+    },
+    {
+      "label": "minmax_norm!()",
+      "file_type": "code",
+      "source_file": "src/plot.jl",
+      "source_location": "L35",
+      "id": "src_plot_minmax_norm",
+      "community": 10,
+      "norm_label": "minmax_norm!()"
+    },
+    {
+      "label": "cm_to_px()",
+      "file_type": "code",
+      "source_file": "src/plot.jl",
+      "source_location": "L57",
+      "id": "src_plot_cm_to_px",
+      "community": 10,
+      "norm_label": "cm_to_px()"
+    },
+    {
+      "label": "calculate_font_size()",
+      "file_type": "code",
+      "source_file": "src/plot.jl",
+      "source_location": "L81",
+      "id": "src_plot_calculate_font_size",
+      "community": 10,
+      "norm_label": "calculate_font_size()"
+    },
+    {
+      "label": "plot_mask()",
+      "file_type": "code",
+      "source_file": "src/plot.jl",
+      "source_location": "L223",
+      "id": "src_plot_plot_mask",
+      "community": 10,
+      "norm_label": "plot_mask()"
+    },
+    {
+      "label": "_local_correlation_plot()",
+      "file_type": "code",
+      "source_file": "src/plot.jl",
+      "source_location": "L300",
+      "id": "src_plot_local_correlation_plot",
+      "community": 10,
+      "norm_label": "_local_correlation_plot()"
+    },
+    {
+      "label": "ProteinCoLoc.jl",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L1",
+      "id": "src_proteincoloc_jl",
+      "community": 0,
+      "norm_label": "proteincoloc.jl"
+    },
+    {
+      "label": "ProteinCoLoc",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L20",
+      "id": "src_proteincoloc_proteincoloc",
+      "community": 0,
+      "norm_label": "proteincoloc"
+    },
+    {
+      "label": "Base",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L22",
+      "id": "base",
+      "community": 0,
+      "norm_label": "base"
+    },
+    {
+      "label": "CSV",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L24",
+      "id": "csv",
+      "community": 0,
+      "norm_label": "csv"
+    },
+    {
+      "label": "DataFrames",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L25",
+      "id": "dataframes",
+      "community": 0,
+      "norm_label": "dataframes"
+    },
+    {
+      "label": "GLMakie",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L28",
+      "id": "glmakie",
+      "community": 0,
+      "norm_label": "glmakie"
+    },
+    {
+      "label": "KernelDensity",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L30",
+      "id": "kerneldensity",
+      "community": 0,
+      "norm_label": "kerneldensity"
+    },
+    {
+      "label": "QuadGK",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L31",
+      "id": "quadgk",
+      "community": 0,
+      "norm_label": "quadgk"
+    },
+    {
+      "label": "Turing",
+      "file_type": "code",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L35",
+      "id": "turing",
+      "community": 0,
+      "norm_label": "turing"
+    },
+    {
+      "label": "script.jl",
+      "file_type": "code",
+      "source_file": "src/script.jl",
+      "source_location": "L1",
+      "id": "src_script_jl",
+      "community": 19,
+      "norm_label": "script.jl"
+    },
+    {
+      "label": "utils.jl",
+      "file_type": "code",
+      "source_file": "src/utils.jl",
+      "source_location": "L1",
+      "id": "src_utils_jl",
+      "community": 11,
+      "norm_label": "utils.jl"
+    },
+    {
+      "label": "plot_images()",
+      "file_type": "code",
+      "source_file": "src/utils.jl",
+      "source_location": "L125",
+      "id": "src_utils_plot_images",
+      "community": 11,
+      "norm_label": "plot_images()"
+    },
+    {
+      "label": "generate_plots()",
+      "file_type": "code",
+      "source_file": "src/utils.jl",
+      "source_location": "L200",
+      "id": "src_utils_generate_plots",
+      "community": 11,
+      "norm_label": "generate_plots()"
+    },
+    {
+      "label": "combinations2()",
+      "file_type": "code",
+      "source_file": "src/utils.jl",
+      "source_location": "L290",
+      "id": "src_utils_combinations2",
+      "community": 11,
+      "norm_label": "combinations2()"
+    },
+    {
+      "label": "runtests.jl",
+      "file_type": "code",
+      "source_file": "test/runtests.jl",
+      "source_location": "L1",
+      "id": "test_runtests_jl",
+      "community": 0,
+      "norm_label": "runtests.jl"
+    },
+    {
+      "label": "Random123",
+      "file_type": "code",
+      "source_file": "test/runtests.jl",
+      "source_location": "L10",
+      "id": "random123",
+      "community": 0,
+      "norm_label": "random123"
+    },
+    {
+      "label": "CLAUDE.md",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "id": "claude_md",
+      "community": 6,
+      "norm_label": "claude.md"
+    },
+    {
+      "label": "Project",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L2",
+      "id": "proteincoloc_claude_project",
+      "community": 6,
+      "norm_label": "project"
+    },
+    {
+      "label": "Constraints",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L25",
+      "id": "proteincoloc_claude_constraints",
+      "community": 6,
+      "norm_label": "constraints"
+    },
+    {
+      "label": "Technology Stack",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L36",
+      "id": "proteincoloc_claude_technology_stack",
+      "community": 6,
+      "norm_label": "technology stack"
+    },
+    {
+      "label": "Executive Verdict (read first)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L38",
+      "id": "proteincoloc_claude_executive_verdict_read_first",
+      "community": 6,
+      "norm_label": "executive verdict (read first)"
+    },
+    {
+      "label": "Recommended Stack",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L39",
+      "id": "proteincoloc_claude_recommended_stack",
+      "community": 6,
+      "norm_label": "recommended stack"
+    },
+    {
+      "label": "Core Technologies",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L40",
+      "id": "proteincoloc_claude_core_technologies",
+      "community": 6,
+      "norm_label": "core technologies"
+    },
+    {
+      "label": "Supporting Libraries",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L49",
+      "id": "proteincoloc_claude_supporting_libraries",
+      "community": 6,
+      "norm_label": "supporting libraries"
+    },
+    {
+      "label": "Development Tools",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L61",
+      "id": "proteincoloc_claude_development_tools",
+      "community": 6,
+      "norm_label": "development tools"
+    },
+    {
+      "label": "Installation",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L67",
+      "id": "proteincoloc_claude_installation",
+      "community": 6,
+      "norm_label": "installation"
+    },
+    {
+      "label": "In ProteinCoLoc/spike/ — own environment, do NOT touch the root project",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L68",
+      "id": "proteincoloc_claude_in_proteincoloc_spike_own_environment_do_not_touch_the_root_project",
+      "community": 6,
+      "norm_label": "in proteincoloc/spike/ — own environment, do not touch the root project"
+    },
+    {
+      "label": "Optional GPU accelerator (only if training is slow; spike must run without it)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L69",
+      "id": "proteincoloc_claude_optional_gpu_accelerator_only_if_training_is_slow_spike_must_run_without_it",
+      "community": 6,
+      "norm_label": "optional gpu accelerator (only if training is slow; spike must run without it)"
+    },
+    {
+      "label": "Pkg.add(\"CUDA\")           # loaded as a Flux extension, separate from CPU path",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L70",
+      "id": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "community": 4,
+      "norm_label": "pkg.add(\"cuda\")           # loaded as a flux extension, separate from cpu path"
+    },
+    {
+      "label": "Key API Notes (AP1 smoke target)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L71",
+      "id": "proteincoloc_claude_key_api_notes_ap1_smoke_target",
+      "community": 4,
+      "norm_label": "key api notes (ap1 smoke target)"
+    },
+    {
+      "label": "RxInfer.jl Feasibility Assessment (explicit, per requirements)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L76",
+      "id": "proteincoloc_claude_rxinfer_jl_feasibility_assessment_explicit_per_requirements",
+      "community": 4,
+      "norm_label": "rxinfer.jl feasibility assessment (explicit, per requirements)"
+    },
+    {
+      "label": "Alternatives Considered",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L82",
+      "id": "proteincoloc_claude_alternatives_considered",
+      "community": 4,
+      "norm_label": "alternatives considered"
+    },
+    {
+      "label": "What NOT to Use",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L91",
+      "id": "proteincoloc_claude_what_not_to_use",
+      "community": 4,
+      "norm_label": "what not to use"
+    },
+    {
+      "label": "Stack Patterns by Variant",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L100",
+      "id": "proteincoloc_claude_stack_patterns_by_variant",
+      "community": 4,
+      "norm_label": "stack patterns by variant"
+    },
+    {
+      "label": "Version Compatibility",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L105",
+      "id": "proteincoloc_claude_version_compatibility",
+      "community": 4,
+      "norm_label": "version compatibility"
+    },
+    {
+      "label": "Sources",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L113",
+      "id": "proteincoloc_claude_sources",
+      "community": 4,
+      "norm_label": "sources"
+    },
+    {
+      "label": "Conventions",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L128",
+      "id": "proteincoloc_claude_conventions",
+      "community": 4,
+      "norm_label": "conventions"
+    },
+    {
+      "label": "Architecture",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L134",
+      "id": "proteincoloc_claude_architecture",
+      "community": 4,
+      "norm_label": "architecture"
+    },
+    {
+      "label": "Project Skills",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L140",
+      "id": "proteincoloc_claude_project_skills",
+      "community": 4,
+      "norm_label": "project skills"
+    },
+    {
+      "label": "GSD Workflow Enforcement",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L146",
+      "id": "proteincoloc_claude_gsd_workflow_enforcement",
+      "community": 4,
+      "norm_label": "gsd workflow enforcement"
+    },
+    {
+      "label": "Developer Profile",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L161",
+      "id": "proteincoloc_claude_developer_profile",
+      "community": 4,
+      "norm_label": "developer profile"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md",
+      "community": 9,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "ProteinCoLoc",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "proteincoloc_readme_proteincoloc",
+      "community": 9,
+      "norm_label": "proteincoloc"
+    },
+    {
+      "label": "Description",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L4",
+      "id": "proteincoloc_readme_description",
+      "community": 9,
+      "norm_label": "description"
+    },
+    {
+      "label": "Features",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L8",
+      "id": "proteincoloc_readme_features",
+      "community": 9,
+      "norm_label": "features"
+    },
+    {
+      "label": "License",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "id": "proteincoloc_readme_license",
+      "community": 9,
+      "norm_label": "license"
+    },
+    {
+      "label": "Citation",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L20",
+      "id": "proteincoloc_readme_citation",
+      "community": 9,
+      "norm_label": "citation"
+    },
+    {
+      "label": "Contact",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L25",
+      "id": "proteincoloc_readme_contact",
+      "community": 9,
+      "norm_label": "contact"
+    },
+    {
+      "label": "NOTES.md",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L1",
+      "id": "spike_notes_md",
+      "community": 2,
+      "norm_label": "notes.md"
+    },
+    {
+      "label": "Spike Notes — ProteinCoLoc v2.0 (AmortizedColoc)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L1",
+      "id": "spike_notes_spike_notes_proteincoloc_v2_0_amortizedcoloc",
+      "community": 2,
+      "norm_label": "spike notes — proteincoloc v2.0 (amortizedcoloc)"
+    },
+    {
+      "label": "1. Stack Decision (ENV-04 / D-07)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L9",
+      "id": "spike_notes_1_stack_decision_env_04_d_07",
+      "community": 2,
+      "norm_label": "1. stack decision (env-04 / d-07)"
+    },
+    {
+      "label": "Explicitly excluded (CLAUDE.md \"What NOT to Use\")",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L24",
+      "id": "spike_notes_explicitly_excluded_claude_md_what_not_to_use",
+      "community": 2,
+      "norm_label": "explicitly excluded (claude.md \"what not to use\")"
+    },
+    {
+      "label": "2. Julia-Version Record (ENV-03 / D-05)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L41",
+      "id": "spike_notes_2_julia_version_record_env_03_d_05",
+      "community": 2,
+      "norm_label": "2. julia-version record (env-03 / d-05)"
+    },
+    {
+      "label": "code:block1 (juliaup add 1.12.6)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L46",
+      "id": "spike_notes_codeblock_1",
+      "community": 2,
+      "norm_label": "code:block1 (juliaup add 1.12.6)"
+    },
+    {
+      "label": "Package pin (ENV-03 / D-05)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L65",
+      "id": "spike_notes_package_pin_env_03_d_05",
+      "community": 2,
+      "norm_label": "package pin (env-03 / d-05)"
+    },
+    {
+      "label": "4. Parent-Package Coupling Outcome (ENV-01 / D-01) — Plan 01-04",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L85",
+      "id": "spike_notes_4_parent_package_coupling_outcome_env_01_d_01_plan_01_04",
+      "community": 2,
+      "norm_label": "4. parent-package coupling outcome (env-01 / d-01) — plan 01-04"
+    },
+    {
+      "label": "Verbatim conflict evidence",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L94",
+      "id": "spike_notes_verbatim_conflict_evidence",
+      "community": 2,
+      "norm_label": "verbatim conflict evidence"
+    },
+    {
+      "label": "code:block2 (⌃ [38f6df31] ↓ NeuralEstimators v0.2.1 ⇒ v0.1.4)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L100",
+      "id": "spike_notes_codeblock_2",
+      "community": 2,
+      "norm_label": "code:block2 (⌃ [38f6df31] ↓ neuralestimators v0.2.1 ⇒ v0.1.4)"
+    },
+    {
+      "label": "code:block3 (⌃ [38f6df31] NeuralEstimators v0.1.4 (<v0.2.1))",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L107",
+      "id": "spike_notes_codeblock_3",
+      "community": 2,
+      "norm_label": "code:block3 (⌃ [38f6df31] neuralestimators v0.1.4 (<v0.2.1))"
+    },
+    {
+      "label": "code:block4 (NeuralEstimators CPU smoke: Error During Test)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L115",
+      "id": "spike_notes_codeblock_4",
+      "community": 2,
+      "norm_label": "code:block4 (neuralestimators cpu smoke: error during test)"
+    },
+    {
+      "label": "Resolution: revert + `include()` fallback",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L133",
+      "id": "spike_notes_resolution_revert_include_fallback",
+      "community": 2,
+      "norm_label": "resolution: revert + `include()` fallback"
+    },
+    {
+      "label": "code:julia (# Phase 2+ (NOT Phase 1): bring in the summary-statistic con)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L142",
+      "id": "spike_notes_codeblock_5",
+      "community": 2,
+      "norm_label": "code:julia (# phase 2+ (not phase 1): bring in the summary-statistic con)"
+    },
+    {
+      "label": "5. Decoupling Proof (ENV-01 / DEMO-02 pattern) — Plan 01-04 Task 2",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L162",
+      "id": "spike_notes_5_decoupling_proof_env_01_demo_02_pattern_plan_01_04_task_2",
+      "community": 2,
+      "norm_label": "5. decoupling proof (env-01 / demo-02 pattern) — plan 01-04 task 2"
+    },
+    {
+      "label": "code:sh (git diff --quiet f581d95 -- Project.toml Manifest.toml src/ )",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L172",
+      "id": "spike_notes_codeblock_6",
+      "community": 2,
+      "norm_label": "code:sh (git diff --quiet f581d95 -- project.toml manifest.toml src/ )"
+    },
+    {
+      "label": "3. SIM-02 Induced-μ Calibration — the prior-consistency proof (Plan 02-03)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L182",
+      "id": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "community": 7,
+      "norm_label": "3. sim-02 induced-μ calibration — the prior-consistency proof (plan 02-03)"
+    },
+    {
+      "label": "Turing target ranges (the consistency target)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L188",
+      "id": "spike_notes_turing_target_ranges_the_consistency_target",
+      "community": 7,
+      "norm_label": "turing target ranges (the consistency target)"
+    },
+    {
+      "label": "code:julia (mu    ~ Truncated(Cauchy(0.0, 0.3), -1.0, 1.0)   # ← the SIM)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L190",
+      "id": "spike_notes_codeblock_7",
+      "community": 7,
+      "norm_label": "code:julia (mu    ~ truncated(cauchy(0.0, 0.3), -1.0, 1.0)   # ← the sim)"
+    },
+    {
+      "label": "The fitted map ĝ : μ ↦ ρ_true",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L197",
+      "id": "spike_notes_the_fitted_map_true",
+      "community": 7,
+      "norm_label": "the fitted map g : μ ↦ ρ_true"
+    },
+    {
+      "label": "Sweep + span-past-±0.9 rationale (D-15)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L207",
+      "id": "spike_notes_sweep_span_past_0_9_rationale_d_15",
+      "community": 7,
+      "norm_label": "sweep + span-past-±0.9 rationale (d-15)"
+    },
+    {
+      "label": "Induced-vs-target μ match (the SIM-02 pass metric)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L217",
+      "id": "spike_notes_induced_vs_target_match_the_sim_02_pass_metric",
+      "community": 7,
+      "norm_label": "induced-vs-target μ match (the sim-02 pass metric)"
+    },
+    {
+      "label": "Size-invariance (T-02-SI, D-08/D-09)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L229",
+      "id": "spike_notes_size_invariance_t_02_si_d_08_d_09",
+      "community": 7,
+      "norm_label": "size-invariance (t-02-si, d-08/d-09)"
+    },
+    {
+      "label": "Real anchor (D-16) — faithful extraction + negative-tail reachability",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L235",
+      "id": "spike_notes_real_anchor_d_16_faithful_extraction_negative_tail_reachability",
+      "community": 7,
+      "norm_label": "real anchor (d-16) — faithful extraction + negative-tail reachability"
+    },
+    {
+      "label": "Chosen nuisance ranges (Claude's discretion, D-03)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L249",
+      "id": "spike_notes_chosen_nuisance_ranges_claude_s_discretion_d_03",
+      "community": 7,
+      "norm_label": "chosen nuisance ranges (claude's discretion, d-03)"
+    },
+    {
+      "label": "σ / τ / ν consistency (D-03 — a CHECK, not a fit; the SIM-02 gate is on μ)",
+      "file_type": "document",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L262",
+      "id": "spike_notes_consistency_d_03_a_check_not_a_fit_the_sim_02_gate_is_on",
+      "community": 7,
+      "norm_label": "σ / τ / ν consistency (d-03 — a check, not a fit; the sim-02 gate is on μ)"
+    }
+  ],
+  "edges": [
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L39",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_00_smoke_jl",
+      "target": "neuralestimators",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L39",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_00_smoke_jl",
+      "target": "flux",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L39",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_00_smoke_jl",
+      "target": "distributions",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L39",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_00_smoke_jl",
+      "target": "random",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L51",
+      "weight": 1,
+      "source": "spike_00_smoke_jl",
+      "target": "spike_00_smoke_prior_sampler",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/00_smoke.jl",
+      "source_location": "L55",
+      "weight": 1,
+      "source": "spike_00_smoke_jl",
+      "target": "spike_00_smoke_gaussian_simulator",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L46",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_02_simulator_demo_jl",
+      "target": "distributions",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L53",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_calibration_jl",
+      "target": "distributions",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L47",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_forward_jl",
+      "target": "distributions",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/prior.jl",
+      "source_location": "L34",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_prior_jl",
+      "target": "distributions",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L27",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "distributions",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L45",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_02_simulator_demo_jl",
+      "target": "random",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L54",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_calibration_jl",
+      "target": "random",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L53",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_forward_jl",
+      "target": "random",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/prior.jl",
+      "source_location": "L35",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_prior_jl",
+      "target": "random",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/test_data_pipeline.jl",
+      "source_location": "L33",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_test_test_data_pipeline_jl",
+      "target": "random",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L38",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_test_test_simulator_jl",
+      "target": "random",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L34",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "random",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L42",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_02_simulator_demo_jl",
+      "target": "cairomakie",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L43",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_02_simulator_demo_jl",
+      "target": "statsbase",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L44",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_02_simulator_demo_jl",
+      "target": "statistics",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L68",
+      "weight": 1,
+      "source": "spike_02_simulator_demo_jl",
+      "target": "spike_02_simulator_demo_med",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/02_simulator_demo.jl",
+      "source_location": "L72",
+      "weight": 1,
+      "source": "spike_02_simulator_demo_jl",
+      "target": "spike_02_simulator_demo_mean_patch_corr",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/contract.jl",
+      "source_location": "L41",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_contract_jl",
+      "target": "statsbase",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L52",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_calibration_jl",
+      "target": "statsbase",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L23",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "statsbase",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/contract.jl",
+      "source_location": "L42",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_contract_jl",
+      "target": "statistics",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L51",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_calibration_jl",
+      "target": "statistics",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L52",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_forward_jl",
+      "target": "statistics",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L32",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "statistics",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "test/runtests.jl",
+      "source_location": "L7",
+      "weight": 1,
+      "context": "import",
+      "source": "test_runtests_jl",
+      "target": "statistics",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/contract.jl",
+      "source_location": "L43",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_contract_jl",
+      "target": "images",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/contract.jl",
+      "source_location": "L60",
+      "weight": 1,
+      "source": "spike_contract_jl",
+      "target": "spike_contract_build_mci",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/contract.jl",
+      "source_location": "L85",
+      "weight": 1,
+      "source": "spike_contract_jl",
+      "target": "spike_contract_patch_summary",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/contract.jl",
+      "source_location": "L100",
+      "weight": 1,
+      "source": "spike_contract_jl",
+      "target": "spike_contract_induced_mu",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L29",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "images",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "test/runtests.jl",
+      "source_location": "L6",
+      "weight": 1,
+      "context": "import",
+      "source": "test_runtests_jl",
+      "target": "images",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/contract.jl",
+      "source_location": "L104",
+      "weight": 1,
+      "context": "call",
+      "source": "spike_contract_induced_mu",
+      "target": "spike_contract_patch_summary",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L78",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_sample_nuisances",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L87",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_theta",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L92",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_isotonic_increasing",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L111",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_induced_mu_samples",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L122",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_patchcorr_diagnostics",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L138",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_w1",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L146",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_ks_stat",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L157",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_real_anchor",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L169",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_calibrate",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L248",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_fmt",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L250",
+      "weight": 1,
+      "source": "spike_simulator_calibration_jl",
+      "target": "simulator_calibration_emit_ghat",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L114",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_induced_mu_samples",
+      "target": "simulator_calibration_sample_nuisances",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L127",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_patchcorr_diagnostics",
+      "target": "simulator_calibration_sample_nuisances",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L212",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_calibrate",
+      "target": "simulator_calibration_sample_nuisances",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L114",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_induced_mu_samples",
+      "target": "simulator_calibration_theta",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L127",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_patchcorr_diagnostics",
+      "target": "simulator_calibration_theta",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L212",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_calibrate",
+      "target": "simulator_calibration_theta",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L190",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_calibrate",
+      "target": "simulator_calibration_isotonic_increasing",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L225",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_calibrate",
+      "target": "simulator_calibration_induced_mu_samples",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L230",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_calibrate",
+      "target": "simulator_calibration_patchcorr_diagnostics",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L217",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_calibrate",
+      "target": "simulator_calibration_w1",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L218",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_calibrate",
+      "target": "simulator_calibration_ks_stat",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L235",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_calibrate",
+      "target": "simulator_calibration_real_anchor",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/calibration.jl",
+      "source_location": "L295",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_calibration_emit_ghat",
+      "target": "simulator_calibration_fmt",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L48",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_forward_jl",
+      "target": "imagefiltering",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L49",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_forward_jl",
+      "target": "imagetransformations",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L50",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_forward_jl",
+      "target": "coordinatetransformations",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L51",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_simulator_forward_jl",
+      "target": "interpolations",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L69",
+      "weight": 1,
+      "source": "spike_simulator_forward_jl",
+      "target": "simulator_forward_softplus",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L84",
+      "weight": 1,
+      "source": "spike_simulator_forward_jl",
+      "target": "simulator_forward_smooth_field",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L110",
+      "weight": 1,
+      "source": "spike_simulator_forward_jl",
+      "target": "simulator_forward_simulate_pair",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/forward.jl",
+      "source_location": "L142",
+      "weight": 1,
+      "context": "call",
+      "source": "simulator_forward_simulate_pair",
+      "target": "simulator_forward_smooth_field",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/ghat.jl",
+      "source_location": "L59",
+      "weight": 1,
+      "source": "spike_simulator_ghat_jl",
+      "target": "simulator_ghat_ghat",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/simulator/prior.jl",
+      "source_location": "L71",
+      "weight": 1,
+      "source": "spike_simulator_prior_jl",
+      "target": "simulator_prior_sample_prior",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/runtests.jl",
+      "source_location": "L40",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_test_runtests_jl",
+      "target": "test",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/runtests.jl",
+      "source_location": "L41",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_test_runtests_jl",
+      "target": "pkg",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/test_data_pipeline.jl",
+      "source_location": "L32",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_test_test_data_pipeline_jl",
+      "target": "test",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L37",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_test_test_simulator_jl",
+      "target": "test",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "test/runtests.jl",
+      "source_location": "L11",
+      "weight": 1,
+      "context": "import",
+      "source": "test_runtests_jl",
+      "target": "test",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L39",
+      "weight": 1,
+      "context": "import",
+      "source": "spike_test_test_simulator_jl",
+      "target": "hypothesistests",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L98",
+      "weight": 1,
+      "source": "spike_test_test_simulator_jl",
+      "target": "test_test_simulator",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L179",
+      "weight": 1,
+      "source": "spike_test_test_simulator_jl",
+      "target": "test_test_simulator_w1_test",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L244",
+      "weight": 1,
+      "source": "spike_test_test_simulator_jl",
+      "target": "test_test_simulator_plaus",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/test/test_simulator.jl",
+      "source_location": "L248",
+      "weight": 1,
+      "source": "spike_test_test_simulator_jl",
+      "target": "test_test_simulator_corr1",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/bayes.jl",
+      "source_location": "L75",
+      "weight": 1,
+      "source": "src_bayes_jl",
+      "target": "src_bayes_colocresult",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/bayes.jl",
+      "source_location": "L109",
+      "weight": 1,
+      "source": "src_bayes_jl",
+      "target": "src_bayes_compute_bayesfactor",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/compile.jl",
+      "source_location": "L21",
+      "weight": 1,
+      "context": "import",
+      "source": "src_compile_jl",
+      "target": "packagecompiler",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/gui.jl",
+      "source_location": "L21",
+      "weight": 1,
+      "source": "src_gui_jl",
+      "target": "src_gui_gui",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L118",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_abstractmultichannelimage",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L31",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_image_data",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L41",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_channel_names",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L51",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_image_name",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L61",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_image_paths",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L71",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_pixel_dimensions",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L81",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_otsu_thresholds",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L91",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_num_channels",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L235",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_calculate_mask",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L266",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_apply_mask",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L287",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_shuffle_pixels",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L345",
+      "weight": 1,
+      "source": "src_loadimages_jl",
+      "target": "src_loadimages_shuffle_blocks",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L239",
+      "weight": 1,
+      "context": "call",
+      "source": "src_loadimages_calculate_mask",
+      "target": "src_loadimages_image_data",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L288",
+      "weight": 1,
+      "context": "call",
+      "source": "src_loadimages_shuffle_pixels",
+      "target": "src_loadimages_image_data",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L309",
+      "weight": 1,
+      "context": "call",
+      "source": "src_loadimages_shuffle_blocks",
+      "target": "src_loadimages_image_data",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L91",
+      "weight": 1,
+      "context": "call",
+      "source": "src_loadimages_num_channels",
+      "target": "src_loadimages_channel_names",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L239",
+      "weight": 1,
+      "context": "call",
+      "source": "src_loadimages_calculate_mask",
+      "target": "src_loadimages_otsu_thresholds",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L289",
+      "weight": 1,
+      "context": "call",
+      "source": "src_loadimages_shuffle_pixels",
+      "target": "src_loadimages_num_channels",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L267",
+      "weight": 1,
+      "context": "call",
+      "source": "src_loadimages_apply_mask",
+      "target": "src_loadimages_calculate_mask",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L268",
+      "weight": 1,
+      "context": "call",
+      "source": "src_loadimages_apply_mask",
+      "target": "src_loadimages_apply_mask",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/LoadImages.jl",
+      "source_location": "L347",
+      "weight": 1,
+      "context": "call",
+      "source": "src_loadimages_shuffle_blocks",
+      "target": "src_loadimages_shuffle_blocks",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/plot.jl",
+      "source_location": "L35",
+      "weight": 1,
+      "source": "src_plot_jl",
+      "target": "src_plot_minmax_norm",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/plot.jl",
+      "source_location": "L57",
+      "weight": 1,
+      "source": "src_plot_jl",
+      "target": "src_plot_cm_to_px",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/plot.jl",
+      "source_location": "L81",
+      "weight": 1,
+      "source": "src_plot_jl",
+      "target": "src_plot_calculate_font_size",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/plot.jl",
+      "source_location": "L223",
+      "weight": 1,
+      "source": "src_plot_jl",
+      "target": "src_plot_plot_mask",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/plot.jl",
+      "source_location": "L300",
+      "weight": 1,
+      "source": "src_plot_jl",
+      "target": "src_plot_local_correlation_plot",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L20",
+      "weight": 1,
+      "source": "src_proteincoloc_jl",
+      "target": "src_proteincoloc_proteincoloc",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L33",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "base",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L24",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "csv",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L26",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "dataframes",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L28",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "glmakie",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L30",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "kerneldensity",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L31",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "quadgk",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ProteinCoLoc.jl",
+      "source_location": "L36",
+      "weight": 1,
+      "context": "import",
+      "source": "src_proteincoloc_proteincoloc",
+      "target": "turing",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils.jl",
+      "source_location": "L125",
+      "weight": 1,
+      "source": "src_utils_jl",
+      "target": "src_utils_plot_images",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils.jl",
+      "source_location": "L200",
+      "weight": 1,
+      "source": "src_utils_jl",
+      "target": "src_utils_generate_plots",
+      "confidence_score": 1
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils.jl",
+      "source_location": "L290",
+      "weight": 1,
+      "source": "src_utils_jl",
+      "target": "src_utils_combinations2",
+      "confidence_score": 1
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/utils.jl",
+      "source_location": "L227",
+      "weight": 1,
+      "context": "call",
+      "source": "src_utils_generate_plots",
+      "target": "src_utils_plot_images",
+      "confidence_score": 1
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "test/runtests.jl",
+      "source_location": "L10",
+      "weight": 1,
+      "context": "import",
+      "source": "test_runtests_jl",
+      "target": "random123",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L2",
+      "weight": 1,
+      "source": "claude_md",
+      "target": "proteincoloc_claude_project",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L36",
+      "weight": 1,
+      "source": "claude_md",
+      "target": "proteincoloc_claude_technology_stack",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L38",
+      "weight": 1,
+      "source": "claude_md",
+      "target": "proteincoloc_claude_executive_verdict_read_first",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L39",
+      "weight": 1,
+      "source": "claude_md",
+      "target": "proteincoloc_claude_recommended_stack",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L67",
+      "weight": 1,
+      "source": "claude_md",
+      "target": "proteincoloc_claude_installation",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L68",
+      "weight": 1,
+      "source": "claude_md",
+      "target": "proteincoloc_claude_in_proteincoloc_spike_own_environment_do_not_touch_the_root_project",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L69",
+      "weight": 1,
+      "source": "claude_md",
+      "target": "proteincoloc_claude_optional_gpu_accelerator_only_if_training_is_slow_spike_must_run_without_it",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L70",
+      "weight": 1,
+      "source": "claude_md",
+      "target": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L25",
+      "weight": 1,
+      "source": "proteincoloc_claude_project",
+      "target": "proteincoloc_claude_constraints",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L40",
+      "weight": 1,
+      "source": "proteincoloc_claude_recommended_stack",
+      "target": "proteincoloc_claude_core_technologies",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L49",
+      "weight": 1,
+      "source": "proteincoloc_claude_recommended_stack",
+      "target": "proteincoloc_claude_supporting_libraries",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L61",
+      "weight": 1,
+      "source": "proteincoloc_claude_recommended_stack",
+      "target": "proteincoloc_claude_development_tools",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L71",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_key_api_notes_ap1_smoke_target",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L76",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_rxinfer_jl_feasibility_assessment_explicit_per_requirements",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L82",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_alternatives_considered",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L91",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_what_not_to_use",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L100",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_stack_patterns_by_variant",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L105",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_version_compatibility",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L113",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_sources",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L128",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_conventions",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L134",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_architecture",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L140",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_project_skills",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L146",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_gsd_workflow_enforcement",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L161",
+      "weight": 1,
+      "source": "proteincoloc_claude_pkg_add_cuda_loaded_as_a_flux_extension_separate_from_cpu_path",
+      "target": "proteincoloc_claude_developer_profile",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1,
+      "source": "readme_md",
+      "target": "proteincoloc_readme_proteincoloc",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L4",
+      "weight": 1,
+      "source": "proteincoloc_readme_proteincoloc",
+      "target": "proteincoloc_readme_description",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L8",
+      "weight": 1,
+      "source": "proteincoloc_readme_proteincoloc",
+      "target": "proteincoloc_readme_features",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "weight": 1,
+      "source": "proteincoloc_readme_proteincoloc",
+      "target": "proteincoloc_readme_license",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L20",
+      "weight": 1,
+      "source": "proteincoloc_readme_proteincoloc",
+      "target": "proteincoloc_readme_citation",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L25",
+      "weight": 1,
+      "source": "proteincoloc_readme_proteincoloc",
+      "target": "proteincoloc_readme_contact",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L1",
+      "weight": 1,
+      "source": "spike_notes_md",
+      "target": "spike_notes_spike_notes_proteincoloc_v2_0_amortizedcoloc",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L9",
+      "weight": 1,
+      "source": "spike_notes_spike_notes_proteincoloc_v2_0_amortizedcoloc",
+      "target": "spike_notes_1_stack_decision_env_04_d_07",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L41",
+      "weight": 1,
+      "source": "spike_notes_spike_notes_proteincoloc_v2_0_amortizedcoloc",
+      "target": "spike_notes_2_julia_version_record_env_03_d_05",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L85",
+      "weight": 1,
+      "source": "spike_notes_spike_notes_proteincoloc_v2_0_amortizedcoloc",
+      "target": "spike_notes_4_parent_package_coupling_outcome_env_01_d_01_plan_01_04",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L162",
+      "weight": 1,
+      "source": "spike_notes_spike_notes_proteincoloc_v2_0_amortizedcoloc",
+      "target": "spike_notes_5_decoupling_proof_env_01_demo_02_pattern_plan_01_04_task_2",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L182",
+      "weight": 1,
+      "source": "spike_notes_spike_notes_proteincoloc_v2_0_amortizedcoloc",
+      "target": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L24",
+      "weight": 1,
+      "source": "spike_notes_1_stack_decision_env_04_d_07",
+      "target": "spike_notes_explicitly_excluded_claude_md_what_not_to_use",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L46",
+      "weight": 1,
+      "source": "spike_notes_2_julia_version_record_env_03_d_05",
+      "target": "spike_notes_codeblock_1",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L65",
+      "weight": 1,
+      "source": "spike_notes_2_julia_version_record_env_03_d_05",
+      "target": "spike_notes_package_pin_env_03_d_05",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L94",
+      "weight": 1,
+      "source": "spike_notes_4_parent_package_coupling_outcome_env_01_d_01_plan_01_04",
+      "target": "spike_notes_verbatim_conflict_evidence",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L133",
+      "weight": 1,
+      "source": "spike_notes_4_parent_package_coupling_outcome_env_01_d_01_plan_01_04",
+      "target": "spike_notes_resolution_revert_include_fallback",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L100",
+      "weight": 1,
+      "source": "spike_notes_verbatim_conflict_evidence",
+      "target": "spike_notes_codeblock_2",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L107",
+      "weight": 1,
+      "source": "spike_notes_verbatim_conflict_evidence",
+      "target": "spike_notes_codeblock_3",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L115",
+      "weight": 1,
+      "source": "spike_notes_verbatim_conflict_evidence",
+      "target": "spike_notes_codeblock_4",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L142",
+      "weight": 1,
+      "source": "spike_notes_resolution_revert_include_fallback",
+      "target": "spike_notes_codeblock_5",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L172",
+      "weight": 1,
+      "source": "spike_notes_5_decoupling_proof_env_01_demo_02_pattern_plan_01_04_task_2",
+      "target": "spike_notes_codeblock_6",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L188",
+      "weight": 1,
+      "source": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "target": "spike_notes_turing_target_ranges_the_consistency_target",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L197",
+      "weight": 1,
+      "source": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "target": "spike_notes_the_fitted_map_true",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L207",
+      "weight": 1,
+      "source": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "target": "spike_notes_sweep_span_past_0_9_rationale_d_15",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L217",
+      "weight": 1,
+      "source": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "target": "spike_notes_induced_vs_target_match_the_sim_02_pass_metric",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L229",
+      "weight": 1,
+      "source": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "target": "spike_notes_size_invariance_t_02_si_d_08_d_09",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L235",
+      "weight": 1,
+      "source": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "target": "spike_notes_real_anchor_d_16_faithful_extraction_negative_tail_reachability",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L249",
+      "weight": 1,
+      "source": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "target": "spike_notes_chosen_nuisance_ranges_claude_s_discretion_d_03",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L262",
+      "weight": 1,
+      "source": "spike_notes_3_sim_02_induced_calibration_the_prior_consistency_proof_plan_02_03",
+      "target": "spike_notes_consistency_d_03_a_check_not_a_fit_the_sim_02_gate_is_on",
+      "confidence_score": 1
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "spike/NOTES.md",
+      "source_location": "L190",
+      "weight": 1,
+      "source": "spike_notes_turing_target_ranges_the_consistency_target",
+      "target": "spike_notes_codeblock_7",
+      "confidence_score": 1
+    }
+  ]
+}

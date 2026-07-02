@@ -407,3 +407,7 @@ FodyWeavers.xsd
 spike/data/cache/*
 # …except the tiny committed round-trip / on-disk-schema fixture (D-04 smoke).
 !spike/data/cache/fixture/
+
+# graphify scratch output at repo root — machine-local (contains an absolute-path
+# root marker) and fully regenerable. The GSD-canonical graph lives in .planning/graphs/.
+graphify-out/

@@ -29,7 +29,8 @@
     "code_review": true,
     "code_review_depth": "standard",
     "ai_integration_phase": true,
-    "use_worktrees": true
+    "use_worktrees": true,
+    "_auto_chain_active": false
   },
   "ship": {
     "pr_body_sections": [
@@ -66,5 +67,8 @@
   "agent_skills": {},
   "features": {},
   "mode": "yolo",
-  "granularity": "standard"
+  "granularity": "standard",
+  "graphify": {
+    "enabled": true
+  }
 }
