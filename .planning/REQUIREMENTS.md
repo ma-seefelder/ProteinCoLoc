@@ -66,6 +66,20 @@ The v2.0 milestone: a decoupled spike (ENV–DEMO) that gates a conditional prod
 - [ ] **PROD-01**: On Go, amortized inference is integrated into `src/` as `colocalization_amortized()` coexisting with the existing Turing path behind a shared input/output contract, so `compute_BayesFactor()` keeps working unchanged
 - [ ] **PROD-02**: `num_patches` (patch grid) is **user-definable** in the productionized API (8×8 was the spike default), via an estimator registry rather than retraining the network ad hoc
 
+### Cross-Method Comparator Harness (Phase 9 — feature expansion)
+
+Spike-local harness that positions v2.0 as "knows when the classics are wrong." All new code under `spike/comparator/`; no `src/` or root-project edits; `spike/data/encode.jl` left byte-identical (hash-guarded).
+
+- [ ] **CMP-01**: Classical battery (Costes-p, Manders M1/M2, Pearson, Spearman) runs on one shared `MultiChannelImage` input set and emits a per-method comparison table (SC1; D-01,D-04,D-06,D-09)
+- [ ] **CMP-02**: Costes randomization significance p-value implemented new, spike-local, seeded (block-scramble null; p = (#{r ≥ r_obs}+1)/(n+1)); `manders(mci)` proven equal to the M1/M2 `encode_aug` computes for the same mci (SC1; D-04,D-05)
+- [ ] **CMP-03**: Shared inputs are simulator-generated over a seeded θ grid with ground-truth regime labels; harness signature accepts any `Vector{MultiChannelImage}` (SC1; D-02,D-03)
+- [ ] **CMP-04**: Divergence / traffic-light "knows when classics are wrong" column with **pre-declared** thresholds (SC1 positioning; D-10,D-14)
+- [ ] **CMP-05**: Table persisted as tidy `DataFrame` + CSV + JLD2, content-addressed / seeded like the Phase-3 cache, over the comparator's OWN hash inputs (SC1; D-09,D-12)
+- [ ] **CMP-06**: Tapqir bridge reproduces a published Tapqir tutorial example within tolerance **OR** skips-with-flag when the isolated Python env is absent (SC2; D-07,D-08)
+- [ ] **CMP-07**: Reuse the BayesInteractomics comparator/audit pattern (`_bin_calibration`/`CalibrationResult`/traffic-light; `_ks_test_uniform`/report style) for table assembly + audit summary (SC3; D-11)
+- [ ] **CMP-08**: Single seeded entry point `run_comparator.jl` (Random123 Philox); bit-reproducible across runs and thread counts (SC3; D-12)
+- [ ] **CMP-09**: Spike test gate asserts determinism, finiteness, Manders-equality, traffic-light-by-oracle, and Tapqir anchor-or-skip (SC1,SC2; D-13)
+
 ## v2 Requirements
 
 Deferred / optional; tracked but not gating the v2.0 milestone.
@@ -88,10 +102,11 @@ Deferred / optional; tracked but not gating the v2.0 milestone.
 | Wet-lab data, AlphaFold3/Boltz/Chai | Fully solo, simulation-only |
 | Sequential SBI (SNPE/SNRE) | Breaks amortization; contradicts ms-inference claim |
 | TARP / joint-coverage diagnostics | Marginal SBC clears the spike bar |
+| Tapqir as a live comparator column on our images | Wrong data regime (CoSMoS single-molecule spots vs diffuse 2-channel fields); anchor-only (D-07) |
 
 ## Traceability
 
-Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactly one phase.
+Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactly one phase. Feature-expansion Phase 9 (CMP-*) added 2026-07-02 during phase planning.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -124,13 +139,23 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 | DEMO-03 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |
 | PROD-01 | Phase 7 — Productionization (conditional on Go) | Pending |
 | PROD-02 | Phase 7 — Productionization (conditional on Go) | Pending |
+| CMP-01 | Phase 9 — Cross-Method Comparator Harness | Pending |
+| CMP-02 | Phase 9 — Cross-Method Comparator Harness | Pending |
+| CMP-03 | Phase 9 — Cross-Method Comparator Harness | Pending |
+| CMP-04 | Phase 9 — Cross-Method Comparator Harness | Pending |
+| CMP-05 | Phase 9 — Cross-Method Comparator Harness | Pending |
+| CMP-06 | Phase 9 — Cross-Method Comparator Harness | Pending |
+| CMP-07 | Phase 9 — Cross-Method Comparator Harness | Pending |
+| CMP-08 | Phase 9 — Cross-Method Comparator Harness | Pending |
+| CMP-09 | Phase 9 — Cross-Method Comparator Harness | Pending |
 
 **Coverage:**
 - v1 requirements: 27 total
 - Mapped to phases: 27 ✓
 - Unmapped: 0
+- Feature-expansion requirements: CMP-01..CMP-09 (Phase 9) mapped ✓; other Phase 8/10–16 IDs still TBD
 - v2 requirements (BACK-01, BACK-02): deferred, not gating v2.0 — intentionally unmapped
 
 ---
 *Requirements defined: 2026-06-26*
-*Last updated: 2026-06-26 after roadmap creation (traceability populated, 27/27 v1 mapped)*
+*Last updated: 2026-07-02 — added Phase 9 CMP-01..CMP-09 (cross-method comparator harness) during phase planning*
