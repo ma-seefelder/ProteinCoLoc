@@ -40,10 +40,10 @@ The v2.0 milestone: a decoupled spike (ENV–DEMO) that gates a conditional prod
 
 ### Simulation-Based Calibration
 
-- [ ] **SBC-01**: M (≈2000) draws θ*~π → simulate → L posterior draws → rank of θ* produce a rank histogram per parameter
-- [ ] **SBC-02**: Uniformity is tested (KS/χ²) and a coverage curve (nominal vs empirical) computed; ECE/MCE via the `_bin_calibration` pattern with a traffic-light verdict
-- [ ] **SBC-03**: M and the pass/fail threshold are **pre-registered before running**; the reported SBC is a fresh, never-tuned-against held-out run (guards "tune until calibrated" against data-snooping)
-- [ ] **SBC-04**: Calibration is reported "under the simulator" and explicitly paired with the OOD result (SBC alone is not a real-data guarantee)
+- [x] **SBC-01**: M (≈2000) draws θ*~π → simulate → L posterior draws → rank of θ* produce a rank histogram per parameter
+- [x] **SBC-02**: Uniformity is tested (KS/χ²) and a coverage curve (nominal vs empirical) computed; ECE/MCE via the `_bin_calibration` pattern with a traffic-light verdict
+- [x] **SBC-03**: M and the pass/fail threshold are **pre-registered before running**; the reported SBC is a fresh, never-tuned-against held-out run (guards "tune until calibrated" against data-snooping)
+- [x] **SBC-04**: Calibration is reported "under the simulator" and explicitly paired with the OOD result (SBC alone is not a real-data guarantee)
 
 ### Amortized Bayes Factor
 
@@ -126,10 +126,10 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 | NPE-03 | Phase 4 — NPE Training + ADVI Benchmark + Ablation | Complete |
 | ABL-01 | Phase 4 — NPE Training + ADVI Benchmark + Ablation | Complete |
 | ABL-02 | Phase 4 — NPE Training + ADVI Benchmark + Ablation | Complete |
-| SBC-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
-| SBC-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
-| SBC-03 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
-| SBC-04 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| SBC-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
+| SBC-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
+| SBC-03 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
+| SBC-04 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
 | BF-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
 | BF-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
 | OOD-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |

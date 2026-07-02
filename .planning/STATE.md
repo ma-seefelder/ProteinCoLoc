@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-02T09:42:09.041Z"
+last_updated: "2026-07-02T10:25:34.545Z"
 last_activity: 2026-07-02 -- Phase 05 execution started
 progress:
   total_phases: 16
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 35
-  completed_plans: 24
-  percent: 25
+  completed_plans: 30
+  percent: 31
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 05 (validation-bundle-sbc-amortized-bf-ood) — EXECUTING
-Plan: 1 of 4
+Plan: 2 of 4
 Status: Executing Phase 05
 Last activity: 2026-07-02 -- Phase 05 execution started
 
-Progress: [█████████░] 92%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [█████████░] 92%
 | Phase 03 P02 | 12min | 3 tasks | 5 files |
 | Phase 03 P03 | 26min | 3 tasks | 6 files |
 | Phase 03 PP04 | 18min | 2 tasks tasks | 2 files files |
+| Phase 05 P01 | 22min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03-02]: DATA-01 generation core — encode_d01 (128-dim: 64 imputed corr + 64 binary mask, fully-missing kept per D-13), encode_aug (AUG_DIM=142, 14 moments, D-02), Philox4x per-sample keyed RNG keyed by (master_seed,idx) with disjoint HOLDOUT/FOLD salts (D-10/D-11), cost-aware imsize sampler (>=1024^2 capped 10%, E[cost]~4.68x, D-03); generate_samples parallel==serial byte-identical across -t 1 and -t 4 (D-12)
 - [Phase ?]: [Phase 03-03]: DATA-02 sharded JLD2 cache — SHA-256 content hash over data-defining source bytes + canonical(config) names the cache dir and lives in meta.jld2 (D-05); atomic .tmp+integrity-check+mv shard writes with shard_done resume-by-skip (D-04/D-06); reserved >=20 ADVI holdout from disjoint XOR-salted holdout_rng into separate holdout.jld2 with negative global_index, structurally disjoint from main pool (D-10)
 - [Phase ?]: [Phase 03-04]: DATA-03 leak-free loader — module Loader is the SOLE standardization path; ZScoreTransform fit on TRAIN columns only (D-07), no standardize_all symbol exists so leakage is impossible by construction (D-08), deterministic k=5 folds from fold_rng(master_seed XOR FOLD_SALT) (D-09), mask rows 65:128 bypass, holdout excluded structurally (D-10)
+- [Phase 05-01]: Phase-5 anti-snooping contract locked in committed spike/validation/consts.jl BEFORE any reported run — M=2000/L=999/bins=50, all SBC/BF/OOD thresholds, VAL_MASTER_SEED=0x5BC0FFEE disjoint from NPE_MASTER_SEED=0xC0FFEE (via VAL_SALT); fixture gates use a separate VAL_FIX_SEED so they never consume the reported stream (D-02/SBC-03)
+- [Phase 05-01]: One shared harness.jl (draw_simulate_infer + paired Δρ path) composes the frozen Phase-4 read surface over the loaded-once net; sbc.jl delivers 7θ+Δρ ranks, KS/χ² uniformity, coverage curve, and ported _bin_calibration ECE/MCE traffic-light; figures.jl owns ROC/BF stubs so Wave-2 plans call, never edit it (SBC-01..04)
 
 ### Roadmap Evolution
 
@@ -130,6 +133,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-02T08:20:41.416Z
+Last session: 2026-07-02T10:22:05.144Z
 Stopped at: Phase 5 context gathered
 Resume file: .planning/phases/05-validation-bundle-sbc-amortized-bf-ood/05-CONTEXT.md
