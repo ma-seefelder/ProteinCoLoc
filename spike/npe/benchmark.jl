@@ -267,9 +267,17 @@ amortized inference cost is the network/flow FORWARD PASS (an O(1), N-independen
 network evaluation that conditions the flow); drawing draws from the conditioned flow
 is O(N) POST-inference sampling -- the direct analog of ADVI's `rand(q, ·)`, which the
 `vi()`-only ADVI clock likewise EXCLUDES. `bench_N` is therefore kept lightweight so
-both clocks compare "to-posterior" symmetrically (see `speedup_report`); accuracy
-(RMSE/intervals) is scored separately at the full `N`. `@belapsed` reports the MINIMUM
-elapsed, filtering transient contention. `use_gpu=false` (CPU-only, D-10).
+the O(N) draw cost is negligible on both sides; accuracy (RMSE/intervals) is scored
+separately at the full `N`.
+
+WR-03 -- CLOCK IS DELIBERATELY CONSERVATIVE ON THE NPE SIDE, NOT SYMMETRIC: the shared
+summary-extraction cost (`patch_summary` → encode) is INSIDE this NPE timed block but is
+EXCLUDED from the ADVI `wall_clock` (`advi_pair` builds `coloc_model`, which runs
+`_prepare_data`/patching, BEFORE its `t0`). Charging the identical extraction only to the
+NPE makes the NPE look slower, so the reported >100× speedup is if anything UNDERSTATED
+(a conservative lower bound) -- the per-pair numbers are intentionally NOT apples-to-apples
+on the extraction term. `@belapsed` reports the MINIMUM elapsed, filtering transient
+contention. `use_gpu=false` (CPU-only, D-10).
 """
 function _time_npe_pair(est, mci_s, mci_c, zt, variant, bench_N; bench_seconds = 0.5)
     return @belapsed begin
@@ -292,13 +300,18 @@ extraction + forward pass, and the ADVI clock (`t_advi`) is the per-pair `vi()`
 `wall_clock` read from the artifact (steady-state, JIT-excluded; 04-04).
 `speedup = t_advi / t_npe` per pair; the headline is the median.
 
-SYMMETRIC "TO-POSTERIOR" CLOCK (D-08): the ADVI `wall_clock` times the `vi()`
-optimization that PRODUCES the fitted posterior `q` and EXCLUDES the subsequent
-`rand(q, 100_000)` draw (04-04 / INFER-3). The fair NPE analog is the amortized
-FORWARD PASS that produces the conditioned posterior -- so the timed forward pass
-draws a lightweight `bench_N` posterior (the forward pass is O(1); bulk draws are the
-excluded analog of ADVI's `rand`). Accuracy (RMSE + intervals) is scored at the full
-`N` in the paired `rmse` result. `full_median_speedup` additionally reports the
+"TO-POSTERIOR" CLOCK, NPE-CONSERVATIVE (D-08; WR-03): the ADVI `wall_clock` times the
+`vi()` optimization that PRODUCES the fitted posterior `q` and EXCLUDES both the
+subsequent `rand(q, 100_000)` draw (04-04 / INFER-3) AND the upstream summary/patch
+extraction (done in `build_coloc_model` before its timer). The NPE analog is the
+amortized FORWARD PASS that produces the conditioned posterior -- but the NPE clock
+additionally INCLUDES the shared summary-extraction cost (`_time_npe_pair` times it
+inside `@belapsed`), so the two clocks are NOT symmetric on that term: the NPE is charged
+for extraction and ADVI is not. This is deliberately conservative -- it can only shrink
+the reported speedup, never inflate it -- so the >100× headline is a lower bound. The
+timed forward pass draws a lightweight `bench_N` posterior (the forward pass is O(1);
+bulk draws are the excluded analog of ADVI's `rand`). Accuracy (RMSE + intervals) is
+scored at the full `N` in the paired `rmse` result. `full_median_speedup` additionally reports the
 speedup when the timed NPE clock draws the full `N` posterior (a conservative
 lower bound; the `vi()`-only ADVI clock itself under-counts real per-dataset ADVI,
 which also runs a 100k prior chain + 100k posterior draw -- the "minutes" in ms-vs-min).

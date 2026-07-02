@@ -34,7 +34,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # thread count. Core-scaling is a reported characterization, not a pass/fail gate.
 #
 # HONEST CAVEAT (04-05 carry-forward): the realized ADVI baseline is fast (~0.5 s) and the
-# NPE clock is the amortized to-posterior forward pass (bench_N draws, D-08 symmetric clock).
+# NPE clock is the amortized to-posterior forward pass (bench_N draws, D-08 NPE-conservative
+# clock: summary extraction is timed for the NPE but excluded for ADVI; WR-03).
 # The sweep characterizes how the NPE clock parallelizes; the ADVI wall_clock is the frozen
 # artifact reference (04-04), so the ratio's thread dependence is driven by the NPE side.
 #
