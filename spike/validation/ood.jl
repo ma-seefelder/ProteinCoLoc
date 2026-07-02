@@ -135,17 +135,27 @@ end
 # Channel 2 — posterior-predictive mismatch
 # ============================================================================
 
+# Finite-guard: a strongly MISSPECIFIED input can drive the flow's posterior mean to a
+# NON-FINITE θ̂ (NaN/Inf). Since `clamp(NaN, …) == NaN` and `max(NaN, 0) == NaN`, an
+# unguarded NaN would propagate into `simulate_pair` and CRASH the PP channel (STATE
+# Phase-5 blocker: "PP channel non-viable on frozen net"). Replacing a non-finite
+# component with an in-range fallback keeps the PP channel COMPUTABLE: the re-simulated
+# cloud is then a valid (typical-θ) reference, and the misspecified `Z_obs` sits far from
+# it, so the PP score comes out HIGH — the correct OOD signal, not a crash.
+_finite_or(x, default) = isfinite(x) ? float(x) : default
+
 # Reconstruct a simulate_pair-valid θ NamedTuple from a physical-θ posterior-mean
-# vector, clamping into the prior-valid ranges (mirrors simulate_pair's entry guard:
-# ρ∈[-1,1], spillover∈[0,1], autofluorescence≥0, label_efficiency∈[0,1], noise≥0).
+# vector, first mapping any non-finite component to an in-range fallback, then clamping
+# into the prior-valid ranges (mirrors simulate_pair's entry guard: ρ∈[-1,1],
+# spillover∈[0,1], autofluorescence≥0, label_efficiency∈[0,1], noise≥0).
 _theta_tuple(v) = (
-    ρ_true           = clamp(v[1], -1.0, 1.0),
-    spillover        = clamp(v[2],  0.0, 1.0),
-    autofluorescence = max(v[3], 0.0),
-    label_efficiency = clamp(v[4],  0.0, 1.0),
-    shift_dx         = v[5],
-    shift_dy         = v[6],
-    noise            = max(v[7], 0.0),
+    ρ_true           = clamp(_finite_or(v[1], 0.0), -1.0, 1.0),
+    spillover        = clamp(_finite_or(v[2], 0.0),  0.0, 1.0),
+    autofluorescence = max(_finite_or(v[3], 0.0), 0.0),
+    label_efficiency = clamp(_finite_or(v[4], 1.0),  0.0, 1.0),
+    shift_dx         = _finite_or(v[5], 0.0),
+    shift_dy         = _finite_or(v[6], 0.0),
+    noise            = max(_finite_or(v[7], 0.0), 0.0),
 )
 
 """
