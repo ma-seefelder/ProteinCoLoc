@@ -395,6 +395,11 @@ const ABL_FIX_RESULT = ablate(NPE_REPRO_DIR; master_seed = NPE_MASTER_SEED, K = 
         @test agg.headline_threads == BENCH_THREADS        # headline at the fixed count (D-13)
         @test isfinite(agg.headline_speedup)
         @test length(agg.parallel_speedup) == 4 && all(isfinite, agg.parallel_speedup)
+        # IN-05: the per-thread-count D-09 RMSE-validity flag is carried through
+        # aggregation (and the saved artifact), so a tolerance violation stays visible.
+        @test agg.rmse_ratio_ok == [true, true, true, true]
+        @test JLD2.load(joinpath(tmp, "thread_sweep.jld2"), "rmse_ratio_ok") ==
+              [true, true, true, true]
 
         # (d) CPU-only throughout (D-10).
         @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))

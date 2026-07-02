@@ -117,9 +117,11 @@ Aggregate per-N result files (each written by `thread_sweep_measure`) into ONE t
 scaling table, sorted by thread count. Computes the NPE-clock PARALLEL SPEEDUP relative
 to the smallest thread count (Amdahl view: `t_npe_median[1] / t_npe_median[i]`) and reads
 the >100× HEADLINE at `bench_threads` (D-13 -- the fixed, reported thread count, NOT the
-best). Persists the aggregation to `outpath` (atomic). Returns
+best). Carries each thread count's D-09 RMSE-validity flag (`rmse_ratio_ok`) through so a
+tolerance violation stays visible alongside the speedup (IN-05). Persists the aggregation
+to `outpath` (atomic). Returns
 `(threads, median_speedup, full_median_speedup, t_npe_median, t_advi_median,
-parallel_speedup, headline_threads, headline_speedup, outpath)`.
+parallel_speedup, rmse_ratio_ok, headline_threads, headline_speedup, outpath)`.
 """
 function aggregate_thread_sweep(files; outpath, bench_threads::Integer = BENCH_THREADS)
     isempty(files) && error("aggregate_thread_sweep: no per-N result files given.")
@@ -132,6 +134,10 @@ function aggregate_thread_sweep(files; outpath, bench_threads::Integer = BENCH_T
     full_median_speedup = [Float64(r["full_median_speedup"]) for r in rows]
     t_npe_median        = [Float64(r["t_npe_median"])   for r in rows]
     t_advi_median       = [Float64(r["t_advi_median"])  for r in rows]
+    # IN-05: carry the per-thread-count D-09 RMSE-validity flag through aggregation so a
+    # thread count whose paired RMSE violated the tolerance is visible in the table and
+    # the persisted artifact (previously computed per-N but dropped here).
+    rmse_ratio_ok       = [Bool(r["rmse_ratio_ok"])     for r in rows]
 
     # Amdahl view: NPE-clock speedup vs the smallest thread count in the sweep.
     base_t = t_npe_median[1]
@@ -144,14 +150,14 @@ function aggregate_thread_sweep(files; outpath, bench_threads::Integer = BENCH_T
         threads = threads, median_speedup = median_speedup,
         full_median_speedup = full_median_speedup,
         t_npe_median = t_npe_median, t_advi_median = t_advi_median,
-        parallel_speedup = parallel_speedup,
+        parallel_speedup = parallel_speedup, rmse_ratio_ok = rmse_ratio_ok,
         headline_threads = bench_threads, headline_speedup = headline_speedup,
         schema_version = 1)
 
     return (threads = threads, median_speedup = median_speedup,
             full_median_speedup = full_median_speedup,
             t_npe_median = t_npe_median, t_advi_median = t_advi_median,
-            parallel_speedup = parallel_speedup,
+            parallel_speedup = parallel_speedup, rmse_ratio_ok = rmse_ratio_ok,
             headline_threads = bench_threads, headline_speedup = headline_speedup,
             outpath = outpath)
 end
