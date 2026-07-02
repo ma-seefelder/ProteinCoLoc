@@ -47,8 +47,8 @@ The v2.0 milestone: a decoupled spike (ENV–DEMO) that gates a conditional prod
 
 ### Amortized Bayes Factor
 
-- [ ] **BF-01**: A `RatioEstimator` / Evidence-Network (l-POP-style loss) produces an amortized log-BF (coloc vs null) in one forward pass, with Δρ and prior alignment identical to the KDE baseline
-- [ ] **BF-02**: The amortized log-BF reproduces the existing `compute_BayesFactor()` in the well-specified regime, without quadgk/KDE/shuffle
+- [x] **BF-01**: A `RatioEstimator` / Evidence-Network (l-POP-style loss) produces an amortized log-BF (coloc vs null) in one forward pass, with Δρ and prior alignment identical to the KDE baseline
+- [x] **BF-02**: The amortized log-BF reproduces the existing `compute_BayesFactor()` in the well-specified regime, without quadgk/KDE/shuffle
 
 ### OOD / Misspecification Flag
 
@@ -130,8 +130,8 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 | SBC-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
 | SBC-03 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
 | SBC-04 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
-| BF-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
-| BF-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
+| BF-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
+| BF-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
 | OOD-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
 | OOD-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Pending |
 | DEMO-01 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |

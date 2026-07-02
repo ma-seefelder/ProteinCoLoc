@@ -110,7 +110,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. All preprocessing (standardization, OOD covariance/flow) is frozen from the training split only; misspecified test images are fully external
 **Plans**: 4 plans (3 waves — W1 shared harness + pre-registration + SBC; W2 amortized BF ∥ OOD; W3 reported trifecta runs)
 - [x] 05-01-PLAN.md — Shared θ*~π→simulate→infer harness + pre-registered consts + SBC machinery (rank histograms 7θ+Δρ, KS/χ², coverage, ECE/MCE traffic-light) (SBC-01..04)
-- [ ] 05-02-PLAN.md — Amortized Bayes factor: RatioEstimator model-index net + one-pass log-BF reproducing compute_BayesFactor over a held-out Δρ sweep (BF-01, BF-02)
+- [x] 05-02-PLAN.md — Amortized Bayes factor: RatioEstimator model-index net + one-pass log-BF reproducing compute_BayesFactor over a held-out Δρ sweep (BF-01, BF-02)
 - [ ] 05-03-PLAN.md — OOD/misspecification flag: Mahalanobis + PP channels, ROC over the 4-family positive grid + summary-orthogonal negative control (named blind spot) (OOD-01, OOD-02)
 - [ ] 05-04-PLAN.md — Reported trifecta runs at locked pre-registered consts on the fresh reserved stream: run_sbc.jl (M=2000/L=999) + run_bf.jl (full Δρ sweep) + run_ood.jl (full 4-family grid), each gating on its thresholds (SBC-01..04, BF-01/02, OOD-01/02)
 
@@ -149,7 +149,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 2. Forward Simulator + Summary Contract | 4/4 | Complete   | 2026-06-26 |
 | 3. Training-Data Pipeline | 5/5 | Complete   | 2026-06-30 |
 | 4. NPE Training + ADVI Benchmark + Ablation | 7/7 | Complete   | 2026-07-01 |
-| 5. Validation Bundle (SBC + BF + OOD) | 1/4 | In Progress|  |
+| 5. Validation Bundle (SBC + BF + OOD) | 2/4 | In Progress|  |
 | 6. Reproducible Demo + Go/No-Go Memo | 0/TBD | Not started | - |
 | 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
 | 8. External Physical Ground-Truth Corpus | 0/TBD | Not started | - |
