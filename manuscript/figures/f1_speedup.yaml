@@ -40,19 +40,19 @@ series:
     mark: "none"
     label: "ADVI 1× baseline"
   - key: advi                    # ADVI point (RMSE parity, 1×)
-    color: "reference.axis_chrome"
+    color: "inference_method.advi"
     thickness: 1.5
     dash: "solid"
     mark: "o"
     label: "ADVI (per-dataset)"
   - key: npe_full                # NPE full posterior-sample (N=2000) workload, ~16×
-    color: "model_series.meta_learner_unc"
+    color: "inference_method.npe_full"
     thickness: 1.5
     dash: "solid"
     mark: "s"
     label: "NPE full workload (~16×)"
   - key: npe_forward             # NPE amortized forward pass, ~325×
-    color: "model_series.meta_learner"
+    color: "inference_method.npe_forward"
     thickness: 1.5
     dash: "solid"
     mark: "o"
