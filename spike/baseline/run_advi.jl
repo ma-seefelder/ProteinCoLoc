@@ -202,9 +202,15 @@ function run_all_pairs(dir = DEFAULT_HOLDOUT_DIR;
     # AdvancedVI/ForwardDiff specialization for the coloc_model type, inflating a single-shot
     # time_ns by seconds. Every pair reuses that same compiled path, so the per-pair
     # wall_clock the >100× headline (D-08, read by 04-05) pairs against the NPE must be the
-    # STEADY-STATE vi() time, not the one-time compile. A cheap throwaway vi() on the
-    # dependency-light smoke pair warms that path without touching the timed measurements.
-    let mw = build_coloc_model(smoke_mci_pair()..., CHANNELS, NUM_PATCHES)
+    # STEADY-STATE vi() time, not the one-time compile. WR-02: warm up on a stack drawn from
+    # the SAME resimulate_holdout path the timed loop uses (not the synthetic 128×128
+    # smoke_mci_pair), so the warm-up model carries the real holdout's parameter dimension
+    # (num_control = surviving-patch count from _prepare_data). This keeps the ForwardDiff
+    # specialization the first timed pair reuses matched to the real data shape rather than a
+    # size that could force a re-compile inside wall_clock[1].
+    let rs1 = resimulate_holdout(dir, 1; master_seed = master_seed),
+        rc1 = resimulate_holdout(dir, 2; master_seed = master_seed)
+        mw = build_coloc_model(rs1.mci_sample, rc1.mci_sample, CHANNELS, NUM_PATCHES)
         vi(mw, FAMILY, 2; adtype = ADTYPE, show_progress = false)
     end
 
