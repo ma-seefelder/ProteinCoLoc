@@ -105,10 +105,13 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. SBC produces per-parameter rank histograms over M (≈2000) draws with KS/χ² uniformity, a coverage curve, and ECE/MCE via the `_bin_calibration` pattern with a traffic-light verdict
   2. M and the pass/fail threshold are **pre-registered before running**, and the reported SBC number comes from a **fresh, never-tuned-against, independently-seeded held-out run** (guards "tune until calibrated" against data-snooping); calibration is reported "under the simulator" and explicitly paired with the OOD result
-  3. A `RatioEstimator`/Evidence-Network (l-POP loss) produces an amortized log-BF in one forward pass and reproduces `compute_BayesFactor()` in the well-specified regime, on identical Δρ and prior, without quadgk/KDE/shuffle
+  3. A `RatioEstimator`/Evidence-Network (NRE-as-model-comparison over a binary model index m∈{0,1}; the l-POP loss does NOT exist in NeuralEstimators v0.2.1 and is honestly re-labeled as this standard-NRE reduction, l-POP a documented fallback only) produces an amortized log-BF in one forward pass and reproduces `compute_BayesFactor()` in the well-specified regime, on identical Δρ and prior, without quadgk/KDE/shuffle
   4. The OOD flag fires on misspecified inputs and stays quiet in-distribution, validated as a controlled ROC experiment over a misspecification grid with **positive AND summary-orthogonal negative controls** plus a posterior-predictive channel; the structural blind spot (discrepancies orthogonal to the fixed summary) is measured and named, not hidden
   5. All preprocessing (standardization, OOD covariance/flow) is frozen from the training split only; misspecified test images are fully external
-**Plans**: TBD
+**Plans**: 3 plans (2 waves — W1 shared harness + pre-registration + SBC; W2 amortized BF ∥ OOD)
+- [ ] 05-01-PLAN.md — Shared θ*~π→simulate→infer harness + pre-registered consts + SBC (rank histograms 7θ+Δρ, KS/χ², coverage, ECE/MCE traffic-light) (SBC-01..04)
+- [ ] 05-02-PLAN.md — Amortized Bayes factor: RatioEstimator model-index net + one-pass log-BF reproducing compute_BayesFactor over a held-out Δρ sweep (BF-01, BF-02)
+- [ ] 05-03-PLAN.md — OOD/misspecification flag: Mahalanobis + PP channels, ROC over the 4-family positive grid + summary-orthogonal negative control (named blind spot) (OOD-01, OOD-02)
 
 ### Phase 6: Reproducible Demo + Go/No-Go Memo
 **Goal**: The spike closes with a falsifiable, reproducible verdict — a single seeded script chains every layer and a memo states the metrics and a concrete full-build-out decision
@@ -172,13 +175,18 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 ### Phase 9: Cross-Method Comparator Harness
 **Goal**: A reproducible harness that runs the classical estimators and a Tapqir bridge on shared inputs, so v2.0 can be positioned as "knows when the classics are wrong," not merely "agrees with them"
 **Depends on**: Nothing (parallelizable now)
-**Requirements**: TBD
+**Requirements**: CMP-01, CMP-02, CMP-03, CMP-04, CMP-05, CMP-06, CMP-07, CMP-08, CMP-09
 **Success Criteria** (what must be TRUE):
   1. Costes-p, Manders M1/M2, Pearson, Spearman all run on one shared input and emit a per-method comparison table
   2. A Tapqir bridge reproduces a published Tapqir example as a sanity anchor
   3. The harness reuses the BayesInteractomics comparator/audit pattern and is seeded/reproducible
-**Plans**: TBD
-- [ ] TBD (run /gsd:plan-phase 9 to break down)
+**Plans**: 6 plans (4 waves: foundation -> {estimators, inputs, Tapqir} -> table/audit -> entry point + gate)
+- [ ] 09-01-PLAN.md - Wave-0 foundation: promote DataFrames/CSV, pre-declare D-14 consts (config.jl), scaffold test_comparator.jl + resolve-risk gate (CMP-04, CMP-09)
+- [ ] 09-02-PLAN.md - Classical estimator battery + seeded Costes block-scramble p-value (CMP-01, CMP-02)
+- [ ] 09-03-PLAN.md - Seeded regime-labelled shared-input builder, input-source-agnostic (CMP-03)
+- [ ] 09-04-PLAN.md - Isolated Tapqir sub-env + graceful skip-with-flag bridge + anchor capture (CMP-06)
+- [ ] 09-05-PLAN.md - Comparison table + divergence/traffic-light + content-addressed CSV/JLD2 + audit (CMP-01, CMP-04, CMP-05, CMP-07)
+- [ ] 09-06-PLAN.md - Seeded run_comparator entry point + filled D-13 test gate (CMP-08, CMP-09)
 
 ### Phase 10: Manuscript Skeleton and Related-Work Positioning
 **Goal**: A compiling manuscript skeleton with related-work positioning drafted early — especially the explicit delta versus Tapqir/Costes/Manders — so experiments are shaped by the claims they must support
