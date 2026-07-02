@@ -39,6 +39,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # reached only transitively through the guarded includes below; no src/ is edited.
 
 using DataFrames   # tidy per-input table assembly (D-09)
+using CSV          # human-readable table.csv writer (D-09)
+using JLD2         # exact-reload table.jld2 writer (D-09)
+using SHA          # stdlib: local content-hash over the comparator's OWN sources (D-05)
 
 # Guarded includes so table.jl loads both standalone and after a sibling already
 # pulled the config/estimators/inputs into scope (mirror inputs.jl:51-57).
@@ -183,4 +186,111 @@ function build_table(inputs; master_seed = inputs.master_seed, npe = nothing)
         divergence   = divc,
         light        = lightc,
     )
+end
+
+# --- Atomic content-addressed CSV+JLD2 writer (D-05/D-07) -----------------------
+# The comparator's OWN content-hash inputs — a SEPARATE src_files list, NEVER the
+# Phase-3 hashguard.jl:HASH_SRC_FILES (whose mutation would re-hash the completed
+# Phase-3 cache, T-09-13). FIXED order is part of the hash contract; @__DIR__-relative
+# (this file lives in spike/comparator/).
+const CMP_SRC_FILES = String[
+    joinpath(@__DIR__, "config.jl"),
+    joinpath(@__DIR__, "classical.jl"),
+    joinpath(@__DIR__, "inputs.jl"),
+    joinpath(@__DIR__, "table.jl"),
+]
+
+"""
+    _cmp_canonical(config::NamedTuple) -> String
+
+Deterministic, sort-by-field-name serialization of `config` (each value via `repr`)
+so field ORDER can never perturb the content hash. A LOCAL mirror of hashguard.jl's
+`canonical` — reimplemented here so the comparator never calls into the Phase-3 hash
+machinery (decoupling; T-09-13).
+"""
+function _cmp_canonical(config::NamedTuple)::String
+    ks = sort(collect(keys(config)))
+    return join(("$(k)=$(repr(getproperty(config, k)))" for k in ks), ";")
+end
+
+"""
+    comparator_hash(config::NamedTuple; src_files=CMP_SRC_FILES) -> String
+
+The comparator's OWN D-05-style content hash: fold `SHA.update!` over the raw bytes
+of each `src_files` entry (FIXED order, NUL-separated) then over `_cmp_canonical(config)`,
+returning the hex digest. Mirrors `hashguard.jl:cache_hash`'s SHA-256 loop but over
+the comparator's SEPARATE source list — it does NOT call or mutate `HASH_SRC_FILES`
+(T-09-13). Identical (config, source bytes) ⇒ identical digest ⇒ identical artifact dir.
+"""
+function comparator_hash(config::NamedTuple; src_files = CMP_SRC_FILES)
+    ctx = SHA.SHA256_CTX()
+    for f in src_files                                     # FIXED order = deterministic
+        SHA.update!(ctx, read(f))
+        SHA.update!(ctx, UInt8[0x00])                      # inter-file separator
+    end
+    SHA.update!(ctx, Vector{UInt8}(_cmp_canonical(config)))
+    return bytes2hex(SHA.digest!(ctx))
+end
+
+"""
+    _threshold_header(config) -> String
+
+The pre-registration artifact header (D-14 documentation): quotes the pre-declared
+comparator thresholds VERBATIM (`COSTES_N_SCRAMBLE`, `COSTES_BLOCK_PX`, `COSTES_ALPHA`,
+`DIVERGENCE_WARN`/`DIVERGENCE_FAIL`, `MASTER_SEED`) and their rationale, plus the
+canonical run config. Emitted as CSV comment lines AND a JLD2 `meta` entry so the
+thresholds that scored the table are recorded alongside it.
+"""
+function _threshold_header(config)
+    io = IOBuffer()
+    println(io, "ProteinCoLoc v2.0 comparator artifact — pre-declared thresholds (D-14 pre-registration)")
+    println(io, "COSTES_N_SCRAMBLE = $(COSTES_N_SCRAMBLE)   # Costes scramble count (Costes et al. 2004)")
+    println(io, "COSTES_BLOCK_PX   = $(COSTES_BLOCK_PX)     # block edge ≈ one resolution element")
+    println(io, "COSTES_ALPHA      = $(COSTES_ALPHA)  # coloc significance cutoff for the classical verdict")
+    println(io, "DIVERGENCE_WARN   = $(DIVERGENCE_WARN)   # amber band lower edge (moderate disagreement)")
+    println(io, "DIVERGENCE_FAIL   = $(DIVERGENCE_FAIL)   # red band lower edge (severe disagreement)")
+    println(io, "MASTER_SEED       = $(repr(MASTER_SEED))  # Random123 (Philox) harness master seed")
+    println(io, "run_config        = $(_cmp_canonical(config))")
+    return String(take!(io))
+end
+
+"""
+    write_table(df, config; outdir) -> String
+
+Persist `df` atomically to a content-addressed dir `joinpath(outdir, comparator_hash(config))`,
+writing both `table.csv` (human-readable, with the D-14 threshold header as CSV comment
+lines) and `table.jld2` (exact reload, with a `meta` header + `config` entry). Each file
+is written via the `.tmp` → integrity-check → `mv(...; force=true)` idiom from
+`spike/data/cache.jl` (T-09-14), so a crash never leaves a half-written artifact and a
+re-write is atomic. Two writes of the same `(df, config)` resolve to the IDENTICAL dir
+(deterministic content hash). Returns the artifact dir path.
+"""
+function write_table(df, config; outdir)
+    dir = joinpath(outdir, comparator_hash(config))
+    isdir(dir) || mkpath(dir)
+
+    header = _threshold_header(config)
+
+    # --- table.csv (humans): threshold header as CSV comment lines, then the table.
+    csv_path = joinpath(dir, "table.csv")
+    csv_tmp  = csv_path * ".tmp"
+    open(csv_tmp, "w") do io
+        for line in split(header, '\n'; keepempty = false)
+            println(io, "# ", line)
+        end
+        CSV.write(io, df)
+    end
+    @assert filesize(csv_tmp) > 0 "csv integrity check failed: $csv_tmp is empty"   # integrity check
+    mv(csv_tmp, csv_path; force = true)                                             # atomic commit
+
+    # --- table.jld2 (exact reload): the DataFrame + the threshold header/meta + config.
+    jld_path = joinpath(dir, "table.jld2")
+    jld_tmp  = jld_path * ".tmp"
+    jldsave(jld_tmp; table = df, meta = header, config = config)
+    JLD2.jldopen(jld_tmp, "r") do f                                                 # integrity check
+        @assert haskey(f, "table") "jld2 integrity check failed: $jld_tmp missing table"
+    end
+    mv(jld_tmp, jld_path; force = true)                                             # atomic commit
+
+    return dir
 end
