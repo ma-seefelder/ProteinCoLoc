@@ -41,7 +41,9 @@
 
 // Tiered bibliography (Nature-Methods two-tier: main "References" + "Methods references").
 // Each reference appears once, in the highest tier it is cited in; numbering is global.
-// No section stub cites any key yet, so the lists render empty until later phases add @cites.
+// Related Work already cites 4 keys (H tier), so the main "References" list renders NON-empty;
+// the Methods list stays empty until Phase 5/7 wire @cites under the M tier. Each key cited must
+// exist in refs.bib (a dangling @cite fails the build).
 #show: tiered-bib(enabled: true, bib: "refs.bib", style: "styles/nature.csl", read: path => read(path))
 
 // ---- Body ----
