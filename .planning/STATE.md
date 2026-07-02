@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: planning
+status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-02T08:20:41.423Z"
-last_activity: 2026-07-01
+last_updated: "2026-07-02T09:15:20.839Z"
+last_activity: 2026-07-02 -- Phase 10 execution started
 progress:
   total_phases: 16
   completed_phases: 4
-  total_plans: 20
+  total_plans: 35
   completed_plans: 20
   percent: 25
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 5 — validation bundle (sbc + amortized bf + ood)
+**Current focus:** Phase 10 — manuscript-skeleton-and-related-work-positioning
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-07-01
+Phase: 10 (manuscript-skeleton-and-related-work-positioning) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 10
+Last activity: 2026-07-02 -- Phase 10 execution started
 
 Progress: [█████████░] 92%
 

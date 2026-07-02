@@ -154,7 +154,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
 | 8. External Physical Ground-Truth Corpus | 0/TBD | Not started | - |
 | 9. Cross-Method Comparator Harness | 0/TBD | Not started | - |
-| 10. Manuscript Skeleton + Related-Work Positioning | 0/TBD | Not started | - |
+| 10. Manuscript Skeleton + Related-Work Positioning | 1/5 | In Progress|  |
 | 11. Registration + Chromatic Uncertainty as Latent | 0/TBD | Not started | - |
 | 12. Spatial Colocalization Map (GP/CAR) | 0/TBD | Not started | - |
 | 13. Three-Hypothesis Amortized Bayes Factor | 0/TBD | Not started | - |
@@ -198,7 +198,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
   2. Related work drafts the Tapqir differentiation (amortization + SBC + registration-UQ + spatial map)
   3. Figure specifications enumerate the panels each later phase must deliver
 **Plans**: 5 plans (4 waves)
-- [ ] 10-01-PLAN.md — Compiling venue-neutral Typst skeleton: main.typ + section stubs + seeded refs.bib + claim_table machinery + compile gate (D-01..D-05, D-11, D-12)
+- [x] 10-01-PLAN.md — Compiling venue-neutral Typst skeleton: main.typ + section stubs + seeded refs.bib + claim_table machinery + compile gate (D-01..D-05, D-11, D-12)
 - [ ] 10-02-PLAN.md — Claim spine content: honestly-caveated claim table rows with per-row axis/phase/figure/status (D-06, D-07)
 - [ ] 10-03-PLAN.md — Related-work matrix + four-axis Tapqir differentiation, ASSUMED cells verified vs eLife 73860 (D-08, D-09)
 - [ ] 10-04-PLAN.md — Figure specifications enumerating per-phase panels linked to claim rows (D-10)
