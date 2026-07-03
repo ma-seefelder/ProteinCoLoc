@@ -358,6 +358,42 @@ end
 end
 
 ##########################################################################################
+### Amortized Bayes factor + non-clamped KDE baseline (07-02 Task 2, PROD-01 / T-7-06)
+###
+### pair_encode is the grid-general A7 difference encoding (length ratio_input_dim(G)=5G²);
+### kde_log_bf_unclamped mirrors the compute_BayesFactor KDE math WITHOUT the 1e-8 floor, so
+### max|Δ logBF| is measurable free of the clamp artifact.
+##########################################################################################
+@testset "amortized Bayes factor (bf.jl)" begin
+    @test isdefined(ProteinCoLoc, :amortized_log_bf)
+    @test isdefined(ProteinCoLoc, :pair_encode)
+    @test isdefined(ProteinCoLoc, :kde_log_bf_unclamped)
+
+    # pair_encode: length == ratio_input_dim(G) = 5·G², layout = vcat(Zs, Zc, contrast).
+    for G in (4, 8, 16)
+        d  = 2 * G^2
+        Zs = rand(Float32, d); Zc = rand(Float32, d)
+        enc = ProteinCoLoc.pair_encode(Zs, Zc)
+        @test length(enc) == ProteinCoLoc.ratio_input_dim(G)
+        @test enc[1:d] == Zs
+        @test enc[d+1:2d] == Zc
+        @test enc[2d+1:2d+G^2] ≈ Float32.(Zs[1:G^2] .- Zc[1:G^2])
+    end
+    # mismatched / odd-length inputs are rejected.
+    @test_throws DimensionMismatch ProteinCoLoc.pair_encode(rand(Float32, 32), rand(Float32, 8))
+
+    # Non-clamped KDE baseline: a FULLY one-sided posterior (all draws ≫ 0) with a prior that
+    # straddles 0 drives p_post → 1 with NO 1e-8 floor, so |logBF| exceeds the clamped ceiling
+    # log((1−1e-8)/1e-8) ≈ 18.42 (a clamped baseline would cap there). This is the artifact-free
+    # measurement the ship-gate needs (Memo §5 / T-7-06).
+    post  = fill(5.0, 400) .+ 0.01 .* randn(400)     # fully positive ⇒ one-sided
+    prior = randn(4000)                              # straddles 0 ⇒ p_prior ≈ 0.5
+    lb = ProteinCoLoc.kde_log_bf_unclamped([post], prior)
+    @test length(lb) == 1
+    @test lb[1] > 18.42                              # beyond the 1e-8 clamp ceiling ⇒ no floor
+end
+
+##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):
 ###
 ### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,
