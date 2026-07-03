@@ -47,6 +47,7 @@ include("registry.jl")
 # posterior_for, so the order is infer → bf → ood.
 include("amortized/infer.jl")
 include("amortized/bf.jl")
+include("amortized/ood.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")

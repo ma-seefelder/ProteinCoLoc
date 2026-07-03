@@ -394,6 +394,69 @@ end
 end
 
 ##########################################################################################
+### Amortized OOD flag: density + noise + re-enabled posterior-predictive (07-02 Task 3)
+###
+### fit_ood_nulls restricts to the continuous rows via _summary_row_partition (1e-6·I ridge);
+### the iter1 finite-guard keeps the PP channel computable on non-finite θ̂ (Memo §5 / T-7-04);
+### ood_verdict OR-fuses the available channels and returns an OODVerdict.
+##########################################################################################
+@testset "amortized OOD flag (ood.jl)" begin
+    for f in (:fit_ood_nulls, :maha_score, :noise_features, :fit_noise_null, :noise_score,
+              :roc_auc, :id_threshold, :youden_j, :ood_flag, :ood_verdict,
+              :pp_mismatch_score)
+        @test isdefined(ProteinCoLoc, f)
+    end
+
+    # fit_ood_nulls: continuous rows only (1:G²) + 1e-6 ridge (Σ well-conditioned, cholesky OK).
+    G = 4; nc = G^2; d = 2 * nc
+    Zcont = randn(nc, 80)
+    mask  = Float64.(rand(Bool, nc, 80))
+    Ztr   = vcat(Zcont, mask)                          # d × 80 standardized-summary fixture
+    nulls = ProteinCoLoc.fit_ood_nulls(Ztr; variant = :min)
+    @test nulls.cont == collect(1:nc)
+    @test length(nulls.μS) == nc
+    s = ProteinCoLoc.maha_score(nulls, Ztr[:, 1])
+    @test s ≥ 0 && isfinite(s)
+
+    # PP finite-guard: a non-finite θ̂ maps to a finite, prior-valid tuple (no crash, no NaN).
+    θ = ProteinCoLoc._theta_tuple([NaN, Inf, -Inf, NaN, 5.0, -3.0, NaN])
+    @test all(isfinite, values(θ))
+    @test -1.0 ≤ θ.ρ_true ≤ 1.0
+    @test 0.0 ≤ θ.spillover ≤ 1.0
+    @test θ.autofluorescence ≥ 0.0
+    @test 0.0 ≤ θ.label_efficiency ≤ 1.0
+    @test θ.noise ≥ 0.0
+    @test θ.shift_dx == 5.0 && θ.shift_dy == -3.0
+
+    # noise channel: 10 invariant features (5 per channel), all finite; null + score round-trip.
+    pair = [randn(64, 64), randn(64, 64)]
+    nf = ProteinCoLoc.noise_features(pair)
+    @test length(nf) == 10
+    @test all(isfinite, nf)
+    F  = reduce(hcat, [ProteinCoLoc.noise_features([randn(64, 64), randn(64, 64)]) for _ in 1:30])
+    nn = ProteinCoLoc.fit_noise_null(F)
+    @test isfinite(ProteinCoLoc.noise_score(nn, pair))
+
+    # hand-rolled ROC/AUC: separable ⇒ 1.0, identical ⇒ 0.5.
+    @test ProteinCoLoc.roc_auc([0.0, 0.1, 0.2], [1.0, 1.1, 1.2])[3] == 1.0
+    @test ProteinCoLoc.roc_auc([0.0, 1.0], [0.0, 1.0])[3] == 0.5
+
+    # ood_verdict: density-only fusion (with_pp=false, no image pair) returns an OODVerdict.
+    v = ProteinCoLoc.ood_verdict((; density = nulls), Ztr[:, 1]; with_pp = false)
+    @test v isa ProteinCoLoc.OODVerdict
+    @test isfinite(v.score)
+    @test v.flag == false                              # no pre-registered threshold ⇒ no fire
+    @test haskey(v.per_channel, :density)
+
+    # With a pre-registered ID-quantile threshold the flag FIRES on an off-manifold summary.
+    id_scores = [ProteinCoLoc.maha_score(nulls, Ztr[:, k]) for k in 1:80]
+    thr = ProteinCoLoc.id_threshold(id_scores)
+    off = 50.0 .* ones(d)                              # far off the train manifold ⇒ high density
+    v2  = ProteinCoLoc.ood_verdict((; density = nulls, thr = thr), off; with_pp = false)
+    @test v2.flag == true
+end
+
+##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):
 ###
 ### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,
