@@ -351,8 +351,8 @@ This function generates a text file with statistical results for prior and poste
 This function computes the mean, median, and 95% credible interval for the prior and posterior samples, as well as for the control images. It also computes these statistics for Δρ. It then writes these statistics to a text file, with each statistic separated by a "|". If the file does not exist, it is created; otherwise, the statistics are appended to the existing file.
 """
 function generate_txt(
-    prior::CoLocResult, posterior::CoLocResult, 
-    bf::T, channels::Vector{I}, ρ_threshold::T; 
+    prior::AbstractColocResult, posterior::AbstractColocResult,
+    bf::T, channels::Vector{I}, ρ_threshold::T;
     file::S = "result.csv"
     ) where {T<:AbstractFloat, I<:Integer, S<:AbstractString}
     prior_samples = prior.posterior

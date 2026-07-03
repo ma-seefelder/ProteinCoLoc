@@ -27,19 +27,14 @@ import DataFrames: DataFrame
 import Distributions: pdf
 import GLMakie
 import Images
-import KernelDensity: kde
-import QuadGK: quadgk
 import Statistics: quantile, mean, median
 import Base: Cint
 import Random: shuffle!, randperm
-using Turing
-using Turing: Variational
 #using Mousetrap
 
 include("LoadImages.jl")
 include("colocalization.jl")
 include("results.jl")
-include("bayes.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
@@ -47,9 +42,22 @@ include("main.jl")
 #include("gui.jl")
 include("script.jl")
 
-export AbstractMultiChannelImage, MultiChannelImage, MultiChannelImageStack, colocalization
+# --- Internal Turing/ADVI reference path (D-01 / D-03) ------------------------------------
+# The ADVI reference implementation lives in ext/ProteinCoLocTuringExt.jl and loads ONLY when
+# Turing is present (weakdep-gated). These generic-function stubs give core code
+# (utils.jl driver, exported plotters) a binding to reference; the extension adds the methods.
+# `colocalization` / `compute_BayesFactor` are intentionally NOT exported (breaking release):
+# the amortized path is the sole supported public API. The ADVI-result plotters keep their
+# exported names but only gain methods when Turing is loaded.
+function colocalization end
+function compute_BayesFactor end
+function plot_posterior end
+function bayesplot end
+function bayes_rangeplot end
+
+export AbstractMultiChannelImage, MultiChannelImage, MultiChannelImageStack
 export image_data, channel_names, image_name, image_paths, pixel_dimensions, otsu_thresholds, num_channels
-export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult
+export correlation, patch, plot_posterior
 export plot, local_correlation_plot,plot_mask, bayesplot, bayes_rangeplot
 # D-02 result-type hierarchy (v2.0): abstract supertype + shipped amortized subtype +
 # shared accessor interface. `AdviColocResult` (the internal Turing/ADVI path) is
