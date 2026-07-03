@@ -7,10 +7,15 @@ import Images
 import Statistics: cor
 import Pkg
 
-using .ProteinCoLoc
+using ProteinCoLoc
 using Random123
 using Test
 Random123.seed!(1234)
+
+# Test fixtures are referenced by package-root-relative paths (e.g.
+# "test/test_images/..."). Under `Pkg.test()` the process CWD is not guaranteed to be the
+# package root, so anchor it explicitly to `<pkgroot>` (the parent of this test dir).
+cd(dirname(@__DIR__))
 
 ##########################################################################################
 ### CO-RESOLUTION HARD GATE (Phase 7 / Finding 1)  — must run FIRST
@@ -97,7 +102,7 @@ end
 
         # test that the constructor returns a MultiChannelImage object
         img = MultiChannelImage(name, path, channels)
-        @test typeof(img) == MultiChannelImage{Float64, String, Float64}
+        @test typeof(img) == MultiChannelImage{Float64, String, Float64, Int64}
 
         # test that the constructor sets the fields correctly
         @test img.channels == channels
@@ -112,7 +117,7 @@ end
         name = "test_image"
         channels = ["blue", "green", "red","red_2","red_3"]
         img = MultiChannelImage(name, [path[1],path[2],path[3],path[3],path[3]],channels)
-        @test typeof(img) == MultiChannelImage{Float64, String, Float64}
+        @test typeof(img) == MultiChannelImage{Float64, String, Float64, Int64}
 
         # test that the constructor sets the fields correctly
         @test img.channels == channels
@@ -160,7 +165,7 @@ end
         img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
         # create stack from image and test that the constructor returns a MultiChannelImageStack object
         img_stack = MultiChannelImageStack([img, img, img], "test_stack")
-        @test typeof(img_stack) == MultiChannelImageStack{MultiChannelImage{Float64, String, Float64}, String}
+        @test typeof(img_stack) == MultiChannelImageStack{MultiChannelImage{Float64, String, Float64, Int64}, String}
 
         # test that the constructor sets the fields correctly
         @test img_stack.name == "test_stack"
@@ -216,8 +221,8 @@ end
         a = [1, 2, 0, 3, 4, 0, 5, missing]
         b = [0, 2, 3, 0, 4, 5, 6, missing]
 
-        # call _exclude_zero! function
-        ProteinCoLoc._exclude_zero(a, b)
+        # _exclude_zero returns the filtered vectors (it does not mutate in place)
+        a, b = ProteinCoLoc._exclude_zero(a, b)
 
         # check that the output is as expected
         @test a == [2,4,5]

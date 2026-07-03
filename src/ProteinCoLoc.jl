@@ -27,7 +27,7 @@ import DataFrames: DataFrame
 import Distributions: pdf
 import GLMakie
 import Images
-import Statistics: quantile, mean, median
+import Statistics: quantile, mean, median, cor
 import Base: Cint
 import Random: shuffle!, randperm
 #using Mousetrap
