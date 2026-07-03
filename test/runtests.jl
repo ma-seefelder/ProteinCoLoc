@@ -672,6 +672,88 @@ end
 end
 
 ##########################################################################################
+### Per-grid CPU ship-gate harness + SBC + fresh pre-registration (07-04 Tasks 1-2, D-05)
+###
+### The per-grid ship-gate rides ONE grid-parametrized CPU (use_gpu=false) harness against a
+### CPU-resident frozen net keyed by a FRESH disjoint PROD_SEED[G] (never the spike
+### VAL_MASTER_SEED / training NPE_MASTER_SEED — Pitfall 3 / T-7-08). This smoke asserts the
+### seed disjointness and drives the SBC machinery (rank table + KS/χ² + ECE) at fixture scale
+### through the harness with an INJECTED fake simulator (the forward model is promoted by a later
+### per-grid plan), plus that run_gate is invocable before any grid is trained.
+##########################################################################################
+include(joinpath(@__DIR__, "gate", "run_gate.jl"))   # brings gate_consts + harness + sbc + run_gate
+
+@testset "ship-gate harness + SBC (gate/, 07-04)" begin
+    # Fresh disjoint per-grid gate seeds (T-7-08): PROD_SEED[G] ∉ {VAL_MASTER_SEED, NPE_MASTER_SEED}.
+    for G in (4, 8, 16, 32)
+        @test PROD_SEED[G] != VAL_MASTER_SEED
+        @test PROD_SEED[G] != NPE_MASTER_SEED
+        @test PROD_SEED[G] != 0
+    end
+    @test length(unique(values(PROD_SEED))) == 4        # distinct per grid
+    @test PROD_SALT != 0xBF58476D1CE4E5B9                # ≠ spike VAL_SALT
+    @test prod_rng(8) isa Random123.Philox4x            # reproducible keyed stream
+
+    # A tiny trained net + an INJECTED fake simulator (forward model not yet promoted) so the
+    # harness + SBC machinery run end-to-end without the real simulator.
+    G = 4; nc = G^2; d = 2 * nc; n = 40
+    Zraw = vcat(randn(nc, n) .* 2 .+ 3, Float64.(rand(Bool, nc, n)))
+    zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
+    Zstd = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
+    θ    = randn(7, n)
+    res  = ProteinCoLoc.train_npe(Zstd, Zstd, θ, θ; use_gpu = false, epochs = 2, batchsize = 16,
+                                  dstar = 8, depth = 1, width = 16, num_coupling_layers = 2,
+                                  flow_depth = 1, flow_width = 8, stopping_epochs = 2)
+    m = (estimator = res.estimator, zt = zt, θzt = res.θzt)
+
+    fake_prior(rng) = (ρ_true = 2 * rand(rng) - 1, spillover = rand(rng),
+                       autofluorescence = rand(rng), label_efficiency = rand(rng),
+                       shift_dx = 0.0, shift_dy = 0.0, noise = rand(rng))
+    fake_pair(rng, θ; imsize = (64, 64)) =
+        [rand(rng, imsize...) .+ 0.5, rand(rng, imsize...) .+ 0.5]
+    fake_mci(data) = MultiChannelImage(data, ["c1", "c2"], "gate_synth", ["p1", "p2"],
+                                       size(data[1]), [0.5, 0.5])
+    sim = (; sample_prior = fake_prior, simulate_pair = fake_pair, build_mci = fake_mci)
+
+    # draw_simulate_infer is grid-parametrized and CPU-only; returns 7×N physical draws.
+    t = draw_simulate_infer(m, prod_rng(G); G = G, imsize = (64, 64), N = SBC_FIX_L, sim = sim)
+    @test size(t.draws, 1) == 7
+    @test size(t.draws, 2) == SBC_FIX_L
+
+    # tiny-M SBC rank table through the harness: M×8, every rank ∈ 0:L.
+    ranks = sbc_ranks(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L, imsize = (64, 64),
+                      sim = sim, rng = prod_rng(G))
+    @test size(ranks) == (SBC_FIX_M, 8)
+    @test all(r -> 0 <= r <= SBC_FIX_L, ranks)
+
+    # KS + χ² uniformity via HypothesisTests (not hand-rolled) + ECE/MCE CalibrationResult.
+    u = sbc_uniformity(ranks[:, 1]; L = SBC_FIX_L, bins = SBC_FIX_BINS)
+    @test 0.0 <= u.ks_p <= 1.0
+    @test isfinite(u.chi2_p)
+    cal = sbc_calibration(collect(ranks[:, 1]); L = SBC_FIX_L, n_bins = SBC_FIX_BINS)
+    @test cal isa CalibrationResult
+    @test isfinite(cal.ece) && isfinite(cal.mce)
+    @test sbc_traffic_light(cal.ece) in (:green, :yellow, :red)
+
+    # The aggregated per-grid verdict runs and reports 8 columns + a pass/fail boolean.
+    v = sbc_gate(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L, bins = SBC_FIX_BINS,
+                 imsize = (64, 64), sim = sim, rng = prod_rng(G))
+    @test length(v.per_param) == 8
+    @test v.passed isa Bool
+    @test v.caption == SBC_CAPTION
+
+    # run_gate is invocable before any grid is trained: honest :not_trained status, no crash.
+    rep = run_gate(G; sbc = true, artifacts_root = mktempdir(), sim = sim, write_report = false)
+    @test rep.status == :not_trained
+    @test rep.grid == G
+end
+
+##########################################################################################
+### GPU-train smoke — graceful CPU fallback + CPU-resident persistence (07-04 Task 3, D-06)
+##########################################################################################
+include(joinpath(@__DIR__, "gpu_smoke.jl"))
+
+##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):
 ###
 ### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,
