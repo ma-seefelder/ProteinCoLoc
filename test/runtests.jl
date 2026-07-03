@@ -256,6 +256,41 @@ end
 end
 
 ##########################################################################################
+### Amortized grid-parametric summary/encoder + dimension helpers (07-01 Task 1)
+###
+### D-04 couples the summary-vector dimension to the patch grid G (dim 2·G²). These tests
+### assert the summary/encoder and the single-source dimension helpers are grid-general for
+### G ∈ {4,8,16,32} and reproduce the proven 8×8 spike constants (128 / 64 / 320).
+##########################################################################################
+@testset "amortized summary (grid-parametric)" begin
+    sz = 256
+    data = [rand(sz, sz) .+ 0.5, rand(sz, sz) .+ 0.5]   # strictly positive ⇒ clears ≥15 floor
+    mci = MultiChannelImage(data, ["c1", "c2"], "synth", ["p1", "p2"], (sz, sz), [0.5, 0.5])
+
+    # patch_summary(mci, G) is a G×G correlation matrix; encode_d01 has length 2·G².
+    for G in (4, 8, 16)
+        M = ProteinCoLoc.patch_summary(mci, G)
+        @test size(M) == (G, G)
+        @test length(ProteinCoLoc.encode_d01(M)) == 2 * G^2
+    end
+
+    # Row-partition split is grid-general: cont = 1:G², mask = G²+1:2G².
+    for G in (4, 8, 16, 32)
+        cont, mask = ProteinCoLoc._summary_row_partition(:min, 2 * G^2)
+        @test cont == collect(1:G^2)
+        @test mask == collect(G^2+1:2*G^2)
+    end
+
+    # Dimension helpers are the single source of truth and reproduce the 8×8 constants.
+    @test ProteinCoLoc.summary_dim(8) == 128
+    @test ProteinCoLoc.cont_rows(8) == 64
+    @test ProteinCoLoc.ratio_input_dim(8) == 320
+    @test ProteinCoLoc.summary_dim(16) == 512
+    @test ProteinCoLoc.cont_rows(16) == 256
+    @test ProteinCoLoc.ratio_input_dim(16) == 1280
+end
+
+##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):
 ###
 ### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,
