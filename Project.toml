@@ -29,5 +29,5 @@ ProteinCoLocTuringExt = "Turing"
 
 [compat]
 Flux = "0.16.10"
-GLMakie = "0.10.5"
+GLMakie = "0.13"
 NeuralEstimators = "0.2.1"
