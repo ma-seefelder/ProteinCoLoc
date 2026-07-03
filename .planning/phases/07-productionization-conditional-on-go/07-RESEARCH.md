@@ -118,17 +118,57 @@ The D-04 fine grids are **not the right primitive** for per-region resolution an
 
 ### Compute cost reality (per-grid, so the planner can size the phase)
 
-`[ASSUMED — extrapolated from the spike's 8×8 run at 50k pairs]` Each grid is a full pipeline: **data-gen → NPE train → NRE train → fresh re-pre-registered SBC/BF/OOD gate**. Rough per-grid budget (CPU baseline; GPU optional, degrades gracefully):
+`[ASSUMED — extrapolated from the spike's 8×8 run at 50k pairs]` Each grid is a full pipeline: **data-gen → NPE train → NRE train → fresh re-pre-registered SBC/BF/OOD gate**. **Phase 7 relaxes the spike's CPU-only training rule — a GPU is available and SHOULD accelerate NPE+NRE training** (see §GPU Acceleration & Reproducibility Split). The two cost columns below separate the **image-simulation** axis (data-gen; CPU-bound, GPU does not help — it is Julia image ops, not tensor math) from the **neural training** axis (GPU-accelerable):
 
-| Grid | Data-gen driver | Training-data volume | Sim cost driver | Relative training cost |
+| Grid | Data-gen (CPU, sim-bound) | Summary dim | NPE+NRE training (CPU baseline) | NPE+NRE training (GPU-accelerated) |
 |------|------|------|------|------|
-| 4×4 | 50k @ 256²-heavy | ~small summary (32-dim) | ~1× (256² dominant) | low |
-| 8×8 | 50k (spike cache reusable) | 128-dim | ~1× | baseline (already trained) |
-| 16×16 | 50k–100k @ ≥512² | 512-dim | ~4× (512² dominant) | ~2–3× |
-| 32×32 | 100k @ ≥1024² | 2048-dim | ~16× (1024²) | ~4–6× (bigger net + bigger sims) |
-| 64×64 | 100k–200k @ ≥2048² | 8192-dim | ~64× (2048²) | ~10–20× (largest net, biggest sims, most missingness) |
+| 4×4 | 50k @ 256²-heavy (~1×) | 32 | low | trivial |
+| 8×8 | 50k (spike cache reusable) | 128 | baseline (already trained) | — |
+| 16×16 | 50k–100k @ ≥512² (~4× sim) | 512 | ~2–3× | ~1× (GPU absorbs the bigger net) |
+| 32×32 | 100k @ ≥1024² (~16× sim) | 2048 | ~4–6× | ~1.5–2× (GPU absorbs the net; **sim now dominates**) |
+| 64×64 | 100k–200k @ ≥2048² (~64× sim) | 8192 | ~10–20× | ~2–4× (GPU absorbs the net; **data-gen is the bottleneck**) |
 
-Plus the **D-05 gate per grid**: SBC at M=2000 = 2000 fresh simulate+infer passes at that grid's image size, the BF Δρ sweep, and the OOD ROC grid — the gate itself scales with image size, so 64×64's gate alone could dominate the phase's wall clock. **Sequencing recommendation:** do 8×8 first (re-validate the proven grid on a fresh seed to establish the D-05 machinery), then ascending compute/risk. If 32×32/64×64 gates prove infeasible on the CPU baseline, that is a **user decision point** (cap the family), not a silent descope.
+**Key GPU insight:** GPU eases the fine-grid **training-time** axis (the bigger 2048/8192-dim nets), but the **data-generation** axis (simulating 100k–200k image pairs at ≥1024²/≥2048²) is **CPU/image-ops-bound and GPU does not help it** — it becomes the fine-grid bottleneck. So GPU materially de-risks 32×32/64×64 *training feasibility* but not the *data-gen wall clock*. The **statistical** feasibility (does calibrated local Δρ resolution hold up) is entirely independent of GPU and is **unchanged** by this — the DO-NOT-SHIP-as-local-map / global-θ-output findings above stand on their own merits.
+
+Plus the **D-05 gate per grid**: SBC at M=2000 = 2000 fresh simulate+infer passes at that grid's image size, the BF Δρ sweep, and the OOD ROC grid. The gate's *simulation* cost scales with image size (CPU-bound); its *inference* passes run on the shipped **CPU-reproducible** path (§GPU section) so the pre-registered numbers stay deterministic. **Sequencing recommendation:** do 8×8 first (re-validate the proven grid on a fresh seed to establish the D-05 machinery), then ascending compute/risk. If 32×32/64×64 remain infeasible even with GPU training — because of data-gen cost **or** the statistical feasibility cliff — that is a **user decision point** (cap the family), not a silent descope.
+
+---
+
+## GPU Acceleration & Reproducibility Split
+
+> **User update (2026-07-03):** the CPU-only rule was a **spike constraint only** and does **not** bind Phase 7. A GPU is available and MAY accelerate training. CLAUDE.md stance holds: **GPU is an optional accelerator with graceful CPU fallback.** This section revises the training plan accordingly; it does **not** soften any feasibility verdict (the local-localisation calibration question is statistical, GPU-independent).
+
+### The mechanism (NeuralEstimators v0.2.1) — verified
+
+`[VERIFIED: spike/npe/train_npe.jl:29-33 + spike/validation/train_ratio.jl:49-51, execution-proven across Phases 4–6]` NeuralEstimators' `train`, `sampleposterior`, and `logratio` all take a **`use_gpu` keyword that DEFAULTS TO `true`** — the spike disables it (`use_gpu = false`) on *every* call precisely because the spike was CPU-only. Phase 7 simply **stops forcing `use_gpu = false` in the training path**. `[CITED: CLAUDE.md Technology Stack + fluxml.ai GPU guide]` Since Flux ≥0.14, **CUDA loads as a package extension** (`CUDA.jl` added separately; Flux picks it up automatically), so:
+
+- **Training:** call `train(est, …; use_gpu = true)` for NPE and NRE. With `CUDA.jl` present and a device visible, tensors move to GPU; with no CUDA device, NeuralEstimators/Flux **degrade to CPU** without code change (graceful fallback — the CLAUDE.md constraint).
+- **Dependency:** add `CUDA.jl` as an **optional** dependency — a **weakdep/extension of the productionized package** (mirrors the Turing→extension move), NOT a hard runtime dep. This keeps a clean-CPU install lean (a core resolve without CUDA) and honors "spike/degrade must run without GPU." A `train_and_register(grid; use_gpu = has_cuda_device())` default auto-selects.
+- **Verify at Wave 0:** confirm the installed NeuralEstimators 0.2.1 honors `use_gpu=true` on a tiny GPU smoke train (mirror the ENV-02 CPU smoke), and that the CPU path is byte-reproducible with `use_gpu=false`.
+
+### What GPU changes — and what it does NOT
+
+| Axis | GPU effect | Verdict impact |
+|------|-----------|----------------|
+| NPE/NRE **training time** (heavy 2048/8192-dim nets at 32×32/64×64) | **Eased** — GPU absorbs the bigger nets (see revised compute table) | Fine-grid **training feasibility** improves; sequencing risk drops. |
+| **Data generation** (100k–200k image sims at ≥1024²/≥2048²) | **No help** — CPU/image-ops bound (Julia `imfilter`/patch/correlation), not tensor math | Remains the fine-grid wall-clock bottleneck. |
+| **Local-localisation calibration** (does per-region Δρ resolution hold up) | **None** — a statistical property of the summary + prior, independent of hardware | **Feasibility verdict UNCHANGED.** 64×64 stays DO-NOT-SHIP-as-a-local-map; global-θ-output finding stands. |
+
+**Do not let GPU availability soften Finding 2.** GPU makes it *cheaper to train* a 64×64 net; it does nothing to make that net produce a per-region map (it still outputs global θ) or to make 16-pixel patches informative. Those are architecture/statistics facts.
+
+### Reproducibility split (plan as the default, pending final user confirmation)
+
+**Train on GPU; keep the shipped/gated/inference paths CPU-reproducible.** Concretely:
+
+1. **Shipped frozen nets** — trained however is fastest (GPU), but **persisted as CPU-resident arrays** (move parameters to CPU before `Flux.state` + atomic save). The artifact carries no device state, so it loads identically on any machine.
+2. **Per-grid ship-gate (SBC/BF/OOD, D-05)** — runs the **CPU inference path** (`use_gpu = false` on every `sampleposterior`/`logratio`), keyed by the fresh `PROD_SEED[grid]` (Random123). This is what makes the **pre-registered numbers deterministic and reproducible** regardless of training hardware. The gate is the pre-registration; the gate is CPU.
+3. **Shipped default inference** (`colocalization_amortized`) — **CPU by default** (`use_gpu = false`), so end users reproduce results without a GPU. Optionally expose `use_gpu` for batch throughput, but the *documented, reproducible* default is CPU.
+
+**Determinism caveat (state it plainly):** GPU *training* is typically **non-deterministic** (non-associative float reductions, cuDNN algorithm selection) — this is **acceptable and by design here**, because *what is pre-registered and reproduced is the **frozen net + CPU inference/gate**, not the training run*. The training seed influences which net you get; once frozen, the net's CPU inference and the CPU gate are deterministic. If two GPU training runs yield slightly different frozen nets, each must still **independently pass its own fresh CPU gate** — the D-05 contract is on the gate outcome, not on training-run bit-reproducibility. (If the user later wants bit-reproducible *training* too, that forces CPU training or a deterministic-GPU config and a large slowdown — flag as a trade, do not assume it.)
+
+### Compute-table caveat
+
+The revised GPU column in the feasibility §Compute cost table reflects **training** acceleration only. The data-gen column is unchanged (CPU/sim-bound). Re-estimate both against the real 8×8 GPU-train timing captured in Wave 0 / the first grid.
 
 ---
 
@@ -152,6 +192,7 @@ All packages are **already proven** in the spike Manifest and by six completed p
 | Images / ImageFiltering | current | `MultiChannelImage` assembly + PSF ops for the simulator used by data-gen + gates | Already root + spike. |
 | Distributions | current | Prior π(θ) sampling consistent with the Turing `@model` ranges | Already root + spike. |
 | LinearAlgebra / Statistics | stdlib | Hand-rolled Mahalanobis OOD + ROC/AUC (no new dep) | OOD flag; no ROC package enters the resolve. |
+| CUDA | current (optional) | **GPU acceleration of NPE/NRE `train(...; use_gpu=true)`** | Optional accelerator (§GPU section); add as a **weakdep/extension**, NOT a hard core dep, so clean-CPU installs stay lean and degrade gracefully. `[CITED: fluxml.ai GPU guide — CUDA is a Flux extension since v0.14]` |
 
 ### Turing — move OFF the core runtime (the co-resolution fix)
 | Library | Version | Disposition | Rationale |
@@ -510,16 +551,20 @@ end
 - **Per wave merge:** the merged grid's full `run_gate.jl --grid G` (reported scale).
 - **Phase gate:** every **shipped** grid green on its fresh-seed gate; unregistered/failed grids excluded from `_SHIPPED_GRIDS`.
 
+### CPU-reproducibility of the ship-gate (mandatory)
+`[per §GPU Acceleration & Reproducibility Split]` Training may use the GPU, but the **D-05 ship-gate and the shipped default inference are CPU-reproducible**: every gate `sampleposterior`/`logratio` call passes `use_gpu = false`, keyed by the fresh `PROD_SEED[grid]` (Random123), against a **CPU-resident frozen net** (parameters moved to CPU before persistence). The pre-registered numbers are therefore deterministic and reproducible regardless of training hardware. GPU-training non-determinism is acceptable because the pre-registered/reproduced object is the *frozen net + CPU gate*, not the training run; a net that trains slightly differently must still independently pass its own fresh CPU gate.
+
 ### Fresh pre-registration per grid (D-05)
-- One committed `gate_consts_G.jl` per grid **before** its gate runs: `SBC_M`, `SBC_L`, `SBC_BINS`, KS/χ²/ECE thresholds, BF corr/tol + sweep, OOD quantile/AUC — mirroring `spike/validation/consts.jl` but with **new values re-expressed fresh** and a **new disjoint `PROD_SEED[G]`**.
+- One committed `gate_consts_G.jl` per grid **before** its gate runs: `SBC_M`, `SBC_L`, `SBC_BINS`, KS/χ²/ECE thresholds, BF corr/tol + sweep, OOD quantile/AUC — mirroring `spike/validation/consts.jl` but with **new values re-expressed fresh** and a **new disjoint `PROD_SEED[G]`** (CPU-keyed).
 - Falsification/pass criteria inherit the memo §6 conditions (ECE green, BF mid-range agreement, OOD family detectable by a summary-orthogonal channel).
 - **Ride-along hardening (memo §5):** re-enable the OOD posterior-predictive channel (iter1 finite-θ̂ guard) in the reported OR-fusion; add a **non-clamped BF baseline** so `max|Δ logBF|` is testable without the KDE `1e-8` floor artifact.
 
 ### Wave 0 Gaps
 - [ ] `test/runtests.jl` — root test entry (resolve-risk + type/registry units)
-- [ ] `test/gate/run_gate.jl` + `gate_consts_G.jl` template — per-grid fresh gate
-- [ ] Promote `spike/validation/{harness,sbc,bf,ood}.jl` → `src/validation` or `test/gate` (grid-parametrized)
-- [ ] Framework: no new install — stdlib `Test` + HypothesisTests (already a dep)
+- [ ] `test/gate/run_gate.jl` + `gate_consts_G.jl` template — per-grid fresh **CPU** gate
+- [ ] Promote `spike/validation/{harness,sbc,bf,ood}.jl` → `src/validation` or `test/gate` (grid-parametrized, `use_gpu=false` on gate/inference)
+- [ ] GPU-train smoke (mirror ENV-02 CPU smoke): assert `train(...; use_gpu=true)` works with CUDA present AND degrades to CPU when absent; assert frozen net persists CPU-resident
+- [ ] Framework: no new install — stdlib `Test` + HypothesisTests (already a dep); `CUDA.jl` as optional weakdep for training only
 
 ## Security Domain
 
@@ -552,6 +597,7 @@ end
 | A4 | Per-grid compute/artifact-size estimates (10–20× for 64×64; 100s of MB total) | Compute cost / Storage | Rough; the Wave-0/8×8 timing calibrates the real numbers. Planner should re-estimate after the first grid. |
 | A5 | Julia General registry + execution-proof suffices for package legitimacy (slopcheck N/A for Julia) | Package Legitimacy Audit | Low — all packages are pre-existing spike deps. |
 | A6 | Migrating to `Flux.state`+`loadmodel!` is needed for robust shipped-artifact loading | Standard Stack / Pitfall 4 | If the package pins an exact Manifest forever, whole-object jldsave *might* suffice; but a shipped library should not assume that. |
+| A7 | NeuralEstimators 0.2.1 `train(...; use_gpu=true)` + CUDA-as-Flux-extension gives GPU training with graceful CPU fallback; frozen-net CPU inference/gate stays deterministic | GPU Acceleration & Reproducibility Split | Mechanism is execution-verified from spike code (`use_gpu` defaults true); the *GPU* path itself is unexercised in the spike (CPU-only) — confirm via a Wave-0 GPU-train smoke. Reproducibility split assumes CPU inference/gate is what's pre-registered (design choice, pending final user confirmation). |
 
 > **Note:** A3 (co-resolution) is the single assumption most likely to reshape the plan and must be de-risked **first** via an actual `Pkg.resolve` spike. A1 (fine-grid feasibility) is the one most likely to change what ships.
 
@@ -582,7 +628,7 @@ end
 | Flux | NN backend | ✓ | 0.16.10 | Lux (reserve, not needed) |
 | JLD2/Random123/HypothesisTests/StatsBase/Images/Distributions | pipeline + gate | ✓ | spike-pinned | — |
 | Turing | internal ADVI reference (ship-gate) | ✓ (root dep today) | current | move to weakdep/test env |
-| CUDA | optional GPU training | optional | — | CPU-only baseline (required to work without) |
+| CUDA | **GPU-accelerated NPE/NRE training** (Phase 7, `train(...; use_gpu=true)`) | optional (GPU available per user) | — | graceful CPU fallback — training, gate, and shipped inference all run without a GPU |
 | slopcheck | package legitimacy | N/A (Julia, not npm/PyPI) | — | Julia General registry + execution proof |
 
 **Missing dependencies with no fallback:** none — all inference deps are spike-proven.
@@ -592,8 +638,8 @@ end
 
 | Plan | Wave | Scope | Gate |
 |------|------|-------|------|
-| **7-00 Shared infrastructure** | 0 | Root dep add + **Turing→weakdep extension** + `Pkg.resolve` risk gate; version→2.0.0; `AbstractColocResult` hierarchy + accessors (D-02); registry skeleton + `train_and_register` + unregistered-grid error (D-04); **grid-parametrize** `patch_summary`/`encode_d01`/loader/NRE dims; per-grid gate harness + `gate_consts` template (D-05); OOD-PP re-enable + non-clamped BF baseline (memo §5). | Root resolves w/ NeuralEstimators 0.2.1; types+registry unit tests green; 8×8 round-trips through the registry. |
-| **7-01 … 7-05 Per-grid pipelines** | 1..n | One grid each: data-gen (adequate imsize) → NPE train → NRE train → OOD nulls → **fresh re-pre-registered SBC/BF/OOD gate** → register if pass. Sequence **8×8 first** (establish gate machinery on the proven grid), then 4×4, 16×16, 32×32, 64×64 (ascending risk/compute). | Grid's fresh gate green (or excluded from `_SHIPPED_GRIDS` with recorded reason). |
+| **7-00 Shared infrastructure** | 0 | Root dep add + **Turing→weakdep extension** + **CUDA→optional weakdep (GPU training)** + `Pkg.resolve` risk gate; version→2.0.0; `AbstractColocResult` hierarchy + accessors (D-02); registry skeleton + `train_and_register(grid; use_gpu=has_cuda_device())` + unregistered-grid error (D-04); **grid-parametrize** `patch_summary`/`encode_d01`/loader/NRE dims; per-grid **CPU** gate harness + `gate_consts` template (D-05); Flux.state persistence (CPU-resident); OOD-PP re-enable + non-clamped BF baseline (memo §5). | Root resolves w/ NeuralEstimators 0.2.1; GPU-train smoke passes AND degrades to CPU; types+registry unit tests green; 8×8 round-trips through the registry. |
+| **7-01 … 7-05 Per-grid pipelines** | 1..n | One grid each: data-gen (adequate imsize, CPU/sim-bound) → **GPU-accelerated** NPE train → NRE train → OOD nulls → **fresh re-pre-registered CPU SBC/BF/OOD gate** → register if pass. Sequence **8×8 first** (establish gate machinery on the proven grid), then 4×4, 16×16, 32×32, 64×64 (ascending risk/compute). GPU eases training for 32×32/64×64; data-gen stays the fine-grid bottleneck. | Grid's fresh CPU gate green (or excluded from `_SHIPPED_GRIDS` with recorded reason). |
 | **7-06 Public API + release** | final | `colocalization_amortized` public entry; finalize accessor interface + docs; populate registry from Artifacts; write `Artifacts.toml` (lazy, content-hashed, GitHub-Release-hosted); integration test; register only passed grids. | PROD-01/02 acceptance; only gated grids shipped. |
 
 **Sequencing note:** 32×32/64×64 are **conditional** — their inclusion depends on their gate outcome and a user decision on the feasibility caveats. Treat "cap the family" as an explicit, expected branch, not a failure.
