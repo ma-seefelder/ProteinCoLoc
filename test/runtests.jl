@@ -4,7 +4,8 @@
 # Author: Dr. rer. nat. Manuel Seefelder
 #########################################################################################
 import Images
-import Statistics: cor
+import Statistics: cor, mean
+import StatsBase
 import Pkg
 
 using ProteinCoLoc
@@ -321,6 +322,39 @@ end
     register!(b)
     @test estimator_for(8) === b
     @test b.grid == 8
+end
+
+##########################################################################################
+### Amortized NPE read surface (07-02 Task 1, PROD-01)
+###
+### standardize_summary applies the FROZEN zt to the continuous rows and passes the binary
+### mask rows through UNCHANGED; the read functions carry a CPU-default (use_gpu=false).
+##########################################################################################
+@testset "amortized NPE read surface (infer.jl)" begin
+    # The read functions are promoted and available on the module.
+    for f in (:standardize_summary, :posterior_for, :rho_hat, :rho_draws, :delta_rho)
+        @test isdefined(ProteinCoLoc, f)
+    end
+
+    # standardize_summary: frozen-zt on continuous rows, mask rows bypassed (G = 4 ⇒ d = 32).
+    G = 4; nc = G^2; K = 64
+    Scont = randn(nc, K) .* 3.0 .+ 7.0
+    zt    = StatsBase.fit(StatsBase.ZScoreTransform, Scont; dims = 2)
+    mask  = Float64.(rand(Bool, nc, K))
+    S     = vcat(Scont, mask)                          # 2·G² × K
+    out   = ProteinCoLoc.standardize_summary(S, zt, :min)
+
+    @test eltype(out) == Float32
+    @test size(out) == (2 * nc, K)
+    # mask rows (G²+1 : 2G²) pass through UNCHANGED (never re-z-scored).
+    @test out[nc+1:2*nc, :] ≈ Float32.(mask)
+    # continuous rows are z-scored ⇒ per-row mean ≈ 0.
+    @test all(abs.(vec(mean(Float64.(out[1:nc, :]); dims = 2)))  .< 1e-4)
+
+    # Vector overload coerces to a column and matches the matrix result.
+    outv = ProteinCoLoc.standardize_summary(S[:, 1], zt, :min)
+    @test outv == out[:, 1]
+    @test outv[nc+1:2*nc] ≈ Float32.(mask[:, 1])
 end
 
 ##########################################################################################
