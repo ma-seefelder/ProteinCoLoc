@@ -457,6 +457,49 @@ end
 end
 
 ##########################################################################################
+### Amortized NPE architecture + training, GPU-plumbed with CPU fallback (07-03 Task 1)
+###
+### build_estimator is input-width-agnostic (reads d_in) and constructs q as a NormalisingFlow
+### INSTANCE passed positionally; train_npe defaults use_gpu=has_cuda_device() (CPU here) with no
+### throw guard, keeps the AdamW LR/decay Float64, and returns a PosteriorEstimator + frozen θzt.
+##########################################################################################
+@testset "amortized NPE training (train_npe.jl)" begin
+    for f in (:build_estimator, :train_npe, :fit_theta_transform, :fit_summary_transform)
+        @test isdefined(ProteinCoLoc, f)
+    end
+
+    # build_estimator is input-width-agnostic: two different d_in both construct an estimator
+    # (a working estimator yields 7-row posterior draws through the frozen read surface).
+    for d_in in (32, 72)
+        e = ProteinCoLoc.build_estimator(d_in; dstar = 8, depth = 1, width = 16,
+                                         num_coupling_layers = 2, flow_depth = 1, flow_width = 8)
+        dz = ProteinCoLoc.posterior_for(e, Float32.(randn(d_in)); N = 4, use_gpu = false)
+        @test size(dz, 1) == 7
+    end
+
+    # fit_summary_transform touches the CONTINUOUS rows only (dim G²), mask rows never z-scored.
+    G = 4; nc = G^2; d = 2 * nc; n = 40
+    Zraw = vcat(randn(nc, n) .* 2 .+ 3, Float64.(rand(Bool, nc, n)))
+    zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
+    @test length(zt.mean) == nc
+
+    # A tiny CPU NPE train (few epochs, small N, use_gpu=false) completes and returns an estimator.
+    Ztr = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
+    Zva = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
+    θtr = randn(7, n); θva = randn(7, n)
+    res = ProteinCoLoc.train_npe(Ztr, Zva, θtr, θva; use_gpu = false, epochs = 2,
+                                 batchsize = 16, dstar = 8, depth = 1, width = 16,
+                                 num_coupling_layers = 2, flow_depth = 1, flow_width = 8,
+                                 stopping_epochs = 2, verbose = false)
+    @test res.d_in == d
+    @test length(res.θzt.mean) == 7
+    @test res.arch.dstar == 8
+    # posterior draws are reachable through the frozen read surface (7×N un-standardized).
+    draws = ProteinCoLoc.posterior_for(res.estimator, Ztr[:, 1]; N = 8, use_gpu = false)
+    @test size(draws, 1) == 7
+end
+
+##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):
 ###
 ### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,

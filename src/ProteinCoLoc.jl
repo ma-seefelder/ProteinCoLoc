@@ -48,6 +48,13 @@ include("registry.jl")
 include("amortized/infer.jl")
 include("amortized/bf.jl")
 include("amortized/ood.jl")
+# Amortized TRAINING layer (PROD-01/PROD-02, D-06): the NPE architecture + training, NRE ratio
+# training, CPU-resident Flux.state persistence, and the single reusable per-grid pipeline.
+# Ordered after ood.jl (uses build_estimator, fit_ood_nulls, standardize_summary) and after
+# registry.jl (line above): pipeline.jl fills the `_train_grid_pipeline` referenced by
+# `train_and_register`. Order: architecture → train_npe → train_ratio → persist → pipeline.
+include("amortized/architecture.jl")
+include("amortized/train_npe.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
