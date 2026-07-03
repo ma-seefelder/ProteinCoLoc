@@ -291,6 +291,39 @@ end
 end
 
 ##########################################################################################
+### Grid-keyed estimator registry skeleton (07-01 Task 3, PROD-02 / D-04)
+###
+### The registry keys estimators by patch grid, returns a bundle for a registered grid, and
+### raises a clear `train_and_register`-pointing error for an unregistered grid. The shipped
+### family is CAPPED to (4,8,16,32) — 64 is DROPPED (D-04).
+##########################################################################################
+@testset "estimator registry (PROD-02)" begin
+    # Capped shipped family — 64 dropped (D-04).
+    @test ProteinCoLoc._SHIPPED_GRIDS == (4, 8, 16, 32)
+    @test !(64 in ProteinCoLoc._SHIPPED_GRIDS)
+
+    # Unregistered, non-shipped grid → ArgumentError naming train_and_register.
+    @test_throws ArgumentError estimator_for(7)
+    err = try
+        estimator_for(7)
+    catch e
+        e
+    end
+    @test occursin("train_and_register", err.msg)
+
+    # GPU probe is weakdep-safe: no CUDA loaded ⇒ false, never an error.
+    @test ProteinCoLoc.has_cuda_device() == false
+
+    # register! makes estimator_for return the bundle.
+    cal = ProteinCoLoc.CalibrationMeta(
+        [0.5], [0.5], [0.5], [1], 0.0, 0.0, 8, (; seed = 0, passed = true))
+    b = ProteinCoLoc.EstimatorBundle(8, nothing, nothing, nothing, nothing, nothing, cal)
+    register!(b)
+    @test estimator_for(8) === b
+    @test b.grid == 8
+end
+
+##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):
 ###
 ### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,
