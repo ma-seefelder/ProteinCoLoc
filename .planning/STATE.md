@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 6 context gathered
-last_updated: "2026-07-03T11:41:14.838Z"
+status: ready_to_plan
+stopped_at: Phase 06 complete (2/2) — ready to discuss Phase 08
+last_updated: 2026-07-03T11:52:06.038Z
 last_activity: 2026-07-03 -- Phase 06 execution started
 progress:
   total_phases: 16
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 06 — reproducible-demo-go-no-go-memo
+**Current focus:** Phase 08 — external physical ground truth corpus
 
 ## Current Position
 
-Phase: 06 (reproducible-demo-go-no-go-memo) — EXECUTING
-Plan: 2 of 2
-Status: Executing Phase 06
-Last activity: 2026-07-03 -- Phase 06 execution started
+Phase: 08
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-03
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 20
+- Total plans completed: 22
 - Average duration: - min
 - Total execution time: 0.0 hours
 
@@ -48,6 +48,7 @@ Progress: [██████████] 100%
 | 02 | 4 | - | - |
 | 03 | 5 | - | - |
 | 04 | 7 | - | - |
+| 06 | 2 | - | - |
 
 **Recent Trend:**
 
