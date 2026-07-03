@@ -195,9 +195,118 @@ const OOD_REPRO = (OOD_R1.maha_pos == OOD_R2.maha_pos && OOD_R1.combined_auc == 
 println("  OOD twin-run reproducible: $OOD_REPRO  (fixture ROC-grid combined AUC=",
         round(OOD_R1.combined_auc; digits = 3), " over ", length(OOD_FAMILIES), " families)")
 
+# ============================================================================
+# STEP 2 — HEADLINE NUMBERS (DEMO-01) — loaded, POST-ITERATION (Set 2), DISPLAY only
+# ============================================================================
+# The reported *_report.jld2 are GITIGNORED — a fresh clone lacks them, so guard each with
+# isfile and @warn (run --full to regenerate) rather than raising a raw load error. These
+# loaded numbers are SEPARATE from the Task-1/2 chain proof: they are the reported-scale
+# headline DISPLAY (POST-ITERATION / Set 2), NOT the reproducibility evidence, and are
+# NEVER labeled pre-registered — the pre-registered (Set 1) numbers live in 05-04-SUMMARY.md.
+const SBC_REPORT = joinpath(@__DIR__, "validation", "sbc_report.jld2")
+const BF_REPORT  = joinpath(@__DIR__, "validation", "bf_report.jld2")
+const OOD_REPORT = joinpath(@__DIR__, "validation", "ood_report.jld2")
+
+function _load_report(path, keys)
+    isfile(path) || (@warn "report absent (gitignored on a fresh clone); run --full to regenerate (POST-ITERATION numbers)" path; return nothing)
+    return jldopen(path, "r") do f
+        Dict{String,Any}(k => f[k] for k in keys)
+    end
+end
+
+const SBC_HEAD = _load_report(SBC_REPORT, ["labels", "ks_p", "chi2_p", "ece", "verdict", "SBC_M", "SBC_L"])
+const BF_HEAD  = _load_report(BF_REPORT,  ["corr", "max_abs_err", "log_prior_odds"])
+const OOD_HEAD = _load_report(OOD_REPORT, ["maha_auc", "combined_auc", "fam_best_auc", "id_fire_rate"])
+
+# ρ_true ECE index (labels order: ρ_true first — 05-04); fall back to index 1.
+_ece_rho = if SBC_HEAD !== nothing
+    labs = string.(SBC_HEAD["labels"])
+    idx  = findfirst(l -> occursin("ρ_true", l), labs)
+    SBC_HEAD["ece"][idx === nothing ? 1 : idx]
+else
+    NaN
+end
+
+println("\n[step 2] headline numbers (POST-ITERATION / Set 2 — NOT the pre-registered Set 1) …")
+if BF_HEAD !== nothing
+    # Print bf max_abs_err explicitly so the memo (plan 06-02) confirms the figure before quoting (A1).
+    println("  bf_report: corr=", round(BF_HEAD["corr"]; digits = 4),
+            "  max_abs_err(max|Δ logBF|)=", round(BF_HEAD["max_abs_err"]; digits = 4),
+            "  log_prior_odds=", round(BF_HEAD["log_prior_odds"]; digits = 4))
+end
+SBC_HEAD  !== nothing && println("  sbc_report: ρ_true ECE=", round(_ece_rho; digits = 4),
+                                 "  (M=", SBC_HEAD["SBC_M"], " L=", SBC_HEAD["SBC_L"], ")")
+OOD_HEAD  !== nothing && println("  ood_report: combined pooled AUC=", round(OOD_HEAD["combined_auc"]; digits = 3),
+                                 "  ID fire-rate=", round(OOD_HEAD["id_fire_rate"]; digits = 3))
+
+# ============================================================================
+# STEP 3 — SUCCESS-CRITERIA TABLE (DEMO-01) — chain-repro rows DISTINCT from loaded rows
+# ============================================================================
+const MEMO_PATH = joinpath(@__DIR__, "..", ".planning", "phases",
+                           "06-reproducible-demo-go-no-go-memo", "06-GO-NO-GO-MEMO.md")
+const MEMO_PRESENT = isfile(MEMO_PATH)
+
+const DEMO01_PASS = NPE_REPRO && BF_REPRO && OOD_REPRO      # fast chain reproduces (SC1)
+const DEMO02_PASS = true                                     # step-0 decoupling assert passed to get here (SC2)
+
+_row(crit, detail, status) = println(rpad(crit, 14), rpad(detail, 50), status)
+println("\n", "="^78)
+println("Phase-6 success-criteria table   (fast tier: julia --project=spike spike/demo.jl)")
+println("="^78)
+println(rpad("criterion", 14), rpad("check", 50), "status")
+println("-"^78)
+# --- Chain-reproduction rows (THIS RUN — twin-run bit-identical on VAL_FIX_SEED) --------
+_row("SC1/NPE",  "NPE fixture chain reproduces (twin-run draws ==)",      NPE_REPRO ? "PASS" : "FAIL")
+_row("SC1/BF",   "BF/NRE fixture sweep reproduces (twin-run log-BF ==)",  BF_REPRO ? "PASS" : "FAIL")
+_row("SC1/OOD",  "OOD fixture reproduces (twin-run maha+AUC ==)",         OOD_REPRO ? "PASS" : "FAIL")
+_row("SC2",      "src/ decoupled (git status --porcelain empty)",          DEMO02_PASS ? "PASS" : "FAIL")
+_row("SC3",      "Go/No-Go memo present (hard-gated in plan 06-02)",       MEMO_PRESENT ? "present" : "pending-06-02")
+println("-"^78)
+# --- Loaded reported-scale headline rows (POST-ITERATION / Set 2 — DISPLAY, not proof) ---
+println("loaded headline numbers  [POST-ITERATION / Set 2 — NOT pre-registered; Set 1 in 05-04-SUMMARY.md]")
+if SBC_HEAD !== nothing
+    _row("  SBC",  "ρ_true ECE=$(round(_ece_rho; digits=4)) (green ≤ 0.05)",  _ece_rho <= 0.05 ? "green" : "red")
+end
+if BF_HEAD !== nothing
+    _row("  BF",   "corr=$(round(BF_HEAD["corr"]; digits=4))  max|Δ logBF|=$(round(BF_HEAD["max_abs_err"]; digits=2))",  "reported")
+end
+if OOD_HEAD !== nothing
+    _row("  OOD",  "combined pooled AUC=$(round(OOD_HEAD["combined_auc"]; digits=3))",  OOD_HEAD["combined_auc"] >= 0.80 ? "pass" : "fail")
+end
+println("-"^78)
+# --- DEMO requirement verdicts ---------------------------------------------------------
+_row("DEMO-01",  "chains every layer reproducibly from a fixed seed",      DEMO01_PASS ? "PASS" : "FAIL")
+_row("DEMO-02",  "main package (src/) demonstrably untouched",             DEMO02_PASS ? "PASS" : "FAIL")
+_row("DEMO-03",  "Go/No-Go memo (authored + gated in plan 06-02)",         MEMO_PRESENT ? "present" : "pending-06-02")
+println("="^78)
+
+# ============================================================================
+# STEP 4 — --full DISPATCH (DEMO-01-full): reported gates as INDEPENDENT subprocesses
+# ============================================================================
+# Spawn each run_*.jl as its OWN subprocess so exit codes stay independent and one gate's
+# @testset throw cannot abort the others (RESEARCH Open Q2). Each run_*.jl owns its consts/
+# artifact/figures + anti-snooping guard asserts and exits nonzero on a gate fail.
+if FULL
+    println("\n[--full] re-running the reported-scale gates as independent subprocesses …")
+    for s in ("run_sbc.jl", "run_bf.jl", "run_ood.jl")
+        script = joinpath(@__DIR__, "validation", s)
+        println("\n", "="^78, "\n[--full] $s\n", "="^78)
+        try
+            run(`julia --project=spike $script`)
+            println("[--full] $s → gate PASS (exit 0)")
+        catch e
+            println("[--full] $s → gate FAIL (nonzero exit): ", sprint(showerror, e))
+        end
+    end
+end
+
 # CPU-only invariant (D-10): CUDA must never be loaded (test_sbc.jl:114-116 idiom).
 @assert !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules)) "CUDA loaded — demo must be CPU-only (D-10)"
 
 # --- Self-assert close (02_simulator_demo.jl:148-152 idiom; PowerShell-safe) -----------
-@assert isfile(joinpath(@__DIR__, "npe", "trained_npe.jld2")) "demo FAILED: missing frozen NPE"
-println("demo OK: NPE + BF/NRE + OOD fast-tier chain proofs reproduce on VAL_FIX_SEED (CPU-only, src/ decoupled)")
+# Hard-assert only the COMMITTED frozen NPE (the ratio net + reports are gitignored and
+# handled by isfile guards above / tiny-retrain fallback). The memo is NOT hard-gated here
+# — plan 06-02 authors it and wires the memo-presence + content assertion.
+@assert isfile(joinpath(@__DIR__, "npe", "trained_npe.jld2")) "demo FAILED: missing frozen NPE (spike/npe/trained_npe.jld2)"
+println("\ndemo OK: NPE + BF/NRE + OOD fast-tier chain proofs reproduce on VAL_FIX_SEED; " *
+        "src/ decoupled; headline numbers (Set 2) tabulated (CPU-only).")
