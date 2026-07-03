@@ -35,6 +35,11 @@ import Random: shuffle!, randperm
 include("LoadImages.jl")
 include("colocalization.jl")
 include("results.jl")
+# --- Amortized inference subsystem (v2.0, PROD-02) --------------------------------------
+# Grid-parametric summary/encoder + single-source dimension helpers (the ONE grid-coupling
+# site). Data-gen (amortized/datagen.jl) and the estimator registry (registry.jl) are added
+# by later 07-01 tasks / plans.
+include("amortized/summary.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
