@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: executing
+status: completed
 stopped_at: Phase 7 context gathered
-last_updated: "2026-07-03T18:07:12.529Z"
-last_activity: 2026-07-03 -- Phase 07 execution started
+last_updated: "2026-07-03T19:51:24.144Z"
+last_activity: 2026-07-03 -- 07-02 src/amortized/{infer,bf,ood}.jl; Memo §5 hardening folded in (non-clamped KDE BF baseline + with_pp=true PP channel); LinearAlgebra stdlib declared (external pins intact); spike untouched
 progress:
   total_phases: 16
   completed_phases: 8
   total_plans: 48
-  completed_plans: 37
+  completed_plans: 40
   percent: 50
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 07 (productionization-conditional-on-go) — EXECUTING
-Plan: 3 of 11 (07-00, 07-01 complete)
-Status: 07-01 COMPLETE — grid coupling generalized + estimator registry skeleton; Pkg.test green
-Last activity: 2026-07-03 -- 07-01 grid-parametric summary/datagen/registry; amortized summary 20/20 + registry 7/7; spike untouched
+Plan: 4 of 11 (07-00, 07-01, 07-02 complete)
+Status: 07-02 COMPLETE — amortized read surfaces (NPE infer / NRE Bayes factor + non-clamped baseline / OOD flag with re-enabled PP channel) promoted; Pkg.test green (infer 11/11, bf 18/18, ood 31/31)
+Last activity: 2026-07-03 -- 07-02 src/amortized/{infer,bf,ood}.jl; Memo §5 hardening folded in (non-clamped KDE BF baseline + with_pp=true PP channel); LinearAlgebra stdlib declared (external pins intact); spike untouched
 
-Progress: [██████████] 100%
+Progress: [████████░░] 83%
 
 ## Resolved (2026-07-03): 07-00 CO-RESOLUTION GATE — GREEN
 
@@ -90,6 +90,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 | Phase 05 P05-04 | 60min | 3 tasks | 4 files |
 | Phase 06 P01 | 40 | 3 tasks | 1 files |
 | Phase 06 P02 | 20min | 2 tasks | 2 files |
+| Phase 07 P07-02 | 45min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,8 @@ Recent decisions affecting current work:
 - [Phase 07-01]: Grid coupling centralized ONCE in src/amortized/summary.jl — summary_dim(G)=2G^2 / cont_rows(G)=G^2 / ratio_input_dim(G)=5G^2 are the single source of truth (8x8 reproduces 128/64/320); patch_summary(mci,G) + encode_d01 + _summary_row_partition(:min,2G^2) grid-general for G in {4,8,16,32}. Every downstream amortized module derives dims from these helpers (no per-grid re-hardcoding)
 - [Phase 07-01]: Estimator registry (PROD-02) keyed by patch grid — _SHIPPED_GRIDS=(4,8,16,32), 64 DROPPED (D-04); estimator_for validates grid and throws a train_and_register-pointing ArgumentError (T-7-05, no silent default-grid fallback); has_cuda_device() weakdep-safe (D-06 graceful CPU fallback); _lazy_load_from_artifact!/_train_grid_pipeline are honest hook-stubs for later plans
 - [Phase 07-01]: Grid-parametric datagen (src/amortized/datagen.jl) — summary buffers Matrix(summary_dim(G),N), generating_config.summary_min_dim=summary_dim(G) so grids auto-separate into distinct content-hash cache dirs; imsize_set exposed for per-grid image-size bias (>=15-survivor floor, T-7-03); :min-only (spike :aug superset dropped); content hash uses Base.hash to avoid re-resolving the fragile Wave-0 Manifest; simulator chain referenced-but-promoted-later; spike/ byte-untouched
+- [Phase 07-02]: Amortized READ surfaces promoted to src/amortized/{infer,bf,ood}.jl (PROD-01), grid-general + CPU-default (use_gpu=false everywhere, D-06). infer.jl: standardize_summary (frozen zt, mask bypass) + posterior_for/rho_draws/delta_rho (StatsBase.reconstruct BEFORE ρ read, Pitfall 5). bf.jl: amortized_log_bf (one NRE pass, measured log_prior_odds subtracted) + pair_encode (nc=G² derived ⇒ 5G²) + kde_log_bf_unclamped (Memo §5/T-7-06: compute_BayesFactor KDE math WITHOUT the 1e-8 _clampp floor so max|Δ logBF| is artifact-free). ood.jl: density (fit_ood_nulls continuous-rows+ridge) + noise (10 invariant features) + re-enabled posterior-predictive channel (ood_verdict defaults with_pp=true, Memo §5/T-7-04, kept crash-free by the iter1 _finite_or/_theta_tuple finite-guard) OR-fused by ood_verdict → OODVerdict. OOD ship-gate experiment (misspec families/ood_roc_over_grid, need simulator+ImageFiltering) deferred to 07-03+.
+- [Phase 07-02]: Declared LinearAlgebra as a direct stdlib dep (cholesky/Symmetric/I for the OOD Mahalanobis) — a stdlib already in the Manifest with no version to resolve, so the co-resolution gate stays 4/4 green (NeuralEstimators 0.2.1 / Flux 0.16.10 pins intact); Pkg.test fully green (infer 11/11, bf 18/18, ood 31/31); spike/ byte-untouched.
 
 ### Roadmap Evolution
 
@@ -173,6 +176,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T12:10:15.361Z
+Last session: 2026-07-03T19:51:24.134Z
 Stopped at: Phase 7 context gathered
 Resume file: .planning/phases/07-productionization-conditional-on-go/07-CONTEXT.md
