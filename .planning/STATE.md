@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 07 (productionization-conditional-on-go) — EXECUTING
-Plan: 2 of 11 (07-00 complete)
-Status: 07-00 COMPLETE — co-resolution gate GREEN; ready for 07-01
-Last activity: 2026-07-03 -- 07-00 co-resolution gate GREEN (GLMakie bump); Pkg.test green
+Plan: 3 of 11 (07-00, 07-01 complete)
+Status: 07-01 COMPLETE — grid coupling generalized + estimator registry skeleton; Pkg.test green
+Last activity: 2026-07-03 -- 07-01 grid-parametric summary/datagen/registry; amortized summary 20/20 + registry 7/7; spike untouched
 
 Progress: [██████████] 100%
 
@@ -125,6 +125,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 06-02]: Go/No-Go memo renders a Clean Go — literal pre-registered gates did NOT pass as written, Go justified by reading each residual failure to a non-method cause (chi2-over-power at M=2000, residual data-scale gap, clamped-KDE tail artifact); credibility backed by the D-05 independent fresh-seed re-pre-registered confirmation ship-gate inside Phase 7
 - [Phase ?]: [Phase 06-02]: BF max|d logBF|=10.9535 quoted after runtime-confirming against demo.jl printed bf_report max_abs_err (A1 resolved); memo reports BOTH number sets — Set 1 pre-registered all-FAIL (0.8861/0.730/2.81e-40) verbatim from 05-04-SUMMARY.md, Set 2 post-hoc (0.0164/0.9358/AUC 1.0) with data-snooping exposure + 3 mitigations (consts.jl vs e9c91d3, DEV seed 0xDE7C0DE, single confirmatory VAL run)
 - [Phase ?]: [Phase 06-02]: demo.jl machine-gates DEMO-03 — assert isfile(MEMO_PATH) + occursin content asserts (Clean Go, falsification, 0.8861, 0.9358, ship-gate, Phase 11, Phase 13); SC3/DEMO-03 table rows now report real PASS
+- [Phase 07-01]: Grid coupling centralized ONCE in src/amortized/summary.jl — summary_dim(G)=2G^2 / cont_rows(G)=G^2 / ratio_input_dim(G)=5G^2 are the single source of truth (8x8 reproduces 128/64/320); patch_summary(mci,G) + encode_d01 + _summary_row_partition(:min,2G^2) grid-general for G in {4,8,16,32}. Every downstream amortized module derives dims from these helpers (no per-grid re-hardcoding)
+- [Phase 07-01]: Estimator registry (PROD-02) keyed by patch grid — _SHIPPED_GRIDS=(4,8,16,32), 64 DROPPED (D-04); estimator_for validates grid and throws a train_and_register-pointing ArgumentError (T-7-05, no silent default-grid fallback); has_cuda_device() weakdep-safe (D-06 graceful CPU fallback); _lazy_load_from_artifact!/_train_grid_pipeline are honest hook-stubs for later plans
+- [Phase 07-01]: Grid-parametric datagen (src/amortized/datagen.jl) — summary buffers Matrix(summary_dim(G),N), generating_config.summary_min_dim=summary_dim(G) so grids auto-separate into distinct content-hash cache dirs; imsize_set exposed for per-grid image-size bias (>=15-survivor floor, T-7-03); :min-only (spike :aug superset dropped); content hash uses Base.hash to avoid re-resolving the fragile Wave-0 Manifest; simulator chain referenced-but-promoted-later; spike/ byte-untouched
 
 ### Roadmap Evolution
 
