@@ -135,7 +135,18 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. `colocalization_amortized()` exists in `src/`, coexisting with the existing Turing/ADVI path behind a shared `_prepare_data` input + `CoLocResult` output contract, so `compute_BayesFactor()` keeps working unchanged
   2. `num_patches` (patch grid) is **user-definable** in the productionized API via an estimator registry keyed by grid, rather than retraining the network ad hoc (8×8 was the spike default)
-**Plans**: TBD
+**Plans**: 11 plans (9 waves — W0 dep-surgery+resolve-gate+types ; W1 grid-param+registry ; W2 read-surfaces ; W3 training+persistence ; W4 gate-harness+GPU-smoke ; W5 8×8 ; W6 4×4 ∥ 16×16 ∥ sub-tile-map ; W7 32×32-conditional ; W8 public-API+release)
+- [x] 07-00-PLAN.md — Dep surgery (Turing→ext, CUDA weakdep) + co-resolution HARD gate + version 2.0.0 + D-02 type hierarchy (PROD-01)
+- [ ] 07-01-PLAN.md — Grid-parametrize summary/encoder/loader/datagen + grid-keyed registry skeleton + train_and_register (PROD-02)
+- [ ] 07-02-PLAN.md — Amortized read surfaces: NPE infer + NRE bf (+non-clamped baseline) + OOD (+PP re-enable) (PROD-01)
+- [ ] 07-03-PLAN.md — NPE+NRE training GPU-plumbed + CPU-resident Flux.state persistence (PROD-01, PROD-02)
+- [ ] 07-04-PLAN.md — Per-grid CPU ship-gate harness + fresh-pre-reg gate_consts template + GPU-train smoke (PROD-02)
+- [ ] 07-05-PLAN.md — 8×8 pipeline: train → fresh CPU SBC/BF/OOD gate → register (proves gate machinery) (PROD-02)
+- [ ] 07-06-PLAN.md — 4×4 pipeline (coarse-robust): train → fresh CPU gate (PROD-02)
+- [ ] 07-07-PLAN.md — 16×16 pipeline (≥512² data, min-image-size caveat): train → fresh CPU gate (PROD-02)
+- [ ] 07-08-PLAN.md — 8×8 sub-tile windowed coarse local colocalization map (inherits 8×8 gate; Phase-12 point clean) (PROD-02)
+- [ ] 07-09-PLAN.md — 32×32 CONDITIONAL pipeline (≥1024² data) + user ship-with-caveat vs cap decision; 64×64 DROPPED (PROD-02)
+- [ ] 07-10-PLAN.md — Public colocalization_amortized API + content-hashed Artifacts + register only gate-PASSED grids + integration test (PROD-01, PROD-02)
 
 ## Progress
 
@@ -155,7 +166,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 4. NPE Training + ADVI Benchmark + Ablation | 7/7 | Complete   | 2026-07-01 |
 | 5. Validation Bundle (SBC + BF + OOD) | 4/4 | Complete   | 2026-07-02 |
 | 6. Reproducible Demo + Go/No-Go Memo | 2/2 | Complete   | 2026-07-03 |
-| 7. Productionization (conditional on Go) | 0/TBD | Not started | - |
+| 7. Productionization (conditional on Go) | 1/11 | In Progress|  |
 | 8. External Physical Ground-Truth Corpus | 0/TBD | Not started | - |
 | 9. Cross-Method Comparator Harness | 6/6 | Complete   | 2026-07-02 |
 | 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |

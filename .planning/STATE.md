@@ -25,46 +25,29 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 07 (productionization-conditional-on-go) — BLOCKED
-Plan: 1 of 11 (07-00) — Tasks 1-2 complete, Task 3 BLOCKED
-Status: CO-RESOLUTION GATE FAILED (awaiting user decision)
-Last activity: 2026-07-03 -- 07-00 co-resolution hard gate hit a GLMakie/Makie conflict
+Phase: 07 (productionization-conditional-on-go) — EXECUTING
+Plan: 2 of 11 (07-00 complete)
+Status: 07-00 COMPLETE — co-resolution gate GREEN; ready for 07-01
+Last activity: 2026-07-03 -- 07-00 co-resolution gate GREEN (GLMakie bump); Pkg.test green
 
 Progress: [██████████] 100%
 
-## Blocker (2026-07-03): 07-00 CO-RESOLUTION GATE FAILED
+## Resolved (2026-07-03): 07-00 CO-RESOLUTION GATE — GREEN
 
-The Phase-7 Wave-0 co-resolution HARD GATE (07-00 Task 3) failed. This is a BLOCKING
-gate: no downstream Phase-7 inference plan may run until the root `Pkg.resolve()` is green.
+The Phase-7 Wave-0 co-resolution HARD GATE (07-00 Task 3) initially failed on a SECONDARY
+GLMakie/Makie conflict (NOT the Finding-1 NeuralEstimators downgrade, which the Turing→weakdep
+surgery had already cleared). Root cause: `GLMakie = "0.10.5"` forced Makie 0.21.18, while
+NeuralEstimators 0.2.1 requires Makie 0.24.x.
 
-**What passed:** The D-03 Turing→weakdep-extension surgery WORKED for its stated purpose —
-NeuralEstimators is now pinned to **0.2.1** by the root Project.toml and is NOT downgraded to
-0.1.4 (Finding 1's original failure mode is cleared). Tasks 1 (D-02 hierarchy) and 2
-(dependency surgery, version 2.0.0) are complete and committed.
+**User decision (Option 2):** bump GLMakie compat (`0.10.5 → 0.13`, Makie 0.24.x) and keep
+GLMakie as a normal CORE dependency (NOT an extension). Applied; the root `Pkg.resolve()` is now
+GREEN and `Pkg.test()` passes fully.
 
-**What failed:** A SECONDARY dependency conflict surfaced — GLMakie, not Turing:
-
-```
-Unsatisfiable requirements detected for package Makie [ee78f7c6]:
- ├─restricted to versions 0.21.18 by an explicit requirement, leaving only 0.21.18
- └─restricted by compatibility with NeuralEstimators [38f6df31] to 0.24.0 - 0.24.12 — no versions left
-   └─NeuralEstimators restricted to 0.2.1 by ProteinCoLoc, leaving only 0.2.1
-```
-
-Root cause: the root `[compat] GLMakie = "0.10.5"` pin forces **Makie 0.21.18**, but
-**NeuralEstimators 0.2.1 requires Makie 0.24.x**. GLMakie 0.10.x and Makie 0.24 cannot coexist.
-
-**Candidate fixes (user decision required — 07-00 Task 3 checkpoint options):**
-1. **glmakie-to-ext** — move GLMakie into a weakdep package extension too (plotting becomes
-   optional/weakdep-gated), removing Makie from the core resolve so NeuralEstimators 0.2.1
-   resolves. Cost: `plot`/`local_correlation_plot`/`plot_mask` become extension-gated;
-   the Plots test set moves behind the extension.
-2. **Bump GLMakie** — drop the `GLMakie = "0.10.5"` compat pin and allow a newer GLMakie that
-   ships Makie 0.24.x. Cost: GLMakie API changes may require touch-ups in src/plot.jl.
-3. **Escalate** — treat as a harder blocker if neither is acceptable.
-
-The Manifest.toml was NOT mutated (resolve threw before writing) and spike/ is untouched.
-Nothing was force-resolved or worked around, per the hard-gate protocol.
+Resolved versions (regenerated root Manifest.toml): NeuralEstimators **0.2.1** (not downgraded),
+Flux **0.16.10**, Makie **0.24.12**, GLMakie **0.13.12**. Turing/CUDA remain weakdeps; the
+`ext/ProteinCoLocTuringExt.jl` extension is unchanged. No `src/plot.jl` API changes were needed
+at precompile/load (Makie 0.24 runtime plotting correctness deferred with the plotting tests).
+spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 
 ## Performance Metrics
 
