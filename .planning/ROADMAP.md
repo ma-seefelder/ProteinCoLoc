@@ -125,7 +125,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. The main repo and both manuscript pipelines are demonstrably untouched — `git status` on `src/`, `bayes.jl`, `colocalization.jl` is clean (decoupling proof)
   3. A 2–3-page Go/No-Go memo reports the metrics, frames SBC as "calibrated under the simulator" paired with the OOD result, and states a concrete full-build-out decision (hierarchy/3D/multi-channel)
 **Plans**: 2 plans (2 waves — W1 demo.jl two-tier runner + decoupling proof ; W2 Go/No-Go memo + memo-gate)
-- [ ] 06-01-PLAN.md — Two-tier seeded demo.jl: fixture-scale chain proof + git-status decoupling assertion + --full reported-gate dispatch (DEMO-01, DEMO-02)
+- [ ] 06-01-PLAN.md — Two-tier seeded demo.jl: fixture-scale NPE+BF+OOD chain proof (per-layer twin-run reproducibility) + git-status decoupling assertion + --full reported-gate dispatch (DEMO-01, DEMO-02)
 - [ ] 06-02-PLAN.md — 2-3 page Go/No-Go memo (Clean Go, both number sets, falsification, ship-gate, Phase 8-16 DAG) + demo.jl memo-content gate (DEMO-03)
 
 ### Phase 7: Productionization (conditional on Go)

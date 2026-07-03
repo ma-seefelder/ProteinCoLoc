@@ -345,17 +345,20 @@ Not applicable — no external technology moved. This phase uses the frozen, pin
 
 **Note:** Set 1 numbers, Set 2 SBC/OOD numbers, all report keys, artifact presence, and `git status -- src/` cleanliness were **VERIFIED** directly this session — they are not assumptions.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where should the memo live?**
+   - **RESOLVED:** memo at `.planning/phases/06-reproducible-demo-go-no-go-memo/06-GO-NO-GO-MEMO.md` (plan 06-02, Task 1).
    - What we know: it must not touch `src/`; `.planning/phases/06-.../06-GO-NO-GO-MEMO.md` and `spike/GO_NO_GO.md` both satisfy decoupling.
    - Recommendation: put it in `.planning/phases/06-reproducible-demo-go-no-go-memo/` alongside the phase artifacts (keeps `commit_docs` git flow consistent); optionally symlink/copy a rendered PDF later. Planner's call.
 
 2. **Should `--full` `include` the `run_*.jl` in-process or spawn subprocesses?**
+   - **RESOLVED:** `--full` spawns each `run_*.jl` as an independent subprocess (plan 06-01, Task 3, STEP 4); fast tier stays in-process.
    - What we know: each `run_*.jl` calls `main()` at file scope and exits nonzero on gate fail via `@testset`. `include`-ing all three in one process shares loaded modules (faster) but a failing `@testset` throws rather than sets an exit code cleanly.
    - Recommendation: spawn each as a subprocess (`run(\`julia --project=spike spike/validation/run_sbc.jl\`)`) so each hard gate's exit code is captured independently and one failure doesn't abort the others' reporting. Fast tier stays in-process.
 
 3. **Does the fast-tier chain need to assert numerical reproduction, or just "runs clean"?**
+   - **RESOLVED:** twin-run `@assert` on identical draws per layer (NPE plan 06-01 Task 1; BF+OOD plan 06-01 Task 2).
    - What we know: SC1 says "chains the full pipeline reproducibly." The cheapest honest proof is bit-identical re-draw on a fixed `VAL_FIX_SEED` (Philox4x is deterministic).
    - Recommendation: have demo.jl run the fixture chain twice on the same seed and `@assert` the two posterior draws are `==` (or `isapprox`), proving reproducibility without needing to match reported-scale numbers.
 
