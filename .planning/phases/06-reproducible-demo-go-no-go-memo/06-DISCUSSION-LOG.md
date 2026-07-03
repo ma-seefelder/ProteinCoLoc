@@ -4,44 +4,40 @@
 
 **Date:** 2026-07-03
 **Phase:** 06-reproducible-demo-go-no-go-memo
-**Mode:** discuss (interactive) — user launched the command, then stepped away; Claude
-proceeded in `--auto` spirit, selecting the recommended option for each gray area.
-**Areas presented:** Memo verdict · Pre-registration honesty · demo.jl repro scope · Full-build-out call
+**Mode:** discuss (interactive)
+**Areas discussed:** Memo verdict · Pre-registration honesty · demo.jl repro scope · Full-build-out call
 
-## Gray areas presented (multiSelect)
+## Note on process
 
-| Area | Options offered | Resolution |
-|------|-----------------|------------|
-| Memo verdict | Go / Conditional-Go / iterate-once-more-first / No-Go | **Conditional Go** (D-01/D-02) |
-| Pre-registration honesty | report both labeled / post-iteration only / original only | **Report both, labeled; name the snooping exposure + 3 mitigations** (D-03/D-04/D-05) |
-| demo.jl repro scope | full reported-scale re-run / fast frozen-artifact chain / two-tier | **Two-tier: fast default + `--full`** (D-06) |
-| Full-build-out call | roadmap DAG as-is / prioritized axis / data-scale gate first | **DAG, gated on a re-pre-registered calibration close-out; P11∥P13 lead, P12 follows** (D-07/D-08) |
+The first two AskUserQuestion prompts timed out (60s, no response) and Claude auto-drafted
+defaults. The user then reported never having seen the questions. The prompts were re-issued,
+reached the user, and **all four areas were answered interactively.** The final decisions below
+are the user's actual answers — two of which override the earlier auto-drafts.
 
-## Auto-Resolved (user away)
+## Questions & answers
 
-All four areas auto-resolved with the recommended option, grounded in:
-- `05-04-SUMMARY.md` (original pre-registered all-FAIL run)
-- `STATE.md` iter1/iter2 accumulated-context notes (OOD→PASS, SBC ECE-green, BF corr 0.936 + clamped-baseline diagnosis)
-- `consts.jl` (byte-unchanged pre-registration)
-- `ROADMAP.md` Phase 6 SC1–3 + Phase 8–16 DAG
+| Area | Options offered | User's answer | vs draft |
+|------|-----------------|---------------|----------|
+| Memo verdict | Conditional Go / Clean Go / iterate-first / No-Go | **Clean Go** | **override** (draft was Conditional Go) |
+| Pre-registration honesty | report both+name / both+independent confirm gate / post-iteration only | **Both + independent confirm gate** | **override** (draft was report-both only) |
+| demo.jl repro scope | two-tier / full-only / fast-only | **Two-tier (fast + --full)** | matches draft |
+| Full-build-out call | DAG P11∥P13 lead / spatial-first / productionize-only | **DAG, P11∥P13 lead** | matches draft |
 
-Three decisions flagged **[USER-OWNED]** in CONTEXT.md (verdict, honesty framing, build-out
-call) as the ones most worth human confirmation before planning.
+## What the overrides changed
 
-## Rationale highlights
-
-- **Conditional Go, not clean Go:** the literal pre-registered gates did not pass as written;
-  honesty forbids claiming they did. But OOD passes, SBC is calibrated (ECE green), BF fails
-  only via a clamped-baseline tail artifact, and the >100× thesis was proven in Phase 4 — so
-  the evidence supports proceeding, gated on a bounded close-out.
-- **Both number sets reported:** the retrains happened after the pre-registered result was
-  seen (a real data-snooping exposure); the memo must name that and lean on consts-unchanged +
-  disjoint-DEV-seed + single-confirmatory-VAL-run rather than hide it.
-- **Two-tier demo:** SC1 needs CPU-only reproducibility; a fast default keeps demo.jl in the
-  method's own milliseconds-to-minutes spirit, `--full` gives the faithful path.
+- **Clean Go (D-01):** the memo recommends full productionization now, not a Go gated behind a
+  blocking calibration close-out. It must still be explicit that the literal pre-registered
+  gates did not pass as written, justifying the Go by reading each residual failure to a
+  characterized non-method cause (χ²-over-power, data-scale, clamped baseline).
+- **Independent confirm gate (D-05):** the Clean Go's credibility is backed by a hard Phase-7
+  ship-gate — a fresh-seed, re-pre-registered SBC/BF/OOD confirmation run that must reproduce
+  the story before amortized inference ships into `src/`. This replaces the earlier
+  "close-out blocks feature work" framing; feature work (the DAG) is not blocked, but shipping
+  is.
 
 ## Deferred ideas captured
 
-- Calibration close-out (200k retrain, non-clamped BF baseline, fresh pre-registration) → Phase 7.
+- Independent confirmation ship-gate (fresh-seed re-pre-registered run; optional larger-cache
+  retrain + non-clamped BF baseline) → executed in Phase 7 before src/ integration.
 - Re-enabling OOD PP channel in the reported OR-fusion → Phase 7 hardening.
 - RxInfer independent ADVI cross-check → post-Go, paper nice-to-have (BACK-01).

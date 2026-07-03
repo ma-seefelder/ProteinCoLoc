@@ -3,14 +3,12 @@
 **Gathered:** 2026-07-03
 **Status:** Ready for planning
 
-> **Provenance note.** The user launched `/gsd:discuss-phase 6` interactively but stepped
-> away before answering. To avoid stalling the spike's closing phase, the decisions below
-> were selected by Claude in the spirit of `--auto` — each is the *recommended* option,
-> grounded in the Phase-5 artifacts and post-iteration STATE. They are **overridable**:
-> re-run `/gsd:discuss-phase 6` (choose "Update it") or edit this file before planning.
-> The three flagged as **[USER-OWNED]** — the memo verdict, the honesty framing, and the
-> full-build-out call — are the ones most worth a human confirmation, because they are
-> scientific/strategic judgments, not implementation mechanics.
+> **Provenance note.** Decided interactively with the user on 2026-07-03 (the earlier
+> auto-drafted defaults were superseded once the interactive prompts reached the user). All
+> four gray areas were answered directly. Two answers **override** the original Claude drafts:
+> the verdict is a **Clean Go** (not Conditional Go), and the honesty framing adds an
+> **independent confirmation ship-gate** (stronger than report-both alone). The two demo/
+> build-out decisions matched the drafts.
 
 <domain>
 ## Phase Boundary
@@ -40,32 +38,32 @@ Requirements: DEMO-01, DEMO-02, DEMO-03.
 <decisions>
 ## Implementation Decisions
 
-### Memo verdict — the central call **[USER-OWNED]**
-- **D-01:** The memo renders a **Conditional Go**, not a clean Go and not a No-Go.
-  Rationale from the evidence as it actually stands after two bounded iterations
-  (consts.jl byte-unchanged throughout):
+### Memo verdict — the central call **[USER-DECIDED: Clean Go]**
+- **D-01:** The memo renders a **Clean Go** — recommend full productionization (Phase 7).
+  The user weighed the evidence (after two bounded iterations, consts.jl byte-unchanged
+  throughout) and reads it as sufficient to proceed now:
   - The **core thesis is proven** — Phase 4 demonstrated amortized inference >100× faster
     than per-dataset ADVI at comparable point accuracy (ρ recovery corr 0.983).
   - **OOD: PASS** — after adding the noise-sensitive channel, pooled AUC 1.0, all 4
     families 1.0, ID fire-rate 0.05, negative controls behave.
-  - **SBC: calibrated but the literal pre-registered gate rejects** — ECE is green on all
-    8 parameters (ρ_true 0.016; was 0.19 red), but the M=2000 KS∧χ² conjunction still
-    fails. Diagnosed cause: an over-powered χ² sub-criterion at M=2000 plus two genuinely
-    non-uniform nuisance params (shift, label_efficiency) that need more training data.
-  - **BF: near-miss, failure diagnosed as a baseline artifact** — corr 0.936 (bar 0.95);
-    max|Δ logBF| large only because the clamped-KDE baseline hits its 1e-8 floor at the
-    sweep tails (|Δρ|≳0.4), while the bounded NRE stays correct. Mid-range agrees within 1–2.
-  - **The Conditional Go is gated on a bounded, freshly-pre-registered calibration
-    close-out** (see D-07) that must clear before any `src/` integration ships in Phase 7.
-  This verdict is honest: it does **not** claim the pre-registered gates passed as written;
-  it reads the evidence as "method validated; two pre-registration design flaws + one
-  data-scale gap; none are method-killers."
+  - **SBC: calibrated** — ECE green on all 8 parameters (ρ_true 0.016; was 0.19 red). The
+    literal M=2000 KS∧χ² conjunction still rejects on shift/label_efficiency, read as an
+    over-powered χ² sub-criterion at M=2000 plus a residual data-scale gap — a
+    pre-registration design flaw, not a method deficiency.
+  - **BF: near-miss with a diagnosed cause** — corr 0.936 (bar 0.95); max|Δ logBF| large
+    only because the clamped-KDE baseline hits its 1e-8 floor at the sweep tails
+    (|Δρ|≳0.4), while the bounded NRE stays correct. Mid-range agrees within 1–2.
+  - The Clean Go's credibility does **not** rest on post-hoc numbers alone — it is backed
+    by the independent confirmation ship-gate in D-05.
+  The memo must be explicit that the literal pre-registered gates did **not** pass as
+  written; the Clean Go is justified by reading each residual failure to a characterized,
+  non-method cause (χ²-over-power, data-scale, clamped baseline), not by claiming a pass.
 - **D-02:** The memo states the **falsification condition explicitly** — what result would
   have forced a No-Go (e.g. SBC ECE staying red after capacity+data iteration, or BF
   mid-range disagreement, or an OOD family undetectable by any summary-orthogonal channel)
   — so the Go is falsifiable, not rationalized.
 
-### Pre-registration honesty in reporting **[USER-OWNED]**
+### Pre-registration honesty in reporting **[USER-DECIDED: both + independent confirm gate]**
 - **D-03:** The memo reports **BOTH number sets, clearly labeled and in this order:**
   (1) the **original pre-registered gate run** at locked consts on the fresh
   `VAL_MASTER_SEED` (all three gates FAIL) as the *primary pre-registered result*; then
@@ -77,9 +75,12 @@ Requirements: DEMO-01, DEMO-02, DEMO-03.
   vs commit `e9c91d3`), model selection on a **disjoint DEV seed** (`0xDE7C0DE`), and a
   **single confirmatory VAL run** per iteration (no retry-to-pass). It does **not** present
   the post-iteration numbers as if they were the pre-registered result.
-- **D-05:** Because the post-iteration numbers are post-hoc, the memo's forward gate (D-07)
-  requires the close-out to be **re-pre-registered fresh** (new locked consts, new disjoint
-  seed) so the Phase-7 ship-gate is clean of this spike's snooping exposure.
+- **D-05:** **Independent confirmation ship-gate (the user's key addition).** Because the
+  post-iteration numbers are post-hoc, the Clean Go **commits Phase 7 to an independent,
+  fresh-seed, re-pre-registered confirmation run** (new locked consts, new disjoint seed,
+  single run) that must reproduce the calibration/OOD/BF story before amortized inference
+  ships into `src/`. This is a **hard ship-gate**, not merely a nice-to-have: it is what
+  lets the memo recommend a Clean Go while keeping the pre-registration contract intact.
 
 ### demo.jl reproducibility scope
 - **D-06:** **Two-tier demo.** Default (`julia --project=spike spike/demo.jl`) is **fast**:
@@ -98,18 +99,18 @@ Requirements: DEMO-01, DEMO-02, DEMO-03.
   - The decoupling proof (SC2) runs inside `demo.jl` as an assertion: shell out to
     `git status --porcelain -- src/ src/bayes.jl src/colocalization.jl` and assert empty.
 
-### Full-build-out decision **[USER-OWNED]**
+### Full-build-out decision **[USER-DECIDED: DAG, P11∥P13 lead]**
 - **D-07:** The memo commits to the **existing Phase 8–16 roadmap DAG as the full-build-out
-  direction**, gated by a **calibration close-out** that must pass *before* Wave-B feature
-  work begins: retrain at larger cache scale (toward 200k) to clear the residual SBC
-  non-uniformity on shift/label_efficiency, re-express the BF gate against a non-clamped
-  baseline, and **re-pre-register** SBC/BF thresholds for that run.
+  direction**. Under the Clean Go (D-01), feature work is **not** blocked behind a
+  calibration close-out; the one hard precondition on shipping is the **independent
+  confirmation ship-gate** of D-05 (which lives inside Phase 7, before `src/` integration),
+  not a separate blocking iteration.
 - **D-08:** Within the DAG, the memo **prioritizes the axes that most differentiate v2.0
   from Tapqir/Costes/Manders** (per the Phase-10 manuscript positioning): **registration-
   and-chromatic-uncertainty-as-latent (Phase 11)** and the **three-hypothesis amortized BF
-  (Phase 13)** as the lead feature axes, with the **spatial coloc map (Phase 12)** following
-  11. Hierarchy/3D/multi-channel are named as the *longer-horizon* build-out the memo's SC3
-  asks for, sequenced after the calibration close-out and the Wave-B differentiators.
+  (Phase 13)** as the **lead** feature axes (parallelizable after Phase 7), with the
+  **spatial coloc map (Phase 12)** following 11. Hierarchy/3D/multi-channel are named as the
+  *longer-horizon* build-out SC3 asks for, sequenced after the Wave-B differentiators.
 
 ### Claude's Discretion
 - Exact layout and section order of the memo (within the 2–3 page bound), figure selection
@@ -191,9 +192,10 @@ Requirements: DEMO-01, DEMO-02, DEMO-03.
 <deferred>
 ## Deferred Ideas
 
-- **The calibration close-out itself** (200k-scale retrain, non-clamped BF baseline,
-  re-pre-registered thresholds) is *named* by the memo (D-07) but **executed in Phase 7**,
-  not here — Phase 6 reports and decides, it does not retrain.
+- **The independent confirmation ship-gate** (fresh-seed, re-pre-registered SBC/BF/OOD
+  confirmation run; optionally a larger-cache retrain + non-clamped BF baseline) is *named*
+  by the memo (D-05) but **executed in Phase 7** before `src/` integration — Phase 6 reports
+  and decides, it does not retrain or re-run gates.
 - **Re-enabling the OOD posterior-predictive channel** in the reported OR-fusion (the θ̂
   finite-guard from iter1 made it viable but `run_ood.jl` still runs `with_pp=false`) —
   a Phase-7 hardening item, not a Phase-6 deliverable.
@@ -207,4 +209,4 @@ None — `todo.match-phase 6` returned zero matches.
 ---
 
 *Phase: 06-reproducible-demo-go-no-go-memo*
-*Context gathered: 2026-07-03 (Claude-selected recommended defaults; user stepped away mid-discuss)*
+*Context gathered: 2026-07-03 (decided interactively — user answered all four gray areas; verdict = Clean Go)*
