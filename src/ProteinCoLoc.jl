@@ -46,6 +46,7 @@ include("registry.jl")
 # (ood.jl). Ordered after registry.jl; ood.jl uses standardize_summary (infer.jl) and
 # posterior_for, so the order is infer → bf → ood.
 include("amortized/infer.jl")
+include("amortized/bf.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
