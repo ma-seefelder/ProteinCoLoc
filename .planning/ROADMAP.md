@@ -140,7 +140,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 07-01-PLAN.md — Grid-parametrize summary/encoder/loader/datagen + grid-keyed registry skeleton + train_and_register (PROD-02)
 - [x] 07-02-PLAN.md — Amortized read surfaces: NPE infer + NRE bf (+non-clamped baseline) + OOD (+PP re-enable) (PROD-01)
 - [x] 07-03-PLAN.md — NPE+NRE training GPU-plumbed + CPU-resident Flux.state persistence (PROD-01, PROD-02)
-- [ ] 07-04-PLAN.md — Per-grid CPU ship-gate harness + fresh-pre-reg gate_consts template + GPU-train smoke (PROD-02)
+- [x] 07-04-PLAN.md — Per-grid CPU ship-gate harness + fresh-pre-reg gate_consts template + GPU-train smoke (PROD-02)
 - [ ] 07-05-PLAN.md — 8×8 pipeline: train → fresh CPU SBC/BF/OOD gate → register (proves gate machinery) (PROD-02)
 - [ ] 07-06-PLAN.md — 4×4 pipeline (coarse-robust): train → fresh CPU gate (PROD-02)
 - [ ] 07-07-PLAN.md — 16×16 pipeline (≥512² data, min-image-size caveat): train → fresh CPU gate (PROD-02)
@@ -166,7 +166,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 4. NPE Training + ADVI Benchmark + Ablation | 7/7 | Complete   | 2026-07-01 |
 | 5. Validation Bundle (SBC + BF + OOD) | 4/4 | Complete   | 2026-07-02 |
 | 6. Reproducible Demo + Go/No-Go Memo | 2/2 | Complete   | 2026-07-03 |
-| 7. Productionization (conditional on Go) | 4/11 | In Progress|  |
+| 7. Productionization (conditional on Go) | 5/11 | In Progress|  |
 | 8. External Physical Ground-Truth Corpus | 0/TBD | Not started | - |
 | 9. Cross-Method Comparator Harness | 6/6 | Complete   | 2026-07-02 |
 | 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |

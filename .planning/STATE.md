@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: completed
-stopped_at: 07-03 COMPLETE (amortized training layer)
-last_updated: "2026-07-03T21:30:00.000Z"
-last_activity: 2026-07-03 -- 07-03 src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl; NPE/NRE training GPU-plumbed (D-06, throw-guards removed), CPU-resident Flux.state+loadmodel! persistence (Pitfall 4/T-7-07), reusable _train_grid_pipeline wired into train_and_register; Pkg.test green under -t auto; spike untouched
+stopped_at: 07-04 COMPLETE (per-grid CPU ship-gate machinery + GPU-train smoke)
+last_updated: "2026-07-03T22:30:00.000Z"
+last_activity: 2026-07-03 -- 07-04 test/gate/{harness,sbc,gate_consts_template,run_gate}.jl + test/gpu_smoke.jl; grid-parametrized CPU (use_gpu=false) SBC/BF/OOD ship-gate against a CPU-resident frozen net, fresh disjoint PROD_SEED[G] (salted off VAL_MASTER_SEED/NPE_MASTER_SEED, unit-asserted), per-grid run_gate CLI, GPU-train graceful-CPU-fallback smoke; Pkg.test green (gate 29/29, gpu 8/8); spike untouched
 progress:
   total_phases: 16
   completed_phases: 8
   total_plans: 48
-  completed_plans: 41
-  percent: 50
+  completed_plans: 42
+  percent: 51
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 07 (productionization-conditional-on-go) — EXECUTING
-Plan: 5 of 11 (07-00, 07-01, 07-02, 07-03 complete)
-Status: 07-03 COMPLETE — amortized TRAINING layer promoted: NPE architecture + NPE/NRE training GPU-plumbed (D-06), CPU-resident Flux.state persistence (Pitfall 4/T-7-07), single reusable _train_grid_pipeline wired into train_and_register (D-04 on-ramp is real code); Pkg.test green under -t auto (train_npe 11/11, train_ratio 12/12, persist 17/17, pipeline 19/19)
-Last activity: 2026-07-03 -- 07-03 src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl; use_gpu throw-guards removed on training path (CPU fallback), Flux.state(cpu(est))+loadmodel! shipped persistence, SKIP-IF-DONE + atomic writes; GPU path NOT exercised (no CUDA device: has_cuda_device()==false); spike untouched
+Plan: 6 of 11 (07-00, 07-01, 07-02, 07-03, 07-04 complete)
+Status: 07-04 COMPLETE — per-grid CPU-reproducible ship-gate machinery (D-05): grid-parametrized SBC/BF/OOD harness (use_gpu=false against a CPU-resident frozen net loaded via load_estimator), fresh-per-grid gate_consts template with disjoint PROD_SEED[G] (Philox salted off VAL_MASTER_SEED/NPE_MASTER_SEED, unit-asserted for G∈{4,8,16,32}), run_gate.jl per-grid CLI (--sbc/--bf/--ood, atomic gate report, invocable pre-training → :not_trained), and a GPU-train smoke proving use_gpu=true→graceful CPU fallback + CPU-resident persistence; Pkg.test green (gate harness+SBC 29/29, GPU smoke 8/8, co-resolution 4/4)
+Last activity: 2026-07-03 -- 07-04 test/gate/{harness,sbc,gate_consts_template,run_gate}.jl + test/gpu_smoke.jl + runtests wiring; no grid trained yet (gate delivers the machinery the per-grid plans invoke); simulator injected via a `sim` seam (forward model promoted later); GPU path exercises the graceful CPU fallback (has_cuda_device()==false); spike untouched
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 88%
 
 ## Resolved (2026-07-03): 07-00 CO-RESOLUTION GATE — GREEN
 
@@ -92,6 +92,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 | Phase 06 P02 | 20min | 2 tasks | 2 files |
 | Phase 07 P07-02 | 45min | 3 tasks | 8 files |
 | Phase 07 P07-03 | 50min | 4 tasks | 9 files |
+| Phase 07 P07-04 | 55min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,7 @@ Recent decisions affecting current work:
 - [Phase 07-01]: Grid-parametric datagen (src/amortized/datagen.jl) — summary buffers Matrix(summary_dim(G),N), generating_config.summary_min_dim=summary_dim(G) so grids auto-separate into distinct content-hash cache dirs; imsize_set exposed for per-grid image-size bias (>=15-survivor floor, T-7-03); :min-only (spike :aug superset dropped); content hash uses Base.hash to avoid re-resolving the fragile Wave-0 Manifest; simulator chain referenced-but-promoted-later; spike/ byte-untouched
 - [Phase 07-02]: Amortized READ surfaces promoted to src/amortized/{infer,bf,ood}.jl (PROD-01), grid-general + CPU-default (use_gpu=false everywhere, D-06). infer.jl: standardize_summary (frozen zt, mask bypass) + posterior_for/rho_draws/delta_rho (StatsBase.reconstruct BEFORE ρ read, Pitfall 5). bf.jl: amortized_log_bf (one NRE pass, measured log_prior_odds subtracted) + pair_encode (nc=G² derived ⇒ 5G²) + kde_log_bf_unclamped (Memo §5/T-7-06: compute_BayesFactor KDE math WITHOUT the 1e-8 _clampp floor so max|Δ logBF| is artifact-free). ood.jl: density (fit_ood_nulls continuous-rows+ridge) + noise (10 invariant features) + re-enabled posterior-predictive channel (ood_verdict defaults with_pp=true, Memo §5/T-7-04, kept crash-free by the iter1 _finite_or/_theta_tuple finite-guard) OR-fused by ood_verdict → OODVerdict. OOD ship-gate experiment (misspec families/ood_roc_over_grid, need simulator+ImageFiltering) deferred to 07-03+.
 - [Phase 07-02]: Declared LinearAlgebra as a direct stdlib dep (cholesky/Symmetric/I for the OOD Mahalanobis) — a stdlib already in the Manifest with no version to resolve, so the co-resolution gate stays 4/4 green (NeuralEstimators 0.2.1 / Flux 0.16.10 pins intact); Pkg.test fully green (infer 11/11, bf 18/18, ood 31/31); spike/ byte-untouched.
+- [Phase 07-04]: Per-grid CPU-reproducible ship-gate machinery (D-05) delivered to test/gate/{harness,sbc,gate_consts_template,run_gate}.jl + test/gpu_smoke.jl (PROD-02) — no grid trained yet; this is the gate the per-grid plans invoke. harness.jl draw_simulate_infer(m,rng;G,...) + paired-Δρ path is grid-parametrized (patch_summary(mci,G)), CPU-only (use_gpu=false on EVERY NeuralEstimators call), and loads a per-grid net via load_estimator (not the fixed spike trained_npe.jld2); frozen zt/θzt applied never re-fit (Pitfall 5). sbc.jl: M×8 rank table (7 θ + dedicated paired-draw Δρ column), KS+χ² uniformity via HypothesisTests (never hand-rolled), coverage curve, ported ECE/MCE CalibrationResult traffic-light, aggregated sbc_gate verdict. gate_consts_template.jl is the FRESH-per-grid pre-registration (SBC/BF/OOD consts) carrying a disjoint PROD_SEED[G] via a Philox stream salted (PROD_SALT) off the FORBIDDEN VAL_MASTER_SEED=0x5BC0FFEE and NPE_MASTER_SEED=0xC0FFEE — unit-asserted PROD_SEED[G]∉{those} for G∈{4,8,16,32} + 4 distinct seeds (anti-snooping Pitfall 3/T-7-08); BF gate uses the non-clamped kde_log_bf_unclamped baseline (Memo §5/T-7-06), OOD gate with_pp=true. run_gate.jl per-grid CLI --grid G [--sbc --bf --ood] loads the grid net + selected artifacts, runs the gates (use_gpu=false), writes an atomic .tmp→integrity→mv gate report; invocable before any grid is trained (missing NPE → :not_trained, no crash). bf_gate is self-contained (amortized_log_bf vs non-clamped KDE, no Turing); ood_gate computes the pre-registered id_threshold now + control-separability AUC when the per-grid plan injects pos_sim. gpu_smoke.jl: train_npe(...;use_gpu=true) runs on GPU when present and DEGRADES CLEANLY to CPU when CUDA absent (no error, CLAUDE.md graceful-fallback), asserts CPU-resident Flux.state persistence reloads/infers CPU-side; CUDA-present branch guarded by has_cuda_device() (==false here → fallback path exercised). Forward simulator NOT yet promoted (referenced-only in datagen/ood bodies) → harness takes an injectable `sim` seam (default_simulator resolves the promoted chain, errors clearly until then), mirroring 07-03's injectable datagen; the fixture SBC smoke injects a lightweight fake simulator. Pkg.test green (gate harness+SBC 29/29, GPU smoke 8/8, co-resolution 4/4 intact, no new external deps); spike/ byte-untouched.
 - [Phase 07-03]: Amortized TRAINING layer promoted to src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl (PROD-01/02). build_estimator input-width-agnostic (q a NormalisingFlow INSTANCE positional; NPE_* Phase-5 consts); train_npe/train_ratio default use_gpu=has_cuda_device() with the spike use_gpu&&throw guards REMOVED (D-06) and LR/decay kept Float64 (AdamW-CosAnneal gotcha); ratio conditioner width from ratio_input_dim(G)=5G² (not 320), no custom loss (v0.2.1 hard-codes logit-BCE). SHIPPED PERSISTENCE migrated to CPU-resident Flux.state(cpu(est))+arch metadata → build_estimator/build_ratio_estimator + Flux.loadmodel! on load (Pitfall 4/T-7-07: device-independent, narrower deserialization surface T-7-01); OOD nulls persist directly; all through the atomic .tmp→reopen-integrity-@assert→mv(force=true) wrapper + schema_version + _estimator_ok/_ratio_ok/_ood_nulls_ok SKIP-IF-DONE predicates; seeded save→load→CPU inference bitwise-equal. _train_grid_pipeline(grid;...) factors datagen→zt→train_npe→train_ratio→fit_ood_nulls→persist→EstimatorBundle (SKIP-IF-DONE loads valid artifacts; injectable datagen seam makes it testable without the not-yet-promoted simulator; default_imsize_for 16→≥512²/32→≥1024²); train_and_register(grid) now runs it (D-04 on-ramp is real code, stub removed). Docstring documents -t auto datagen + Philox-per-index thread-count-independent byte-identical repro. GPU path plumbed but NOT exercised (has_cuda_device()==false, no CUDA loaded); CPU path fully green. Pkg.test green under -t auto (train_npe 11/11, train_ratio 12/12, persist 17/17, pipeline 19/19; co-resolution 4/4, no new external deps); spike/ byte-untouched.
 
 ### Roadmap Evolution
@@ -178,6 +180,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T21:30:00.000Z
-Stopped at: 07-03 COMPLETE (amortized training layer: NPE/NRE training GPU-plumbed, CPU-resident persistence, reusable _train_grid_pipeline wired into train_and_register)
-Resume file: .planning/phases/07-productionization-conditional-on-go/07-04-PLAN.md
+Last session: 2026-07-03T22:30:00.000Z
+Stopped at: 07-04 COMPLETE (per-grid CPU ship-gate machinery: SBC/BF/OOD harness use_gpu=false, fresh disjoint PROD_SEED[G] template, run_gate CLI, GPU-train graceful-CPU-fallback smoke)
+Resume file: .planning/phases/07-productionization-conditional-on-go/07-05-PLAN.md
