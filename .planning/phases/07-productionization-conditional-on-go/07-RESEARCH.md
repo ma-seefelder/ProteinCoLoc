@@ -601,22 +601,26 @@ end
 
 > **Note:** A3 (co-resolution) is the single assumption most likely to reshape the plan and must be de-risked **first** via an actual `Pkg.resolve` spike. A1 (fine-grid feasibility) is the one most likely to change what ships.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does the Turing→extension move fully clear the root resolve?**
+   - **Resolution:** decided by the Wave-0 hard resolve gate (07-00 Task 3) — `Pkg.resolve` must pin NeuralEstimators 0.2.1 or execution halts and escalates (GLMakie→extension is the standby fix).
    - Known: Turing + old GLMakie caps NeuralEstimators (Phase-1 verified). Spike proved NeuralEstimators 0.2.1 co-resolves with Images/ImageFiltering/HypothesisTests/StatsBase/CairoMakie.
    - Unclear: whether GLMakie (0.10.5) or another root transitive still conflicts once Turing is out.
    - Recommendation: **Wave-0 resolve spike is a hard gate.** If it fails, escalate to the user (candidate: GLMakie→extension too, or a Makie bump) before writing inference code.
 
 2. **How many grids actually ship?**
+   - **Resolution:** revised D-04 capped family — ship 4/8/16 (07-05/06/07), 32×32 conditional on its gate + user sign-off (07-09), 64×64 DROPPED; only gate-PASSED grids populate `_SHIPPED_GRIDS` in 07-10.
    - Known: 8×8 proven; 4×4 robust; 16×16 workable with ≥512² data.
    - Unclear: whether 32×32/64×64 pass a fresh gate at a CPU-tractable cost and whether they are scientifically worth shipping (Finding 2).
    - Recommendation: gate them; if infeasible or uninformative, **cap the shipped family with the user's sign-off** rather than shipping weak estimators. Reframe fine-grid "local localisation" as Phase-12 work.
 
 3. **Public entry-point + accessor naming (discretion).**
+   - **Resolution:** `colocalization_amortized` (07-10) with the D-02 accessors `delta_rho`/`bayes_factor`/`is_ood`/`posterior_draws` on `AbstractColocResult` (07-00).
    - Recommendation: `colocalization_amortized` (matches ROADMAP SC1 wording) with accessors `delta_rho`/`bayes_factor`/`is_ood`/`posterior_draws` exactly as D-02 names them.
 
 4. **Should the shipped 8×8 estimator be re-trained or re-persisted?**
+   - **Resolution:** re-persisted via `Flux.state` and re-gated on a fresh `PROD_SEED[8]` in 07-05 (the spike whole-object `.jld2` is not copied; the spike numbers were iterated against VAL_MASTER_SEED).
    - The spike's `trained_npe.jld2`/`trained_ratio.jld2` are whole-object at Flux 0.16.10. Re-persist via `Flux.state`; the D-05 gate must run **fresh-seed** regardless (the spike's numbers were iterated against `VAL_MASTER_SEED`).
 
 ## Environment Availability
