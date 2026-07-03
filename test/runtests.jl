@@ -6,6 +6,7 @@
 import Images
 import Statistics: cor, mean
 import StatsBase
+import JLD2
 import Pkg
 
 using ProteinCoLoc
@@ -537,6 +538,74 @@ end
     # the amortized log BF read runs on the trained handle (one forward pass, no quadgk/KDE).
     Zpair = ProteinCoLoc.pair_encode(Zstd[:, 1], Zstd[:, 2])
     @test isfinite(ProteinCoLoc.amortized_log_bf(res.estimator, Zpair, res.log_prior_odds))
+end
+
+##########################################################################################
+### CPU-resident Flux.state persistence for estimators AND OOD nulls (07-03 Task 3, Pitfall 4)
+###
+### The persisted estimator JLD2 holds a Flux.state-derived key (NOT a whole PosteriorEstimator)
+### + architecture metadata; load rebuilds the arch and applies Flux.loadmodel!. Save→load→CPU
+### inference reproduces the pre-save output. OOD nulls round-trip through the same atomic wrapper.
+##########################################################################################
+@testset "CPU-resident persistence (persist.jl)" begin
+    for f in (:save_estimator, :load_estimator, :save_ratio, :load_ratio,
+              :save_ood_nulls, :load_ood_nulls)
+        @test isdefined(ProteinCoLoc, f)
+    end
+
+    tmpdir = mktempdir()
+    G = 4; nc = G^2; d = 2 * nc; n = 40
+    Zraw = vcat(randn(nc, n) .* 2 .+ 3, Float64.(rand(Bool, nc, n)))
+    zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
+    Zstd = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
+    θ    = randn(7, n)
+    res  = ProteinCoLoc.train_npe(Zstd, Zstd, θ, θ; use_gpu = false, epochs = 2, batchsize = 16,
+                                  dstar = 8, depth = 1, width = 16, num_coupling_layers = 2,
+                                  flow_depth = 1, flow_width = 8, stopping_epochs = 2)
+
+    # The persisted JLD2 holds a Flux.state-derived key, NOT a whole PosteriorEstimator object.
+    npe_path = joinpath(tmpdir, "npe_4.jld2")
+    ProteinCoLoc.save_estimator(npe_path, res.estimator, res.θzt, zt, res.arch)
+    keys_on_disk = JLD2.load(npe_path)
+    @test haskey(keys_on_disk, "model_state")
+    @test haskey(keys_on_disk, "arch")
+    @test !haskey(keys_on_disk, "estimator")           # NOT the whole object
+
+    # Round-trip: save → load → identical CPU inference output (seeded ⇒ bitwise-equal draws).
+    loaded = ProteinCoLoc.load_estimator(npe_path)
+    Zq = Zstd[:, 1]
+    Random123.seed!(4242)
+    p_before = ProteinCoLoc.posterior_for(res.estimator, Zq; N = 32, use_gpu = false)
+    Random123.seed!(4242)
+    p_after  = ProteinCoLoc.posterior_for(loaded.estimator, Zq; N = 32, use_gpu = false)
+    @test p_before ≈ p_after
+    @test loaded.arch.dstar == 8
+    @test loaded.zt.mean == zt.mean
+
+    # Ratio handle round-trips through the CPU-resident wrapper.
+    rres = ProteinCoLoc.train_ratio(Zstd, θ[1, :]; n = 60, use_gpu = false, epochs = 2,
+                                    batchsize = 16, val_frac = 0.2, stopping_epochs = 2,
+                                    num_summaries = 8, summary_width = 16)
+    ratio_path = joinpath(tmpdir, "ratio_4.jld2")
+    ProteinCoLoc.save_ratio(ratio_path, rres)
+    rloaded = ProteinCoLoc.load_ratio(ratio_path)
+    @test rloaded.input_dim == ProteinCoLoc.ratio_input_dim(G)
+    @test rloaded.log_prior_odds == rres.log_prior_odds
+    Zpair = ProteinCoLoc.pair_encode(Zstd[:, 1], Zstd[:, 2])
+    @test ProteinCoLoc.amortized_log_bf(rres.estimator, Zpair, rres.log_prior_odds) ≈
+          ProteinCoLoc.amortized_log_bf(rloaded.estimator, Zpair, rloaded.log_prior_odds)
+
+    # OOD nulls (density + noise) round-trip through the same atomic .tmp→integrity→mv wrapper.
+    dens  = ProteinCoLoc.fit_ood_nulls(Zstd; variant = :min)
+    F     = reduce(hcat, [ProteinCoLoc.noise_features([randn(64, 64), randn(64, 64)]) for _ in 1:20])
+    noise = ProteinCoLoc.fit_noise_null(F)
+    nulls = (; density = dens, noise = noise)
+    ood_path = joinpath(tmpdir, "ood_nulls_4.jld2")
+    ProteinCoLoc.save_ood_nulls(ood_path, nulls)
+    nloaded = ProteinCoLoc.load_ood_nulls(ood_path)
+    @test nloaded.density.μS == dens.μS
+    zq = Zstd[:, 1]
+    @test ProteinCoLoc.maha_score(nloaded.density, zq) ≈ ProteinCoLoc.maha_score(dens, zq)
 end
 
 ##########################################################################################
