@@ -38,6 +38,7 @@ using Turing: Variational
 
 include("LoadImages.jl")
 include("colocalization.jl")
+include("results.jl")
 include("bayes.jl")
 include("plot.jl")
 include("utils.jl")
@@ -50,6 +51,11 @@ export AbstractMultiChannelImage, MultiChannelImage, MultiChannelImageStack, col
 export image_data, channel_names, image_name, image_paths, pixel_dimensions, otsu_thresholds, num_channels
 export correlation, patch, compute_BayesFactor, plot_posterior, CoLocResult
 export plot, local_correlation_plot,plot_mask, bayesplot, bayes_rangeplot
+# D-02 result-type hierarchy (v2.0): abstract supertype + shipped amortized subtype +
+# shared accessor interface. `AdviColocResult` (the internal Turing/ADVI path) is
+# deliberately NOT exported (D-01).
+export AbstractColocResult, AmortizedColocResult, OODVerdict, CalibrationMeta
+export delta_rho, bayes_factor, is_ood, posterior_draws
 end
 
  
