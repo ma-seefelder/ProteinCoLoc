@@ -5,6 +5,7 @@
 #########################################################################################
 import Images
 import Statistics: cor
+import Pkg
 
 using .ProteinCoLoc
 using Random123
@@ -12,20 +13,79 @@ using Test
 Random123.seed!(1234)
 
 ##########################################################################################
+### CO-RESOLUTION HARD GATE (Phase 7 / Finding 1)  — must run FIRST
+###
+### Adding NeuralEstimators/Flux to the root package alongside the legacy plot/Turing stack
+### historically capped NeuralEstimators below 0.2.1 and silently DOWNGRADED it to 0.1.4,
+### breaking the v0.2.1 API. This gate asserts the RESOLVED environment pins the correct
+### versions (installed set via `Pkg.dependencies()`, mirroring the spike's resolve-risk
+### gate — NOT a Manifest regex). If this fails, no amortized inference code can be trusted.
+##########################################################################################
+@testset "co-resolution gate (Finding 1)" begin
+    deps = Pkg.dependencies()
+    function _installed_version(name)
+        for (_, info) in deps
+            info.name == name && return info.version
+        end
+        return nothing
+    end
+
+    ne = _installed_version("NeuralEstimators")
+    fl = _installed_version("Flux")
+
+    @test ne !== nothing            # NeuralEstimators must be a hard dependency
+    @test fl !== nothing            # Flux must be a hard dependency
+    # The Finding-1 downgrade target: NeuralEstimators must NOT be 0.1.4.
+    @test string(ne) == "0.2.1"
+    @test string(fl) == "0.16.10"
+end
+
+##########################################################################################
+### D-02 result-type hierarchy + shared accessor interface
+##########################################################################################
+@testset "D-02 result hierarchy" begin
+    @test isabstracttype(ProteinCoLoc.AbstractColocResult)
+    @test ProteinCoLoc.AmortizedColocResult <: ProteinCoLoc.AbstractColocResult
+
+    # The internal Turing result type must NOT be exported (D-01).
+    @test !(:AdviColocResult in names(ProteinCoLoc))
+    # The Turing-path entry points must NOT be exported (breaking release, D-01).
+    @test !(:colocalization in names(ProteinCoLoc))
+    @test !(:compute_BayesFactor in names(ProteinCoLoc))
+
+    # Accessor interface is defined on the supertype and overridden by the shipped subtype.
+    cal = ProteinCoLoc.CalibrationMeta(
+        [0.5], [0.5], [0.5], [1], 0.0, 0.0, 8, (; seed = 0, passed = true))
+    ood = ProteinCoLoc.OODVerdict(0.1, false, (; density = 0.1))
+    post = reshape(collect(1.0:14.0), 7, 2)      # 7×N physical-θ draws
+    r = ProteinCoLoc.AmortizedColocResult(
+        8, post, [0.2, 0.3], -1.5, ood, cal, (; N = 2))
+
+    @test delta_rho(r) == [0.2, 0.3]
+    @test bayes_factor(r) == -1.5
+    @test is_ood(r) == false
+    @test posterior_draws(r) === post
+
+    # The supertype fallback errors for an unimplemented subtype.
+    struct _Unimpl <: ProteinCoLoc.AbstractColocResult end
+    @test_throws ErrorException delta_rho(_Unimpl())
+end
+
+##########################################################################################
 ### Test for Image Loading functionality
 ##########################################################################################
-@testset "LoadImages" verbose = true begin 
+@testset "LoadImages" verbose = true begin
     path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
     # define a test function for load_tiff
     @testset "load_tiff" begin
         img = ProteinCoLoc.load_tiff(path[1])
         @test size(img) == (1028, 1376)
 
-        # check that image is converted to grayscale  
+        # check that image is converted to grayscale
         img_ref = Images.load(path[1])
         img_ref = Images.Gray.(img_ref)
         @test img == img_ref
-        
+
         # check that image is converted to matrix
         @test typeof(img) == Matrix{Float64}
     end
@@ -89,9 +149,9 @@ Random123.seed!(1234)
         img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
         @test img.data == fill(fill(1, 128, 128),3)
         # confirm that the image size is not changed by applying the mask
-        @test size(img.data[1]) == (128, 128) 
+        @test size(img.data[1]) == (128, 128)
         @test size(img.data[2]) == (128, 128)
-        @test size(img.data[3]) == (128, 128) 
+        @test size(img.data[3]) == (128, 128)
     end
 
     @testset "MultiChannelImageStack" verbose = true begin
@@ -122,7 +182,7 @@ end
 ### Test for patching functionality
 ##########################################################################################
 @testset "patch" verbose = true begin
-    # define a test case and call patch function 
+    # define a test case and call patch function
     img = rand(100, 100)  # Create a 100x100 matrix of random numbers
     num_patches = 10  # We want to divide the image into 10x10 patches
     patches = ProteinCoLoc.patch(img, num_patches)
@@ -140,7 +200,7 @@ end
             push!(
                 patches_correct,
                 patches[i, j, :, :] == img[(i-1)*size(img, 1) ÷ num_patches+1:i*size(img, 1) ÷ num_patches, (j-1)*size(img, 2) ÷ num_patches+1:j*size(img, 2) ÷ num_patches]
-                ) 
+                )
         end
     end
     @test all(patches_correct)
@@ -149,7 +209,7 @@ end
 ###########################################################################################
 ### Test for correlation calculation
 ###########################################################################################
-@testset "Colocalization" verbose = true begin 
+@testset "Colocalization" verbose = true begin
     # define a test set for the _exclude_zero! function
     @testset "_exclude_zero" begin
         # define a test case
@@ -168,7 +228,7 @@ end
     @testset "correlation" begin
         # define a test case by defining two 5x5x10x10 4D arrays of random numbers
         # corresponding to two images with 10x10 patches
-        x = rand(5, 5, 10, 10)  # Create a 5x5x10x10 4D array of random numbers 
+        x = rand(5, 5, 10, 10)  # Create a 5x5x10x10 4D array of random numbers
         y = rand(5, 5, 10, 10)  # Create another 5x5x10x10 4D array of random numbers
 
         # call correlation function
@@ -182,178 +242,23 @@ end
         # check that the correlation is calculated correctly
         for i in 1:5
             for j in 1:5
-                a = x[i, j, :, :][:] 
+                a = x[i, j, :, :][:]
                 b = y[i, j, :, :][:]
                 @test ρ[i, j] == cor(a, b)
             end
-        end  
-    end
-
-    @testset "Correlation Bayes Test identical samples" begin
-        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
-        # first load image
-        img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
-        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
-        # make a stack of the image
-        img_stack = MultiChannelImageStack([img, img, img, img, img], "test_stack")
-        control_stack = MultiChannelImageStack([img, img, img, img, img], "test_stack")
-        # calculate posterior and retrieve prior samples
-        prior, posterior = colocalization(img_stack, control_stack, [2,3], 16, cor_method = :spearman)
-        # check that the output is a CoLocResult object
-        @test typeof(posterior) == CoLocResult
-        @test typeof(prior) == CoLocResult
-
-        # check that the resulting Bayes factor is correct
-        bf, posterior_prob, prior_prob = compute_BayesFactor(posterior, prior, ρ_threshold = 0.1)
-        @test isapprox(bf, 0,  atol=0.001)
-        # check that the resulting posterior is correct
-        plot_posterior(posterior; file = "test/test_images/posterior_dist_identical_images.png")
-        # check that the resulting prior is correct
-        plot_posterior(prior; file = "test/test_images/prior_dist_identical_images.png")
-        # bayes_plot
-        bayesplot(
-            prior, posterior, bf; 
-            file = "test/test_images/bayes_plot_identical_images.png", 
-            ρ_threshold = 0.1
-            )
-
-        # bayes_rangeplot
-        bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_identical_images.png")
-    end
-
-    @testset "Correlation Bayes Test n3" begin
-        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
-        path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
-        # first load image
-        img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
-        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
-        control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
-        control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
-        # make a stack of the image
-        img_stack = MultiChannelImageStack([img, img, img], "test_stack")
-        control_stack = MultiChannelImageStack([control, control, control], "test_stack")
-        # calculate posterior and retrieve prior samples
-        prior, posterior = colocalization(img_stack, control_stack, [2,3], 32)
-        # check that the output is a CoLocResult object
-        @test typeof(posterior) == CoLocResult
-        @test typeof(prior) == CoLocResult
-        # check that the resulting Bayes factor is not equal to 1
-        bf, posterior_prob, prior_prob = compute_BayesFactor(posterior, prior)
-        @test bf == Inf
-        # check that the resulting prior is correct
-        plot_posterior(prior; file = "test/test_images/prior_dist_n3.png")
-        # check that the resulting posterior is correct
-        plot_posterior(posterior; file = "test/test_images/posterior_dist_n3.png")
-        # bayes_plot
-        bayesplot(prior, posterior, bf; file = "test/test_images/bayes_plot_n3.png")
-        # bayes_rangeplot
-        bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_n3.png")
-
-    end
-
-    @testset "Correlation Bayes Test identical samples n1" begin
-        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
-        path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
-        # first load image
-        img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
-        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
-        control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
-        control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
-        # make a stack of the image
-        img_stack = MultiChannelImageStack([img], "test_stack")
-        control_stack = MultiChannelImageStack([control], "test_stack")
-        # calculate posterior and retrieve prior samples
-        prior, posterior = colocalization(img_stack, control_stack, [2,3], 16)
-        # check that the output is a CoLocResult object
-        @test typeof(posterior) == CoLocResult
-        @test typeof(prior) == CoLocResult
-        # check that the resulting Bayes factor is not equal to 1
-        bf, posterior_prob, prior_prob = compute_BayesFactor(posterior, prior)
-        @test bf > 1
-        # check that the resulting prior is correct
-        plot_posterior(prior; file = "test/test_images/prior_dist_n1.png")
-        # check that the resulting posterior is correct
-        plot_posterior(posterior; file = "test/test_images/posterior_dist_n1.png")
-        # bayes_plot
-        bayesplot(prior, posterior, bf; file = "test/test_images/bayes_plot_n1.png")
-        # bayes_rangeplot
-        bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_n1.png")
-    end
-
-    @testset "Correlation Bayes Test channel 1 and 3 n1" begin
-        path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
-        path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
-        # first load image
-        img = MultiChannelImage("test_image", path, ["blue", "green", "red"])
-        img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
-        control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
-        control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
-        # make a stack of the image
-        img_stack = MultiChannelImageStack([img], "test_stack")
-        control_stack = MultiChannelImageStack([control], "test_stack")
-        # calculate posterior and retrieve prior samples
-        prior, posterior = colocalization(img_stack, control_stack, [1,3], 16)
-        # check that the output is a CoLocResult object
-        @test typeof(posterior) == CoLocResult
-        @test typeof(prior) == CoLocResult
-        # check that the resulting Bayes factor is not equal to 1
-        bf, posterior_prob, prior_prob = compute_BayesFactor(posterior, prior)
-        # check that the resulting prior is correct
-        plot_posterior(prior; file = "test/test_images/prior_dist_c1c3.png")
-        # check that the resulting posterior is correct
-        plot_posterior(posterior; file = "test/test_images/posterior_dist_c1c3.png")
-        # bayes_plot
-        bayesplot(prior, posterior, bf; file = "test/test_images/bayes_plot_c1c3.png")
-        # bayes_rangeplot
-        bayes_rangeplot(prior, posterior; file = "test/test_images/bayes_rangeplot_c1c3.png")
+        end
     end
 end
 
-###########################################################################################
-### Test for plotting functionality
-###########################################################################################
-@testset "Plots" verbose = true begin
-    path = ["test/test_images/positive/positive_c1.tif", "test/test_images/positive/positive_c2.tif", "test/test_images/positive/positive_c3.tif"]
-    name = "test_image"
-    channels = ["blue", "green", "red"]
-    # load image
-    img = MultiChannelImage(name, path, channels)
-    # patched correlation plot with img after pixel shuffling
-    pixel_shuffled = ProteinCoLoc.shuffle_pixels(img)
-    plot(pixel_shuffled, 32, [2,3]; file = "test/test_images/patched_channels_2_3_shuffled.png")
-    # block shuffle
-    block_shuffled = ProteinCoLoc.shuffle_blocks(img, 9)
-    plot(block_shuffled, 32, [2,3]; file = "test/test_images/patched_channels_2_3_block_shuffled.png")
-
-    # apply mask
-    img = MultiChannelImage(name, path, channels)
-    img = ProteinCoLoc._apply_mask!(img, ProteinCoLoc._calculate_mask(img))
-
-    # load control image
-    path_control = ["test/test_images/negative/negative_c1.tif", "test/test_images/negative/negative_c2.tif", "test/test_images/negative/negative_c3.tif"]
-    control = MultiChannelImage("control_image", path_control, ["blue", "green", "red"])
-    control = ProteinCoLoc._apply_mask!(control, ProteinCoLoc._calculate_mask(control))
-
-    # patched correlation plot
-    plot(img, 32, [1,2]; file = "test/test_images/patched_channels_1_2.png")
-    plot(img, 32, [1,3]; file = "test/test_images/patched_channels_1_3.png")
-    plot(img, 32, [2,3]; file = "test/test_images/patched_channels_2_3.png")
-
-    # patched correlation plot with control
-    plot(control, 32, [1,2]; file = "test/test_images/patched_channels_1_2_control.png")
-    plot(control, 32, [1,3]; file = "test/test_images/patched_channels_1_3_control.png")
-    plot(control, 32, [2,3]; file = "test/test_images/patched_channels_2_3_control.png")
-
-    # mask
-    plot_mask(img, "test/test_images/mask.png")
-
-    # local correlation plot
-    local_correlation_plot(img, 200, [1,2]; file = "test/test_images/local_correlation_1_2.png")
-    local_correlation_plot(img, 200, [1,3]; file = "test/test_images/local_correlation_1_3.png")
-    local_correlation_plot(img, 200, [2,3]; file = "test/test_images/local_correlation_2_3.png")
-
-    # local correlation plot with control
-    local_correlation_plot(control, 200, [1,2]; file = "test/test_images/local_correlation_1_2_control.png")
-    local_correlation_plot(control, 200, [1,3]; file = "test/test_images/local_correlation_1_3_control.png")
-    local_correlation_plot(control, 200, [2,3]; file = "test/test_images/local_correlation_2_3_control.png")
-end
+##########################################################################################
+### RETIRED (v2.0 breaking release, D-01):
+###
+### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,
+### `compute_BayesFactor()`, `CoLocResult`, and the `plot_posterior`/`bayesplot`/
+### `bayes_rangeplot` ADVI-result plotters — are removed from the core suite. That path is
+### now the INTERNAL, weakdep-gated reference implementation in ext/ProteinCoLocTuringExt.jl
+### and is validated by the per-grid D-05 ship-gate (later Phase-7 plans), which loads Turing
+### to activate the extension. The GLMakie-backed plotting tests (`plot`,
+### `local_correlation_plot`, `plot_mask`) are deferred pending the Wave-0 GLMakie/Makie
+### co-resolution decision (see 07-00-SUMMARY.md § Blocker).
+##########################################################################################
