@@ -57,8 +57,8 @@ The v2.0 milestone: a decoupled spike (ENV–DEMO) that gates a conditional prod
 
 ### Demo & Decision
 
-- [ ] **DEMO-01**: `spike/demo.jl` chains the full pipeline reproducibly from a fixed seed and tabulates success criteria
-- [ ] **DEMO-02**: The main repo and both manuscript pipelines are demonstrably untouched (decoupling proof)
+- [x] **DEMO-01**: `spike/demo.jl` chains the full pipeline reproducibly from a fixed seed and tabulates success criteria
+- [x] **DEMO-02**: The main repo and both manuscript pipelines are demonstrably untouched (decoupling proof)
 - [ ] **DEMO-03**: A 2–3-page Go/No-Go memo reports metrics and a concrete full-build-out decision (hierarchy/3D/multi-channel)
 
 ### Productionization (conditional on a Go decision)
@@ -134,8 +134,8 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 | BF-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
 | OOD-01 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
 | OOD-02 | Phase 5 — Validation Bundle (SBC + BF + OOD) | Complete |
-| DEMO-01 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |
-| DEMO-02 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |
+| DEMO-01 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Complete |
+| DEMO-02 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Complete |
 | DEMO-03 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Pending |
 | PROD-01 | Phase 7 — Productionization (conditional on Go) | Pending |
 | PROD-02 | Phase 7 — Productionization (conditional on Go) | Pending |
