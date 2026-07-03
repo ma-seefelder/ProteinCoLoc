@@ -246,8 +246,20 @@ const MEMO_PATH = joinpath(@__DIR__, "..", ".planning", "phases",
                            "06-reproducible-demo-go-no-go-memo", "06-GO-NO-GO-MEMO.md")
 const MEMO_PRESENT = isfile(MEMO_PATH)
 
+# DEMO-03 CONTENT GATE — the memo must not merely EXIST, it must carry the required
+# content: the Clean Go verdict, an explicit falsification condition, BOTH number-set
+# anchors (0.8861 = Set-1 pre-registered BF corr; 0.9358 = Set-2 post-hoc BF corr), the
+# ship-gate, and the Phase 11 ∥ 13 lead axes. Read the memo ONCE (read-only; demo.jl never
+# writes it — threat T-6-02) and machine-check each keyword with occursin.
+const MEMO_KEYWORDS = ("Clean Go", "falsification", "0.8861", "0.9358",
+                       "ship-gate", "Phase 11", "Phase 13")
+const MEMO_CONTENT  = MEMO_PRESENT ? read(MEMO_PATH, String) : ""
+const MEMO_MISSING  = String[kw for kw in MEMO_KEYWORDS if !occursin(kw, MEMO_CONTENT)]
+const MEMO_OK       = MEMO_PRESENT && isempty(MEMO_MISSING)
+
 const DEMO01_PASS = NPE_REPRO && BF_REPRO && OOD_REPRO      # fast chain reproduces (SC1)
 const DEMO02_PASS = true                                     # step-0 decoupling assert passed to get here (SC2)
+const DEMO03_PASS = MEMO_OK                                  # memo present + required content (SC3)
 
 _row(crit, detail, status) = println(rpad(crit, 14), rpad(detail, 50), status)
 println("\n", "="^78)
@@ -260,7 +272,7 @@ _row("SC1/NPE",  "NPE fixture chain reproduces (twin-run draws ==)",      NPE_RE
 _row("SC1/BF",   "BF/NRE fixture sweep reproduces (twin-run log-BF ==)",  BF_REPRO ? "PASS" : "FAIL")
 _row("SC1/OOD",  "OOD fixture reproduces (twin-run maha+AUC ==)",         OOD_REPRO ? "PASS" : "FAIL")
 _row("SC2",      "src/ decoupled (git status --porcelain empty)",          DEMO02_PASS ? "PASS" : "FAIL")
-_row("SC3",      "Go/No-Go memo present (hard-gated in plan 06-02)",       MEMO_PRESENT ? "present" : "pending-06-02")
+_row("SC3",      "Go/No-Go memo present + required content (DEMO-03)",     MEMO_OK ? "PASS" : "FAIL")
 println("-"^78)
 # --- Loaded reported-scale headline rows (POST-ITERATION / Set 2 — DISPLAY, not proof) ---
 println("loaded headline numbers  [POST-ITERATION / Set 2 — NOT pre-registered; Set 1 in 05-04-SUMMARY.md]")
@@ -277,7 +289,7 @@ println("-"^78)
 # --- DEMO requirement verdicts ---------------------------------------------------------
 _row("DEMO-01",  "chains every layer reproducibly from a fixed seed",      DEMO01_PASS ? "PASS" : "FAIL")
 _row("DEMO-02",  "main package (src/) demonstrably untouched",             DEMO02_PASS ? "PASS" : "FAIL")
-_row("DEMO-03",  "Go/No-Go memo (authored + gated in plan 06-02)",         MEMO_PRESENT ? "present" : "pending-06-02")
+_row("DEMO-03",  "Go/No-Go memo authored + content-gated",                 DEMO03_PASS ? "PASS" : "FAIL")
 println("="^78)
 
 # ============================================================================
@@ -304,9 +316,25 @@ end
 @assert !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules)) "CUDA loaded — demo must be CPU-only (D-10)"
 
 # --- Self-assert close (02_simulator_demo.jl:148-152 idiom; PowerShell-safe) -----------
-# Hard-assert only the COMMITTED frozen NPE (the ratio net + reports are gitignored and
-# handled by isfile guards above / tiny-retrain fallback). The memo is NOT hard-gated here
-# — plan 06-02 authors it and wires the memo-presence + content assertion.
+# Hard-assert the COMMITTED frozen NPE (the ratio net + reports are gitignored and handled
+# by isfile guards above / tiny-retrain fallback).
 @assert isfile(joinpath(@__DIR__, "npe", "trained_npe.jld2")) "demo FAILED: missing frozen NPE (spike/npe/trained_npe.jld2)"
+
+# --- DEMO-03 memo gate (plan 06-02): hard-gate the memo's PRESENCE then its CONTENT ----
+# The memo is the decision deliverable; its presence AND required content are machine-checked
+# so the spike cannot be reported "closed" without the Go/No-Go memo actually carrying the
+# Clean-Go verdict, the falsification condition, both number-set anchors, the ship-gate, and
+# the Phase 11 ∥ 13 lead axes. occursin-based, read-only (T-6-02).
+@assert isfile(MEMO_PATH) "demo FAILED (DEMO-03): missing memo $MEMO_PATH"
+@assert occursin("Clean Go", MEMO_CONTENT)    "demo FAILED (DEMO-03): memo missing verdict keyword \"Clean Go\""
+@assert occursin("falsification", MEMO_CONTENT) "demo FAILED (DEMO-03): memo missing \"falsification\" condition"
+@assert occursin("0.8861", MEMO_CONTENT)      "demo FAILED (DEMO-03): memo missing Set-1 pre-registered anchor \"0.8861\""
+@assert occursin("0.9358", MEMO_CONTENT)      "demo FAILED (DEMO-03): memo missing Set-2 post-hoc anchor \"0.9358\""
+@assert occursin("ship-gate", MEMO_CONTENT)   "demo FAILED (DEMO-03): memo missing D-05 \"ship-gate\""
+@assert occursin("Phase 11", MEMO_CONTENT)    "demo FAILED (DEMO-03): memo missing lead axis \"Phase 11\""
+@assert occursin("Phase 13", MEMO_CONTENT)    "demo FAILED (DEMO-03): memo missing lead axis \"Phase 13\""
+@assert MEMO_OK "demo FAILED (DEMO-03): memo missing required content: $(MEMO_MISSING)"
+
 println("\ndemo OK: NPE + BF/NRE + OOD fast-tier chain proofs reproduce on VAL_FIX_SEED; " *
-        "src/ decoupled; headline numbers (Set 2) tabulated (CPU-only).")
+        "src/ decoupled; Go/No-Go memo present + content-gated (DEMO-03); " *
+        "headline numbers (Set 2) tabulated (CPU-only).")
