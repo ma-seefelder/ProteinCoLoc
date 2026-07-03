@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 6 context gathered
-last_updated: "2026-07-03T11:23:09.170Z"
+last_updated: "2026-07-03T11:41:14.838Z"
 last_activity: 2026-07-03 -- Phase 06 execution started
 progress:
   total_phases: 16
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 37
-  completed_plans: 36
-  percent: 44
+  completed_plans: 37
+  percent: 50
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: 2 of 2
 Status: Executing Phase 06
 Last activity: 2026-07-03 -- Phase 06 execution started
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [██████████] 97%
 | Phase 05 P05-03 | 70min | 2 tasks | 2 files |
 | Phase 05 P05-04 | 60min | 3 tasks | 4 files |
 | Phase 06 P01 | 40 | 3 tasks | 1 files |
+| Phase 06 P02 | 20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,9 @@ Recent decisions affecting current work:
 - [Phase 05]: [Phase 05-03]: two-channel OOD flag (train-only Mahalanobis density + posterior-predictive per-feature discrepancy, OR-fused); ID-quantile operating point committed on a HELD-OUT ID pool (out-of-sample honest ~5% FPR); hand-rolled ROC/AUC, no new package
 - [Phase 05]: [Phase 05-03]: fixed-summary OOD power structurally bounded — TWO measured named blind spots: D-04 correlation-preserving transforms (affine exact, block-permute residual) AND detector-noise mismatch (density+PP AUC~0); optics/PSF robustly detected; full four-family ROC is 05-04 reported job
 - [Phase ?]: [Phase 06-01]: spike/demo.jl two-tier seeded runner — fast tier re-exercises NPE+BF/NRE+OOD at fixture scale on VAL_FIX_SEED with per-layer twin-run bit-reproducibility asserts (global RNG seeded alongside Philox since sampleposterior threads no rng); step-0 git-status assertion certifies src/ untouched; --full spawns reported gates as independent subprocesses; locked files byte-unchanged
+- [Phase ?]: [Phase 06-02]: Go/No-Go memo renders a Clean Go — literal pre-registered gates did NOT pass as written, Go justified by reading each residual failure to a non-method cause (chi2-over-power at M=2000, residual data-scale gap, clamped-KDE tail artifact); credibility backed by the D-05 independent fresh-seed re-pre-registered confirmation ship-gate inside Phase 7
+- [Phase ?]: [Phase 06-02]: BF max|d logBF|=10.9535 quoted after runtime-confirming against demo.jl printed bf_report max_abs_err (A1 resolved); memo reports BOTH number sets — Set 1 pre-registered all-FAIL (0.8861/0.730/2.81e-40) verbatim from 05-04-SUMMARY.md, Set 2 post-hoc (0.0164/0.9358/AUC 1.0) with data-snooping exposure + 3 mitigations (consts.jl vs e9c91d3, DEV seed 0xDE7C0DE, single confirmatory VAL run)
+- [Phase ?]: [Phase 06-02]: demo.jl machine-gates DEMO-03 — assert isfile(MEMO_PATH) + occursin content asserts (Clean Go, falsification, 0.8861, 0.9358, ship-gate, Phase 11, Phase 13); SC3/DEMO-03 table rows now report real PASS
 
 ### Roadmap Evolution
 
@@ -148,6 +152,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T11:22:40.767Z
+Last session: 2026-07-03T11:41:14.831Z
 Stopped at: Phase 6 context gathered
 Resume file: .planning/phases/06-reproducible-demo-go-no-go-memo/06-CONTEXT.md
