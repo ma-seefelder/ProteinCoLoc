@@ -55,6 +55,7 @@ include("amortized/ood.jl")
 # `train_and_register`. Order: architecture → train_npe → train_ratio → persist → pipeline.
 include("amortized/architecture.jl")
 include("amortized/train_npe.jl")
+include("amortized/train_ratio.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")

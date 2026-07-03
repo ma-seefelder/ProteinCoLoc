@@ -500,6 +500,46 @@ end
 end
 
 ##########################################################################################
+### Amortized NRE ratio training, grid-general + GPU-plumbed with CPU fallback (07-03 Task 2)
+###
+### The conditioner input width derives from ratio_input_dim(G)=5G² (not literal 320); use_gpu
+### defaults has_cuda_device() (CPU here) with no throw guard; no custom loss is passed.
+##########################################################################################
+@testset "amortized NRE training (train_ratio.jl)" begin
+    for f in (:build_ratio_estimator, :train_ratio, :assemble_ratio_pairs, :measure_log_prior_odds)
+        @test isdefined(ProteinCoLoc, f)
+    end
+
+    # build_ratio_estimator input width == ratio_input_dim(G) = 5G² (grid-general), not 320:
+    # a working RatioEstimator yields a finite amortized log BF (one forward pass) at that width.
+    for G in (4, 8)
+        e   = ProteinCoLoc.build_ratio_estimator(ProteinCoLoc.ratio_input_dim(G);
+                                                 num_summaries = 8, width = 16)
+        Zp  = Float32.(randn(ProteinCoLoc.ratio_input_dim(G)))
+        @test isfinite(ProteinCoLoc.amortized_log_bf(e, Zp, 0.0))
+    end
+
+    # assemble_ratio_pairs: grid-general pair encoding + balanced-by-construction labels.
+    G = 4; nc = G^2; d = 2 * nc; N = 60
+    Zstd = Float32.(randn(d, N))
+    ρ    = randn(N)
+    Zp, y = ProteinCoLoc.assemble_ratio_pairs(Zstd, ρ, 40)
+    @test size(Zp, 1) == ProteinCoLoc.ratio_input_dim(G)
+    @test all(v -> v == 0f0 || v == 1f0, y)
+    @test isfinite(ProteinCoLoc.measure_log_prior_odds(y))
+
+    # A tiny CPU ratio train (few epochs, small n, use_gpu=false) returns a usable handle.
+    res = ProteinCoLoc.train_ratio(Zstd, ρ; n = 60, use_gpu = false, epochs = 2, batchsize = 16,
+                                   val_frac = 0.2, stopping_epochs = 2, num_summaries = 8,
+                                   summary_width = 16, verbose = false)
+    @test res.input_dim == ProteinCoLoc.ratio_input_dim(G)
+    @test isfinite(res.log_prior_odds)
+    # the amortized log BF read runs on the trained handle (one forward pass, no quadgk/KDE).
+    Zpair = ProteinCoLoc.pair_encode(Zstd[:, 1], Zstd[:, 2])
+    @test isfinite(ProteinCoLoc.amortized_log_bf(res.estimator, Zpair, res.log_prior_odds))
+end
+
+##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):
 ###
 ### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,
