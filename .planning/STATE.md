@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 7 context gathered
-last_updated: "2026-07-03T19:51:24.144Z"
-last_activity: 2026-07-03 -- 07-02 src/amortized/{infer,bf,ood}.jl; Memo §5 hardening folded in (non-clamped KDE BF baseline + with_pp=true PP channel); LinearAlgebra stdlib declared (external pins intact); spike untouched
+stopped_at: 07-03 COMPLETE (amortized training layer)
+last_updated: "2026-07-03T21:30:00.000Z"
+last_activity: 2026-07-03 -- 07-03 src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl; NPE/NRE training GPU-plumbed (D-06, throw-guards removed), CPU-resident Flux.state+loadmodel! persistence (Pitfall 4/T-7-07), reusable _train_grid_pipeline wired into train_and_register; Pkg.test green under -t auto; spike untouched
 progress:
   total_phases: 16
   completed_phases: 8
   total_plans: 48
-  completed_plans: 40
+  completed_plans: 41
   percent: 50
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 07 (productionization-conditional-on-go) — EXECUTING
-Plan: 4 of 11 (07-00, 07-01, 07-02 complete)
-Status: 07-02 COMPLETE — amortized read surfaces (NPE infer / NRE Bayes factor + non-clamped baseline / OOD flag with re-enabled PP channel) promoted; Pkg.test green (infer 11/11, bf 18/18, ood 31/31)
-Last activity: 2026-07-03 -- 07-02 src/amortized/{infer,bf,ood}.jl; Memo §5 hardening folded in (non-clamped KDE BF baseline + with_pp=true PP channel); LinearAlgebra stdlib declared (external pins intact); spike untouched
+Plan: 5 of 11 (07-00, 07-01, 07-02, 07-03 complete)
+Status: 07-03 COMPLETE — amortized TRAINING layer promoted: NPE architecture + NPE/NRE training GPU-plumbed (D-06), CPU-resident Flux.state persistence (Pitfall 4/T-7-07), single reusable _train_grid_pipeline wired into train_and_register (D-04 on-ramp is real code); Pkg.test green under -t auto (train_npe 11/11, train_ratio 12/12, persist 17/17, pipeline 19/19)
+Last activity: 2026-07-03 -- 07-03 src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl; use_gpu throw-guards removed on training path (CPU fallback), Flux.state(cpu(est))+loadmodel! shipped persistence, SKIP-IF-DONE + atomic writes; GPU path NOT exercised (no CUDA device: has_cuda_device()==false); spike untouched
 
 Progress: [████████░░] 83%
 
@@ -91,6 +91,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 | Phase 06 P01 | 40 | 3 tasks | 1 files |
 | Phase 06 P02 | 20min | 2 tasks | 2 files |
 | Phase 07 P07-02 | 45min | 3 tasks | 8 files |
+| Phase 07 P07-03 | 50min | 4 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,7 @@ Recent decisions affecting current work:
 - [Phase 07-01]: Grid-parametric datagen (src/amortized/datagen.jl) — summary buffers Matrix(summary_dim(G),N), generating_config.summary_min_dim=summary_dim(G) so grids auto-separate into distinct content-hash cache dirs; imsize_set exposed for per-grid image-size bias (>=15-survivor floor, T-7-03); :min-only (spike :aug superset dropped); content hash uses Base.hash to avoid re-resolving the fragile Wave-0 Manifest; simulator chain referenced-but-promoted-later; spike/ byte-untouched
 - [Phase 07-02]: Amortized READ surfaces promoted to src/amortized/{infer,bf,ood}.jl (PROD-01), grid-general + CPU-default (use_gpu=false everywhere, D-06). infer.jl: standardize_summary (frozen zt, mask bypass) + posterior_for/rho_draws/delta_rho (StatsBase.reconstruct BEFORE ρ read, Pitfall 5). bf.jl: amortized_log_bf (one NRE pass, measured log_prior_odds subtracted) + pair_encode (nc=G² derived ⇒ 5G²) + kde_log_bf_unclamped (Memo §5/T-7-06: compute_BayesFactor KDE math WITHOUT the 1e-8 _clampp floor so max|Δ logBF| is artifact-free). ood.jl: density (fit_ood_nulls continuous-rows+ridge) + noise (10 invariant features) + re-enabled posterior-predictive channel (ood_verdict defaults with_pp=true, Memo §5/T-7-04, kept crash-free by the iter1 _finite_or/_theta_tuple finite-guard) OR-fused by ood_verdict → OODVerdict. OOD ship-gate experiment (misspec families/ood_roc_over_grid, need simulator+ImageFiltering) deferred to 07-03+.
 - [Phase 07-02]: Declared LinearAlgebra as a direct stdlib dep (cholesky/Symmetric/I for the OOD Mahalanobis) — a stdlib already in the Manifest with no version to resolve, so the co-resolution gate stays 4/4 green (NeuralEstimators 0.2.1 / Flux 0.16.10 pins intact); Pkg.test fully green (infer 11/11, bf 18/18, ood 31/31); spike/ byte-untouched.
+- [Phase 07-03]: Amortized TRAINING layer promoted to src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl (PROD-01/02). build_estimator input-width-agnostic (q a NormalisingFlow INSTANCE positional; NPE_* Phase-5 consts); train_npe/train_ratio default use_gpu=has_cuda_device() with the spike use_gpu&&throw guards REMOVED (D-06) and LR/decay kept Float64 (AdamW-CosAnneal gotcha); ratio conditioner width from ratio_input_dim(G)=5G² (not 320), no custom loss (v0.2.1 hard-codes logit-BCE). SHIPPED PERSISTENCE migrated to CPU-resident Flux.state(cpu(est))+arch metadata → build_estimator/build_ratio_estimator + Flux.loadmodel! on load (Pitfall 4/T-7-07: device-independent, narrower deserialization surface T-7-01); OOD nulls persist directly; all through the atomic .tmp→reopen-integrity-@assert→mv(force=true) wrapper + schema_version + _estimator_ok/_ratio_ok/_ood_nulls_ok SKIP-IF-DONE predicates; seeded save→load→CPU inference bitwise-equal. _train_grid_pipeline(grid;...) factors datagen→zt→train_npe→train_ratio→fit_ood_nulls→persist→EstimatorBundle (SKIP-IF-DONE loads valid artifacts; injectable datagen seam makes it testable without the not-yet-promoted simulator; default_imsize_for 16→≥512²/32→≥1024²); train_and_register(grid) now runs it (D-04 on-ramp is real code, stub removed). Docstring documents -t auto datagen + Philox-per-index thread-count-independent byte-identical repro. GPU path plumbed but NOT exercised (has_cuda_device()==false, no CUDA loaded); CPU path fully green. Pkg.test green under -t auto (train_npe 11/11, train_ratio 12/12, persist 17/17, pipeline 19/19; co-resolution 4/4, no new external deps); spike/ byte-untouched.
 
 ### Roadmap Evolution
 
@@ -176,6 +178,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T19:51:24.134Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-productionization-conditional-on-go/07-CONTEXT.md
+Last session: 2026-07-03T21:30:00.000Z
+Stopped at: 07-03 COMPLETE (amortized training layer: NPE/NRE training GPU-plumbed, CPU-resident persistence, reusable _train_grid_pipeline wired into train_and_register)
+Resume file: .planning/phases/07-productionization-conditional-on-go/07-04-PLAN.md
