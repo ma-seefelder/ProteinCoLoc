@@ -37,9 +37,10 @@ include("colocalization.jl")
 include("results.jl")
 # --- Amortized inference subsystem (v2.0, PROD-02) --------------------------------------
 # Grid-parametric summary/encoder + single-source dimension helpers (the ONE grid-coupling
-# site). Data-gen (amortized/datagen.jl) and the estimator registry (registry.jl) are added
-# by later 07-01 tasks / plans.
+# site), then the grid-parametric data-gen/cache. The estimator registry (registry.jl) is added
+# by a later 07-01 task.
 include("amortized/summary.jl")
+include("amortized/datagen.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
