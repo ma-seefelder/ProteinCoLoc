@@ -39,6 +39,10 @@ include("results.jl")
 # Grid-parametric summary/encoder + single-source dimension helpers (the ONE grid-coupling
 # site), then the grid-parametric data-gen/cache, then the grid-keyed estimator registry.
 include("amortized/summary.jl")
+# Phase-2 forward simulator PROMOTED into src/ (07-05): sample_prior / simulate_pair / build_mci.
+# Referenced inside datagen.jl + the ship-gate harness function bodies, so it must load BEFORE
+# datagen.jl. Prior ranges kept byte-consistent with the Turing @model (CLAUDE.md constraint).
+include("amortized/simulator.jl")
 include("amortized/datagen.jl")
 include("registry.jl")
 # Amortized READ surfaces (PROD-01): NPE posterior inference (infer.jl), NRE amortized Bayes

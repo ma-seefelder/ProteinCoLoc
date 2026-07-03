@@ -209,6 +209,7 @@ const DATAGEN_HASH_SRC_FILES = String[
     joinpath(@__DIR__, "..", "colocalization.jl"),   # patch() / correlation() (defines the summary)
     joinpath(@__DIR__, "..", "LoadImages.jl"),        # MultiChannelImage container
     joinpath(@__DIR__, "summary.jl"),                 # patch_summary(mci,G) / encode_d01
+    joinpath(@__DIR__, "simulator.jl"),               # sample_prior / simulate_pair / build_mci (07-05)
 ]
 
 """
