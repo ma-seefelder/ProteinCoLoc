@@ -95,6 +95,21 @@ Requirements: PROD-01, PROD-02.
   the net has now been iterated against). Results are recorded per grid; a grid that fails its
   gate does not ship (and is not merged into `src/` as public).
 
+### GPU acceleration for training **[USER-RAISED; recommended default, confirmable]**
+- **D-06:** **GPU MAY accelerate the 5-grid training.** The CPU-only rule was a *spike*
+  constraint (portability/reproducibility de-risking) and does **not** bind Phase 7. Per
+  CLAUDE.md, GPU is an optional accelerator for training with graceful CPU fallback.
+  **Recommended split (told to the planner; user confirmation pending):**
+  - **Train on GPU** (NeuralEstimators `use_gpu=true` / CUDA.jl as a Flux extension) — most
+    valuable for the heavy 32×32 / 64×64 grids; add CUDA.jl with graceful CPU fallback.
+  - **Keep the frozen nets, the per-grid ship-gate SBC/BF/OOD confirmation runs, and the
+    shipped default inference path CPU-reproducible** (graceful GPU→CPU), so the
+    pre-registered ship-gate numbers stay deterministic/reproducible regardless of training
+    hardware. GPU changes training-time, NOT the local-localisation *statistical* calibration
+    question (that stands on its own merits, D-04 rationale).
+  - If the user later prefers GPU-everywhere or GPU-training-only-ephemeral, the planner
+    adjusts — this decision affects hardware/repro plumbing, not the type hierarchy or registry.
+
 ### Claude's Discretion
 - Exact naming of the public entry point and accessor functions (within the D-02 hierarchy).
 - Estimator storage mechanism (Artifacts vs bundled) and registry file format.
