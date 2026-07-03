@@ -41,6 +41,11 @@ include("results.jl")
 include("amortized/summary.jl")
 include("amortized/datagen.jl")
 include("registry.jl")
+# Amortized READ surfaces (PROD-01): NPE posterior inference (infer.jl), NRE amortized Bayes
+# factor + non-clamped KDE baseline (bf.jl), and the density+noise+posterior-predictive OOD flag
+# (ood.jl). Ordered after registry.jl; ood.jl uses standardize_summary (infer.jl) and
+# posterior_for, so the order is infer → bf → ood.
+include("amortized/infer.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
