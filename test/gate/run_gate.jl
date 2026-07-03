@@ -25,8 +25,35 @@ import JLD2
 import Statistics: cor
 
 # Ordered, guarded includes: consts → harness → sbc. A per-grid `gate_consts_<G>.jl` included
-# BEFORE this file is respected; a standalone invocation falls back to the committed template.
-isdefined(@__MODULE__, :SBC_M)               || include(joinpath(@__DIR__, "gate_consts_template.jl"))
+# BEFORE this file is respected. When invoked as `run_gate.jl --grid G`, PREFER the committed
+# per-grid pre-registration `gate_consts_<G>.jl` (D-05: the reported gate must be driven by the
+# grid's OWN locked consts + fresh PROD_SEED[G], not the shared template) and fall back to the
+# committed template only if no per-grid file exists. A standalone/runtests include (empty ARGS)
+# falls back to the template.
+"""
+    _peek_grid_arg(args) -> Union{Int,Nothing}
+
+Scan CLI `args` for `--grid G` before the consts are loaded, so the correct per-grid
+pre-registration file can be selected at include time (the grid is otherwise parsed later).
+"""
+function _peek_grid_arg(args)
+    for i in 1:(length(args) - 1)
+        args[i] == "--grid" && return tryparse(Int, args[i + 1])
+    end
+    return nothing
+end
+
+if !isdefined(@__MODULE__, :SBC_M)
+    let g = _peek_grid_arg(ARGS)
+        pergrid = g === nothing ? nothing : joinpath(@__DIR__, "gate_consts_$(g).jl")
+        if pergrid !== nothing && isfile(pergrid)
+            @info "run_gate: loading per-grid pre-registration" file = basename(pergrid)
+            include(pergrid)
+        else
+            include(joinpath(@__DIR__, "gate_consts_template.jl"))
+        end
+    end
+end
 isdefined(@__MODULE__, :draw_simulate_infer) || include(joinpath(@__DIR__, "harness.jl"))
 isdefined(@__MODULE__, :sbc_ranks)           || include(joinpath(@__DIR__, "sbc.jl"))
 
