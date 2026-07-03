@@ -37,10 +37,10 @@ include("colocalization.jl")
 include("results.jl")
 # --- Amortized inference subsystem (v2.0, PROD-02) --------------------------------------
 # Grid-parametric summary/encoder + single-source dimension helpers (the ONE grid-coupling
-# site), then the grid-parametric data-gen/cache. The estimator registry (registry.jl) is added
-# by a later 07-01 task.
+# site), then the grid-parametric data-gen/cache, then the grid-keyed estimator registry.
 include("amortized/summary.jl")
 include("amortized/datagen.jl")
+include("registry.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
@@ -70,6 +70,8 @@ export plot, local_correlation_plot,plot_mask, bayesplot, bayes_rangeplot
 # deliberately NOT exported (D-01).
 export AbstractColocResult, AmortizedColocResult, OODVerdict, CalibrationMeta
 export delta_rho, bayes_factor, is_ood, posterior_draws
+# Grid-keyed estimator registry (PROD-02, D-04): the public num_patches-as-key entry points.
+export estimator_for, register!, train_and_register
 end
 
  
