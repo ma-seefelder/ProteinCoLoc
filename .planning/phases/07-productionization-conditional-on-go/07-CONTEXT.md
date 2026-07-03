@@ -65,35 +65,38 @@ Requirements: PROD-01, PROD-02.
   isolated `spike/Project.toml`/`Manifest.toml` remain untouched; this is a *new* root-package
   dependency set for the productionized code.
 
-### Estimator registry (PROD-02) **[USER-DECIDED]**
-- **D-04:** **Ship a five-grid pre-trained family — 4×4, 8×8, 16×16, 32×32, 64×64 —** in a
-  registry keyed by patch grid, PLUS a documented **`train_and_register(grid)`** entry point
-  so users can add further grids without ad-hoc retraining. The registry maps a requested
-  `num_patches`/grid to its trained estimator; an unregistered grid gives a clear, actionable
-  error pointing at `train_and_register`.
-  - **RATIONALE (user):** the finer grids exist to enable **"local localisation" analysis** —
-    a finer patch grid yields **per-region / spatially-resolved** colocalization, not merely a
-    higher-dimensional summary. This is the on-ramp to the Phase-12 spatial Δρ map. The
-    feasibility question for the fine grids is therefore **"does local colocalization
-    resolution hold up at this grid?"**, not just "is the summary trainable" — the researcher
-    must evaluate the fine grids against the *local-resolution* goal.
-  - **Consequence for the planner:** the summary-vector dimension is **coupled to the grid**
-    (8×8 → 64 continuous + 64 mask rows; other grids scale accordingly), so **each grid needs
-    its own training-data generation, its own NPE (and NRE) architecture + training run**, not
-    a reuse of the 8×8 net. This is a substantial, repeated pipeline — see the scope flag in
-    Deferred Ideas.
-  - Decide (research/discretion) **where the shipped `.jld2` estimators live** — Julia
-    `Artifacts.toml` lazy-download vs. bundled-in-repo — given five grids up to 64×64 (4096
-    patches) may be large.
+### Estimator registry (PROD-02) **[USER-DECIDED — REVISED after feasibility verdict]**
+- **D-04 (revised):** **Ship a CAPPED grid family, plus a windowed local-map on-ramp.** The
+  original 5-grid ambition was reframed after the research feasibility verdict (07-RESEARCH.md
+  §FEASIBILITY VERDICT), which found that (a) a finer grid lengthens the *input* but the NPE
+  output stays a **single GLOBAL ρ_true** — finer grids do **not** produce a per-region map
+  (that is Phase 12's job), and (b) tiny fine-grid patches fall below `src/`'s `≥15-survivor`
+  floor on normal-size images → calibrated-but-uninformative. The user's chosen scope:
+  - **Ship 4×4, 8×8, 16×16** as calibrated **global** estimators in a registry keyed by patch
+    grid, plus a documented **`train_and_register(grid)`** entry point (unregistered grid →
+    clear error pointing at it).
+  - **32×32** ships only **with a loud large-image caveat** (informative only on big, dense
+    images), conditional on its ship-gate.
+  - **64×64 is DROPPED** from the shipped family — not shipped as a "local map." The fine-grid
+    ambition (true per-region Δρ maps) is **deferred to Phase 12** (GP/CAR spatial lattice).
+  - **Local-localisation on-ramp shipped NOW:** run the validated **8×8 estimator on image
+    sub-tiles (windowed inference)** to produce a genuine (coarse) local colocalization map —
+    **no fine-grid training required**. This is the honest local-localisation feature for
+    Phase 7; it dovetails with, rather than pre-empts, Phase 12.
+  - The summary-vector dimension is **coupled to the grid**, so each shipped grid still needs
+    its own data-gen + NPE + NRE + training run. Storage mechanism (Artifacts lazy-download vs
+    bundled; recommend `Flux.state`+`loadmodel!` over whole-object `jldsave` for version
+    robustness) is research/discretion.
 
-### Ship-gate operationalization (D-05 carried from Phase 6) **[USER-DECIDED]**
-- **D-05:** **Gate ALL five grids before ship.** Every bundled estimator must pass its **own
-  independent, fresh-seed, re-pre-registered SBC/BF/OOD confirmation run** before the release
-  ships — no provisional/unvalidated estimators in the public registry. The gate re-expresses
-  the pre-registration **fresh** (new locked consts + new disjoint seed per the Phase-6 memo's
-  ship-gate definition), it does **not** silently reuse the spike's `VAL_MASTER_SEED` (which
-  the net has now been iterated against). Results are recorded per grid; a grid that fails its
-  gate does not ship (and is not merged into `src/` as public).
+### Ship-gate operationalization (D-05 carried from Phase 6) **[USER-DECIDED — scope follows D-04]**
+- **D-05 (revised):** **Gate every SHIPPED grid before ship.** Each estimator that ships
+  (4×4, 8×8, 16×16, and 32×32 if included) must pass its **own independent, fresh-seed,
+  re-pre-registered SBC/BF/OOD confirmation run** (new locked consts + new disjoint
+  `PROD_SEED[grid]` per the Phase-6 memo's ship-gate definition — **not** the spike's
+  `VAL_MASTER_SEED`). A grid that fails its gate does not ship. 32×32 is explicitly
+  **conditional** on its gate outcome + the large-image caveat; 64×64 is not gated because it
+  is not shipped. The windowed 8×8-sub-tile local map inherits the 8×8 estimator's gate (no
+  separate net to gate).
 
 ### GPU acceleration for training **[USER-RAISED; recommended default, confirmable]**
 - **D-06:** **GPU MAY accelerate the 5-grid training.** The CPU-only rule was a *spike*
@@ -197,20 +200,20 @@ Requirements: PROD-01, PROD-02.
 <deferred>
 ## Deferred Ideas
 
-- **⚠ Scope flag (planner): Phase 7 is large.** D-04 (5 grids) × D-05 (per-grid fresh ship-gate)
-  = five full pipelines: per-grid training-data generation → NPE + NRE training → fresh
-  re-pre-registered SBC/BF/OOD confirmation. This likely warrants **splitting into per-grid
-  plans** (or a shared-infrastructure plan + five grid plans). The planner should size this
-  realistically and consider whether some grids are sequenced rather than all-at-once.
-- **⚠ Feasibility risk (researcher): the fine grids (esp. 64×64 = 4096 patches) for LOCAL
-  localisation.** The fine grids are meant to deliver **per-region colocalization** (D-04
-  rationale). At high resolution each patch is tiny and its per-patch correlation estimate is
-  noisy, so the question is whether **calibrated local Δρ resolution** survives — not just
-  whether the summary is trainable. The researcher must assess, per fine grid, whether local
-  colocalization is genuinely calibratable before the planner commits to gating it, and surface
-  any grid that can't meet the local-resolution bar to the user rather than shipping a weak
-  estimator. (Note the design overlap with Phase 12's spatial map — flag if the local-grid
-  approach here should inform or be informed by that phase.)
+- **RESOLVED — feasibility verdict (07-RESEARCH.md §FEASIBILITY VERDICT).** The fine grids do
+  NOT deliver local localisation with the current architecture (finer input → still a single
+  global ρ; per-region maps are Phase 12). 64×64 additionally collapses to uninformative on
+  normal-size images. **User's decision (2026-07-03): cap the family (ship 4×4/8×8/16×16, 32×32
+  caveated, DROP 64×64) + ship the 8×8-sub-tile windowed coarse local map as the Phase-7
+  local-localisation feature; defer true per-region maps to Phase 12.** Captured in D-04/D-05.
+- **⚠ Scope note (planner): still a multi-pipeline phase.** Each shipped grid (4×4/8×8/16×16,
+  +32×32 conditional) needs its own data-gen → NPE + NRE training → fresh re-pre-registered
+  ship-gate. Warrants **shared-infra plan + per-grid plans** (researcher proposed: Wave-0
+  co-resolution+types+registry gated on a clean `Pkg.resolve`, then per-grid ascending-risk
+  plans, then API assembly registering only what passed). Size realistically.
+- **⚠ Co-resolution HARD GATE (Wave-0):** adding NeuralEstimators/Flux to the root `Project.toml`
+  alongside Turing/GLMakie may not `Pkg.resolve` cleanly. Must be de-risked FIRST with an actual
+  resolve; if it fails, escalate to the user (candidate fixes: Turing or GLMakie → extension).
 - **Re-enabling the OOD posterior-predictive channel** in the productionized OOD flag (the
   θ̂ finite-guard made it viable in iter1 but the reported OR-fusion still runs `with_pp=false`)
   — a hardening item to fold in here or defer.
