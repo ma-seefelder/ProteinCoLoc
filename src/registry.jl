@@ -132,17 +132,10 @@ function has_cuda_device()
     return false
 end
 
-"""
-    _train_grid_pipeline(grid::Integer; use_gpu, kwargs...) -> EstimatorBundle
-
-HOOK: run the full per-grid data-gen → NPE + NRE training → OOD fit → D-05 gate pipeline and
-return a calibrated `EstimatorBundle`. Wired by the per-grid Phase-7 plans (07-03+); until then it
-errors so `train_and_register` fails loudly rather than returning an unpopulated bundle.
-"""
-function _train_grid_pipeline(grid::Integer; use_gpu = has_cuda_device(), kwargs...)
-    error("Per-grid training pipeline for a $(grid)×$(grid) grid is not implemented yet " *
-          "(added by a later Phase-7 plan). use_gpu=$(use_gpu).")
-end
+# `_train_grid_pipeline(grid; ...)` — the full per-grid data-gen → NPE + NRE training → OOD fit →
+# persist pipeline that returns a populated `EstimatorBundle` — is defined in
+# `src/amortized/pipeline.jl` (07-03), included AFTER this file. `train_and_register` references it
+# only at call time, so the forward reference resolves once the module finishes loading.
 
 """
     train_and_register(grid::Integer; use_gpu = has_cuda_device(), kwargs...) -> EstimatorBundle

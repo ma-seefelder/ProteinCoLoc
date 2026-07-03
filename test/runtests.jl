@@ -609,6 +609,69 @@ end
 end
 
 ##########################################################################################
+### Reusable per-grid pipeline wired into train_and_register (07-03 Task 4, PROD-01/02, D-04)
+###
+### _train_grid_pipeline factors datagen→train_npe→train_ratio→fit_ood_nulls→persist into ONE
+### function returning an EstimatorBundle; train_and_register(grid) runs it then register!s. A
+### tiny fixture run (injected synthetic datagen, no simulator) produces the three grid artifacts
+### and a loadable bundle; a second call SKIPS-IF-DONE. Per-grid image-size defaults bias upward.
+##########################################################################################
+@testset "per-grid pipeline (pipeline.jl)" begin
+    # Structural: the pipeline is a defined function and train_and_register has an Int method.
+    @test isdefined(ProteinCoLoc, Symbol("_train_grid_pipeline"))
+    @test hasmethod(ProteinCoLoc.train_and_register, Tuple{Int})
+    @test isdefined(ProteinCoLoc, :default_imsize_for)
+    @test isdefined(ProteinCoLoc, :default_npairs_for)
+
+    # Per-grid image-size bias: 16 → ≥512², 32 → ≥1024² (finer grids draw larger images).
+    s16 = ProteinCoLoc.default_imsize_for(16)
+    @test all(sz -> min(sz[1], sz[2]) >= 512, s16)
+    s32 = ProteinCoLoc.default_imsize_for(32)
+    @test all(sz -> min(sz[1], sz[2]) >= 1024, s32)
+    @test ProteinCoLoc.default_npairs_for(4) < ProteinCoLoc.default_npairs_for(32)
+
+    # A tiny fixture run: inject a synthetic datagen (grid-4 ⇒ 2·G² = 32-row summary), tiny nets,
+    # into a temp artifacts root — no forward simulator needed.
+    root = mktempdir()
+    G = 4; nc = G^2; d = 2 * nc; N = 80
+    synth = () -> (theta = randn(7, N),
+                   summary_min = vcat(randn(nc, N) .* 2 .+ 3, Float64.(rand(Bool, nc, N))))
+    npe_kw = (; batchsize = 16, dstar = 8, depth = 1, width = 16,
+              num_coupling_layers = 2, flow_depth = 1, flow_width = 8, stopping_epochs = 2)
+    ratio_kw = (; batchsize = 16, num_summaries = 8, summary_width = 16, val_frac = 0.2,
+                stopping_epochs = 2)
+
+    b = train_and_register(G; datagen = synth, artifacts_root = root, use_gpu = false,
+                           n_pairs = 60, ratio_n = 60, npe_epochs = 2, ratio_epochs = 2,
+                           npe_kwargs = npe_kw, ratio_kwargs = ratio_kw)
+
+    # A fully-populated EstimatorBundle for the grid, registered so estimator_for returns it.
+    @test b isa ProteinCoLoc.EstimatorBundle
+    @test b.grid == G
+    @test estimator_for(G) === b
+    @test b.zt !== nothing && b.θzt !== nothing
+    @test haskey(b.ood_nulls, :density)
+    @test isfinite(b.ratio.log_prior_odds)
+
+    # The three grid artifacts exist under artifacts_root/grid_G/.
+    gdir = joinpath(root, "grid_$(G)")
+    @test isfile(joinpath(gdir, "npe_$(G).jld2"))
+    @test isfile(joinpath(gdir, "ratio_$(G).jld2"))
+    @test isfile(joinpath(gdir, "ood_nulls_$(G).jld2"))
+
+    # SKIP-IF-DONE: a second call loads the persisted artifacts (a datagen that would ERROR is
+    # never invoked ⇒ the skip path ran), returning a loadable bundle with a CPU-reproducible net.
+    boom = () -> error("datagen must NOT run when artifacts are present (skip-if-done)")
+    b2 = ProteinCoLoc._train_grid_pipeline(G; datagen = boom, artifacts_root = root,
+                                           skip_if_done = true)
+    @test b2 isa ProteinCoLoc.EstimatorBundle
+    @test b2.grid == G
+    Zq = Float32.(ProteinCoLoc.standardize_summary(
+        vcat(randn(nc) .* 2 .+ 3, Float64.(rand(Bool, nc))), b2.zt, :min))
+    @test size(ProteinCoLoc.posterior_for(b2.npe, Zq; N = 8, use_gpu = false), 1) == 7
+end
+
+##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):
 ###
 ### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,
