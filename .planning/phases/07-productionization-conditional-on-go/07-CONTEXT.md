@@ -71,6 +71,12 @@ Requirements: PROD-01, PROD-02.
   so users can add further grids without ad-hoc retraining. The registry maps a requested
   `num_patches`/grid to its trained estimator; an unregistered grid gives a clear, actionable
   error pointing at `train_and_register`.
+  - **RATIONALE (user):** the finer grids exist to enable **"local localisation" analysis** —
+    a finer patch grid yields **per-region / spatially-resolved** colocalization, not merely a
+    higher-dimensional summary. This is the on-ramp to the Phase-12 spatial Δρ map. The
+    feasibility question for the fine grids is therefore **"does local colocalization
+    resolution hold up at this grid?"**, not just "is the summary trainable" — the researcher
+    must evaluate the fine grids against the *local-resolution* goal.
   - **Consequence for the planner:** the summary-vector dimension is **coupled to the grid**
     (8×8 → 64 continuous + 64 mask rows; other grids scale accordingly), so **each grid needs
     its own training-data generation, its own NPE (and NRE) architecture + training run**, not
@@ -181,11 +187,15 @@ Requirements: PROD-01, PROD-02.
   re-pre-registered SBC/BF/OOD confirmation. This likely warrants **splitting into per-grid
   plans** (or a shared-infrastructure plan + five grid plans). The planner should size this
   realistically and consider whether some grids are sequenced rather than all-at-once.
-- **⚠ Feasibility risk (researcher): the 64×64 grid (4096 patches).** At that resolution each
-  patch is tiny and its correlation estimate is noisy; the summary/architecture and the
-  calibration story may not transfer from 8×8. The researcher should assess whether 64×64 is
-  genuinely trainable/calibratable before the planner commits to gating it — if not, surface it
-  to the user rather than silently shipping a weak estimator.
+- **⚠ Feasibility risk (researcher): the fine grids (esp. 64×64 = 4096 patches) for LOCAL
+  localisation.** The fine grids are meant to deliver **per-region colocalization** (D-04
+  rationale). At high resolution each patch is tiny and its per-patch correlation estimate is
+  noisy, so the question is whether **calibrated local Δρ resolution** survives — not just
+  whether the summary is trainable. The researcher must assess, per fine grid, whether local
+  colocalization is genuinely calibratable before the planner commits to gating it, and surface
+  any grid that can't meet the local-resolution bar to the user rather than shipping a weak
+  estimator. (Note the design overlap with Phase 12's spatial map — flag if the local-grid
+  approach here should inform or be informed by that phase.)
 - **Re-enabling the OOD posterior-predictive channel** in the productionized OOD flag (the
   θ̂ finite-guard made it viable in iter1 but the reported OR-fusion still runs `with_pp=false`)
   — a hardening item to fold in here or defer.
