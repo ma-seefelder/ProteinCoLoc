@@ -102,7 +102,7 @@ const FIXTURES_DIR = joinpath(@__DIR__, "fixtures")
     # Later Phase-8 plans wire their testsets in here. Each MUST run offline (any live-network
     # smoke skips cleanly via the Phase-9 tapqir_anchor :skipped contract).
     include(joinpath(@__DIR__, "test_hash.jl"))         # wired by 08-02 (SHA-256 hashing)
-    # include(joinpath(@__DIR__, "test_fetch.jl"))      # wired by 08-04 (fetch: skip-with-flag / hard-fail)
+    include(joinpath(@__DIR__, "test_fetch.jl"))        # wired by 08-02 (fetch: skip-with-flag / hard-fail)
     # include(joinpath(@__DIR__, "test_manifest.jl"))   # wired by 08-03 (schema + tier/split guards)
     # include(joinpath(@__DIR__, "test_load.jl"))       # wired by 08-05 (TIFF → MultiChannelImage)
     # include(joinpath(@__DIR__, "test_cbs.jl"))        # wired by 08-06 (CBS ingestion, simulated-secondary)
