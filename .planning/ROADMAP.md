@@ -168,7 +168,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 5. Validation Bundle (SBC + BF + OOD) | 4/4 | Complete   | 2026-07-02 |
 | 6. Reproducible Demo + Go/No-Go Memo | 2/2 | Complete   | 2026-07-03 |
 | 7. Productionization (conditional on Go) | 5/11 | In Progress|  |
-| 8. External Physical Ground-Truth Corpus | 2/5 | In Progress|  |
+| 8. External Physical Ground-Truth Corpus | 3/5 | In Progress|  |
 | 9. Cross-Method Comparator Harness | 6/6 | Complete   | 2026-07-02 |
 | 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |
 | 11. Registration + Chromatic Uncertainty as Latent | 0/TBD | Not started | - |
@@ -189,7 +189,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 **Plans**: 5 plans (5 waves — W1 config+test-scaffold+fixture ; W2 hash+fetch ; W3 manifest+guards+conversion ; W4 CBS ingestion+manifest.csv ; W5 physical-anchor human-verify pinning)
 - [x] 08-01-PLAN.md — Pre-declared config consts + scoped .gitignore + offline runtests.jl gate + synthetic two-channel TIFF fixture (SC1, SC3)
 - [x] 08-02-PLAN.md — SHA-256 content-hash utility + fetch_verified (D-05 skip-vs-abort asymmetry, atomic commit, timeout) (SC1, SC3)
-- [ ] 08-03-PLAN.md — Manifest schema + D-06 tier guard + D-09 sealed-holdout guard + D-03 anchor predicate + content-addressed writer + read-only MultiChannelImage conversion (SC1, SC2, SC3)
+- [x] 08-03-PLAN.md — Manifest schema + D-06 tier guard + D-09 sealed-holdout guard + D-03 anchor predicate + content-addressed writer + read-only MultiChannelImage conversion (SC1, SC2, SC3)
 - [ ] 08-04-PLAN.md — Full CBS ingestion (simulated-secondary, seeded dev/eval split, zip-slip-safe) + committed manifest.csv + offline-skip fetch smoke (SC2, SC3)
 - [ ] 08-05-PLAN.md — Physical anchor pinning: positive tandem-FP + negative segregated construct, human-verified, archived sealed-holdout with provenance + SHA-256 (SC1) [autonomous:false]
 
