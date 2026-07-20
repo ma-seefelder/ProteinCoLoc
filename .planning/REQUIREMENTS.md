@@ -64,7 +64,7 @@ The v2.0 milestone: a decoupled spike (ENV–DEMO) that gates a conditional prod
 ### Productionization (conditional on a Go decision)
 
 - [ ] **PROD-01**: On Go, amortized inference is integrated into `src/` as `colocalization_amortized()` coexisting with the existing Turing path behind a shared input/output contract, so `compute_BayesFactor()` keeps working unchanged
-- [ ] **PROD-02**: `num_patches` (patch grid) is **user-definable** in the productionized API (8×8 was the spike default), via an estimator registry rather than retraining the network ad hoc
+- [x] **PROD-02**: `num_patches` (patch grid) is **user-definable** in the productionized API (8×8 was the spike default), via an estimator registry rather than retraining the network ad hoc
 
 ### Cross-Method Comparator Harness (Phase 9 — feature expansion)
 
@@ -138,7 +138,7 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 | DEMO-02 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Complete |
 | DEMO-03 | Phase 6 — Reproducible Demo + Go/No-Go Memo | Complete |
 | PROD-01 | Phase 7 — Productionization (conditional on Go) | Pending |
-| PROD-02 | Phase 7 — Productionization (conditional on Go) | Pending |
+| PROD-02 | Phase 7 — Productionization (conditional on Go) | Complete |
 | CMP-01 | Phase 9 — Cross-Method Comparator Harness | Pending |
 | CMP-02 | Phase 9 — Cross-Method Comparator Harness | Pending |
 | CMP-03 | Phase 9 — Cross-Method Comparator Harness | Pending |
