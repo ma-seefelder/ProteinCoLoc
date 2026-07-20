@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 8 context gathered
-last_updated: "2026-07-20T13:30:21.068Z"
-last_activity: 2026-07-20 -- Phase 07 execution started
+last_updated: "2026-07-20T14:01:49.827Z"
+last_activity: 2026-07-20 -- Phase 08 execution started
 progress:
   total_phases: 16
   completed_phases: 8
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 07 — productionization-conditional-on-go
+**Current focus:** Phase 08 — external-physical-ground-truth-corpus
 
 ## Current Position
 
-Phase: 07 (productionization-conditional-on-go) — EXECUTING
-Plan: 1 of 11
-Status: Executing Phase 07
-Last activity: 2026-07-20 -- Phase 07 execution started
+Phase: 08 (external-physical-ground-truth-corpus) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 08
+Last activity: 2026-07-20 -- Phase 08 execution started
 
 Progress: [█████████░] 88%
 
