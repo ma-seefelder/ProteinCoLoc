@@ -18,7 +18,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: NPE Training + ADVI Benchmark + Ablation** - NPE for ρ_true and Δρ at >100x ADVI speedup, summary-statistic ablation gated on per-parameter RMSE (completed 2026-07-01)
 - [x] **Phase 5: Validation Bundle (SBC + Amortized BF + OOD)** - The publishable trifecta off one simulate→infer harness: calibration proof, amortized log-BF, honest misspecification flag
  (completed 2026-07-02)
-- [x] **Phase 6: Reproducible Demo + Go/No-Go Memo** - Seeded end-to-end `demo.jl`, decoupling proof, 2-3 page Go/No-Go decision memo (completed 2026-07-03)
+- [x] **Phase 6: Reproducible Demo + Go/No-Go Memo** - Seeded end-to-end `demo.jl`, decoupling proof, 2-3 page Go/No-Go decision memo
+ (completed 2026-07-03)
 - [ ] **Phase 7: Productionization (conditional on Go)** - Integrate amortized inference into `src/` behind a coexisting backend contract with user-definable `num_patches`
 
 **v2.0 feature expansion (Phases 8–16) — all downstream of a Phase-6 Go:**
@@ -180,13 +181,17 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 ### Phase 8: External Physical Ground-Truth Corpus
 **Goal**: Assemble a non-circular validation corpus whose truth does not come from the model's own simulator, so v2.0's calibration can be checked against external reality rather than mere self-consistency
 **Depends on**: Nothing (parallelizable now, alongside Phases 5–7)
-**Requirements**: TBD
+**Requirements**: SC1, SC2, SC3 (local — ROADMAP success criteria; Requirements = TBD in REQUIREMENTS.md)
 **Success Criteria** (what must be TRUE):
   1. ≥1 physical 100%-coloc anchor (single-protein-two-channel / tandem fluorophore) and ≥1 segregated anchor (nuclear-vs-membrane) archived with provenance + content hashes
   2. The Colocalization Benchmark Source is ingested and explicitly flagged as simulated/secondary, never conflated with the physical anchors
   3. A versioned validation data contract + manifest (schema, provenance, split policy) is checked in
-**Plans**: TBD
-- [ ] TBD (run /gsd:plan-phase 8 to break down)
+**Plans**: 5 plans (5 waves — W1 config+test-scaffold+fixture ; W2 hash+fetch ; W3 manifest+guards+conversion ; W4 CBS ingestion+manifest.csv ; W5 physical-anchor human-verify pinning)
+- [ ] 08-01-PLAN.md — Pre-declared config consts + scoped .gitignore + offline runtests.jl gate + synthetic two-channel TIFF fixture (SC1, SC3)
+- [ ] 08-02-PLAN.md — SHA-256 content-hash utility + fetch_verified (D-05 skip-vs-abort asymmetry, atomic commit, timeout) (SC1, SC3)
+- [ ] 08-03-PLAN.md — Manifest schema + D-06 tier guard + D-09 sealed-holdout guard + D-03 anchor predicate + content-addressed writer + read-only MultiChannelImage conversion (SC1, SC2, SC3)
+- [ ] 08-04-PLAN.md — Full CBS ingestion (simulated-secondary, seeded dev/eval split, zip-slip-safe) + committed manifest.csv + offline-skip fetch smoke (SC2, SC3)
+- [ ] 08-05-PLAN.md — Physical anchor pinning: positive tandem-FP + negative segregated construct, human-verified, archived sealed-holdout with provenance + SHA-256 (SC1) [autonomous:false]
 
 ### Phase 9: Cross-Method Comparator Harness
 **Goal**: A reproducible harness that runs the classical estimators and a Tapqir bridge on shared inputs, so v2.0 can be positioned as "knows when the classics are wrong," not merely "agrees with them"
