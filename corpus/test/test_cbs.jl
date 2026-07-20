@@ -95,4 +95,57 @@ isdefined(@__MODULE__, :cbs_rows) || include(joinpath(@__DIR__, "..", "cbs.jl"))
     @test _split_rgb(img, "Red-Blue")[2]  ≈ bmat
     @test _split_rgb(img, "Green-Blue")[1] ≈ gmat
     @test_throws ErrorException _split_rgb(img, "Nope-Pair")
+
+    # (f) Committed manifest contract: 30 CBS (simulated-secondary) + 2 physical-primary sealed
+    #     anchor placeholders; validate_manifest passes; header stamps schema version + seed (SC3).
+    dfc = committed_manifest()
+    @test nrow(dfc) == 32
+    @test count(==("simulated-secondary"), dfc.tier) == 30
+    @test count(==("physical-primary"), dfc.tier) == 2
+    phys_splits = dfc.split[dfc.tier .== "physical-primary"]
+    @test all(==("sealed_holdout"), phys_splits)                  # D-09: anchors sealed
+    @test validate_manifest(dfc) === dfc
+    # Write to a scratch path and assert the pre-registration header + row count.
+    scratch = joinpath(mktempdir(), "manifest.csv")
+    write_committed_manifest(dfc; path = scratch)
+    @test isfile(scratch) && !isfile(scratch * ".tmp")
+    txt = read(scratch, String)
+    @test occursin("MANIFEST_SCHEMA_VERSION", txt)
+    @test occursin(string(MANIFEST_SCHEMA_VERSION), txt)
+    @test occursin("CORPUS_MASTER_SEED", txt)
+    @test occursin(repr(CORPUS_MASTER_SEED), txt)
+    @test occursin("simulated-secondary", txt)
+    # Non-comment lines = 1 CSV header + 32 data rows.
+    datalines = filter(l -> !startswith(l, "#") && !isempty(l), split(txt, '\n'; keepempty = false))
+    @test length(datalines) == 33
+
+    # (g) The committed corpus/manifest.csv is present, header-stamped, and validates offline (SC3).
+    @test isfile(COMMITTED_MANIFEST_PATH)
+    committed_txt = read(COMMITTED_MANIFEST_PATH, String)
+    @test occursin("MANIFEST_SCHEMA_VERSION", committed_txt)
+    @test occursin("simulated-secondary", committed_txt)
+    committed_data = filter(l -> !startswith(l, "#") && !isempty(l),
+                            split(committed_txt, '\n'; keepempty = false))
+    @test length(committed_data) == 33   # 1 CSV header + 32 rows
+
+    # (h) Live CBS fetch smoke: SKIPS cleanly offline (never throws, never requires network, D-05).
+    r = fetch_cbs_smoke()
+    @test r.status in (:skipped, :present)
+    if r.status == :present
+        # Online only: the downloaded zip extracts safely and a TIFF splits into finite channels.
+        extract_dir = mktempdir()
+        paths = safe_extract(joinpath(CORPUS_DATA_DIR, "cbs_smoke.zip"), extract_dir)
+        tif = first(filter(p -> endswith(lowercase(p), ".tif") || endswith(lowercase(p), ".tiff"), paths))
+        (a, b) = cbs_rgb_to_channels(tif, "Red-Green")
+        @test all(isfinite, a) && all(isfinite, b)
+    end
+
+    # (i) Staging guard (D-04, Pitfall 3): NO image bytes tracked under corpus/data.
+    repo = normpath(joinpath(@__DIR__, "..", ".."))
+    tracked = try
+        readchomp(setenv(`git ls-files corpus/data`, dir = repo))
+    catch
+        ""   # git unavailable ⇒ do not fail the offline gate
+    end
+    @test isempty(tracked)
 end
