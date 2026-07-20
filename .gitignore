@@ -438,3 +438,12 @@ spike/baseline/bf_baseline_artifact.jld2
 spike/validation/sbc_report.jld2
 spike/validation/bf_report.jld2
 spike/validation/ood_report.jld2
+
+# Phase-8 external ground-truth corpus (D-04): downloaded image bytes stay OUT of git
+# (large, licensed, regenerable from manifest + seeded fetch script + SHA-256 hashes).
+corpus/data/*
+# …except the tracked contract/test layer: the manifest, the tiny committed round-trip
+# fixture, and the corpus .jl sources (which live outside corpus/data/ and stay tracked
+# by default; the explicit negation keeps the fixture dir tracked even if empty).
+!corpus/manifest.csv
+!corpus/test/fixtures/
