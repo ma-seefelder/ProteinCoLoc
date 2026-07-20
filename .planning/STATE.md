@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-07-20T14:01:49.827Z"
-last_activity: 2026-07-20 -- Phase 08 execution started
+status: blocked
+stopped_at: Phase 8 Wave 5 (08-05) blocked on human-verify anchor accessions
+last_updated: "2026-07-20T14:05:00.000Z"
+last_activity: 2026-07-20 -- Phase 08 Waves 1-4 complete; Wave 5 blocked on human-verify
 progress:
   total_phases: 16
   completed_phases: 8
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 08 (external-physical-ground-truth-corpus) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 08
-Last activity: 2026-07-20 -- Phase 08 execution started
+Phase: 08 (external-physical-ground-truth-corpus) — BLOCKED at Wave 5 (human-verify)
+Plan: 4 of 5 complete (08-01..08-04 done & green); 08-05 BLOCKED awaiting human-verified anchor accessions
+Status: Phase 08 partially executed — Waves 1–4 complete, Wave 5 (08-05, autonomous:false) blocked
+Last activity: 2026-07-20 -- Phase 08 Waves 1–4 executed; Wave 5 blocked on human-verify checkpoint
 
 Progress: [█████████░] 88%
 
@@ -168,6 +168,7 @@ None yet.
 - [Phase 5-iter1]: OOD PP channel now VIABLE — finite-guard added in ood.jl (_theta_tuple maps non-finite posterior θ̂ to in-range fallbacks) so strong-misspec re-simulation no longer crashes; PP θ̂ finite on all 4 families. Still excluded from the reported OR-fusion (with_pp=false unchanged in run_ood.jl); available to re-enable in Phase-6/7.
 - [Phase 5-iter2 (2026-07-02)]: TASK 1 — retrained the NRE on the SAME 50k (θ,summary) cache the NPE used (assemble_ratio_data_cache; 16× the prior 3k fresh-sim pairs, leak-free: cache gen-seed 0x134d8f3 disjoint from VAL/NPE seeds), higher capacity (num_summaries 32→64, conditioner 64→3×256), stabler recipe (LR 2.5e-4, batch 128, 300ep/pat40), + research-A7 difference encoding (pair_encode = concat + 64-dim continuous-row correlation CONTRAST, input dim 256→320; shared with bf.jl). Develop DEV 0xDE7C0DE (corr 0.862→0.903); CONFIRMATORY VAL_MASTER_SEED once (run_bf.jl unchanged): corr 0.918→0.936 (↑), max|Δ logBF| 14.4→10.95 (↓). BF gate still FAILS. VERDICT on max|Δ|: it is a KDE-BASELINE TAIL/CLAMP ARTIFACT, not an NRE deficiency — every large-|Δ| sweep point (|Δρ|≳0.4) is where the sharpened NPE Δρ posterior is fully one-sided, forcing the KDE baseline's P(Δρ>0) to its _clampp=1e-8 floor → logBF=±18.41, while the amortized NRE (correctly) stays bounded ~±8; mid-range (|Δρ|<0.4) agrees within ~1-2. D-08b (max|Δ|≤0.5) is structurally unclearable against a clamped-KDE baseline at the sweep tails — a pre-registration nuance, consts.jl untouched. BF fast test 17/17.
 - [Phase 5-iter2]: TASK 2 — added an AUXILIARY image-noise OOD channel (ood.jl Channel 3: noise_features/fit_noise_null/noise_score) OR-fused with the density channel, closing the detector-noise blind spot. 10 scale/rotation/permutation-INVARIANT features (HF energy ratio, robust HF scale ratio, outlier fraction, HF excess kurtosis, lag-1 autocorr; ∇² via finite difference, NO FFT/new dep) designed from the SMOOTH training distribution (SC5, not the held-out test set). Null + robust-z fit on a fresh TRAIN-ONLY ID pool; reported detector = per-sample max of density/noise robust-z (continuous OR, D-05). maha_auc/combined_auc now report the FUSED detector; density maha_thr unchanged so run_ood's density-only neg-control flag is byte-identical. Develop DEV (noise-family AUC 0.0→1.0); CONFIRMATORY VAL once (run_ood.jl unchanged): OOD gate PASSES — all 4 families best-AUC=1.0 (noise 1.0 at every level), combined pooled AUC=1.0, ID fire-rate 0.05, neg-controls KS-invariant + density-quiet. OOD fast test 27/27. Updated blind-spot framing: affine+rotate stay quiet on ALL channels (true blind spots); block-permute stays density-quiet (frozen gate passes) but the noise channel correctly FIRES on its tile-seam HF artifacts (~0.93) — so block is no longer summary-orthogonal to the fused detector. Remaining blind spot is NARROWER: orthogonal to BOTH the 8×8 correlation summary AND the image-noise features (e.g. a pure positive-affine rescale, still exactly invariant). consts.jl BYTE-UNCHANGED (verified vs e9c91d3).
+- [Phase 8-05 — HUMAN-VERIFY BLOCKER (2026-07-20)]: Waves 1–4 (08-01..08-04) are COMPLETE and green (offline gate 138/138, `src/` + `spike/` provably untouched phase-wide, zero image bytes staged). **Phase 8 is NOT complete** — Wave 5 (08-05 `autonomous: false`) is BLOCKED awaiting human verification and CANNOT be done in this background/offline session. 08-05 Tasks 1 & 2 are `blocking-human` checkpoints requiring a human to select and confirm TWO real biological dataset accessions: (1) a POSITIVE tandem-fluorophore construct (single polypeptide → 100%-coloc by construction, NOT environment-quenched à la mCherry-GFP-LC3 Pitfall 2), and (2) a matched/segregated distinct-compartment two-fluorophore NEGATIVE anchor — each must resolve (DOI/IDR/BioImage-Archive/S-BIAD/Zenodo), carry an unambiguous biological (not computed-score) label, and hold an open/redistributable license (D-01/D-02/D-03). Task 3 (auto) is downstream of those human-provided accession/URL/license/citation/channel-layout values and cannot run without them. Per orchestrator directive I did NOT fabricate accessions or SHA-256 hashes. **To unblock:** provide the two confirmed anchors (accession/DOI + direct URL + license + citation + channel layout, positive first then negative — negative preferably matched to the positive's study), then re-run `/gsd:execute-phase 8` (or `/gsd:resume-work`) so an executor runs 08-05 Task 3: build `corpus/anchor_rows.jl`, bootstrap the real SHA-256 via `fetch_verified(url, dest, nothing)` when online (offline records the explicit `"PENDING-FETCH"` sentinel, never a fabricated digest), finalize `corpus/manifest.csv` (CBS rows + 2 sealed_holdout physical anchors), add `corpus/test/test_anchors.jl`, then phase verification + completion. Candidate leads (ALL [ASSUMED], research confidence LOW-MEDIUM, must be human-verified): positive = published cytosolic tandem EGFP-mCherry/dTomato fusion OR TetraSpeck multicolor beads (confirmatory 2nd positive); negative = matched dual-compartment FP pair (H2B-GFP + Lyn-mCherry / mito-vs-nucleus) or a licensed BBBC two-channel set. See 08-05-PLAN.md + 08-RESEARCH.md (§Candidate Datasets, §Acceptance Predicate, Pitfall 2).
 
 ## Deferred Items
 
@@ -180,6 +181,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T12:54:31.543Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-external-physical-ground-truth-corpus/08-CONTEXT.md
+Last session: 2026-07-20T14:05:00.000Z
+Stopped at: Phase 8 Waves 1–4 complete; Wave 5 (08-05) BLOCKED on human-verify anchor accessions (see Blockers/Concerns)
+Resume file: .planning/phases/08-external-physical-ground-truth-corpus/08-05-PLAN.md
+Resume action: provide the two human-verified physical anchors (positive tandem-fluorophore + matched segregated negative: accession/DOI + URL + license + citation + channel layout), then re-run `/gsd:execute-phase 8` to execute 08-05 Task 3 + phase verification.
