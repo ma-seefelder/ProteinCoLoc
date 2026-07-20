@@ -103,7 +103,7 @@ const FIXTURES_DIR = joinpath(@__DIR__, "fixtures")
     # smoke skips cleanly via the Phase-9 tapqir_anchor :skipped contract).
     include(joinpath(@__DIR__, "test_hash.jl"))         # wired by 08-02 (SHA-256 hashing)
     include(joinpath(@__DIR__, "test_fetch.jl"))        # wired by 08-02 (fetch: skip-with-flag / hard-fail)
-    # include(joinpath(@__DIR__, "test_manifest.jl"))   # wired by 08-03 (schema + tier/split guards)
+    include(joinpath(@__DIR__, "test_manifest.jl"))     # wired by 08-03 (schema + tier/split guards)
     # include(joinpath(@__DIR__, "test_load.jl"))       # wired by 08-05 (TIFF → MultiChannelImage)
     # include(joinpath(@__DIR__, "test_cbs.jl"))        # wired by 08-06 (CBS ingestion, simulated-secondary)
     # include(joinpath(@__DIR__, "test_anchors.jl"))    # wired by 08-07 (physical anchors, sealed holdout)
