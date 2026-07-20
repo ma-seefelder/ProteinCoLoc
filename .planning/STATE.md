@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: completed
-stopped_at: 07-04 COMPLETE (per-grid CPU ship-gate machinery + GPU-train smoke)
-last_updated: "2026-07-03T22:30:00.000Z"
-last_activity: 2026-07-03 -- 07-04 test/gate/{harness,sbc,gate_consts_template,run_gate}.jl + test/gpu_smoke.jl; grid-parametrized CPU (use_gpu=false) SBC/BF/OOD ship-gate against a CPU-resident frozen net, fresh disjoint PROD_SEED[G] (salted off VAL_MASTER_SEED/NPE_MASTER_SEED, unit-asserted), per-grid run_gate CLI, GPU-train graceful-CPU-fallback smoke; Pkg.test green (gate 29/29, gpu 8/8); spike untouched
+status: executing
+stopped_at: Phase 8 context gathered
+last_updated: "2026-07-20T12:54:31.553Z"
+last_activity: 2026-07-20 -- Phase 07 execution started
 progress:
   total_phases: 16
   completed_phases: 8
   total_plans: 48
   completed_plans: 42
-  percent: 51
+  percent: 50
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 07 (productionization-conditional-on-go) — EXECUTING
-Plan: 6 of 11 (07-00, 07-01, 07-02, 07-03, 07-04 complete)
-Status: 07-04 COMPLETE — per-grid CPU-reproducible ship-gate machinery (D-05): grid-parametrized SBC/BF/OOD harness (use_gpu=false against a CPU-resident frozen net loaded via load_estimator), fresh-per-grid gate_consts template with disjoint PROD_SEED[G] (Philox salted off VAL_MASTER_SEED/NPE_MASTER_SEED, unit-asserted for G∈{4,8,16,32}), run_gate.jl per-grid CLI (--sbc/--bf/--ood, atomic gate report, invocable pre-training → :not_trained), and a GPU-train smoke proving use_gpu=true→graceful CPU fallback + CPU-resident persistence; Pkg.test green (gate harness+SBC 29/29, GPU smoke 8/8, co-resolution 4/4)
-Last activity: 2026-07-03 -- 07-04 test/gate/{harness,sbc,gate_consts_template,run_gate}.jl + test/gpu_smoke.jl + runtests wiring; no grid trained yet (gate delivers the machinery the per-grid plans invoke); simulator injected via a `sim` seam (forward model promoted later); GPU path exercises the graceful CPU fallback (has_cuda_device()==false); spike untouched
+Plan: 1 of 11
+Status: Executing Phase 07
+Last activity: 2026-07-20 -- Phase 07 execution started
 
 Progress: [█████████░] 88%
 
@@ -180,6 +180,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T22:30:00.000Z
-Stopped at: 07-04 COMPLETE (per-grid CPU ship-gate machinery: SBC/BF/OOD harness use_gpu=false, fresh disjoint PROD_SEED[G] template, run_gate CLI, GPU-train graceful-CPU-fallback smoke)
-Resume file: .planning/phases/07-productionization-conditional-on-go/07-05-PLAN.md
+Last session: 2026-07-20T12:54:31.543Z
+Stopped at: Phase 8 context gathered
+Resume file: .planning/phases/08-external-physical-ground-truth-corpus/08-CONTEXT.md
