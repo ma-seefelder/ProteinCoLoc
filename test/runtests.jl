@@ -392,6 +392,17 @@ end
     lb = ProteinCoLoc.kde_log_bf_unclamped([post], prior)
     @test length(lb) == 1
     @test lb[1] > 18.42                              # beyond the 1e-8 clamp ceiling ⇒ no floor
+
+    # Numerical-domain safety: a fully one-sided NEGATIVE posterior (all draws ≪ 0) drives
+    # p_post → 0. QuadGK's adaptive integral of the KDE can overshoot `p_le` a few ulp past 1.0,
+    # so the un-guarded `1 - p_le` would be a tiny NEGATIVE probability and crash `log(·)` with a
+    # DomainError. The [0,1] domain clamp must instead yield the honest boundary value (a large
+    # negative or -Inf logBF, which the gate drops as non-finite) WITHOUT throwing.
+    post_neg = fill(-5.0, 400) .+ 0.01 .* randn(400)   # fully negative ⇒ one-sided, p_post → 0
+    lbn = ProteinCoLoc.kde_log_bf_unclamped([post_neg], prior)
+    @test length(lbn) == 1
+    @test !isnan(lbn[1])                              # no DomainError / NaN — domain-safe
+    @test lbn[1] < -18.42 || isinf(lbn[1])           # honest one-sided value (large-neg or -Inf)
 end
 
 ##########################################################################################

@@ -113,7 +113,15 @@ one-sided posterior yields a probability at the KDE's own numerical floor, not a
 function _p_gt_threshold_unclamped(draws; threshold::Real = 0.0)
     dist = kde(collect(float.(draws)))
     p_le, _ = quadgk(x -> pdf(dist, x), -Inf, threshold)
-    return 1 - p_le                                       # NO _clampp floor (Memo §5)
+    # NO _clampp 1e-8 floor (Memo §5 / T-7-06): the tail probability is returned un-floored so a
+    # one-sided posterior yields ±Inf downstream (the honest, dropped value), NOT a finite ±18.4
+    # clamp. `clamp(·, 0, 1)` here is ONLY numerical-domain safety: QuadGK's adaptive integral of
+    # the KDE can overshoot `p_le` a few ulp past 1.0 (or below 0.0), which without this guard
+    # makes `1 - p_le` a tiny NEGATIVE probability and crashes `log(posterior_odds)` with a
+    # DomainError. Clamping to the mathematically valid [0,1] maps that roundoff to an exact
+    # boundary (0 or 1) → ±Inf logBF (dropped by the gate's isfinite filter), preserving the
+    # un-floored tail semantics — it never introduces a finite artificial floor.
+    return clamp(1 - p_le, 0.0, 1.0)
 end
 
 """
