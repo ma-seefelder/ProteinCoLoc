@@ -1,0 +1,3 @@
+# Tracked fixtures directory. The committed synthetic two-channel TIFF fixture
+# (fixture_ch1.tif / fixture_ch2.tif) lives here so the corpus test suite runs
+# fully OFFLINE. Kept tracked via the .gitignore !corpus/test/fixtures/ negation.
