@@ -6,7 +6,7 @@
 #
 # test/gate/run_gate.jl --- the per-grid ship-gate CLI (D-05).
 #
-#   run_gate.jl --grid G [--sbc] [--bf] [--ood] [--artifacts-root PATH]
+#   run_gate.jl --grid G [--sbc] [--bf] [--ood] [--artifacts-root PATH] [--consts FILE]
 #
 # Loads the grid's FRESH pre-registration (`gate_consts_<G>.jl`, else the template), loads the
 # grid's CPU-resident frozen net via `ProteinCoLoc.load_estimator`, runs the SELECTED reported-
@@ -22,6 +22,7 @@
 
 using ProteinCoLoc
 import JLD2
+import Statistics
 import Statistics: cor
 
 # Ordered, guarded includes: consts → harness → sbc. A per-grid `gate_consts_<G>.jl` included
@@ -43,9 +44,26 @@ function _peek_grid_arg(args)
     return nothing
 end
 
+"""
+    _peek_consts_arg(args) -> Union{String,Nothing}
+
+Scan CLI `args` for an EXPLICIT `--consts FILE` pre-registration override (resolved inside
+`test/gate/`). The amended grid-8 pre-registration (`gate_consts_8_v2.jl`) is deliberately NOT
+selected automatically by `--grid 8`: the amendment binds it to exactly ONE run on the fresh
+`PROD_SEED_V2[8]` (protocol §6.3), so consuming it must be an explicit, auditable invocation
+(`--grid 8 --consts gate_consts_8_v2.jl`) and never a side effect of the default path.
+"""
+function _peek_consts_arg(args)
+    for i in 1:(length(args) - 1)
+        args[i] == "--consts" && return args[i + 1]
+    end
+    return nothing
+end
+
 if !isdefined(@__MODULE__, :SBC_M)
-    let g = _peek_grid_arg(ARGS)
-        pergrid = g === nothing ? nothing : joinpath(@__DIR__, "gate_consts_$(g).jl")
+    let g = _peek_grid_arg(ARGS), c = _peek_consts_arg(ARGS)
+        pergrid = c !== nothing ? joinpath(@__DIR__, basename(c)) :
+                  g === nothing ? nothing : joinpath(@__DIR__, "gate_consts_$(g).jl")
         if pergrid !== nothing && isfile(pergrid)
             @info "run_gate: loading per-grid pre-registration" file = basename(pergrid)
             include(pergrid)
@@ -108,19 +126,81 @@ end
 _prev_arm(prev, k::Symbol) = (prev === nothing || !hasproperty(prev, k)) ? nothing :
                              getproperty(prev, k)
 
-"""
-    bf_gate(m, ratio; G, sim, rng = prod_rng(G), n = BF_SWEEP_N, L = SBC_L,
-            imsize = SBC_IMSIZE, prior_n = 4000) -> NamedTuple
+# =============================================================================================
+# A2 — the BF correlation rule (07-GATE-AMENDMENT §3)
+# =============================================================================================
+#
+# DEFECT 1 (precision). v1 ran `n = BF_SWEEP_N = 25` paired draws (recorded n 15–20 after dropping
+# non-finite pairs) and compared a POINT estimate to 0.95. Var(atanh r̂) ≈ 1/(n−3) makes the 95 %
+# Fisher-z CI ±0.07–0.10 wide there: the gate cannot discriminate ρ = 0.94 from ρ = 0.95. Derivable
+# from n and the threshold alone — no result required.
+#
+# DEFECT 2 (extreme-value instability). `max|Δ logBF|` is a MAXIMUM, and E[max] is non-decreasing
+# in n for any non-degenerate distribution. A fixed tolerance on a maximum therefore silently
+# TIGHTENS whenever n is raised — which fixing defect 1 must do — for reasons unrelated to
+# agreement quality.
+#
+# THE RULES. n = BF_GATE_N = 100 (derived from a pre-registered half-width ≤ 0.03 target at
+# ρ = 0.95 ⇒ n_min = 69); the verdict is a ONE-SIDED 95 % LOWER CONFIDENCE BOUND on ρ, which is
+# STRICTLY HARDER than v1 (it demands r̂ ≥ 0.9639 at n = 100); the gated tail statistic becomes the
+# n-stable `quantile(|Δ logBF|, 0.95)` while `max|Δ logBF|` stays REPORTED. BF_CORR_MIN = 0.95 and
+# BF_LOGBF_TOL = 0.5 are NOT re-tuned.
+#
+# Both rule sets are computed on the SAME paired draws and reported side by side, for the same
+# attribution reason as the SBC arm.
 
-The amortized-Bayes-factor ship-gate: over `n` fresh-seeded paired draws it reads the amortized
-log-BF (`amortized_log_bf(ratio.estimator, pair_encode(Zs, Zc), ratio.log_prior_odds)`, one CPU
-forward pass) and the NON-CLAMPED KDE baseline log-BF (`kde_log_bf_unclamped`, over the Δρ
-posterior vs a prior Δρ sample), then scores their correlation against `BF_CORR_MIN` and the
-`max|Δ logBF|` against `BF_LOGBF_TOL` (non-finite pairs dropped). CPU-only, self-contained (no
-Turing). Returns `(grid, n, corr, max_abs_delta, corr_pass, tol_pass, passed)`.
+"Fisher-z CI fallback (used when a v1 consts file is loaded); the frozen `fisher_z_ci` wins."
+function gate_fisher_z_ci(r::Real, n::Integer; tail::Symbol = :two)
+    (isfinite(r) && n > 3) || return (lo = -1.0, hi = 1.0)
+    zc = tail === :two ? 1.959963985 : 1.644853627
+    z  = atanh(clamp(float(r), -0.999999, 0.999999))
+    d  = zc / sqrt(n - 3)
+    return (lo = tanh(z - d), hi = tanh(z + d))
+end
+
+"Three-way LB verdict fallback; the frozen `bf_corr_verdict` of the v2 consts wins when loaded."
+function gate_bf_corr_verdict(r::Real, n::Integer; thr::Real = BF_CORR_MIN, nmin::Integer = 69)
+    n >= nmin || return :invalid
+    isfinite(r) || return :invalid
+    ci = gate_fisher_z_ci(r, n; tail = :one)
+    ci.lo >= thr && return :pass
+    ci.hi <  thr && return :fail
+    return :inconclusive
+end
+
+# Prefer the FROZEN implementations of the loaded pre-registration; fall back only under v1 consts.
+_bf_ci(r, n; tail = :two) = isdefined(@__MODULE__, :fisher_z_ci) ?
+    getfield(@__MODULE__, :fisher_z_ci)(r, n; tail = tail) : gate_fisher_z_ci(r, n; tail = tail)
+_bf_verdict(r, n) = isdefined(@__MODULE__, :bf_corr_verdict) ?
+    getfield(@__MODULE__, :bf_corr_verdict)(r, n) : gate_bf_corr_verdict(r, n)
+
+# The amended constants, with v1 fallbacks so this file loads under either pre-registration.
+const GATE_BF_N       = isdefined(@__MODULE__, :BF_GATE_N)     ? BF_GATE_N     : BF_SWEEP_N
+const GATE_BF_N_MIN   = isdefined(@__MODULE__, :BF_GATE_N_MIN) ? BF_GATE_N_MIN : 0
+const GATE_BF_LOGBF_Q = isdefined(@__MODULE__, :BF_LOGBF_Q)    ? BF_LOGBF_Q    : 0.95
+const BF_RULES_VERSION = isdefined(@__MODULE__, :BF_DECISION_RULE) &&
+                         BF_DECISION_RULE === :lower_confidence_bound ? 2 : 1
+
 """
-function bf_gate(m, ratio; G::Integer, sim, rng = prod_rng(G), n::Integer = BF_SWEEP_N,
-                 L::Integer = SBC_L, imsize = SBC_IMSIZE, prior_n::Integer = 4000)
+    bf_gate(m, ratio; G, sim, rng = prod_rng(G), n = GATE_BF_N, L = SBC_L,
+            imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+            imsize_weights = GATE_IMSIZE_WEIGHTS, prior_n = 4000) -> NamedTuple
+
+The amortized-Bayes-factor ship-gate: over `n` fresh-seeded paired draws (ONE shared image size per
+pair under the F5 mixture) it reads the amortized log-BF (`amortized_log_bf(ratio.estimator,
+pair_encode(Zs, Zc), ratio.log_prior_odds)`, one CPU forward pass) and the NON-CLAMPED KDE baseline
+log-BF (`kde_log_bf_unclamped`, over the Δρ posterior vs a prior Δρ sample), non-finite pairs
+dropped. CPU-only, self-contained (no Turing).
+
+Reports BOTH rule sets on the SAME draws — `v1_verdict` (point estimate `r̂ ≥ BF_CORR_MIN` and
+`max|Δ| ≤ BF_LOGBF_TOL`) and `v2_verdict` (one-sided 95 % lower confidence bound on ρ, and
+`q95(|Δ|) ≤ BF_LOGBF_TOL`) — with `rules_version` naming the binding one. `max_abs_delta` is
+retained as a REPORTED quantity under both, alongside `q50`/`q95`, so the KDE tail artifact stays
+inspectable rather than defined away.
+"""
+function bf_gate(m, ratio; G::Integer, sim, rng = prod_rng(G), n::Integer = GATE_BF_N,
+                 L::Integer = SBC_L, imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                 imsize_weights = GATE_IMSIZE_WEIGHTS, prior_n::Integer = 4000)
     # REPRODUCIBILITY (07-10): the ρ draws behind every log-BF come from the GLOBAL stream
     # (`sampleposterior` threads no rng — see harness.jl). Pin it from the frozen PROD_SEED[G].
     seed_gate_global!(G)
@@ -130,8 +210,12 @@ function bf_gate(m, ratio; G::Integer, sim, rng = prod_rng(G), n::Integer = BF_S
 
     amort = Float64[]
     base  = Float64[]
+    sizes = Tuple{Int,Int}[]
     for _ in 1:n
-        pr       = draw_simulate_infer_paired(m, rng; G = G, imsize = imsize, N = L, sim = sim)
+        pr       = draw_simulate_infer_paired(m, rng; G = G, imsize = imsize,
+                                              imsize_set = imsize_set,
+                                              imsize_weights = imsize_weights, N = L, sim = sim)
+        push!(sizes, pr.imsize)
         a        = ProteinCoLoc.amortized_log_bf(ratio.estimator,
                        ProteinCoLoc.pair_encode(pr.Zs, pr.Zc), ratio.log_prior_odds)
         b        = ProteinCoLoc.kde_log_bf_unclamped([pr.ρs .- pr.ρc], prior_draws)[1]
@@ -141,12 +225,39 @@ function bf_gate(m, ratio; G::Integer, sim, rng = prod_rng(G), n::Integer = BF_S
         end
     end
 
-    corr    = (length(amort) >= 2) ? cor(amort, base) : NaN
-    max_abs = isempty(amort) ? NaN : maximum(abs.(amort .- base))
-    corr_ok = isfinite(corr) && corr >= BF_CORR_MIN
-    tol_ok  = isfinite(max_abs) && max_abs <= BF_LOGBF_TOL
-    return (grid = Int(G), n = length(amort), corr = corr, max_abs_delta = max_abs,
-            corr_pass = corr_ok, tol_pass = tol_ok, passed = corr_ok && tol_ok)
+    nfin    = length(amort)
+    corr    = (nfin >= 2) ? cor(amort, base) : NaN
+    absΔ    = isempty(amort) ? Float64[] : abs.(amort .- base)
+    max_abs = isempty(absΔ) ? NaN : maximum(absΔ)
+    q50     = isempty(absΔ) ? NaN : Statistics.quantile(absΔ, 0.50)
+    q95     = isempty(absΔ) ? NaN : Statistics.quantile(absΔ, GATE_BF_LOGBF_Q)
+
+    # --- v1 (original) rules, recomputed on THESE draws purely for attribution ----------------
+    v1_corr_ok = isfinite(corr) && corr >= BF_CORR_MIN
+    v1_tol_ok  = isfinite(max_abs) && max_abs <= BF_LOGBF_TOL
+    v1 = (rules = 1, corr_pass = v1_corr_ok, tol_pass = v1_tol_ok,
+          statistic = :max_abs_delta, passed = v1_corr_ok && v1_tol_ok)
+
+    # --- v2 (amended) rules: one-sided 95 % LOWER confidence bound + n-stable q95 tail ---------
+    ci_two     = _bf_ci(corr, nfin; tail = :two)
+    ci_one     = _bf_ci(corr, nfin; tail = :one)
+    verdict    = _bf_verdict(corr, nfin)
+    v2_corr_ok = verdict === :pass
+    v2_tol_ok  = isfinite(q95) && q95 <= BF_LOGBF_TOL
+    v2 = (rules = 2, decision_rule = :lower_confidence_bound, corr_verdict = verdict,
+          corr_lb = ci_one.lo, corr_ub = ci_one.hi, ci_two_sided = ci_two,
+          n_min = GATE_BF_N_MIN, statistic = :q95_abs_delta, q = GATE_BF_LOGBF_Q,
+          corr_pass = v2_corr_ok, tol_pass = v2_tol_ok,
+          passed = v2_corr_ok && v2_tol_ok)
+
+    binding = BF_RULES_VERSION == 2 ? v2 : v1
+    return (grid = Int(G), n = nfin, n_attempted = Int(n), corr = corr,
+            max_abs_delta = max_abs, q50_abs_delta = q50, q95_abs_delta = q95,
+            imsize_set = imsize_set, imsize_weights = imsize_weights,
+            realised_imsize_counts = realised_imsize_counts(sizes),
+            rules_version = BF_RULES_VERSION, v1_verdict = v1, v2_verdict = v2,
+            corr_pass = binding.corr_pass, tol_pass = binding.tol_pass,
+            passed = binding.passed)
 end
 
 """
@@ -177,7 +288,8 @@ the pooled-AUC gate and the per-family AUC gates; the negative-control measureme
 alongside but are NOT folded into `passed` (see the comment at the verdict).
 """
 function ood_gate(m, ood_nulls; G::Integer, sim, rng = prod_rng(G), n::Integer = 200,
-                  L::Integer = SBC_L, imsize = SBC_IMSIZE,
+                  L::Integer = SBC_L, imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                  imsize_weights = GATE_IMSIZE_WEIGHTS,
                   pos_sim = nothing, neg_sim = nothing,
                   families = OOD_FAMILIES, levels::Integer = OOD_GRID_LEVELS,
                   n_pos::Integer = 40, negctrl_reps::Integer = 30)
@@ -186,29 +298,38 @@ function ood_gate(m, ood_nulls; G::Integer, sim, rng = prod_rng(G), n::Integer =
     # harness.jl). Pin it from the frozen PROD_SEED[G] so a re-run reproduces its own AUC table.
     seed_gate_global!(G)
     density =haskey(ood_nulls, :density) ? ood_nulls.density : ood_nulls
+    sizes = Tuple{Int,Int}[]      # realised image sizes, for the report's realised_imsize_counts
 
     # --- single-simulator override (one pooled AUC, density channel) -------------------------
     if pos_sim !== nothing
         id = Float64[]
         for _ in 1:n
-            t = draw_simulate_infer(m, rng; G = G, imsize = imsize, N = L, sim = sim)
+            t = draw_simulate_infer(m, rng; G = G, imsize = imsize, imsize_set = imsize_set,
+                                    imsize_weights = imsize_weights, N = L, sim = sim)
+            push!(sizes, t.imsize)
             push!(id, ProteinCoLoc.maha_score(density, t.Z))
         end
         thr = ProteinCoLoc.id_threshold(id; q = OOD_ID_QUANTILE)
         pos = Float64[]
         for _ in 1:n
-            t = draw_simulate_infer(m, rng; G = G, imsize = imsize, N = L, sim = pos_sim)
+            t = draw_simulate_infer(m, rng; G = G, imsize = imsize, imsize_set = imsize_set,
+                                    imsize_weights = imsize_weights, N = L, sim = pos_sim)
+            push!(sizes, t.imsize)
             push!(pos, ProteinCoLoc.maha_score(density, t.Z))
         end
         auc    = ProteinCoLoc.roc_auc(id, pos)[3]   # (fpr, tpr, auc) — AUC is element 3
         auc_ok = isfinite(auc) && auc >= OOD_AUC_MIN
         return (grid = Int(G), n = n, id_threshold = thr, auc = auc,
-                auc_pass = auc_ok, passed = auc_ok, mode = :pos_sim)
+                auc_pass = auc_ok, passed = auc_ok, mode = :pos_sim,
+                imsize_set = imsize_set, imsize_weights = imsize_weights,
+                realised_imsize_counts = realised_imsize_counts(sizes))
     end
 
     # --- the reported family × level ROC grid ------------------------------------------------
     roc = gate_ood_roc(m, density; G = G, rng = rng, families = families, levels = levels,
-                       n_id = n, n_pos = n_pos, imsize = imsize)
+                       n_id = n, n_pos = n_pos, imsize = imsize, imsize_set = imsize_set,
+                       imsize_weights = imsize_weights)
+    append!(sizes, roc.imsizes)
 
     fam_best = Dict(fam => maximum(roc.fused_auc[fam]) for fam in roc.families)
     fam_pass = Dict(fam => (isfinite(fam_best[fam]) && fam_best[fam] >= OOD_AUC_MIN)
@@ -224,8 +345,11 @@ function ood_gate(m, ood_nulls; G::Integer, sim, rng = prod_rng(G), n::Integer =
     for (name, tf) in pairs(negs)
         ksvals = Float64[]; fires = 0
         for _ in 1:negctrl_reps
-            base = ProteinCoLoc.simulate_pair(rng, ProteinCoLoc.sample_prior(rng);
-                                              imsize = imsize)
+            θn   = ProteinCoLoc.sample_prior(rng)
+            isz  = gate_imsize(rng; imsize = imsize, imsize_set = imsize_set,
+                               imsize_weights = imsize_weights)
+            push!(sizes, isz)
+            base = ProteinCoLoc.simulate_pair(rng, θn; imsize = isz)
             push!(ksvals, verify_summary_invariance(base, tf, G))
             fires += (ProteinCoLoc.maha_score(density, gate_summary(m, tf(base), G)) >
                       roc.id_threshold) ? 1 : 0
@@ -254,6 +378,8 @@ function ood_gate(m, ood_nulls; G::Integer, sim, rng = prod_rng(G), n::Integer =
             noise_auc = roc.noise_auc, fire_rate = roc.fire_rate,
             neg_ks_max = neg_ks_max, neg_fire_rate = neg_fire_rate, neg_pass = neg_pass,
             youden_j = roc.youden.j,
+            imsize_set = imsize_set, imsize_weights = imsize_weights,
+            realised_imsize_counts = realised_imsize_counts(sizes),
             passed = passed)
 end
 
@@ -267,12 +393,22 @@ The per-grid ship-gate dispatcher. Resolves the grid's CPU-resident artifacts un
 loads the frozen net (and ratio / OOD nulls for the selected gates) and runs the SELECTED gates
 (`use_gpu = false` throughout), optionally writing the report atomically. `sim` defaults to the
 promoted `default_simulator()` (inject a fake simulator until the forward model is promoted).
+
+Under a pre-registration that sets `SBC_REQUIRE_IMSIZE_PROVENANCE` (the v2 amendment) the gate
+first asserts that the net's PERSISTED training image-size distribution equals the gate mixture and
+returns `(status = :provenance_mismatch, …)` — running NO arm — when it is absent or different.
+
+The report carries `imsize_set`, `imsize_weights` and `realised_imsize_counts` (pooled over the
+arms that ran) alongside the net's `training_imsize_provenance`.
 """
 function run_gate(grid::Integer; sbc::Bool = true, bf::Bool = false, ood::Bool = false,
                   artifacts_root = ProteinCoLoc.default_artifacts_root(),
                   sim = nothing, write_report::Bool = true,
                   M::Integer = SBC_M, L::Integer = SBC_L, bins::Integer = SBC_BINS,
-                  imsize = SBC_IMSIZE, ood_n::Integer = 200,
+                  chi2_bins::Integer = _gate_chi2_bins(bins),
+                  imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                  imsize_weights = GATE_IMSIZE_WEIGHTS, ood_n::Integer = 200,
+                  require_provenance::Bool = GATE_REQUIRE_IMSIZE_PROVENANCE,
                   pos_sim = nothing, neg_sim = nothing)
     npe_path = _gate_npe_path(artifacts_root, grid)
     if !isfile(npe_path)
@@ -284,7 +420,27 @@ function run_gate(grid::Integer; sbc::Bool = true, bf::Bool = false, ood::Bool =
     simr = sim === nothing ? default_simulator() : sim
     m    = load_gate_model(npe_path)
 
-    sbc_report = sbc ? sbc_gate(m; G = grid, M = M, L = L, bins = bins, imsize = imsize,
+    # --- BINDING INVARIANT (07-GATE-AMENDMENT §4): gate joint == training joint ---------------
+    # SBC rank uniformity is a theorem about the joint the estimator was TRAINED under. If the
+    # gate's image-size distribution differs from the net's persisted training distribution — or
+    # the net has no recorded provenance at all, which is the case for every v1-frozen bundle —
+    # the SBC arm would prove calibration on a distribution the net will never see. The gate
+    # therefore REFUSES, before any arm executes. This is the mechanical enforcement of F5;
+    # without it the validity condition is a comment.
+    prov = assert_imsize_provenance(m; imsize_set = imsize_set,
+                                    imsize_weights = imsize_weights,
+                                    require = require_provenance)
+    if !prov.ok
+        @warn "run_gate: REFUSING to run — training image-size provenance absent or different " *
+              "from the gate mixture (07-GATE-AMENDMENT §4)" grid training = prov.training gate = prov.gate
+        return (status = :provenance_mismatch, grid = Int(grid), npe_path = npe_path,
+                training_imsize_provenance = prov.training,
+                imsize_set = imsize_set, imsize_weights = imsize_weights)
+    end
+
+    sbc_report = sbc ? sbc_gate(m; G = grid, M = M, L = L, bins = bins, chi2_bins = chi2_bins,
+                                imsize = imsize, imsize_set = imsize_set,
+                                imsize_weights = imsize_weights,
                                 sim = simr, rng = prod_rng(grid)) : nothing
 
     bf_report = nothing
@@ -293,7 +449,8 @@ function run_gate(grid::Integer; sbc::Bool = true, bf::Bool = false, ood::Bool =
         isfile(rpath) || error("run_gate: --bf needs the ratio artifact $rpath")
         ratio = ProteinCoLoc.load_ratio(rpath)
         bf_report = bf_gate(m, ratio; G = grid, sim = simr, rng = prod_rng(grid),
-                            L = L, imsize = imsize)
+                            L = L, imsize = imsize, imsize_set = imsize_set,
+                            imsize_weights = imsize_weights)
     end
 
     ood_report = nothing
@@ -302,7 +459,8 @@ function run_gate(grid::Integer; sbc::Bool = true, bf::Bool = false, ood::Bool =
         isfile(opath) || error("run_gate: --ood needs the OOD-nulls artifact $opath")
         nulls = ProteinCoLoc.load_ood_nulls(opath)
         ood_report = ood_gate(m, nulls; G = grid, sim = simr, rng = prod_rng(grid),
-                              n = ood_n, L = L, imsize = imsize,
+                              n = ood_n, L = L, imsize = imsize, imsize_set = imsize_set,
+                              imsize_weights = imsize_weights,
                               pos_sim = pos_sim, neg_sim = neg_sim)
     end
 
@@ -316,7 +474,21 @@ function run_gate(grid::Integer; sbc::Bool = true, bf::Bool = false, ood::Bool =
     bf  || (bf_report  = _prev_arm(prev, :bf))
     ood || (ood_report = _prev_arm(prev, :ood))
 
+    # The realised mixture, pooled over the arms that actually ran (F6: record, never reconstruct).
+    realised = Dict{Tuple{Int,Int},Int}()
+    for arm in (sbc_report, bf_report, ood_report)
+        (arm isa NamedTuple && hasproperty(arm, :realised_imsize_counts)) || continue
+        for (k, v) in arm.realised_imsize_counts
+            realised[k] = get(realised, k, 0) + v
+        end
+    end
+
     report = (status = :ran, grid = Int(grid), seed = prod_seed(grid),
+              gate_consts_version = isdefined(@__MODULE__, :GATE_CONSTS_VERSION) ?
+                                    GATE_CONSTS_VERSION : 1,
+              imsize_set = imsize_set, imsize_weights = imsize_weights,
+              realised_imsize_counts = realised,
+              training_imsize_provenance = prov.training,
               sbc = sbc_report, bf = bf_report, ood = ood_report)
     if write_report
         write_gate_report(rpath, report)
@@ -348,6 +520,10 @@ function _parse_gate_args(args)
         elseif a == "--artifacts-root"
             i < length(args) || error("run_gate: --artifacts-root needs a value")
             root = args[i + 1]; i += 2
+        elseif a == "--consts"
+            # Consumed at include time by `_peek_consts_arg`; accepted (and ignored) here.
+            i < length(args) || error("run_gate: --consts needs a value")
+            i += 2
         else
             error("run_gate: unknown argument $a")
         end

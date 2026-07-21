@@ -1136,3 +1136,300 @@ end
     @test V.OOD_AUC_MIN == 0.80 && V.OOD_ID_QUANTILE == 0.95 && V.OOD_KS_EPS == 0.05
     @test V.OOD_GRID_LEVELS == 4 && V.OOD_PP_REPS == 50
 end
+
+##########################################################################################
+### AMENDED GATE MACHINERY — the code changes 07-GATE-AMENDMENT SPECIFIED but did not run
+###
+### The amendment (§1, §2, §4 "Required code changes") specifies four mechanical changes to the
+### gate harness and explicitly states that NONE of them were executed. This testset covers them:
+###
+###   (1) F5   per-draw image-size sampling through the SHARED `ProteinCoLoc.sample_imsize`, off
+###            the gate rng, with ONE SHARED size for both members of a paired draw;
+###   (2) F5   the mixture threaded through sbc_ranks_and_spread / bf_gate / ood_gate / run_gate,
+###            and the new `imsize_set` / `imsize_weights` / `realised_imsize_counts` report fields;
+###   (3) A1b  `sbc_gate` passing `chi2_bins` to `sbc_uniformity` and `bins` to `sbc_calibration`;
+###   (4) A1   Holm–Bonferroni conjunction and A2 the BF one-sided lower-bound rule, each
+###            cross-checked against the FROZEN implementation in `gate_consts_8_v2.jl`, plus the
+###            v1-rules attribution co-reported on the SAME table, plus the `:provenance_mismatch`
+###            refusal.
+###
+### SCOPE DISCIPLINE: this runs at FIXTURE scale against a tiny net and an INJECTED fake simulator
+### with a DEV image-size mixture. It is NOT the amended ship-gate, which is bound by protocol §6.3
+### to exactly ONE run on the fresh `PROD_SEED_V2[8]` against the retrained grid-8 net.
+##########################################################################################
+@testset "amended gate machinery (07-GATE-AMENDMENT required code changes)" begin
+    V = GateConstsV2
+
+    # A DEV image-size mixture — deliberately NOT the pre-registered SBC_IMSIZE_SET (that mixture
+    # is 512²…2048², far too expensive for a unit test). What is under test is the MECHANISM.
+    DEVSET = ((64, 64), (96, 96), (128, 128))
+    DEVW   = (0.5, 0.3, 0.2)
+
+    G = 4; nc = G^2; n = 40
+    Zraw = vcat(randn(nc, n) .* 2 .+ 3, Float64.(rand(Bool, nc, n)))
+    zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
+    Zstd = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
+    θ    = randn(7, n)
+    res  = ProteinCoLoc.train_npe(Zstd, Zstd, θ, θ; use_gpu = false, epochs = 2, batchsize = 16,
+                                  dstar = 8, depth = 1, width = 16, num_coupling_layers = 2,
+                                  flow_depth = 1, flow_width = 8, stopping_epochs = 2)
+    m = (estimator = res.estimator, zt = zt, θzt = res.θzt)
+
+    fprior(rng) = (ρ_true = 2 * rand(rng) - 1, spillover = rand(rng),
+                   autofluorescence = rand(rng), label_efficiency = rand(rng),
+                   shift_dx = 0.0, shift_dy = 0.0, noise = rand(rng))
+    fpair(rng, θ; imsize = (64, 64)) =
+        [rand(rng, imsize...) .+ 0.5, rand(rng, imsize...) .+ 0.5]
+    fmci(data) = MultiChannelImage(data, ["c1", "c2"], "amend_synth", ["p1", "p2"],
+                                   size(data[1]), [0.5, 0.5])
+    sim = (; sample_prior = fprior, simulate_pair = fpair, build_mci = fmci)
+
+    # A SPY simulator that records every image size the forward model was actually called with —
+    # the only way to prove the "ONE SHARED size for both members of a paired draw" requirement.
+    seen = Tuple{Int,Int}[]
+    spy  = (; sample_prior = fprior, build_mci = fmci,
+            simulate_pair = (rng, θ; imsize = (64, 64)) ->
+                (push!(seen, (Int(imsize[1]), Int(imsize[2]))); fpair(rng, θ; imsize = imsize)))
+
+    # ================= (1) gate_imsize — the shared sampler, on the gate stream =================
+    # A CONCRETE size wins and consumes NOTHING from the rng (so every v1 gate number, drawn under
+    # a scalar SBC_IMSIZE, reproduces bit-for-bit under this change).
+    @test gate_imsize(prod_rng(G); imsize = (64, 64)) == (64, 64)
+    let ra = prod_rng(G), rb = prod_rng(G)
+        gate_imsize(ra; imsize = (64, 64))
+        @test rand(ra, UInt64, 4) == rand(rb, UInt64, 4)       # scalar path: zero consumption
+    end
+    # The mixture path is EXACTLY `ProteinCoLoc.sample_imsize` on the same stream — the amendment
+    # forbids a hand-rolled second sampler, because gate and training joints must not be able to
+    # drift apart in implementation even when the constants agree.
+    let ra = prod_rng(G), rb = prod_rng(G)
+        a = [gate_imsize(ra; imsize = :mixture, imsize_set = DEVSET, imsize_weights = DEVW)
+             for _ in 1:50]
+        b = [ProteinCoLoc.sample_imsize(rb; imsize_set = DEVSET, imsize_weights = DEVW)
+             for _ in 1:50]
+        @test a == b
+        @test length(unique(a)) > 1                            # really a mixture, not a scalar
+    end
+    # The `:mixture` SENTINEL without a mixture must FAIL LOUDLY, never silently fall back to one
+    # size — that silent fallback is the exact failure mode the sentinel exists to prevent.
+    @test_throws ErrorException gate_imsize(prod_rng(G); imsize = :mixture, imsize_set = nothing)
+    @test_throws ErrorException gate_imsize(prod_rng(G); imsize = :not_a_size)
+    # Under the v1 (template) consts loaded by this file there is no mixture, so the default path
+    # is the scalar one and the v1 machinery is untouched.
+    @test GATE_IMSIZE_SET === nothing && GATE_REQUIRE_IMSIZE_PROVENANCE == false
+    @test SBC_RULES_VERSION == 1 && BF_RULES_VERSION == 1
+
+    # ============ (2) per-draw sizes, ONE shared size per pair, realised recording ==============
+    let rng = prod_rng(G)
+        szs = [draw_simulate_infer(m, rng; G = G, imsize = :mixture, imsize_set = DEVSET,
+                                   imsize_weights = DEVW, N = SBC_FIX_L, sim = sim).imsize
+               for _ in 1:25]
+        @test all(s -> s in DEVSET, szs)
+        @test length(unique(szs)) > 1                          # the size really varies per draw
+    end
+    # THE PAIRED REQUIREMENT (amendment §4, required change 2): a real sample/control pair comes
+    # from ONE acquisition configuration, so both members must share the drawn size.
+    let rng = prod_rng(G), reported = Tuple{Int,Int}[]
+        empty!(seen)
+        for _ in 1:12
+            pr = draw_simulate_infer_paired(m, rng; G = G, imsize = :mixture,
+                                            imsize_set = DEVSET, imsize_weights = DEVW,
+                                            N = SBC_FIX_L, sim = spy)
+            push!(reported, pr.imsize)
+        end
+        @test length(seen) == 24                               # two simulate_pair calls per draw
+        @test all(k -> seen[2k - 1] == seen[2k], 1:12)         # …at the SAME size
+        @test [seen[2k] for k in 1:12] == reported             # …and it is the size reported back
+        @test length(unique(reported)) > 1                     # varies ACROSS draws, not within
+    end
+    # realised_imsize_counts tallies what was DRAWN (F6: record, never reconstruct from weights).
+    let c = realised_imsize_counts([(64, 64), (64, 64), (96, 96)])
+        @test c[(64, 64)] == 2 && c[(96, 96)] == 1 && sum(values(c)) == 3
+    end
+    # The mixture is threaded through the SBC rank chain and the realised sizes come back with it.
+    let sr = sbc_ranks_and_spread(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L, imsize = :mixture,
+                                  imsize_set = DEVSET, imsize_weights = DEVW,
+                                  sim = sim, rng = prod_rng(G))
+        @test length(sr.imsizes) == SBC_FIX_M
+        @test length(sr.imsizes_delta) == SBC_FIX_M
+        @test all(s -> s in DEVSET, sr.imsizes)
+        @test all(s -> s in DEVSET, sr.imsizes_delta)
+        @test size(sr.ranks) == (SBC_FIX_M, 8)
+    end
+
+    # ==================== (3) A1b — χ² binning decoupled from ECE binning =======================
+    # The DEFECT: v1 passed ONE constant to both `sbc_uniformity` (χ² rank bins) and
+    # `sbc_calibration` (ECE reliability bins), so neither could be set on its own merits. After
+    # the fix, changing `chi2_bins` must move the χ² p-values and leave every ECE untouched.
+    vA = sbc_gate(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L, bins = SBC_FIX_BINS, chi2_bins = 2,
+                  imsize = (64, 64), sim = sim, rng = prod_rng(G))
+    vB = sbc_gate(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L, bins = SBC_FIX_BINS, chi2_bins = 4,
+                  imsize = (64, 64), sim = sim, rng = prod_rng(G))
+    @test vA.ranks == vB.ranks                                  # same table (arms self-seed)
+    @test [x.ece for x in vA.per_param] == [x.ece for x in vB.per_param]   # ECE arm UNTOUCHED
+    @test [x.mce for x in vA.per_param] == [x.mce for x in vB.per_param]
+    @test [x.ks_p for x in vA.per_param] == [x.ks_p for x in vB.per_param] # KS is bin-free
+    @test [x.chi2_p for x in vA.per_param] != [x.chi2_p for x in vB.per_param]  # χ² DOES move
+    @test vA.chi2_bins == 2 && vA.bins == SBC_FIX_BINS
+    # Under a v1 consts file there is no SBC_CHI2_BINS, so χ² binning defaults to `bins` — i.e.
+    # v1 behaviour is reproduced exactly; the frozen v2 file supplies 20 against SBC_BINS = 50.
+    @test GATE_CHI2_BINS === nothing && _gate_chi2_bins(SBC_BINS) == SBC_BINS
+    @test V.SBC_CHI2_BINS == 20 && V.SBC_BINS == 50
+
+    # ============ (4a) A1 — Holm–Bonferroni, cross-checked against the FROZEN file ==============
+    for p in ([0.004, 0.20, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95],
+              [0.007, 0.20, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95],
+              fill(0.04, 8), [0.001, 0.02, 0.03, 0.2, 0.3, 0.4, 0.5, 0.6],
+              [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01])
+        @test sbc_holm_adjusted(p) == V.holm_adjusted(p)        # identical to the frozen rule
+        @test sbc_holm(p) == V.holm_adjusted(p)
+        @test sbc_holm_pass(p; fwer = 0.05) == V.holm_pass(p; fwer = 0.05)
+    end
+    # The DEFECT being corrected, stated as a test: eight p-values of 0.04 fail the v1 conjunction
+    # (its family-wise false-failure rate for a calibrated net is 1 − 0.95^8 = 33.7 %) and pass
+    # Holm at the SAME family-wise 0.05 the v1 gate always claimed to be enforcing.
+    @test !all(>(0.05), fill(0.04, 8))                          # v1: FAIL
+    @test sbc_holm_pass(fill(0.04, 8); fwer = 0.05)             # v2: PASS
+    @test !sbc_holm_pass([0.004, 0.2, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]; fwer = 0.05)  # 0.004 < 0.00625
+    # Holm never rejects MORE than the uncorrected rule ⇒ a v1 pass implies a v2 pass, always.
+    for _ in 1:200
+        q = rand(8)
+        all(>(0.05), q) && @test sbc_holm_pass(q; fwer = 0.05)
+    end
+
+    # ---- the v1↔v2 rules attribution: BOTH verdicts, one rank table, binding one named ----
+    @test vA.rules_version == 1                                 # v1 consts are loaded here
+    @test vA.v1_verdict.rules == 1 && vA.v1_verdict.alpha == 0.05
+    @test vA.v2_verdict.rules == 2 && vA.v2_verdict.multiplicity === :holm
+    @test vA.v2_verdict.ks_adj_p == sbc_holm([x.ks_p for x in vA.per_param])
+    @test vA.v2_verdict.chi2_adj_p == sbc_holm([x.chi2_p for x in vA.per_param])
+    @test vA.v1_verdict.ks_pass == all(>(0.05), [x.ks_p for x in vA.per_param])
+    @test vA.passed == vA.v1_verdict.passed                     # binding = the loaded rules
+    @test vA.ks_pass == vA.v1_verdict.ks_pass
+    @test vA.ece_pass == vA.v1_verdict.ece_pass == vA.v2_verdict.ece_pass  # ECE arm identical
+    @test !vA.v1_verdict.ks_pass || vA.v2_verdict.ks_pass       # v1 pass ⇒ v2 pass
+    @test vA.v1_verdict.passed isa Bool && vA.v2_verdict.passed isa Bool
+
+    # ============ (4b) A2 — the BF lower-confidence-bound rule vs the frozen file ===============
+    for (r, nn) in ((0.95, 100), (0.99, 100), (0.30, 100), (0.99, 20), (0.9471, 18),
+                    (0.96394, 100), (0.98, 69))
+        @test gate_bf_corr_verdict(r, nn) === V.bf_corr_verdict(r, nn)
+        for tail in (:two, :one)
+            a = gate_fisher_z_ci(r, nn; tail = tail); b = V.fisher_z_ci(r, nn; tail = tail)
+            @test a.lo ≈ b.lo && a.hi ≈ b.hi
+        end
+    end
+    # STRICTLY HARDER than v1: r̂ exactly at the threshold is no longer a pass.
+    @test gate_bf_corr_verdict(0.95, 100) === :inconclusive
+    @test V.BF_GATE_N == 100 && V.BF_GATE_N_MIN == 69 && V.BF_CORR_MIN == 0.95
+
+    # A fixture-scale bf_gate: both rule sets reported, `max|Δ|` KEPT as a reported quantity, the
+    # gated tail statistic an n-stable q95, and attrition below n_min recorded :invalid not :pass.
+    rres = ProteinCoLoc.train_ratio(Zstd, vec(θ[1, :]); n = 60, use_gpu = false, epochs = 2,
+                                    batchsize = 16, num_summaries = 8, summary_width = 16,
+                                    val_frac = 0.2, stopping_epochs = 2)
+    bfr = bf_gate(m, rres; G = G, sim = sim, rng = prod_rng(G), n = 6, L = SBC_FIX_L,
+                  imsize = (64, 64), prior_n = 200)
+    @test bfr.rules_version == 1                                # v1 consts loaded ⇒ v1 binds
+    @test bfr.n_attempted == 6 && bfr.n <= 6
+    @test hasproperty(bfr, :max_abs_delta) && hasproperty(bfr, :q50_abs_delta) &&
+          hasproperty(bfr, :q95_abs_delta)
+    @test bfr.v1_verdict.statistic === :max_abs_delta           # v1 gated the extreme…
+    @test bfr.v2_verdict.statistic === :q95_abs_delta           # …v2 gates an n-stable quantile
+    @test bfr.v2_verdict.q == 0.95
+    @test isnan(bfr.q95_abs_delta) || bfr.q95_abs_delta <= bfr.max_abs_delta + 1e-12
+    @test bfr.v2_verdict.corr_verdict === :invalid              # n = 6 ≪ 69: never :pass
+    @test bfr.v2_verdict.corr_pass == false
+    @test bfr.passed == bfr.v1_verdict.passed
+    @test bfr.imsize_set === nothing                            # scalar mode under v1 consts
+    @test sum(values(bfr.realised_imsize_counts)) == 6
+    @test bfr.realised_imsize_counts[(64, 64)] == 6
+    # The BF arm honours the mixture too, with the pair-sharing property intact.
+    let bfm = bf_gate(m, rres; G = G, sim = sim, rng = prod_rng(G), n = 8, L = SBC_FIX_L,
+                      imsize = :mixture, imsize_set = DEVSET, imsize_weights = DEVW,
+                      prior_n = 200)
+        @test sum(values(bfm.realised_imsize_counts)) == 8
+        @test all(k -> k in DEVSET, keys(bfm.realised_imsize_counts))
+    end
+
+    # ================ (4c) the :provenance_mismatch refusal (binding invariant) =================
+    # SBC ranks are uniform only under the TRAINING joint. A net whose training image-size
+    # distribution is unrecorded or different CANNOT be SBC-gated under the amendment at all.
+    @test assert_imsize_provenance((; meta = (; grid = 8, n_pairs = 50_000));
+                                   imsize_set = DEVSET, imsize_weights = DEVW,
+                                   require = true).status === :provenance_mismatch
+    @test assert_imsize_provenance((; meta = (; imsize_set = DEVSET, imsize_weights = DEVW,
+                                              imsize_source = :generate_samples));
+                                   imsize_set = DEVSET, imsize_weights = DEVW, require = true).ok
+    @test assert_imsize_provenance((; meta = (; imsize_set = DEVSET,
+                                              imsize_weights = (0.6, 0.2, 0.2),
+                                              imsize_source = :generate_samples));
+                                   imsize_set = DEVSET, imsize_weights = DEVW,
+                                   require = true).status === :provenance_mismatch
+    @test assert_imsize_provenance((; meta = (; imsize_set = ((64, 64),),
+                                              imsize_weights = (1.0,),
+                                              imsize_source = :generate_samples));
+                                   imsize_set = DEVSET, imsize_weights = DEVW,
+                                   require = true).status === :provenance_mismatch
+    # A gate mixture with NO set at all under a requiring pre-registration is also a refusal.
+    @test assert_imsize_provenance((; meta = (; imsize_set = DEVSET, imsize_weights = DEVW));
+                                   imsize_set = nothing, imsize_weights = nothing,
+                                   require = true).status === :provenance_mismatch
+    # `require = false` (a v1 consts file, which predates the invariant) reports but never blocks.
+    @test assert_imsize_provenance(nothing; require = false).ok
+    @test assert_imsize_provenance(nothing; require = false).status === :not_required
+
+    # run_gate REFUSES before any arm executes, on a real persisted artifact whose provenance is
+    # unrecorded (the injected-datagen case — and the case of all three v1-frozen bundles).
+    aroot = mktempdir()
+    ProteinCoLoc._train_grid_pipeline(G;
+        datagen = () -> (theta = randn(7, 60),
+                         summary_min = vcat(randn(nc, 60) .* 2 .+ 3,
+                                            Float64.(rand(Bool, nc, 60)))),
+        artifacts_root = aroot, use_gpu = false, n_pairs = 60, ratio_n = 60,
+        npe_epochs = 2, ratio_epochs = 2, skip_if_done = false,
+        npe_kwargs = (; batchsize = 16, dstar = 8, depth = 1, width = 16,
+                      num_coupling_layers = 2, flow_depth = 1, flow_width = 8,
+                      stopping_epochs = 2),
+        ratio_kwargs = (; batchsize = 16, num_summaries = 8, summary_width = 16,
+                        val_frac = 0.2, stopping_epochs = 2))
+    refused = run_gate(G; sbc = true, artifacts_root = aroot, sim = sim, write_report = false,
+                       require_provenance = true, imsize_set = DEVSET, imsize_weights = DEVW,
+                       imsize = :mixture, M = SBC_FIX_M, L = SBC_FIX_L, bins = SBC_FIX_BINS,
+                       chi2_bins = SBC_FIX_BINS)
+    @test refused.status === :provenance_mismatch
+    @test refused.training_imsize_provenance.recorded == false
+    @test refused.imsize_set == DEVSET
+    @test !hasproperty(refused, :sbc)                          # NO arm ran
+
+    # …and with the invariant not required (the v1 regime) the same call runs and carries the new
+    # report fields.
+    ran = run_gate(G; sbc = true, artifacts_root = aroot, sim = sim, write_report = false,
+                   require_provenance = false, imsize = :mixture, imsize_set = DEVSET,
+                   imsize_weights = DEVW, M = SBC_FIX_M, L = SBC_FIX_L, bins = SBC_FIX_BINS,
+                   chi2_bins = SBC_FIX_BINS)
+    @test ran.status === :ran
+    @test ran.imsize_set == DEVSET && ran.imsize_weights == DEVW
+    @test sum(values(ran.realised_imsize_counts)) == 2 * SBC_FIX_M   # marginal + paired draws
+    @test all(k -> k in DEVSET, keys(ran.realised_imsize_counts))
+    @test ran.sbc.rules_version == 1
+    @test hasproperty(ran.sbc, :v1_verdict) && hasproperty(ran.sbc, :v2_verdict)
+    @test ran.training_imsize_provenance.recorded == false
+    @test ran.gate_consts_version == 1
+
+    # ============ (5) the negative control survives the F5 mixture's non-square anchor ==========
+    # The D-08 anchor is 1376×1028 and 1028 is NOT divisible by 8, so the v1 exact-divisibility
+    # `throw` would have killed the negative-control arm on ~a quarter of the amended gate's draws.
+    @test 1028 % 8 != 0                                          # the motivating arithmetic
+    let base = [rand(prod_rng(8), 40, 34), rand(prod_rng(8), 40, 34)]   # 34 % 8 != 0
+        out = negctrl_block_permute(prod_rng(8), base; blocks = 8)
+        @test size(out[1]) == (40, 34) && size(out[2]) == (40, 34)
+        @test sort(vec(out[1])) == sort(vec(base[1]))            # a pure rearrangement of pixels
+        @test sort(vec(out[2])) == sort(vec(base[2]))
+    end
+    # The divisible case is unchanged (still an exact tile permutation).
+    let base = [rand(prod_rng(8), 32, 32), rand(prod_rng(8), 32, 32)]
+        out = negctrl_block_permute(prod_rng(8), base; blocks = 8)
+        @test sort(vec(out[1])) == sort(vec(base[1]))
+    end
+end

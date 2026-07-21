@@ -135,8 +135,11 @@ paired-draw Δρ SBC (D-01): two independent draws give ρ_true draw vectors ρs
 disjoint `rng` (prod_rng[G]) sequentially.
 """
 function sbc_ranks(m; G::Integer, M::Integer = SBC_M, L::Integer = SBC_L,
-                   imsize = SBC_IMSIZE, sim = default_simulator(), rng = prod_rng(G))
+                   imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                   imsize_weights = GATE_IMSIZE_WEIGHTS,
+                   sim = default_simulator(), rng = prod_rng(G))
     return sbc_ranks_and_spread(m; G = G, M = M, L = L, imsize = imsize,
+                                imsize_set = imsize_set, imsize_weights = imsize_weights,
                                 sim = sim, rng = rng).ranks
 end
 
@@ -150,14 +153,23 @@ draw→simulate→infer chain (`sbc_ranks` is a thin wrapper on this):
 
   • `ranks`       — the `M×8` rank table (identical to `sbc_ranks`; see its docstring);
   • `post_sd`     — `M×8`, the posterior standard deviation of the `L` draws behind each rank;
-  • `prior_draws` — `M×8`, the θ*ₚ actually drawn from π (column 8 = the paired Δρ*).
+  • `prior_draws` — `M×8`, the θ*ₚ actually drawn from π (column 8 = the paired Δρ*);
+  • `imsizes`     — length-`M`, the REALISED image size of each marginal (7-θ) draw;
+  • `imsizes_delta` — length-`M`, the REALISED (shared) image size of each paired Δρ draw.
 
 Consumes the passed `rng` in EXACTLY the same order and amount as `sbc_ranks` did — the extra
 outputs are `std`/bookkeeping over samples that were already drawn — so the rank table, and every
 verdict computed from it, is unchanged.
+
+F5 MIXTURE (07-GATE-AMENDMENT §4, required change 3): under the amended pre-registration the image
+size is drawn PER DRAW from `imsize_set`/`imsize_weights` off THIS `rng` (so it is part of the
+reproducible stream), and the realised size is recorded alongside the rank table so the realised
+mixture is auditable post-hoc rather than reconstructed from the weights.
 """
 function sbc_ranks_and_spread(m; G::Integer, M::Integer = SBC_M, L::Integer = SBC_L,
-                              imsize = SBC_IMSIZE, sim = default_simulator(),
+                              imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                              imsize_weights = GATE_IMSIZE_WEIGHTS,
+                              sim = default_simulator(),
                               rng = prod_rng(G))
     # REPRODUCIBILITY (07-10): pin BOTH streams. `rng` (prod_rng(G)) drives the prior draw + the
     # forward simulation; the flow's posterior draws come from the GLOBAL RNG because
@@ -170,23 +182,31 @@ function sbc_ranks_and_spread(m; G::Integer, M::Integer = SBC_M, L::Integer = SB
     rank_table  = Matrix{Int}(undef, M, 8)
     post_sd     = Matrix{Float64}(undef, M, 8)
     prior_draws = Matrix{Float64}(undef, M, 8)
+    imsizes       = Vector{Tuple{Int,Int}}(undef, M)   # realised size, marginal draws
+    imsizes_delta = Vector{Tuple{Int,Int}}(undef, M)   # realised (shared) size, paired Δρ draws
     for i in 1:M
         # 7 marginal θ ranks from one draw→simulate→infer.
-        t = draw_simulate_infer(m, rng; G = G, imsize = imsize, N = L, sim = sim)
+        t = draw_simulate_infer(m, rng; G = G, imsize = imsize, imsize_set = imsize_set,
+                                imsize_weights = imsize_weights, N = L, sim = sim)
+        imsizes[i] = t.imsize
         for p in 1:7
             rank_table[i, p]  = count(<(t.θ[p]), @view t.draws[p, :])
             post_sd[i, p]     = Statistics.std(@view t.draws[p, :])
             prior_draws[i, p] = t.θ[p]
         end
         # Δρ rank from a paired draw (D-01), independent of the marginal ρ_true rank.
-        pr       = draw_simulate_infer_paired(m, rng; G = G, imsize = imsize, N = L, sim = sim)
+        pr       = draw_simulate_infer_paired(m, rng; G = G, imsize = imsize,
+                                              imsize_set = imsize_set,
+                                              imsize_weights = imsize_weights, N = L, sim = sim)
+        imsizes_delta[i] = pr.imsize
         Δρ_draws = pr.ρs .- pr.ρc
         Δρ_star  = pr.θs.ρ_true - pr.θc.ρ_true
         rank_table[i, 8]  = count(<(Δρ_star), Δρ_draws)
         post_sd[i, 8]     = Statistics.std(Δρ_draws)
         prior_draws[i, 8] = Δρ_star
     end
-    return (ranks = rank_table, post_sd = post_sd, prior_draws = prior_draws)
+    return (ranks = rank_table, post_sd = post_sd, prior_draws = prior_draws,
+            imsizes = imsizes, imsizes_delta = imsizes_delta)
 end
 
 # --- Shrinkage (vacuous-pass) diagnostic — REPORTING ONLY ------------------------------------
@@ -294,30 +314,140 @@ function sbc_calibration(ranks::AbstractVector{<:Integer};
     return _bin_calibration(probs, pos; n_bins = n_bins)
 end
 
+# =============================================================================================
+# A1 — MULTIPLICITY CONTROL (07-GATE-AMENDMENT §1) and the v1↔v2 rules-change attribution
+# =============================================================================================
+#
+# THE DEFECT. v1's `ks_pass = all(x -> x.ks_p > SBC_KS_ALPHA, per)` runs 8 level-0.05 tests and
+# requires ALL to survive. A PERFECTLY CALIBRATED net fails that conjunction with probability
+# 1 − 0.95^8 = 33.7 % — the gate's true α was 0.34, not the 0.05 it claimed. This is arithmetic on
+# the gate's own structure (8 tests, α = 0.05), computable with the artifacts directory deleted.
+#
+# THE RULE. Holm–Bonferroni step-down at a FAMILY-WISE error rate of 0.05, applied SEPARATELY to
+# the 8 KS p-values and to the 8 χ² p-values. Holm is valid under ARBITRARY dependence (the 8
+# columns share the same M datasets and the same posterior draws, so they are dependent by
+# construction with an unknown structure) and is uniformly at least as powerful as plain Bonferroni.
+#
+# ATTRIBUTION (the v1 verdict is ALWAYS co-computed). The amended run changes TWO things at once —
+# the gate rules AND the model (the bounded-θ retrain; amendment §5, "the bounded-θ retrain is a
+# confound"). Reporting only the amended verdict would make the rules-change contribution
+# unrecoverable. Every `sbc_gate` result therefore carries BOTH verdicts computed on the SAME rank
+# table: `v1_verdict` (the original uncorrected all-8 α = 0.05 conjunction) and `v2_verdict`
+# (Holm). The BINDING verdict is whichever the LOADED pre-registration prescribes, and is reported
+# as `rules_version`. The v1 numbers are free — they are a second reduction of one rank table, not
+# a second run — and they cost nothing in seed budget.
+
 """
-    sbc_gate(m; G, M = SBC_M, L = SBC_L, bins = SBC_BINS, imsize = SBC_IMSIZE,
-             sim = default_simulator(), rng = prod_rng(G)) -> NamedTuple
+    sbc_holm_adjusted(p) -> Vector{Float64}
+
+Holm–Bonferroni adjusted p-values for a family of `m = length(p)` tests, in INPUT order: sort
+ascending, multiply p₍ⱼ₎ by `(m − j + 1)`, take the running maximum (monotonicity) and cap at 1.
+Valid under arbitrary dependence.
+
+The FROZEN `holm_adjusted` in `gate_consts_8_v2.jl` is used instead whenever the amended
+pre-registration is loaded (`sbc_holm` below dispatches to it); this implementation is the fallback
+that lets the v1 consts still compute the amended verdict for the side-by-side attribution. A unit
+test asserts the two agree.
+"""
+function sbc_holm_adjusted(p::AbstractVector{<:Real})
+    m   = length(p)
+    ord = sortperm(collect(float.(p)))
+    adj = Vector{Float64}(undef, m)
+    running = 0.0
+    for (j, i) in enumerate(ord)
+        running = max(running, (m - j + 1) * float(p[i]))
+        adj[i]  = min(1.0, running)
+    end
+    return adj
+end
+
+"Holm adjusted p-values, PREFERRING the frozen `holm_adjusted` of the loaded pre-registration."
+sbc_holm(p) = isdefined(@__MODULE__, :holm_adjusted) ?
+    getfield(@__MODULE__, :holm_adjusted)(p) : sbc_holm_adjusted(p)
+
+"""
+    sbc_holm_pass(p; fwer = 0.05) -> Bool
+
+`true` iff Holm–Bonferroni at family-wise error rate `fwer` rejects NO null in the family — i.e.
+every adjusted p-value exceeds `fwer`. This is the amended (A1) uniformity verdict.
+"""
+sbc_holm_pass(p::AbstractVector{<:Real}; fwer::Real = 0.05) = all(>(fwer), sbc_holm(p))
+
+# The v1 per-test α, used ONLY to co-report what the ORIGINAL rules would have concluded. Under a
+# v1 consts file this is the frozen `SBC_KS_ALPHA` itself; under v2 that constant is deliberately
+# RETIRED (undefined so that any code still gating on it errors loudly), so the historical value
+# 0.05 is named here — as a REPORTING constant for the attribution, never as a gate input.
+const SBC_V1_ALPHA_ATTRIBUTION = 0.05
+_sbc_v1_alpha() = isdefined(@__MODULE__, :SBC_KS_ALPHA) ?
+    getfield(@__MODULE__, :SBC_KS_ALPHA) : SBC_V1_ALPHA_ATTRIBUTION
+
+"The family-wise α of the loaded pre-registration (v2), or the v1 default when it is not loaded."
+_sbc_ks_fwer()   = isdefined(@__MODULE__, :SBC_KS_FWER)   ? getfield(@__MODULE__, :SBC_KS_FWER)   : 0.05
+_sbc_chi2_fwer() = isdefined(@__MODULE__, :SBC_CHI2_FWER) ? getfield(@__MODULE__, :SBC_CHI2_FWER) : 0.05
+
+"`2` when the amended pre-registration (`SBC_MULTIPLICITY = :holm`) is loaded, else `1`."
+const SBC_RULES_VERSION = isdefined(@__MODULE__, :SBC_MULTIPLICITY) &&
+                          SBC_MULTIPLICITY === :holm ? 2 : 1
+
+# A1b — the χ² rank-bin count, DECOUPLED from the ECE reliability binning. v1 overloaded ONE
+# constant (SBC_BINS = 50) for both, so neither could be set on its own merits. Under v2,
+# `SBC_CHI2_BINS = 20` drives `sbc_uniformity` while `SBC_BINS = 50` continues to drive
+# `sbc_calibration` — the ECE arm is therefore NUMERICALLY IDENTICAL to v1. Under a v1 consts file
+# there is no separate constant and the χ² binning falls back to `bins`, i.e. v1 behaviour.
+const GATE_CHI2_BINS = isdefined(@__MODULE__, :SBC_CHI2_BINS) ? SBC_CHI2_BINS : nothing
+_gate_chi2_bins(bins) = GATE_CHI2_BINS === nothing ? bins : GATE_CHI2_BINS
+
+"""
+    sbc_gate(m; G, M = SBC_M, L = SBC_L, bins = SBC_BINS, chi2_bins = _gate_chi2_bins(bins),
+             imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+             imsize_weights = GATE_IMSIZE_WEIGHTS, sim = default_simulator(),
+             rng = prod_rng(G)) -> NamedTuple
 
 The aggregated per-grid SBC ship-gate verdict: runs the fresh-seeded M×L rank table, then for
 each of the 8 columns (7 θ + Δρ) computes KS/χ² uniformity, the ECE/MCE `CalibrationResult`, and
-its traffic-light. `passed` is `all(ks_p > SBC_KS_ALPHA) && all(ece ≤ SBC_ECE_GREEN)` across the 8
-columns. CPU-only, pre-registered thresholds, fresh disjoint stream.
+its traffic-light. CPU-only, pre-registered thresholds, fresh disjoint stream.
+
+**BINNING (A1b).** `chi2_bins` drives `sbc_uniformity` (the χ² rank bins) and `bins` drives
+`sbc_calibration` (the ECE/MCE reliability bins). Under the amended pre-registration these are 20
+and 50; under a v1 consts file `chi2_bins` defaults to `bins`, exactly reproducing v1.
+
+**MULTIPLICITY (A1).** BOTH verdicts are computed on the SAME rank table and reported side by side:
+
+  • `v1_verdict` — the ORIGINAL uncorrected conjunction `all(ks_p > 0.05)`, whose family-wise
+    false-failure rate for a perfectly calibrated net is 1 − 0.95^8 = 33.7 %;
+  • `v2_verdict` — Holm–Bonferroni step-down at FWER 0.05, applied separately to the KS and χ²
+    families.
+
+`rules_version` names which one is BINDING (the one the loaded pre-registration prescribes), and
+`passed`/`ks_pass`/`ece_pass` are that one's fields. This co-reporting is a free attribution of the
+rules change: the amended run alters both the rules and the model (bounded-θ retrain), and without
+the v1 numbers on the same table the two contributions could not be separated (amendment §5).
+
+`passed` retains v1's STRUCTURE — `ks_pass && ece_pass`. The χ² family verdict is computed and
+reported (`chi2_pass`) under the same Holm correction, but is NOT folded into `passed`: v1 never
+gated on χ², and the amendment specifies a multiplicity correction for the existing arms, not a new
+gating arm. Adding one would be an unspecified tightening.
 
 Each `per_param` entry ALSO carries the diagnostic `shrinkage = post_sd/prior_sd` (with its
 `post_sd`/`prior_sd` components) and a `vacuous` flag, and the report carries the list of
 `vacuous_params`. These make a "posterior == prior" column — which passes rank uniformity BY
 CONSTRUCTION while having learned nothing (F3) — impossible to mis-read as calibration evidence.
-They are REPORTING ONLY: `ks_pass`, `ece_pass` and `passed` are computed exactly as before.
+They are REPORTING ONLY and feed no pass/fail decision.
 """
 function sbc_gate(m; G::Integer, M::Integer = SBC_M, L::Integer = SBC_L,
-                  bins::Integer = SBC_BINS, imsize = SBC_IMSIZE,
+                  bins::Integer = SBC_BINS, chi2_bins::Integer = _gate_chi2_bins(bins),
+                  imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                  imsize_weights = GATE_IMSIZE_WEIGHTS,
                   sim = default_simulator(), rng = prod_rng(G))
-    sr    = sbc_ranks_and_spread(m; G = G, M = M, L = L, imsize = imsize, sim = sim, rng = rng)
+    sr    = sbc_ranks_and_spread(m; G = G, M = M, L = L, imsize = imsize,
+                                 imsize_set = imsize_set, imsize_weights = imsize_weights,
+                                 sim = sim, rng = rng)
     ranks = sr.ranks
     shr   = sbc_shrinkage(sr.post_sd, sr.prior_draws)
     per = NamedTuple[]
     for p in 1:8
-        u   = sbc_uniformity(view(ranks, :, p); L = L, bins = bins)
+        # A1b: χ² gets its OWN bin count; the ECE reliability binning is untouched.
+        u   = sbc_uniformity(view(ranks, :, p); L = L, bins = chi2_bins)
         cal = sbc_calibration(collect(view(ranks, :, p)); L = L, n_bins = bins)
         push!(per, (label = SBC_PARAM_LABELS[p], ks_p = u.ks_p, chi2_p = u.chi2_p,
                     ece = cal.ece, mce = cal.mce, light = sbc_traffic_light(cal.ece),
@@ -325,15 +455,42 @@ function sbc_gate(m; G::Integer, M::Integer = SBC_M, L::Integer = SBC_L,
                     shrinkage = shr.shrinkage[p], post_sd = shr.post_sd_mean[p],
                     prior_sd = shr.prior_sd[p], vacuous = shr.vacuous[p]))
     end
-    ks_pass  = all(x -> x.ks_p > SBC_KS_ALPHA, per)
-    ece_pass = all(x -> x.ece <= SBC_ECE_GREEN, per)
-    # `passed` is UNCHANGED: the shrinkage diagnostic annotates the report so a vacuous (posterior
-    # == prior) column cannot be mis-read as calibration evidence, but it is deliberately NOT a
-    # gate condition — the pre-registered gate_consts_<G>.jl thresholds are frozen.
+
+    ks_p     = [x.ks_p   for x in per]
+    chi2_p   = [x.chi2_p for x in per]
+    ece_pass = all(x -> x.ece <= SBC_ECE_GREEN, per)     # UNCHANGED in both rule sets
+
+    # --- v1 (original) rules, recomputed on THIS rank table purely for attribution -------------
+    α  = _sbc_v1_alpha()
+    v1 = (rules = 1, alpha = α,
+          ks_pass   = all(>(α), ks_p),
+          chi2_pass = all(>(α), chi2_p),
+          ece_pass  = ece_pass)
+    v1 = merge(v1, (passed = v1.ks_pass && v1.ece_pass,))
+
+    # --- v2 (amended) rules: Holm–Bonferroni at FWER 0.05 on each family -----------------------
+    ks_adj   = sbc_holm(ks_p)
+    chi2_adj = sbc_holm(chi2_p)
+    v2 = (rules = 2, multiplicity = :holm, ks_fwer = _sbc_ks_fwer(), chi2_fwer = _sbc_chi2_fwer(),
+          ks_adj_p = ks_adj, chi2_adj_p = chi2_adj,
+          ks_pass   = all(>(_sbc_ks_fwer()),   ks_adj),
+          chi2_pass = all(>(_sbc_chi2_fwer()), chi2_adj),
+          ece_pass  = ece_pass)
+    v2 = merge(v2, (passed = v2.ks_pass && v2.ece_pass,))
+
+    binding = SBC_RULES_VERSION == 2 ? v2 : v1
+
     return (grid = Int(G), M = Int(M), L = Int(L), ranks = ranks, per_param = per,
             post_sd = sr.post_sd, prior_draws = sr.prior_draws,
+            bins = Int(bins), chi2_bins = Int(chi2_bins),
+            imsize_set = imsize_set, imsize_weights = imsize_weights,
+            realised_imsize_counts =
+                realised_imsize_counts(vcat(sr.imsizes, sr.imsizes_delta)),
+            imsizes = sr.imsizes, imsizes_delta = sr.imsizes_delta,
             vacuous_cutoff = SBC_VACUOUS_SHRINKAGE,
             vacuous_params = [SBC_PARAM_LABELS[p] for p in 1:8 if shr.vacuous[p]],
-            ks_pass = ks_pass, ece_pass = ece_pass, passed = ks_pass && ece_pass,
+            rules_version = SBC_RULES_VERSION, v1_verdict = v1, v2_verdict = v2,
+            ks_pass = binding.ks_pass, chi2_pass = binding.chi2_pass,
+            ece_pass = ece_pass, passed = binding.passed,
             caption = SBC_CAPTION)
 end

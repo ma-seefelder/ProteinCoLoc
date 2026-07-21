@@ -236,12 +236,22 @@ tiles align with the grid's patches (the spike's `blocks = 8` on its 8×8 grid, 
 """
 function negctrl_block_permute(rng, pair; blocks::Integer = 8)
     H, W = size(pair[1])
-    (H % blocks == 0 && W % blocks == 0) ||
-        throw(ArgumentError("negctrl_block_permute: $((H, W)) not divisible by blocks=$blocks"))
+    # NON-DIVISIBLE SIZES (07-GATE-AMENDMENT §4, F5 mixture). v1 ran this control at the single
+    # size (256,256), which is divisible by every gate grid, so an exact-divisibility `throw` was
+    # sufficient. The amended pre-registration draws from a REALISTIC mixture that includes the
+    # D-08 anchor 1376×1028, and 1028 is NOT divisible by 8 — the control would simply throw on a
+    # quarter of the draws. The transform is therefore generalized: the largest ALIGNED
+    # `blocks × blocks` region of equal tiles is permuted and the ≤ blocks−1 leftover rows/columns
+    # are left in place. This is the minimal generalization that keeps the transform a genuine
+    # rearrangement of whole patches (the property that makes it summary-orthogonal); the residual
+    # strip is measured, not assumed away, because `verify_summary_invariance` still scores the
+    # realised KS statistic of the whole transformed image.
     bh = H ÷ blocks; bw = W ÷ blocks
+    (bh >= 1 && bw >= 1) ||
+        throw(ArgumentError("negctrl_block_permute: $((H, W)) smaller than blocks=$blocks"))
     perm = randperm(rng, blocks * blocks)             # SAME permutation for both channels
     function permute(x)
-        out = similar(x)
+        out = copy(x)                                  # leftover strip stays exactly as it was
         for (dst, src) in enumerate(perm)
             di, dj = fldmod1(dst, blocks); si, sj = fldmod1(src, blocks)
             out[(di-1)*bh+1:di*bh, (dj-1)*bw+1:dj*bw] = x[(si-1)*bh+1:si*bh, (sj-1)*bw+1:sj*bw]
@@ -305,9 +315,20 @@ is the pooled strongest-level fused AUC (the spike's headline number). CPU-only.
 """
 function gate_ood_roc(m, density; G::Integer, rng, families = OOD_FAMILIES,
                       levels::Integer = OOD_GRID_LEVELS, n_id::Integer = 200,
-                      n_pos::Integer = 40, n_fit::Integer = n_id, imsize = SBC_IMSIZE)
+                      n_pos::Integer = 40, n_fit::Integer = n_id, imsize = SBC_IMSIZE,
+                      imsize_set = GATE_IMSIZE_SET, imsize_weights = GATE_IMSIZE_WEIGHTS)
     sp(r) = ProteinCoLoc.sample_prior(r)
-    idpair(r) = ProteinCoLoc.simulate_pair(r, sp(r); imsize = imsize)
+    # F5 (07-GATE-AMENDMENT §4): the OOD arm's ID pool must come from the SAME joint the net was
+    # trained on, so the image size is drawn PER PAIR off this rng through the shared sampler. The
+    # realised sizes are recorded and returned, never reconstructed.
+    imsizes = Tuple{Int,Int}[]
+    function idpair(r)
+        θ   = sp(r)
+        isz = gate_imsize(r; imsize = imsize, imsize_set = imsize_set,
+                          imsize_weights = imsize_weights)
+        push!(imsizes, isz)
+        return ProteinCoLoc.simulate_pair(r, θ; imsize = isz)
+    end
 
     # --- (A) TRAIN-ONLY noise null + robust-z fusion reference -------------------------------
     fit_pairs = [idpair(rng) for _ in 1:n_fit]
@@ -344,7 +365,10 @@ function gate_ood_roc(m, density; G::Integer, rng, families = OOD_FAMILIES,
             pm = Float64[]; pn = Float64[]; pf = Float64[]; fires = 0
             for _ in 1:n_pos
                 θ   = sp(rng)
-                img = gen(rng, θ; imsize = imsize, level = lvl, G = G)
+                isz = gate_imsize(rng; imsize = imsize, imsize_set = imsize_set,
+                                  imsize_weights = imsize_weights)
+                push!(imsizes, isz)
+                img = gen(rng, θ; imsize = isz, level = lvl, G = G)
                 ms  = ProteinCoLoc.maha_score(density, gate_summary(m, img, G))
                 ns  = ProteinCoLoc.noise_score(nnull, img)
                 fs  = zfuse(ms, ns)
@@ -366,7 +390,7 @@ function gate_ood_roc(m, density; G::Integer, rng, families = OOD_FAMILIES,
             id_threshold = maha_thr, fused_threshold = fused_thr,
             id_fire_rate = mean(id_fused .> fused_thr),
             youden = ProteinCoLoc.youden_j(fpr, tpr),          # POST-HOC reference, NEVER the gate
-            noise_null = nnull,
+            noise_null = nnull, imsizes = imsizes,
             zref = (med_d = med_d, scl_d = scl_d, med_n = med_n, scl_n = scl_n),
             n_id = n_id, n_pos = n_pos, n_fit = n_fit)
 end

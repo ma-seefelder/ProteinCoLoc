@@ -114,19 +114,85 @@ function default_simulator()
             build_mci     = getfield(ProteinCoLoc, :build_mci))
 end
 
-"""
-    draw_simulate_infer(m, rng; G, imsize = SBC_IMSIZE, N = SBC_L, sim = default_simulator())
+# =============================================================================================
+# F5 IMAGE-SIZE MIXTURE — the gate's simulate distribution must equal the TRAINING joint
+# =============================================================================================
+#
+# WHY (07-GATE-AMENDMENT §4): SBC rank uniformity is a theorem about the joint p(θ,y) = π(θ)p(y|θ)
+# the estimator was TRAINED under. v1 threaded a SCALAR `SBC_IMSIZE = (256,256)` — a documented
+# compute-budget artifact of run 07-05, never a scientific choice. The amended pre-registration
+# replaces it with a categorical MIXTURE (`SBC_IMSIZE_SET` / `SBC_IMSIZE_WEIGHTS`) drawn PER DRAW
+# from the gate rng, and sets the scalar `SBC_IMSIZE` to the sentinel `:mixture` so that any code
+# path still treating it as a size FAILS LOUDLY instead of silently reverting to one size.
+#
+# The draw goes through the SHARED `ProteinCoLoc.sample_imsize` — never a hand-rolled second
+# sampler — so the gate joint and the training joint cannot drift apart in implementation even if
+# the constants agree.
+#
+# BACKWARD COMPATIBILITY: under the v1 consts (`gate_consts_{4,8,16}.jl` / the template)
+# `SBC_IMSIZE_SET` does not exist, `SBC_IMSIZE` is a real size tuple, and every path below takes
+# the scalar branch, consuming ZERO extra numbers from `rng`. The v1 gate machinery is therefore
+# byte-for-byte unchanged.
 
-ONE θ*~π → simulate → CPU-infer step for a `G×G` gate. Draws a prior θ*, simulates a channel
-pair, runs it through the grid-parametrized `patch_summary(mci, G)` summary, standardizes with the
-FROZEN `m.zt`, takes ONE `posterior_for` pass (`use_gpu = false`), and un-standardizes with the
-frozen `m.θzt`. Returns `(θ = θ*, Z = standardized-summary, draws = 7×N physical-θ)`; row 1 of
-`draws` is ρ_true. CPU-only.
+"The mixture the loaded pre-registration prescribes, or `nothing` under a v1 (scalar) consts file."
+const GATE_IMSIZE_SET     = isdefined(@__MODULE__, :SBC_IMSIZE_SET)     ? SBC_IMSIZE_SET     : nothing
+const GATE_IMSIZE_WEIGHTS = isdefined(@__MODULE__, :SBC_IMSIZE_WEIGHTS) ? SBC_IMSIZE_WEIGHTS : nothing
+
+"`true` only under a pre-registration that sets `SBC_REQUIRE_IMSIZE_PROVENANCE` (the v2 amendment)."
+const GATE_REQUIRE_IMSIZE_PROVENANCE =
+    isdefined(@__MODULE__, :SBC_REQUIRE_IMSIZE_PROVENANCE) ? SBC_REQUIRE_IMSIZE_PROVENANCE : false
+
 """
-function draw_simulate_infer(m, rng; G::Integer, imsize = SBC_IMSIZE, N = SBC_L,
+    gate_imsize(rng; imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                imsize_weights = GATE_IMSIZE_WEIGHTS) -> Tuple{Int,Int}
+
+Resolve ONE concrete image size for a gate draw.
+
+  • A CONCRETE `imsize` tuple wins outright and consumes nothing from `rng` (the v1 path, and the
+    path fixture/unit tests take when they pass an explicit small size).
+  • The `:mixture` sentinel (or `nothing`) draws from `imsize_set` under `imsize_weights` via the
+    SHARED `ProteinCoLoc.sample_imsize`, consuming exactly one number from `rng`.
+  • The sentinel WITHOUT a mixture is an error, never a silent fallback to a single size — that
+    silent fallback is precisely the failure mode `SBC_IMSIZE = :mixture` exists to prevent.
+"""
+function gate_imsize(rng; imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                     imsize_weights = GATE_IMSIZE_WEIGHTS)
+    imsize isa Tuple{Integer,Integer} && return (Int(imsize[1]), Int(imsize[2]))
+    (imsize === :mixture || imsize === nothing) || error(
+        "gate_imsize: unrecognised imsize $(repr(imsize)) — expected a (H, W) tuple or the " *
+        "`:mixture` sentinel")
+    imsize_set === nothing && error(
+        "gate_imsize: imsize is the `:mixture` sentinel but no `imsize_set` is available. The " *
+        "amended pre-registration (SBC_IMSIZE_SET/SBC_IMSIZE_WEIGHTS) must be loaded, or a " *
+        "concrete imsize passed. Falling back to a single size would invalidate the SBC proof.")
+    imsize_weights === nothing && error("gate_imsize: imsize_set given without imsize_weights")
+    return ProteinCoLoc.sample_imsize(rng; imsize_set = imsize_set,
+                                      imsize_weights = imsize_weights)
+end
+
+"""
+    draw_simulate_infer(m, rng; G, imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                        imsize_weights = GATE_IMSIZE_WEIGHTS, N = SBC_L,
+                        sim = default_simulator())
+
+ONE θ*~π → simulate → CPU-infer step for a `G×G` gate. Draws a prior θ*, resolves the image size
+(scalar, or a per-draw `gate_imsize` draw off the SAME gate `rng` under the F5 mixture), simulates
+a channel pair, runs it through the grid-parametrized `patch_summary(mci, G)` summary, standardizes
+with the FROZEN `m.zt`, takes ONE `posterior_for` pass (`use_gpu = false`), and un-standardizes with
+the frozen `m.θzt`. Returns `(θ = θ*, Z = standardized-summary, draws = 7×N physical-θ,
+imsize = the REALISED size)`; row 1 of `draws` is ρ_true. CPU-only.
+
+The realised size is RETURNED, never reconstructed: the F6 lesson is that the image-size
+distribution a number was produced under must be recorded at the point of drawing.
+"""
+function draw_simulate_infer(m, rng; G::Integer, imsize = SBC_IMSIZE,
+                             imsize_set = GATE_IMSIZE_SET,
+                             imsize_weights = GATE_IMSIZE_WEIGHTS, N = SBC_L,
                              sim = default_simulator())
     θ   = sim.sample_prior(rng)                                             # θ* ~ π(θ)
-    mci = sim.build_mci(sim.simulate_pair(rng, θ; imsize = imsize))         # forward sim → MCI
+    isz = gate_imsize(rng; imsize = imsize, imsize_set = imsize_set,        # F5 per-draw size
+                      imsize_weights = imsize_weights)
+    mci = sim.build_mci(sim.simulate_pair(rng, θ; imsize = isz))            # forward sim → MCI
     Z   = ProteinCoLoc.standardize_summary(
               ProteinCoLoc.encode_d01(ProteinCoLoc.patch_summary(mci, G)), m.zt, :min)
     # CAVEAT (see the GLOBAL-RNG SEEDING block above): `posterior_for` → `sampleposterior` takes
@@ -134,26 +200,37 @@ function draw_simulate_infer(m, rng; G::Integer, imsize = SBC_IMSIZE, N = SBC_L,
     # `seed_gate_global!(G)` to have been called by the enclosing gate arm.
     draws_std = ProteinCoLoc.posterior_for(m.estimator, Z; N = N, use_gpu = false)  # CPU gate
     draws     = StatsBase.reconstruct(m.θzt, draws_std)                    # 7×N physical (Pitfall 5)
-    return (θ = θ, Z = Z, draws = draws)
+    return (θ = θ, Z = Z, draws = draws, imsize = isz)
 end
 
 """
-    draw_simulate_infer_paired(m, rng; G, imsize = SBC_IMSIZE, N = SBC_L, sim = default_simulator())
+    draw_simulate_infer_paired(m, rng; G, imsize = SBC_IMSIZE, imsize_set = GATE_IMSIZE_SET,
+                               imsize_weights = GATE_IMSIZE_WEIGHTS, N = SBC_L,
+                               sim = default_simulator())
 
 The paired-draw path for the Δρ SBC and the BF gate (D-01): draw TWO INDEPENDENT priors θ*_s,
 θ*_c, simulate/encode/standardize both against the FROZEN `m.zt`, and return the N un-standardized
 ρ_true draw vectors for each PLUS the standardized paired summaries `Zs`/`Zc` (the BF gate encodes
-`pair_encode(Zs, Zc)`). Returns `(θs, θc, ρs, ρc, Zs, Zc)`. CPU-only.
+`pair_encode(Zs, Zc)`). Returns `(θs, θc, ρs, ρc, Zs, Zc, imsize)`. CPU-only.
+
+ONE SHARED IMAGE SIZE (07-GATE-AMENDMENT §4, required change 2): under the F5 mixture the size is
+drawn ONCE and used for BOTH members of the pair. A real sample/control pair comes from a single
+acquisition configuration; drawing two independent sizes would inject a confound the forward model
+does not contain.
 """
-function draw_simulate_infer_paired(m, rng; G::Integer, imsize = SBC_IMSIZE, N = SBC_L,
+function draw_simulate_infer_paired(m, rng; G::Integer, imsize = SBC_IMSIZE,
+                                    imsize_set = GATE_IMSIZE_SET,
+                                    imsize_weights = GATE_IMSIZE_WEIGHTS, N = SBC_L,
                                     sim = default_simulator())
     θs   = sim.sample_prior(rng)
-    mcis = sim.build_mci(sim.simulate_pair(rng, θs; imsize = imsize))
+    isz  = gate_imsize(rng; imsize = imsize, imsize_set = imsize_set,   # ONE size for BOTH members
+                       imsize_weights = imsize_weights)
+    mcis = sim.build_mci(sim.simulate_pair(rng, θs; imsize = isz))
     Zs   = ProteinCoLoc.standardize_summary(
                ProteinCoLoc.encode_d01(ProteinCoLoc.patch_summary(mcis, G)), m.zt, :min)
 
     θc   = sim.sample_prior(rng)
-    mcic = sim.build_mci(sim.simulate_pair(rng, θc; imsize = imsize))
+    mcic = sim.build_mci(sim.simulate_pair(rng, θc; imsize = isz))       # SAME size, deliberately
     Zc   = ProteinCoLoc.standardize_summary(
                ProteinCoLoc.encode_d01(ProteinCoLoc.patch_summary(mcic, G)), m.zt, :min)
 
@@ -163,7 +240,7 @@ function draw_simulate_infer_paired(m, rng; G::Integer, imsize = SBC_IMSIZE, N =
     # reproducible; `rng` covers only the prior draws and the forward simulation.
     ρs = ProteinCoLoc.rho_draws(m.estimator, Zs, m.θzt; N = N, use_gpu = false)  # sample ρ_true
     ρc = ProteinCoLoc.rho_draws(m.estimator, Zc, m.θzt; N = N, use_gpu = false)  # control ρ_true
-    return (θs = θs, θc = θc, ρs = ρs, ρc = ρc, Zs = Zs, Zc = Zc)
+    return (θs = θs, θc = θc, ρs = ρs, ρc = ρc, Zs = Zs, Zc = Zc, imsize = isz)
 end
 
 """
@@ -174,3 +251,49 @@ Load a per-grid frozen NPE CPU-resident via `ProteinCoLoc.load_estimator` (NOT t
 consumes as `m`; the estimator is on CPU, so every gate inference is device-independent.
 """
 load_gate_model(path) = ProteinCoLoc.load_estimator(path)
+
+"""
+    realised_imsize_counts(sizes) -> Dict{Tuple{Int,Int},Int}
+
+Tally the image sizes an arm ACTUALLY drew, for the report field of the same name
+(07-GATE-AMENDMENT §4, required change 5). The realised mixture is recorded, never reconstructed
+from the weights afterwards — reconstructing it is exactly the F6 mistake.
+"""
+function realised_imsize_counts(sizes)
+    counts = Dict{Tuple{Int,Int},Int}()
+    for s in sizes
+        k = (Int(s[1]), Int(s[2]))
+        counts[k] = get(counts, k, 0) + 1
+    end
+    return counts
+end
+
+"""
+    assert_imsize_provenance(m; imsize_set = GATE_IMSIZE_SET,
+                             imsize_weights = GATE_IMSIZE_WEIGHTS,
+                             require = GATE_REQUIRE_IMSIZE_PROVENANCE) -> NamedTuple
+
+The BINDING INVARIANT of 07-GATE-AMENDMENT §4: the gate's simulate distribution must EQUAL the
+image-size distribution the gated net was TRAINED under. Reads the net's persisted provenance with
+`ProteinCoLoc.training_imsize_provenance` and returns
+`(ok, status, training = <provenance>, gate = (imsize_set, imsize_weights))`.
+
+`status` is `:ok`, or `:provenance_mismatch` when the provenance is ABSENT (`recorded = false`,
+which includes all three v1-frozen bundles) or DIFFERS from the gate mixture. When
+`require = false` (a v1 consts file, which prescribes a scalar size and predates the invariant) the
+check is reported but never blocks.
+"""
+function assert_imsize_provenance(m; imsize_set = GATE_IMSIZE_SET,
+                                  imsize_weights = GATE_IMSIZE_WEIGHTS,
+                                  require::Bool = GATE_REQUIRE_IMSIZE_PROVENANCE)
+    prov = ProteinCoLoc.training_imsize_provenance(m)
+    gate = (imsize_set = imsize_set, imsize_weights = imsize_weights)
+    require || return (ok = true, status = :not_required, training = prov, gate = gate)
+    imsize_set === nothing &&
+        return (ok = false, status = :provenance_mismatch, training = prov, gate = gate)
+    prov.recorded ||
+        return (ok = false, status = :provenance_mismatch, training = prov, gate = gate)
+    same = Tuple(prov.imsize_set) == Tuple(imsize_set) &&
+           Tuple(prov.imsize_weights) == Tuple(imsize_weights)
+    return (ok = same, status = same ? :ok : :provenance_mismatch, training = prov, gate = gate)
+end
