@@ -136,20 +136,89 @@ disjoint `rng` (prod_rng[G]) sequentially.
 """
 function sbc_ranks(m; G::Integer, M::Integer = SBC_M, L::Integer = SBC_L,
                    imsize = SBC_IMSIZE, sim = default_simulator(), rng = prod_rng(G))
-    rank_table = Matrix{Int}(undef, M, 8)
+    return sbc_ranks_and_spread(m; G = G, M = M, L = L, imsize = imsize,
+                                sim = sim, rng = rng).ranks
+end
+
+"""
+    sbc_ranks_and_spread(m; G, M = SBC_M, L = SBC_L, imsize = SBC_IMSIZE,
+                         sim = default_simulator(), rng = prod_rng(G))
+        -> (ranks, post_sd, prior_draws)
+
+The SBC rank table PLUS the spread quantities the shrinkage diagnostic needs, from the SAME
+draw→simulate→infer chain (`sbc_ranks` is a thin wrapper on this):
+
+  • `ranks`       — the `M×8` rank table (identical to `sbc_ranks`; see its docstring);
+  • `post_sd`     — `M×8`, the posterior standard deviation of the `L` draws behind each rank;
+  • `prior_draws` — `M×8`, the θ*ₚ actually drawn from π (column 8 = the paired Δρ*).
+
+Consumes the passed `rng` in EXACTLY the same order and amount as `sbc_ranks` did — the extra
+outputs are `std`/bookkeeping over samples that were already drawn — so the rank table, and every
+verdict computed from it, is unchanged.
+"""
+function sbc_ranks_and_spread(m; G::Integer, M::Integer = SBC_M, L::Integer = SBC_L,
+                              imsize = SBC_IMSIZE, sim = default_simulator(),
+                              rng = prod_rng(G))
+    rank_table  = Matrix{Int}(undef, M, 8)
+    post_sd     = Matrix{Float64}(undef, M, 8)
+    prior_draws = Matrix{Float64}(undef, M, 8)
     for i in 1:M
         # 7 marginal θ ranks from one draw→simulate→infer.
         t = draw_simulate_infer(m, rng; G = G, imsize = imsize, N = L, sim = sim)
         for p in 1:7
-            rank_table[i, p] = count(<(t.θ[p]), @view t.draws[p, :])
+            rank_table[i, p]  = count(<(t.θ[p]), @view t.draws[p, :])
+            post_sd[i, p]     = Statistics.std(@view t.draws[p, :])
+            prior_draws[i, p] = t.θ[p]
         end
         # Δρ rank from a paired draw (D-01), independent of the marginal ρ_true rank.
         pr       = draw_simulate_infer_paired(m, rng; G = G, imsize = imsize, N = L, sim = sim)
         Δρ_draws = pr.ρs .- pr.ρc
         Δρ_star  = pr.θs.ρ_true - pr.θc.ρ_true
-        rank_table[i, 8] = count(<(Δρ_star), Δρ_draws)
+        rank_table[i, 8]  = count(<(Δρ_star), Δρ_draws)
+        post_sd[i, 8]     = Statistics.std(Δρ_draws)
+        prior_draws[i, 8] = Δρ_star
     end
-    return rank_table
+    return (ranks = rank_table, post_sd = post_sd, prior_draws = prior_draws)
+end
+
+# --- Shrinkage (vacuous-pass) diagnostic — REPORTING ONLY ------------------------------------
+#
+# WHY (07-CALIBRATION-FINDINGS F3): SBC rank uniformity is a NECESSARY but not SUFFICIENT
+# calibration signal. A posterior that simply REPRODUCES THE PRIOR — i.e. the net learned nothing
+# about that parameter — yields perfectly uniform ranks BY CONSTRUCTION. The grid-4
+# `label_efficiency` column is exactly this case (post_sd/prior_sd = 0.994, shrinkage centre =
+# the prior mean), and its KS pass must never be read as evidence of calibration.
+#
+# The fix is to make the vacuous case VISIBLE, not to change the verdict: `sbc_gate` now reports a
+# per-parameter `shrinkage = mean(post_sd) / prior_sd` alongside every p-value, plus a boolean
+# `vacuous` annotation. Both are DIAGNOSTIC ONLY — neither enters `ks_pass`, `ece_pass` or
+# `passed`, and no pre-registered `gate_consts_<G>.jl` threshold is touched (that file is frozen
+# pre-registration; adding a pass condition here would be post-hoc re-registration).
+#
+# `SBC_VACUOUS_SHRINKAGE` is therefore a REPORTING LABEL CUTOFF, deliberately defined here and NOT
+# in the frozen consts: shrinkage ≥ 0.95 means the posterior retains ≥95% of the prior spread, i.e.
+# essentially no information was gained about that parameter.
+const SBC_VACUOUS_SHRINKAGE = 0.95
+
+"""
+    sbc_shrinkage(post_sd, prior_draws) -> (shrinkage, post_sd_mean, prior_sd, vacuous)
+
+Per-parameter posterior-to-prior spread ratio for the 8 SBC columns. `prior_sd` is the standard
+deviation of the M θ* values ACTUALLY drawn from π in this run (an empirical prior sample — no
+analytic form is assumed, which matters because ρ_true = `ghat(μ*)` has no closed-form sd);
+`post_sd_mean` is the mean over the M draws of the posterior sd; `shrinkage` is their ratio.
+
+`shrinkage ≈ 1` ⇒ the posterior is the prior ⇒ that column's rank uniformity is VACUOUS and is
+flagged `vacuous = true` (at the `SBC_VACUOUS_SHRINKAGE` reporting cutoff). Diagnostic only —
+never a pass/fail input.
+"""
+function sbc_shrinkage(post_sd::AbstractMatrix, prior_draws::AbstractMatrix)
+    n = size(post_sd, 2)
+    psd_mean = [Statistics.mean(view(post_sd, :, p)) for p in 1:n]
+    prior_sd = [Statistics.std(view(prior_draws, :, p)) for p in 1:n]
+    shrink   = [prior_sd[p] > 0 ? psd_mean[p] / prior_sd[p] : NaN for p in 1:n]
+    vacuous  = [isfinite(s) && s >= SBC_VACUOUS_SHRINKAGE for s in shrink]
+    return (shrinkage = shrink, post_sd_mean = psd_mean, prior_sd = prior_sd, vacuous = vacuous)
 end
 
 """
@@ -225,21 +294,38 @@ The aggregated per-grid SBC ship-gate verdict: runs the fresh-seeded M×L rank t
 each of the 8 columns (7 θ + Δρ) computes KS/χ² uniformity, the ECE/MCE `CalibrationResult`, and
 its traffic-light. `passed` is `all(ks_p > SBC_KS_ALPHA) && all(ece ≤ SBC_ECE_GREEN)` across the 8
 columns. CPU-only, pre-registered thresholds, fresh disjoint stream.
+
+Each `per_param` entry ALSO carries the diagnostic `shrinkage = post_sd/prior_sd` (with its
+`post_sd`/`prior_sd` components) and a `vacuous` flag, and the report carries the list of
+`vacuous_params`. These make a "posterior == prior" column — which passes rank uniformity BY
+CONSTRUCTION while having learned nothing (F3) — impossible to mis-read as calibration evidence.
+They are REPORTING ONLY: `ks_pass`, `ece_pass` and `passed` are computed exactly as before.
 """
 function sbc_gate(m; G::Integer, M::Integer = SBC_M, L::Integer = SBC_L,
                   bins::Integer = SBC_BINS, imsize = SBC_IMSIZE,
                   sim = default_simulator(), rng = prod_rng(G))
-    ranks = sbc_ranks(m; G = G, M = M, L = L, imsize = imsize, sim = sim, rng = rng)
+    sr    = sbc_ranks_and_spread(m; G = G, M = M, L = L, imsize = imsize, sim = sim, rng = rng)
+    ranks = sr.ranks
+    shr   = sbc_shrinkage(sr.post_sd, sr.prior_draws)
     per = NamedTuple[]
     for p in 1:8
         u   = sbc_uniformity(view(ranks, :, p); L = L, bins = bins)
         cal = sbc_calibration(collect(view(ranks, :, p)); L = L, n_bins = bins)
         push!(per, (label = SBC_PARAM_LABELS[p], ks_p = u.ks_p, chi2_p = u.chi2_p,
-                    ece = cal.ece, mce = cal.mce, light = sbc_traffic_light(cal.ece)))
+                    ece = cal.ece, mce = cal.mce, light = sbc_traffic_light(cal.ece),
+                    # --- diagnostic only; NOT inputs to any pass/fail decision (F3) ---
+                    shrinkage = shr.shrinkage[p], post_sd = shr.post_sd_mean[p],
+                    prior_sd = shr.prior_sd[p], vacuous = shr.vacuous[p]))
     end
     ks_pass  = all(x -> x.ks_p > SBC_KS_ALPHA, per)
     ece_pass = all(x -> x.ece <= SBC_ECE_GREEN, per)
+    # `passed` is UNCHANGED: the shrinkage diagnostic annotates the report so a vacuous (posterior
+    # == prior) column cannot be mis-read as calibration evidence, but it is deliberately NOT a
+    # gate condition — the pre-registered gate_consts_<G>.jl thresholds are frozen.
     return (grid = Int(G), M = Int(M), L = Int(L), ranks = ranks, per_param = per,
+            post_sd = sr.post_sd, prior_draws = sr.prior_draws,
+            vacuous_cutoff = SBC_VACUOUS_SHRINKAGE,
+            vacuous_params = [SBC_PARAM_LABELS[p] for p in 1:8 if shr.vacuous[p]],
             ks_pass = ks_pass, ece_pass = ece_pass, passed = ks_pass && ece_pass,
             caption = SBC_CAPTION)
 end

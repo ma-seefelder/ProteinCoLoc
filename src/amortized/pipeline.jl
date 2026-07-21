@@ -130,7 +130,10 @@ Run the FULL per-grid pipeline ONCE for any `grid` and return a populated `Estim
   4. **train_npe / train_ratio** (both `use_gpu`-plumbed), on the frozen-`zt` standardized pool.
   5. **fit_ood_nulls** on the TRAIN-ONLY ID pool (density channel).
   6. **persist** all three CPU-resident (`save_estimator`/`save_ratio`/`save_ood_nulls`) under
-     `artifacts_root/grid_G/`.
+     `artifacts_root/grid_G/`, each carrying the TRAINING IMAGE-SIZE PROVENANCE
+     (`imsize_set`/`imsize_weights`/`imsize_source`) in its `meta` — read it back with
+     `training_imsize_provenance`. When `datagen` is INJECTED the keywords do not describe the
+     pool, so the provenance is recorded as `:unknown` (never guessed).
 
 The returned bundle's `calibration` is a NOT-YET-GATED placeholder the per-grid D-05 ship-gate
 fills. **-t auto (peer requirement):** the datagen step parallelizes only when
@@ -163,12 +166,24 @@ function _train_grid_pipeline(grid::Integer;
     end
 
     # (2) datagen (real path launches the Philox-per-index simulator; `-t auto` to parallelize).
+    #
+    # PROVENANCE (07-CALIBRATION-FINDINGS F6): the training image-size distribution is the single
+    # most consequential un-recorded training knob — a net trained at one imsize is NOT known to be
+    # calibrated at another (F5, covariate shift). We therefore capture the ACTUAL distribution the
+    # pool was drawn from and persist it in every artifact's `meta` below. When the caller INJECTS
+    # `datagen`, the `imsize_set`/`imsize_weights` keywords do NOT describe the returned pool, so we
+    # record them as `:unknown` rather than a guess.
+    injected_datagen = datagen !== nothing
+    weights = imsize_weights === nothing ?
+        Tuple(fill(1.0 / length(imsize_set), length(imsize_set))) : imsize_weights
     if datagen === nothing
-        weights = imsize_weights === nothing ?
-            Tuple(fill(1.0 / length(imsize_set), length(imsize_set))) : imsize_weights
         datagen = () -> generate_samples(n_pairs; grid = grid, master_seed = master_seed,
                                          imsize_set = imsize_set, imsize_weights = weights)
     end
+    imsize_prov = injected_datagen ?
+        (imsize_set = :unknown, imsize_weights = :unknown, imsize_source = :injected_datagen) :
+        (imsize_set = Tuple(imsize_set), imsize_weights = Tuple(weights),
+         imsize_source = :generate_samples)
     data = datagen()
     θ    = data.theta                                   # 7×N
     Zraw = data.summary_min                             # 2·G²×N (raw, pre-standardization)
@@ -197,9 +212,11 @@ function _train_grid_pipeline(grid::Integer;
 
     # (6) persist all three CPU-resident under artifacts_root/grid_G/ (atomic; Pitfall 4).
     save_estimator(npe_path, npe.estimator, npe.θzt, zt, npe.arch;
-                   meta = (; grid = Int(grid), n_pairs = N, use_gpu = use_gpu))
-    save_ratio(ratio_path, ratio; meta = (; grid = Int(grid), ratio_n = ratio_n))
-    save_ood_nulls(ood_path, ood_nulls; meta = (; grid = Int(grid), n_train = ntr))
+                   meta = (; grid = Int(grid), n_pairs = N, use_gpu = use_gpu,
+                           master_seed = master_seed, imsize_prov...))
+    save_ratio(ratio_path, ratio; meta = (; grid = Int(grid), ratio_n = ratio_n, imsize_prov...))
+    save_ood_nulls(ood_path, ood_nulls;
+                   meta = (; grid = Int(grid), n_train = ntr, imsize_prov...))
 
     return EstimatorBundle(Int(grid), npe.estimator, ratio, ood_nulls, zt, npe.θzt,
                            _placeholder_calibration(grid))

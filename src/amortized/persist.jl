@@ -121,6 +121,42 @@ function _estimator_ok(path)
     end
 end
 
+# ============================ Training image-size provenance (F6) ============================
+
+"""
+    training_imsize_provenance(x) -> NamedTuple
+
+Read back the TRAINING IMAGE-SIZE DISTRIBUTION an artifact was trained under, from a loaded
+artifact (the NamedTuple `load_estimator` returns), a bare `meta` NamedTuple, or `nothing`.
+
+Returns `(imsize_set, imsize_weights, imsize_source, recorded)`. `recorded = false` — with all
+three fields `:unknown` — for any artifact written BEFORE this provenance key existed (every
+bundle up to and including the frozen grid_4 / grid_8 / grid_16 stores) and for any pipeline run
+whose `datagen` was injected. **The unrecorded case is reported as `:unknown`, never inferred and
+never back-filled with the current default**: `default_imsize_for(G)` is what a run WOULD use
+today, not evidence of what an existing artifact was trained on.
+
+This exists because train/gate image-size agreement is a load-bearing calibration assumption: an
+SBC pass established at one image size is not demonstrated to transfer to another (see
+`.planning/phases/07-productionization-conditional-on-go/07-CALIBRATION-FINDINGS.md`, F5/F6).
+"""
+function training_imsize_provenance(x)
+    meta = if x === nothing
+        nothing
+    elseif x isa NamedTuple && hasproperty(x, :meta)
+        x.meta
+    else
+        x
+    end
+    unknown = (imsize_set = :unknown, imsize_weights = :unknown,
+               imsize_source = :unknown, recorded = false)
+    (meta isa NamedTuple && hasproperty(meta, :imsize_set)) || return unknown
+    return (imsize_set     = meta.imsize_set,
+            imsize_weights = hasproperty(meta, :imsize_weights) ? meta.imsize_weights : :unknown,
+            imsize_source  = hasproperty(meta, :imsize_source)  ? meta.imsize_source  : :unknown,
+            recorded       = meta.imsize_set !== :unknown)
+end
+
 # ============================ NRE ratio estimator (CPU-resident) =============================
 
 """

@@ -8,6 +8,7 @@ import Statistics: cor, mean
 import StatsBase
 import JLD2
 import Pkg
+import Random
 
 using ProteinCoLoc
 using Random123
@@ -680,6 +681,36 @@ end
     Zq = Float32.(ProteinCoLoc.standardize_summary(
         vcat(randn(nc) .* 2 .+ 3, Float64.(rand(Bool, nc))), b2.zt, :min))
     @test size(ProteinCoLoc.posterior_for(b2.npe, Zq; N = 8, use_gpu = false), 1) == 7
+
+    # --- TRAINING IMAGE-SIZE PROVENANCE (F6): persisted in meta, never guessed ----------------
+    # This fixture INJECTED `datagen`, so the imsize_set keyword does NOT describe the pool: the
+    # provenance must be recorded as :unknown rather than back-filled with default_imsize_for(G).
+    @test isdefined(ProteinCoLoc, :training_imsize_provenance)
+    for f in ("npe_$(G).jld2", "ratio_$(G).jld2", "ood_nulls_$(G).jld2")
+        meta = JLD2.load(joinpath(gdir, f))["meta"]
+        pv   = ProteinCoLoc.training_imsize_provenance(meta)
+        @test hasproperty(meta, :imsize_set)          # the key EXISTS in every artifact
+        @test pv.imsize_set == :unknown               # injected datagen ⇒ honestly unknown
+        @test pv.imsize_source == :injected_datagen
+        @test pv.recorded == false
+    end
+
+    # The real (non-injected) path records the ACTUAL set and weights it drew from. Exercising it
+    # here would need the forward simulator + a full pool, so assert the accessor's contract on a
+    # recorded meta of exactly the shape `_train_grid_pipeline` writes on the generate_samples path.
+    rec = ProteinCoLoc.training_imsize_provenance(
+              (; imsize_set = ((256, 256), (512, 512)), imsize_weights = (0.5, 0.5),
+                 imsize_source = :generate_samples))
+    @test rec.recorded == true
+    @test rec.imsize_set == ((256, 256), (512, 512))
+    @test rec.imsize_weights == (0.5, 0.5)
+
+    # A PRE-PROVENANCE artifact (the frozen grid_4/8/16 bundles) reports :unknown — the accessor
+    # must NEVER substitute today's default_imsize_for(G) for an unrecorded historical bundle.
+    old = ProteinCoLoc.training_imsize_provenance((; grid = 16, n_pairs = 80_000, use_gpu = false))
+    @test old.recorded == false
+    @test old.imsize_set == :unknown
+    @test ProteinCoLoc.training_imsize_provenance(nothing).recorded == false
 end
 
 ##########################################################################################
@@ -752,6 +783,56 @@ include(joinpath(@__DIR__, "gate", "run_gate.jl"))   # brings gate_consts + harn
     @test length(v.per_param) == 8
     @test v.passed isa Bool
     @test v.caption == SBC_CAPTION
+
+    # --- SHRINKAGE (vacuous-pass) DIAGNOSTIC: reporting only, verdicts untouched (F3) ---------
+    # A rank-uniformity pass is NECESSARY but not SUFFICIENT: a posterior that merely reproduces
+    # the prior gives uniform ranks BY CONSTRUCTION. Every column must therefore report
+    # post_sd/prior_sd so such a column cannot be read as calibration evidence.
+    @test all(x -> hasproperty(x, :shrinkage) && hasproperty(x, :post_sd) &&
+                   hasproperty(x, :prior_sd) && hasproperty(x, :vacuous), v.per_param)
+    @test all(x -> isfinite(x.post_sd) && x.post_sd >= 0, v.per_param)
+    @test all(x -> x.vacuous isa Bool, v.per_param)
+    @test hasproperty(v, :vacuous_params) && v.vacuous_cutoff == SBC_VACUOUS_SHRINKAGE
+    # The flag is exactly the cutoff applied to the reported ratio (no hidden second rule).
+    @test all(x -> !isfinite(x.shrinkage) ||
+                   (x.vacuous == (x.shrinkage >= SBC_VACUOUS_SHRINKAGE)), v.per_param)
+
+    # The diagnostic must NOT perturb the gate: `sbc_ranks_and_spread` consumes the passed rng in
+    # the SAME order and amount as the old `sbc_ranks` body did (the extra outputs are std/
+    # bookkeeping over samples that were ALREADY drawn), so the rank table — and hence every
+    # verdict computed from it — is ==-identical.
+    #
+    # SEEDING NOTE: `posterior_for` → `NeuralEstimators.sampleposterior` takes no rng, so the flow's
+    # posterior draws come from the GLOBAL RNG; the passed `prod_rng(G)` only drives the prior draw
+    # and the forward simulation. Reproducing a rank table therefore requires pinning BOTH streams.
+    # This is a pre-existing property of the sampler, independent of this diagnostic.
+    _ranks_via(f) = (Random.seed!(20260721); f())
+    base = _ranks_via(() -> sbc_ranks(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L,
+                                      imsize = (64, 64), sim = sim, rng = prod_rng(G)))
+    sr = _ranks_via(() -> sbc_ranks_and_spread(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L,
+                                               imsize = (64, 64), sim = sim, rng = prod_rng(G)))
+    @test sr.ranks == base                       # spread-returning chain ⇒ identical ranks
+    @test size(sr.post_sd) == (SBC_FIX_M, 8)
+    @test size(sr.prior_draws) == (SBC_FIX_M, 8)
+
+    vA = _ranks_via(() -> sbc_gate(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L, bins = SBC_FIX_BINS,
+                                   imsize = (64, 64), sim = sim, rng = prod_rng(G)))
+    vB = _ranks_via(() -> sbc_gate(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L, bins = SBC_FIX_BINS,
+                                   imsize = (64, 64), sim = sim, rng = prod_rng(G)))
+    @test vA.ranks == base                       # the gate's ranks are the unchanged rank table
+    @test vB.ranks == vA.ranks
+    @test vB.passed == vA.passed && vB.ks_pass == vA.ks_pass && vB.ece_pass == vA.ece_pass
+    @test [x.ks_p for x in vB.per_param] == [x.ks_p for x in vA.per_param]
+    @test [x.ece for x in vB.per_param] == [x.ece for x in vA.per_param]
+    # The verdict fields are a pure function of the ranks — the shrinkage columns feed nothing.
+    @test vA.passed == (vA.ks_pass && vA.ece_pass)
+
+    # A DEGENERATE posterior==prior column is flagged vacuous; an informative one is not.
+    prior_col = randn(200, 1)
+    vac = sbc_shrinkage(fill(StatsBase.std(prior_col), 200, 1), prior_col)
+    @test vac.vacuous[1] == true                     # posterior spread == prior spread
+    inf = sbc_shrinkage(fill(0.05 * StatsBase.std(prior_col), 200, 1), prior_col)
+    @test inf.vacuous[1] == false                    # 20x tighter than the prior
 
     # run_gate is invocable before any grid is trained: honest :not_trained status, no crash.
     rep = run_gate(G; sbc = true, artifacts_root = mktempdir(), sim = sim, write_report = false)
