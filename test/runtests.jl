@@ -765,6 +765,15 @@ end
 include(joinpath(@__DIR__, "gpu_smoke.jl"))
 
 ##########################################################################################
+### Windowed sub-tile local colocalization map (07-08, PROD-02)
+###
+### The in-process registration bridge (`_ensure_grid_registered`, wave 6 — Artifacts is not
+### wired yet) plus `local_coloc_map`: r×c tile grid, per-tile Δρ finiteness, degenerate-tile
+### sentinel, and the Phase-12 extension point left clean.
+##########################################################################################
+include(joinpath(@__DIR__, "test_local_map.jl"))
+
+##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):
 ###
 ### The former public-API tests exercising the Turing/ADVI path — `colocalization()`,
