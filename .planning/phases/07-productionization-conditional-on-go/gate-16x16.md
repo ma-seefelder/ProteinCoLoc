@@ -1,91 +1,69 @@
-# 16×16 Ship-Gate Outcome (D-05, PROD-02) — SHIP-WITH-CAVEAT grid
+# 16×16 Ship-Gate Outcome (D-05, PROD-02)
 
-Recorded CPU-reproducible SBC / BF / OOD ship-gate for the **16×16 fine grid**, run through the
-per-grid machinery (`test/gate/run_gate.jl --grid 16 --sbc --bf --ood`) against the **frozen 16×16
-pre-registration** `test/gate/gate_consts_16.jl` (committed at `7e2318b`, byte-unchanged through the
-run).
+Recorded CPU-reproducible SBC / BF / OOD ship-gate for the **16×16 fine grid — SHIP-WITH-CAVEAT**,
+run through the per-grid machinery (`test/gate/run_gate.jl --grid 16 --sbc --bf --ood`) against the
+**frozen 16×16 pre-registration** `test/gate/gate_consts_16.jl` (committed 7e2318b, *before* the run).
 
-- **Gate stream (anti-snooping, T-7-08):** `PROD_SEED[16] = 0xb906f369f6cacf91` — the fresh disjoint
-  Philox draw, provably distinct from the spike training seed `NPE_MASTER_SEED = 0xC0FFEE`, the
-  spike validation seed `VAL_MASTER_SEED = 0x5BC0FFEE`, the datagen seed
-  `DEFAULT_MASTER_SEED = 0x1`, and the sibling `PROD_SEED[8] = 0x8b39fecd4e2bcceb` /
+- **Gate stream (anti-snooping, T-7-08):** `PROD_SEED[16] = 0xb906f369f6cacf91`
+  (= 13 332 611 383 314 534 289) — the fresh disjoint Philox draw, provably distinct from the spike
+  training seed `NPE_MASTER_SEED = 0xC0FFEE`, the spike validation seed `VAL_MASTER_SEED = 0x5BC0FFEE`,
+  the datagen seed `DEFAULT_MASTER_SEED = 0x1`, and the sibling `PROD_SEED[8] = 0x8b39fecd4e2bcceb` /
   `PROD_SEED[4] = 0x8c0ad97b99bd6031` (the grid index G=16 keys a different Philox counter).
-- **Reproducibility (T-7-07):** every inference `use_gpu = false` against the CPU-resident frozen
-  net (`load_estimator`); the gate was **not** launched with `-t auto` (that is datagen-only,
-  determinism-pinned here).
-- **Report artifact:** `artifacts/grid_16/gate_report_16.jld2` (gitignored per repo policy —
-  regenerable cache; the recorded numbers below are the committed deliverable).
+- **Reproducibility (T-7-07):** every inference `use_gpu = false` against the CPU-resident frozen net
+  (`load_estimator`); the gate was **not** launched with `-t auto` (that is datagen-only —
+  determinism-pinned here). Wall clock ≈ 16.5 min for the full `--sbc --bf --ood` run.
+- **Report artifact:** `artifacts/grid_16/gate_report_16.jld2`, `status = :ran` (gitignored per repo
+  policy — regenerable cache; the recorded numbers below are the committed deliverable).
+
+## Minimum-image-size caveat (the registry entry MUST carry this)
+
+**16×16 is informative only on images ≥ 512².** At the coarse grids' `SBC_IMSIZE = (256,256)` each
+16×16 patch spans only 256 px, which is marginal after background exclusion — the ≥15-survivor floor
+is not reliably cleared. The 16×16 pre-registration therefore raises `SBC_IMSIZE` to **(512, 512)**
+(each 32×32 patch carries 1024 px), and this is the larger reported simulate_pair image size relative
+to the 8×8 and 4×4 gates *by design*. Any registry/user-facing entry for grid 16 must state the
+≥512² minimum-image-size requirement; applying the 16×16 estimator to 256² data is out of its
+validated domain.
 
 ## Trained bundle under test
 
-The 16×16 bundle was produced by `_train_grid_pipeline(16)` (the shared 07-03 per-grid pipeline) in a
-**prior session** (artifacts timestamped 2026-07-20 18:22); this plan resumed at the gate run. The
-knobs below are read **directly from the persisted artifact metadata** — the values that are not
-persisted are marked as such rather than reconstructed.
+`_train_grid_pipeline(16)` (the shared 07-03 per-grid pipeline), datagen launched under `julia -t auto`.
 
 | Knob | Value | Source |
 |------|-------|--------|
-| datagen `n_pairs` | 80 000 | `npe_16.jld2` `meta.n_pairs` |
-| training device | CPU (`use_gpu = false`) | `npe_16.jld2` `meta.use_gpu` |
-| NPE architecture | `d_in = 512`, `D = 7`, `dstar = 64`, depth 3 × width 256, 10 coupling layers, flow 2×128 | `npe_16.jld2` `arch` |
-| NRE | `ratio_n = 80 000`, `num_summaries = 64` | `ratio_16.jld2` `meta` + gate runtime log |
-| OOD nulls | fitted on `n_train = 68 000` TRAIN-ONLY ID rows | `ood_nulls_16.jld2` `meta` |
-| persistence | CPU-resident `Flux.state` | all three load CPU-only, finite draws |
-| datagen `imsize_set` | **not recorded** in artifact metadata | `_train_grid_pipeline` persists only `grid`/`n_pairs`/`use_gpu` (pipeline.jl:200–202); the plan specified `default_imsize_for(16)` (≥512²-biased) |
-| NPE/NRE early-stop epochs, wall time | **not recorded** | no training log retained |
+| datagen `n_pairs` | 80 000 | `npe_16.jld2` meta (`= default_npairs_for(16)`) |
+| train/val split | 68 000 train / 12 000 val | `ood_nulls_16.jld2` meta `n_train` (`val_frac = 0.15`) |
+| datagen `imsize_set` | **not recorded in the persisted metadata** | `_train_grid_pipeline` does not persist `imsize_set`; the pipeline default `default_imsize_for(16)` is the ≥512²-biased set `((512,512),(1024,1024),(1376,1028),(2048,2048))` (Pitfall 2). This is a *provenance gap* — the realized training image distribution cannot be re-derived from the artifacts alone. |
+| NPE arch | `d_in = 512`, `D = 7`, `dstar = 64`, depth 3 × width 256, 10 coupling layers (flow 2×128) | `npe_16.jld2` arch |
+| NPE device | `use_gpu = false` (CPU) | `npe_16.jld2` meta |
+| NRE | `input_dim = 1280` (`= ratio_input_dim(16) = 5·16²`), `num_summaries = 64`, summary width 256, `ratio_n = 80 000` | `ratio_16.jld2` |
+| persistence | CPU-resident `Flux.state` | `npe_16.jld2` / `ratio_16.jld2` / `ood_nulls_16.jld2` load CPU-only, finite draws |
 
-`summary_dim(16) = 512`, `cont_rows(16) = 256`, `ratio_input_dim(16) = 1280` — the `d_in = 512` in the
-persisted `arch` confirms the bundle is genuinely the 16×16 grid, not a mis-keyed coarse-grid net.
+## SBC — Simulation-Based Calibration (M = 2000, L = 999, 50 bins, `SBC_IMSIZE = (512,512)`)
 
-## SBC — Simulation-Based Calibration (M=2000, L=999, 50 bins, `SBC_IMSIZE = (512,512)`)
+Coded gate verdict (`sbc_gate`, sbc.jl): `passed = all(KS p > SBC_KS_ALPHA) && all(ECE ≤ SBC_ECE_GREEN)`
+across the 8 columns. `SBC_KS_ALPHA = 0.05`, `SBC_ECE_GREEN = 0.05`. The χ² column is computed and
+reported for diagnostics but is **not** part of the coded `passed` conjunction.
 
-Coded gate verdict (`sbc_gate`, sbc.jl): `passed = all(KS p > SBC_KS_ALPHA) && all(ECE ≤
-SBC_ECE_GREEN)` across the 8 columns. Pre-registered `SBC_KS_ALPHA = 0.05`, `SBC_ECE_GREEN = 0.05`.
-The χ² column is computed and reported for diagnostics but is **not** part of the coded `passed`
-conjunction.
+| Parameter | KS p | χ² p | ECE | MCE | ECE light | KS pass (α = 0.05) |
+|-----------|------|------|-----|-----|-----------|--------------------|
+| ρ_true | 0.000703 | 0.01483 | 0.02403 | 0.99 | 🟢 green | **fail** |
+| spillover | 0.002749 | 0.001024 | 0.01068 | 0.99 | 🟢 green | **fail** |
+| autofluorescence | 0.3363 | 5.904e-5 | 0.008921 | 0.99 | 🟢 green | pass |
+| label_efficiency | 7.149e-13 | 1.208e-9 | 0.01134 | 0.99 | 🟢 green | **fail** |
+| shift_dx | 0.01671 | 0.001438 | 0.01458 | 0.99 | 🟢 green | **fail** |
+| shift_dy | 0.1964 | 0.002462 | 0.008553 | 0.99 | 🟢 green | pass |
+| noise | 0.2835 | 1.033e-5 | 0.008184 | 0.99 | 🟢 green | pass |
+| Δρ (paired, D-01) | 0.1614 | 0.8971 | 0.005974 | 0.99 | 🟢 green | pass |
 
-Note the raised gate image size: `SBC_IMSIZE = (512,512)` (vs `(256,256)` for the 8×8 and 4×4 gates)
-is itself part of the frozen 16×16 pre-registration — each 32×32 patch carries 1024 px, clearing the
-≥15-survivor floor.
-
-| Parameter | KS p | threshold | KS pass | χ² p | ECE | threshold | MCE | ECE light |
-|-----------|------|-----------|---------|------|-----|-----------|-----|-----------|
-| ρ_true | 0.000703 | > 0.05 | **fail** | 0.01483 | 0.02403 | ≤ 0.05 | 0.99 | 🟢 green |
-| spillover | 0.002749 | > 0.05 | **fail** | 0.001024 | 0.01068 | ≤ 0.05 | 0.99 | 🟢 green |
-| autofluorescence | 0.3363 | > 0.05 | pass | 5.904e-5 | 0.008921 | ≤ 0.05 | 0.99 | 🟢 green |
-| label_efficiency | 7.149e-13 | > 0.05 | **fail** | 1.208e-9 | 0.01134 | ≤ 0.05 | 0.99 | 🟢 green |
-| shift_dx | 0.01671 | > 0.05 | **fail** | 0.001438 | 0.01458 | ≤ 0.05 | 0.99 | 🟢 green |
-| shift_dy | 0.1964 | > 0.05 | pass | 0.002462 | 0.008553 | ≤ 0.05 | 0.99 | 🟢 green |
-| noise | 0.2835 | > 0.05 | pass | 1.033e-5 | 0.008184 | ≤ 0.05 | 0.99 | 🟢 green |
-| Δρ (paired, D-01) | 0.1614 | > 0.05 | pass | 0.8971 | 0.005974 | ≤ 0.05 | 0.99 | 🟢 green |
-
-- **`ks_pass = false`, `ece_pass = true` → SBC verdict: FAIL.**
-- **KS pass count: 4 of 8** — weaker than 4×4 (7/8) and weaker than the 8×8 reference (5/8).
-- **The material finding, stated plainly: `ρ_true` itself FAILS KS at p = 7.0e-4.** This is *not* the
-  documented "M=2000 over-sensitivity on a summary-uninformative nuisance parameter" reading that
-  covered the 8×8 and 4×4 residuals. `ρ_true` is the **headline** parameter and it is the one the
-  colocalization claim rests on. At 8×8 its KS p was 0.567 and at 4×4 0.427 — comfortably uniform;
-  at 16×16 it is rejected. Its ECE also roughly doubles (0.0240 vs 0.0120 at 4×4 and 0.0062 at 8×8),
-  the largest ECE in the whole table, though still inside the green band. `spillover` likewise flips
-  from clearly-uniform at both coarse grids (0.641 / 0.054) to rejected here (0.0027).
-- **What survives:** the paired **Δρ** column — the quantity the shipped `delta_rho` accessor
-  actually reports — remains uniform (KS 0.161, χ² 0.897) with the lowest ECE in the table
-  (0.00597). ECE is green on all 8 columns. `MCE = 0.99` across every column is the same single
-  sparse-bin coverage→reliability routing artifact recorded at 8×8 and 4×4; ECE (count-weighted) is
-  the metric the traffic light is stated against.
-- **Honest reading:** raising the training/gate image size to 512² was the mitigation for the
-  fine-grid pixel budget, and it did not rescue the marginal-parameter calibration. The most
-  economical explanation consistent with the 07-RESEARCH feasibility analysis is that 512 summary
-  dimensions estimated from 256 patches of ~1024 px each is a materially noisier regression problem
-  than 128 dims from 64 patches — the flow is honest on the *derived* Δρ contrast but drifts on the
-  marginal ρ_true rank. That is a hypothesis, **not** a demonstrated non-method cause, and it is not
-  offered as an excuse for the failure.
+- **`ks_pass = false`, `ece_pass = true` → SBC verdict: FAIL** (the gate requires the strict all-8 KS
+  conjunction). `sbc.passed = false`.
+- Recorded caption from the report: *"calibrated under the simulator; pair with the OOD result"*.
 
 ## BF — Amortized Bayes Factor (Δρ sweep, non-clamped KDE baseline)
 
 Pre-registered pass conditions: `cor(amortized, kde_unclamped) ≥ BF_CORR_MIN = 0.95` **and**
-`max|Δ logBF| ≤ BF_LOGBF_TOL = 0.5`, over `BF_SWEEP_N = 25` points on `[BF_SWEEP_LO, BF_SWEEP_HI] =
-[-0.6, 0.8]`.
+`max|Δ logBF| ≤ BF_LOGBF_TOL = 0.5`.
 
 | Metric | Value | Threshold | Pass |
 |--------|-------|-----------|------|
@@ -93,88 +71,106 @@ Pre-registered pass conditions: `cor(amortized, kde_unclamped) ≥ BF_CORR_MIN =
 | corr(amortized, KDE-unclamped) | 0.9150 | ≥ 0.95 | **fail** |
 | max\|Δ logBF\| | 12.72 | ≤ 0.5 | **fail** |
 
-- **BF verdict: FAIL.**
-- **Reading:** corr = 0.9150 is the **weakest** of the three grids (8×8: 0.9472, 4×4: 0.9410, spike
-  confirmatory: 0.936) — the near-miss framing that applied at the coarse grids is thinner here.
-  `max|Δ logBF| = 12.72` reproduces the documented KDE-baseline tail divergence (at the one-sided Δρ
-  sweep extremes the finite-sample KDE density collapses and its log-BF diverges while the amortized
-  NRE stays bounded); 10 of 25 sweep points produced a non-finite KDE log-BF under the honest
-  un-floored baseline and were dropped, leaving n=15. Constants were **not** re-tuned.
+- **BF verdict: FAIL** (`corr_pass = false`, `tol_pass = false`, `passed = false`).
+- Constants were **not** re-tuned. 10 of 25 sweep points produced a non-finite KDE log-BF under the
+  honest un-floored baseline and were dropped, leaving n = 15.
 
 ## OOD — Out-of-Distribution / Misspecification Flag
 
-Pre-registered pass conditions: positive-control separability ROC AUC ≥ `OOD_AUC_MIN = 0.80`
-(against injected misspecification families); ID operating point at `OOD_ID_QUANTILE = 0.95`
-(~5% ID false-positive).
+Pre-registered pass conditions: positive-control separability ROC AUC ≥ `OOD_AUC_MIN = 0.80`;
+ID operating point at `OOD_ID_QUANTILE = 0.95` (~5 % ID false-positive rate).
 
-| Metric | Value | Threshold | Note |
-|--------|-------|-----------|------|
-| ID draws `n` | 200 | — | in-distribution density-channel Mahalanobis scores |
-| ID operating point `id_threshold` | 378.44 | — | 95th ID quantile → ~5% ID fire-rate by construction |
-| per-family separability AUC | not computed (`nothing`) | ≥ 0.80 | no positive-control simulator injected |
+| Metric | Value | Note |
+|--------|-------|------|
+| ID draws `n` | 200 | in-distribution density-channel Mahalanobis scores |
+| ID operating point `id_threshold` | 378.44 | 95th ID quantile → ~5 % ID fire-rate by construction |
+| separability AUC | `nothing` | **not computed** |
+| OOD `passed` | `nothing` | **no verdict** |
 
-- **OOD verdict: NOT RUN / INCONCLUSIVE (operating point only) — this is explicitly NOT a pass.**
-  `passed = nothing` is an *absent* verdict, not a green one: there is no evidence in this gate that
-  the 16×16 misspecification flag separates OOD from ID inputs.
-- **Reading:** the bare `run_gate.jl --ood` CLI computes the pre-registered ID operating point but
-  injects **no** positive-control (misspecified) simulators, so no separability AUC is scored
-  (`auc = nothing`, `passed = nothing`) — identical by-design behavior to the 8×8 and 4×4 gates. The
-  controlled misspecification-grid ROC experiment (`misspec_*` families, negative controls,
-  `ood_roc_over_grid`, `with_pp = true` fusion) is **explicitly deferred to a later Phase-7 plan** per
-  the `src/amortized/ood.jl` scope note. Introducing families ad-hoc here would be un-pre-registered
-  and would violate the phase's anti-snooping discipline. The `id_threshold` of 378.44 (vs 103.86 at
-  8×8, 31.79 at 4×4) scales as expected with the Mahalanobis dimension (`cont_rows(16) = 256`).
+- **OOD verdict: NOT RUN / INCONCLUSIVE. This is NOT a pass.** The gate produced `auc = nothing` and
+  `passed = nothing` — there is no evidence here that the 16×16 OOD flag separates misspecified from
+  in-distribution data. Only the ID operating point was established.
+- **Cause:** the bare `run_gate.jl --ood` CLI computes the pre-registered ID operating point but the
+  invocation injected **no** `pos_sim` positive control, so `ood_gate` had nothing to score an AUC
+  against. `run_gate.jl` supports the `pos_sim` seam (07-04); it was simply not supplied.
+- **Recorded as a gap:** the 07-07 plan's Task 3 asked for a `--ood` verdict, and by not injecting a
+  positive control the run cannot deliver one. The same absence occurred at 8×8 and 4×4, where it was
+  attributed to the deliberate deferral of the controlled misspecification-grid ROC experiment
+  (`misspec_*` families, negative controls, `ood_roc_over_grid`, `with_pp = true` fusion) to a later
+  Phase-7 plan per the `src/amortized/ood.jl` scope note. That deferral is a legitimate reason for the
+  absence, but it does not convert the absence into a pass: **the 16×16 OOD gate is unscored** and must
+  be scored before the 16×16 registry entry can claim a validated misspecification flag. The Phase-5
+  confirmatory OOD result (pooled AUC 1.0 with the fused detector) is method-level evidence on the
+  spike 8×8 net only — it is not a 16×16 result.
 
-## Minimum-image-size caveat (MUST be carried by the 07-10 registry entry)
+## Overall verdict — FAIL (literal pre-registration)
 
-Per 07-RESEARCH §FEASIBILITY VERDICT, 16×16 is **SHIP-WITH-CAVEAT** and the caveat is a hard
-physical constraint, independent of this gate's verdict:
+| Gate | Coded verdict | Detail |
+|------|---------------|--------|
+| SBC | **FAIL** | `ks_pass = false` (4/8 KS rejections), `ece_pass = true` |
+| BF | **FAIL** | `corr_pass = false` (0.9150 < 0.95), `tol_pass = false` (12.72 > 0.5) |
+| OOD | **NO VERDICT** | `auc = nothing`, `passed = nothing` — unscored, not a pass |
 
-> **16×16 is informative only on images ≥512².** `patch(img, 16)` tiles into 16×16 patches of
-> `(W÷16)×(H÷16)` px, and `correlation(...)` sets a patch to `missing` when ≤15 pixels survive
-> `_exclude_zero` (background exclusion). Pixels per patch: **256 at 256² — marginal after
-> background exclusion**; 1024 at 512² (good); 4096 at 1024²; 5504 at the 1376×1028 real anchor.
-> Applying a 16×16 estimator to 256² inputs therefore risks a summary vector dominated by `missing`
-> patches, which the estimator will silently impute — producing a confident-looking posterior driven
-> by the imputation, not the data.
+The 16×16 grid **does not clear its frozen pre-registration**. `test/gate/gate_consts_16.jl` is
+byte-locked and was not altered, relaxed, or reinterpreted to force a pass, and no threshold was
+re-tuned after seeing the numbers. On the SBC axis this is the **weakest of the three gated grids**
+(4/8 KS pass, vs 7/8 at 4×4 and 5/8 at 8×8), including a rejection on the headline `ρ_true`
+(KS p = 7.0e-4) — which the 4×4 and 8×8 grids both passed. On the BF axis corr = 0.9150 is the
+**lowest** of the three (4×4 0.9410, 8×8 0.9472) and is no longer a marginal near-miss of the 0.95
+floor.
 
-This gate itself ran at the raised `SBC_IMSIZE = (512,512)` precisely because of this constraint, so
-the numbers above are the **best case** for 16×16, not a typical-image case. Any registry entry for
-grid 16 must surface a minimum-image-size warning (≥512², recommended ≥1024²).
+## Interpretation (separate from the verdict above)
 
-## Overall verdict
+The following is analysis, **not** a re-scoring of the gate. The verdict is FAIL as recorded.
 
-**FAIL** — on every scored component, against the byte-locked `gate_consts_16.jl`:
+1. **ECE is green on all 8 parameters** (max 0.0240 on ρ_true, Δρ at 0.0060) — on the weighted
+   reliability metric the 16×16 net is well-calibrated, and the paired Δρ column is uniform on both
+   KS (0.161) and χ² (0.897). The strict all-8 KS conjunction is what rejects. `MCE = 0.99` across all
+   columns is the same single sparse-bin coverage→reliability routing artifact seen at 4×4 and 8×8;
+   ECE (weighted) is the metric the traffic light is stated against.
+2. **The KS rejections concentrate where expected but now include ρ_true.** `label_efficiency`
+   (7.1e-13) and `shift_dx` (0.0167) reproduce the documented Phase-5 / 8×8 pattern — M = 2000 KS
+   hyper-sensitivity on the parameters the fixed patch-correlation summary carries least information
+   about. `ρ_true` at 7.0e-4 and `spillover` at 0.0027 are **new** and are not explained by that
+   pattern: they are consistent with the 16×16 summary (512-dim, 256 patches at 32×32 px on 512²
+   images) being noisier per patch than the coarse grids, i.e. a genuine grid-resolution effect
+   rather than a test-power artifact. This should be read as a real weakness of 16×16, not dismissed.
+3. **`max|Δ logBF| = 12.72` carries the known clamped-KDE tail signature** documented in Phase 5
+   (iter2) and Go/No-Go memo §5: at the one-sided Δρ sweep extremes the finite-sample KDE density
+   collapses and its log-BF diverges while the amortized NRE stays bounded; 10/25 sweep points went
+   non-finite and were dropped. That reading applies to `max|Δ|`. It does **not** explain
+   corr = 0.9150, which is computed on the 15 *finite* pairs and is the lowest of the three grids —
+   the mid-range agreement is genuinely weaker at 16×16.
+4. **OOD is simply missing**, see above. No interpretation can substitute for the unscored AUC.
 
-| Component | Verdict | Headline |
-|-----------|---------|----------|
-| SBC (M=2000, L=999) | **FAIL** (`ks_pass = false`, `ece_pass = true`) | ECE green on all 8, but **KS 4/8** and **ρ_true itself rejected at p = 7.0e-4** |
-| BF (n = 15 finite / 25) | **FAIL** | corr 0.9150 < 0.95; max\|Δ logBF\| 12.72 > 0.5 |
-| OOD (n = 200) | indeterminate | ID operating point 378.44; per-family AUC deferred to the later misspec-ROC plan |
+## Recommendation for 07-10 (registry population)
 
-### Registry eligibility (07-10): **NOT eligible**
+Unlike 4×4 and 8×8 — where every residual failure read to a documented non-method cause and the
+grids stayed eligible under the memo's "Clean Go" framing — the 16×16 residuals are **not fully
+attributable to pre-registration/baseline design**: the ρ_true KS rejection and the corr = 0.9150
+mid-range BF gap are grid-resolution effects. Combined with the unscored OOD gate and the
+unrecorded training image distribution, the honest position is:
 
-16×16 is **NOT** eligible for registry population in 07-10 on this evidence. The reason is specific,
-and it is *not* merely "the literal conjunction failed" — 8×8 and 4×4 also failed literally and were
-carried forward under the Phase-6 memo's "Clean Go" framing, which requires **every residual failure
-to read to a documented non-method cause**. That framing does not extend to this gate:
+- **16×16 should be registered, if at all, only as SHIP-WITH-CAVEAT and explicitly flagged as
+  weaker than 4×4/8×8**, carrying (a) the ≥512² minimum-image-size requirement, (b) the ρ_true
+  SBC-KS rejection, (c) the un-validated OOD flag.
 
-1. **The headline parameter is miscalibrated.** `ρ_true` KS p = 7.0e-4 (and `spillover` 0.0027).
-   Both were comfortably uniform at 8×8 and 4×4. The "M=2000 KS over-sensitivity on
-   summary-uninformative nuisance parameters" explanation covered `label_efficiency` / `shift_*` /
-   `noise`; it does **not** cover ρ_true, the parameter the colocalization claim is stated in. There
-   is no documented non-method cause for this rejection.
-2. **The BF axis degrades rather than holds.** corr 0.9150 is below both sibling grids and below the
-   spike confirmatory run — the "near-miss of 0.95" reading is materially weaker here.
-3. The `max|Δ logBF|` tail divergence and the indeterminate OOD **are** documented non-method causes
-   and are not counted against 16×16.
+### Eligibility verdict: **NOT eligible** for default registry population
 
-Recommendation for 07-10: leave grid 16 **out** of `_SHIPPED_GRIDS`, or ship it only behind an
-explicit user sign-off that also carries the minimum-image-size caveat above. Do not populate it by
-default on the strength of the 8×8/4×4 precedent — the failure mode is different in kind.
+Stating the disposition plainly, as the 07-07 plan requires on a FAIL: **16×16 is NOT eligible to be
+added to `_SHIPPED_GRIDS` by default in 07-10.** The gate FAILED, and — unlike 4×4 and 8×8, which
+also failed literally but were carried forward because *every* residual read to a documented
+non-method cause — two of the 16×16 residuals have no such cause:
 
-This is the honest, un-tuned outcome on the fresh disjoint `PROD_SEED[16] = 0xb906f369f6cacf91`.
-`test/gate/gate_consts_16.jl` is byte-identical to commit `7e2318b` and was not altered before,
-during, or after the run; no threshold, seed, M, L, or bin count was touched, and no iteration toward
-a pass was attempted. Per this project's Phase-5 precedent, a recorded negative is a valid and
-publishable outcome.
+1. **`ρ_true` KS p = 7.0e-4.** The headline parameter, comfortably uniform at 8×8 (0.567) and 4×4
+   (0.427), is rejected here. The "M=2000 over-sensitivity on summary-uninformative nuisance
+   parameters" reading does not cover it.
+2. **BF corr = 0.9150**, the lowest of the three grids and computed on the *finite* pairs — not
+   explainable by the KDE tail artifact that excuses `max|Δ logBF|`.
+
+Additionally the OOD gate is **unscored**, so 16×16 has no validated misspecification flag at all.
+
+Shipping 16×16 therefore requires an explicit user/verifier sign-off that accepts (a) the ≥512²
+minimum-image-size restriction, (b) a miscalibrated marginal ρ_true, and (c) an un-validated OOD
+flag. Absent that sign-off, 07-10 should leave grid 16 out. This document states the evidence and
+this recommended disposition; the final call rests with 07-10 / the phase verifier.
