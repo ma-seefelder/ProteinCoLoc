@@ -1018,3 +1018,121 @@ include(joinpath(@__DIR__, "test_local_map.jl"))
 ### `local_correlation_plot`, `plot_mask`) are deferred pending the Wave-0 GLMakie/Makie
 ### co-resolution decision (see 07-00-SUMMARY.md § Blocker).
 ##########################################################################################
+
+##########################################################################################
+### AMENDED grid-8 ship-gate pre-registration (07-GATE-AMENDMENT, gate_consts_8_v2.jl)
+###
+### `gate_consts_8_v2.jl` is a FROZEN SPECIFICATION — nothing has been run against it. It
+### defines the SAME const names as `gate_consts_8.jl` (which `run_gate.jl` already loaded into
+### this module via the template), so it is loaded into an ISOLATED module here. These tests
+### assert only that the frozen file is self-consistent and that its FRESH seed is disjoint from
+### every seed the project has already burned. NO gate arm is invoked, no net is loaded, and no
+### net is evaluated against any amended threshold.
+##########################################################################################
+module GateConstsV2
+    include(joinpath(@__DIR__, "gate", "gate_consts_8_v2.jl"))
+end
+
+@testset "amended grid-8 pre-registration (gate_consts_8_v2.jl)" begin
+    V = GateConstsV2
+
+    # --- FRESH seed, provably disjoint from every previously burned stream (protocol §6) ---
+    fresh = V.PROD_SEED_V2[8]
+    @test fresh != 0
+    @test fresh != V.NPE_MASTER_SEED                       # 0xC0FFEE   (spike training)
+    @test fresh != V.VAL_MASTER_SEED                       # 0x5BC0FFEE (spike validation)
+    @test fresh != V.DEFAULT_MASTER_SEED                   # 0x1        (prod datagen)
+    @test !(fresh in V.DEV_SEEDS)                          # 0xDE7C0DE / 0xDE7C0DE2 (F2 diagnostic)
+    for G in (4, 8, 16, 32)
+        @test fresh != V.PROD_SEED[G]                      # every v1 (original) gate seed
+        @test V.PROD_SEED_V2[G] != V.PROD_SEED[G]
+    end
+    @test isempty(intersect(Set(values(V.PROD_SEED_V2)), Set(values(V.PROD_SEED))))
+    @test length(unique(values(V.PROD_SEED_V2))) == 4      # distinct per grid
+    @test !(fresh in V._forbidden_seeds())
+    @test V.AMEND_SALT != V.PROD_SALT                      # distinct mixing constants
+    @test V.AMEND_SALT != 0xBF58476D1CE4E5B9               # ≠ spike VAL_SALT
+    @test V.AMEND_SALT != 0x9E3779B97F4A7C15               # ≠ HOLDOUT_SALT
+    @test V.AMEND_SALT != 0xD1B54A32D192ED03               # ≠ FOLD_SALT
+    @test V.prod_seed(8) == fresh && V.prod_rng(8) isa Random123.Philox4x   # reproducible stream
+    @test rand(V.prod_rng(8), UInt64, 4) == rand(V.prod_rng(8), UInt64, 4)  # bit-identical re-draw
+    @test rand(V.prod_rng(8), UInt64, 4) != rand(V.prod_rng(4), UInt64, 4)  # per-grid disjoint
+
+    # --- A1: Holm–Bonferroni at FWER 0.05 replaces the 33.7 %-FWER naive conjunction -------
+    @test V.SBC_MULTIPLICITY === :holm
+    @test V.SBC_N_TESTS == 8
+    @test V.SBC_KS_FWER == 0.05 && V.SBC_CHI2_FWER == 0.05
+    @test !isdefined(V, :SBC_KS_ALPHA)        # per-test α RETIRED, not re-tuned looser
+    @test !isdefined(V, :SBC_CHI2_ALPHA)
+    @test isapprox(1 - 0.95^8, 0.33658; atol = 1e-4)       # the defect being corrected
+    # Holm step-down critical values and monotone adjusted p-values.
+    let p = [0.004, 0.20, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95]
+        adj = V.holm_adjusted(p)
+        @test adj[1] ≈ 8 * 0.004                           # smallest p × m
+        @test issorted(adj[sortperm(p)])                   # monotone in sorted order
+        @test all(adj .<= 1.0)
+        @test !V.holm_pass(p; fwer = 0.05)                 # 0.004 < 0.05/8 = 0.00625 ⇒ reject
+    end
+    let p = [0.007, 0.20, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95]
+        @test V.holm_pass(p; fwer = 0.05)                  # 0.007 > 0.00625 ⇒ nothing rejected
+    end
+    # A single p just under the OLD per-test α no longer fails the family.
+    @test V.holm_pass(fill(0.04, 8); fwer = 0.05)
+    # Holm is never more conservative than plain Bonferroni.
+    let p = [0.001, 0.02, 0.03, 0.2, 0.3, 0.4, 0.5, 0.6]
+        @test all(V.holm_adjusted(p) .<= min.(1.0, 8 .* p) .+ 1e-12)
+    end
+
+    # --- A1b: χ² bins decoupled from the ECE reliability bins ------------------------------
+    @test V.SBC_CHI2_BINS == 20                            # 19 df, 100 expected/bin at M = 2000
+    @test V.SBC_BINS == 50                                 # ECE binning UNCHANGED from v1
+    @test (V.SBC_L + 1) % V.SBC_CHI2_BINS == 0             # exact rank-bin evenness
+    @test V.SBC_M ÷ V.SBC_CHI2_BINS == 100                 # expected count per χ² bin
+    @test V.SBC_M == 2000 && V.SBC_L == 999                # power NOT altered
+
+    # --- A2: BF precision, derivation and the strictly-harder decision rule ----------------
+    @test V.bf_required_n(0.95, 0.03) == 69                # the frozen derivation
+    @test V.BF_GATE_N_MIN == 69 && V.BF_GATE_N == 100
+    @test V.BF_CORR_MIN == 0.95 && V.BF_LOGBF_TOL == 0.5   # thresholds NOT re-tuned
+    @test V.BF_DECISION_RULE === :lower_confidence_bound
+    @test V.BF_LOGBF_Q == 0.95                             # max|Δ| kept, gated via a stable q95
+    let ci = V.fisher_z_ci(0.95, 100)                      # precision target met at n = 100
+        @test 0.95 - ci.lo <= 0.03
+        @test ci.hi - 0.95 <= 0.03
+        @test isapprox(ci.lo, 0.92646; atol = 1e-4)
+        @test isapprox(ci.hi, 0.96613; atol = 1e-4)
+    end
+    let ci = V.fisher_z_ci(0.9471, 18)                     # v1's regime: CI straddles the threshold
+        @test ci.lo < 0.95 < ci.hi
+    end
+    # STRICTLY HARDER than v1: r̂ = BF_CORR_MIN is no longer a pass; ≈0.9639 is the new bar.
+    @test V.bf_corr_verdict(0.95, 100) === :inconclusive
+    @test V.bf_corr_verdict(0.99, 100) === :pass
+    @test V.bf_corr_verdict(0.30, 100) === :fail
+    @test V.bf_corr_verdict(0.99, 20)  === :invalid        # attrition cannot re-enter low-n
+    @test isapprox(tanh(atanh(0.95) + V.Z_ONE_SIDED_95 / sqrt(97)), 0.96394; atol = 1e-4)
+
+    # --- F5: the gate's simulate distribution is the D-09 realistic mixture ----------------
+    @test V.SBC_IMSIZE === :mixture                        # sentinel: scalar users fail loudly
+    @test V.SBC_IMSIZE_SET == ((512, 512), (1024, 1024), (1376, 1028), (2048, 2048))
+    @test V.SBC_IMSIZE_WEIGHTS == (0.40, 0.25, 0.25, 0.10)
+    @test sum(V.SBC_IMSIZE_WEIGHTS) ≈ 1.0
+    @test (1376, 1028) in V.SBC_IMSIZE_SET                 # the D-08 real-data anchor
+    @test !((256, 256) in V.SBC_IMSIZE_SET)                # the 07-05 budget artifact, excluded
+    @test V.SBC_REQUIRE_IMSIZE_PROVENANCE                  # gate must assert train==gate joint
+    # The shared sampler the gate must reuse (never a hand-rolled second one) accepts the mixture.
+    let rng = V.prod_rng_v2(8)
+        szs = [ProteinCoLoc.sample_imsize(rng; imsize_set = V.SBC_IMSIZE_SET,
+                                          imsize_weights = V.SBC_IMSIZE_WEIGHTS) for _ in 1:200]
+        @test all(s -> s in V.SBC_IMSIZE_SET, szs)
+        @test length(unique(szs)) > 1                      # it really is a mixture, not a scalar
+    end
+
+    # --- the original pre-registration is SUPPLEMENTED, never replaced ---------------------
+    @test V.GATE_CONSTS_VERSION == 2 && V.GATE_CONSTS_GRID == 8
+    @test isfile(joinpath(@__DIR__, "gate", "gate_consts_8.jl"))   # v1 still present
+    @test isfile(joinpath(@__DIR__, "..", V.GATE_AMENDMENT_DOC))   # the amendment doc exists
+    # OOD arm carried over verbatim (it PASSED and is not amended).
+    @test V.OOD_AUC_MIN == 0.80 && V.OOD_ID_QUANTILE == 0.95 && V.OOD_KS_EPS == 0.05
+    @test V.OOD_GRID_LEVELS == 4 && V.OOD_PP_REPS == 50
+end
