@@ -62,6 +62,11 @@ include("amortized/train_npe.jl")
 include("amortized/train_ratio.jl")
 include("amortized/persist.jl")
 include("amortized/pipeline.jl")
+# Windowed sub-tile local colocalization map (PROD-02): runs the frozen, already-gated estimator
+# of ONE grid over image sub-tiles. Ordered LAST of the amortized files — it composes the read
+# surface (summary/infer/ood) and the pipeline's artifact loaders (`_bundle_from_artifacts`,
+# `_grid_dir`) to register a grid in-process before `estimator_for`.
+include("amortized/local_map.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
@@ -93,6 +98,9 @@ export AbstractColocResult, AmortizedColocResult, OODVerdict, CalibrationMeta
 export delta_rho, bayes_factor, is_ood, posterior_draws
 # Grid-keyed estimator registry (PROD-02, D-04): the public num_patches-as-key entry points.
 export estimator_for, register!, train_and_register
+# Coarse windowed sub-tile local colocalization map (PROD-02). NOT the Phase-12 calibrated
+# per-region map — see the `local_coloc_map` docstring.
+export local_coloc_map, LocalColocMap
 end
 
  
