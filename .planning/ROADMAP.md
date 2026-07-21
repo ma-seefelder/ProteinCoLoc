@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 7: Productionization (conditional on Go)** - Integrate amortized inference into `src/` behind a coexisting backend contract with user-definable `num_patches`
 
 **v2.0 feature expansion (Phases 8–16) — all downstream of a Phase-6 Go:**
-- [ ] **Phase 8: External Physical Ground-Truth Corpus** - Non-circular validation anchors (physical 100%-coloc + segregated constructs); CBS ingested as labelled-simulated; versioned data contract — parallelizable now
+- [x] **Phase 8: External Physical Ground-Truth Corpus** - Non-circular validation anchors (physical 100%-coloc + segregated constructs); CBS ingested as labelled-simulated; versioned data contract (completed 2026-07-21)
 - [x] **Phase 9: Cross-Method Comparator Harness** - Costes/Manders/Pearson/Spearman + Tapqir bridge on shared inputs; "knows when the classics are wrong" — parallelizable now
 - [x] **Phase 10: Manuscript Skeleton + Related-Work Positioning** - Compiling Typst skeleton, explicit Tapqir/Costes/Manders delta, figure specs — parallelizable now
  (completed 2026-07-02)
@@ -191,7 +191,12 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 08-02-PLAN.md — SHA-256 content-hash utility + fetch_verified (D-05 skip-vs-abort asymmetry, atomic commit, timeout) (SC1, SC3)
 - [x] 08-03-PLAN.md — Manifest schema + D-06 tier guard + D-09 sealed-holdout guard + D-03 anchor predicate + content-addressed writer + read-only MultiChannelImage conversion (SC1, SC2, SC3)
 - [x] 08-04-PLAN.md — Full CBS ingestion (simulated-secondary, seeded dev/eval split, zip-slip-safe) + committed manifest.csv + offline-skip fetch smoke (SC2, SC3)
-- [ ] 08-05-PLAN.md — Physical anchor pinning: positive tandem-FP + negative segregated construct, human-verified, archived sealed-holdout with provenance + SHA-256 (SC1) [autonomous:false]
+- [x] 08-05-PLAN.md — Physical anchor pinning: positive tandem-FP + negative segregated construct, human-verified, archived sealed-holdout with provenance + SHA-256 (SC1) [autonomous:false]
+
+**Completion note (2026-07-21)** — Phase 8 COMPLETE; offline gate `julia --project=. corpus/test/runtests.jl` 217/217, `src/` untouched, `git ls-files corpus/data` empty. Three recorded deviations carried into Phase 16:
+  - **D-01 substitution (human-accepted):** no open-licensed, non-environment-quenched tandem-FP dataset exists in any public archive (every deposited tandem-FP set is a quenched autophagy reporter, disqualified by Pitfall 2). POSITIVE anchor is instead TetraSpeck 100 nm multicolor beads (RegiSTORM sample data, Zenodo `10.5281/zenodo.5509861`, CC-BY-4.0) — the same physical particle emits in both channels, so coloc is by construction AND state-independent.
+  - **D-02 preference unmet:** NEGATIVE anchor is "Light My Cells" (BioImage Archive `S-BIAD1047`, CC-BY-4.0, nucleus vs mitochondria). Cross-study/cross-archive (`ANCHORS_MATCHED=false`) — imaging-condition confounds between the anchors are NOT controlled; Phase 16 must report this limitation.
+  - **Hashes pending:** the bootstrap fetch was deliberately not run (the positive anchor is a ~6.3 GB archive — an explicit human decision). Both anchors carry the explicit `PENDING-FETCH` sentinel; no digest was fabricated. Run `bootstrap_anchor_hashes()` when online and authorized and replace the sentinel BEFORE Phase 16 opens the sealed holdout.
 
 ### Phase 9: Cross-Method Comparator Harness
 **Goal**: A reproducible harness that runs the classical estimators and a Tapqir bridge on shared inputs, so v2.0 can be positioned as "knows when the classics are wrong," not merely "agrees with them"

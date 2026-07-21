@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 8 Waves 1–4 complete; Wave 5 (08-05) BLOCKED on human-verify anchor accessions (see Blockers/Concerns)
-last_updated: "2026-07-20T15:25:59.159Z"
-last_activity: 2026-07-20 -- Phase 08 Waves 1–4 executed; Wave 5 blocked on human-verify checkpoint
+status: in-progress
+stopped_at: Phase 8 COMPLETE (08-05 anchors pinned, gate 217/217). Active phase is Phase 7 — 7/11 plans, mid wave 6/8 (plan 07-07); its 16x16 training has COMPLETED (artifacts/grid_16 exists)
+last_updated: "2026-07-21T07:20:00.000Z"
+last_activity: 2026-07-21 -- Phase 08 Wave 5 (08-05) executed; both physical anchors human-verified + pinned; Phase 8 complete
 progress:
   total_phases: 16
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 53
-  completed_plans: 48
-  percent: 50
+  completed_plans: 49
+  percent: 56
 ---
 
 # Project State
@@ -21,16 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 08 — external-physical-ground-truth-corpus
+**Current focus:** Phase 07 — productionization (plan 07-07, wave 6/8; 16×16 training complete, ship-gate run next). Phase 08 closed 2026-07-21.
 
 ## Current Position
 
-Phase: 08 (external-physical-ground-truth-corpus) — BLOCKED at Wave 5 (human-verify)
-Plan: 5 of 5 complete (08-01..08-04 done & green); 08-05 BLOCKED awaiting human-verified anchor accessions
-Status: Phase 08 partially executed — Waves 1–4 complete, Wave 5 (08-05, autonomous:false) blocked
-Last activity: 2026-07-20 -- Phase 08 Waves 1–4 executed; Wave 5 blocked on human-verify checkpoint
+**ACTIVE phase: 07 (productionization)** — 7 of 11 plans complete, mid wave 6 of 8, current plan **07-07**.
+The 07-07 16×16 training has **COMPLETED** (`artifacts/grid_16` exists); the fresh 16×16 ship-gate
+pre-registration (`test/gate/gate_consts_16.jl`) is committed (7e2318b) and the gate run is the next step.
 
-Progress: [█████████░] 91%
+**Phase 08 (external-physical-ground-truth-corpus) — COMPLETE (2026-07-21).** 5 of 5 plans done.
+Wave 5 (08-05) is unblocked and executed: both physical anchors human-verified, pinned, and sealed.
+Offline gate `julia --project=. corpus/test/runtests.jl` → 217/217, ZERO network; `src/` provably
+untouched; `git ls-files corpus/data` empty. NOTE: this Current Position was previously clobbered by a
+parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
+
+Last activity: 2026-07-21 -- Phase 08 Wave 5 (08-05) executed; Phase 8 complete
+
+Progress: [█████░░░░░] 56% of phases (9/16); 49/53 plans
 
 ## Resolved (2026-07-03): 07-00 CO-RESOLUTION GATE — GREEN
 
@@ -138,6 +145,11 @@ Recent decisions affecting current work:
 - [Phase 07-03]: Amortized TRAINING layer promoted to src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl (PROD-01/02). build_estimator input-width-agnostic (q a NormalisingFlow INSTANCE positional; NPE_* Phase-5 consts); train_npe/train_ratio default use_gpu=has_cuda_device() with the spike use_gpu&&throw guards REMOVED (D-06) and LR/decay kept Float64 (AdamW-CosAnneal gotcha); ratio conditioner width from ratio_input_dim(G)=5G² (not 320), no custom loss (v0.2.1 hard-codes logit-BCE). SHIPPED PERSISTENCE migrated to CPU-resident Flux.state(cpu(est))+arch metadata → build_estimator/build_ratio_estimator + Flux.loadmodel! on load (Pitfall 4/T-7-07: device-independent, narrower deserialization surface T-7-01); OOD nulls persist directly; all through the atomic .tmp→reopen-integrity-@assert→mv(force=true) wrapper + schema_version + _estimator_ok/_ratio_ok/_ood_nulls_ok SKIP-IF-DONE predicates; seeded save→load→CPU inference bitwise-equal. _train_grid_pipeline(grid;...) factors datagen→zt→train_npe→train_ratio→fit_ood_nulls→persist→EstimatorBundle (SKIP-IF-DONE loads valid artifacts; injectable datagen seam makes it testable without the not-yet-promoted simulator; default_imsize_for 16→≥512²/32→≥1024²); train_and_register(grid) now runs it (D-04 on-ramp is real code, stub removed). Docstring documents -t auto datagen + Philox-per-index thread-count-independent byte-identical repro. GPU path plumbed but NOT exercised (has_cuda_device()==false, no CUDA loaded); CPU path fully green. Pkg.test green under -t auto (train_npe 11/11, train_ratio 12/12, persist 17/17, pipeline 19/19; co-resolution 4/4, no new external deps); spike/ byte-untouched.
 - [Phase 07-06]: 4x4 bundle produced via the PUBLIC train_and_register(4) path (PROD-02/D-04 user-definable-grid happy path proven end-to-end; estimator_for(4) confirmed in-process), imsize_set constrained to ((256,256),) for the CPU budget; gate on fresh disjoint PROD_SEED[4]=0x8c0ad97b99bd6031 recorded honest FAIL (SBC ECE-green all 8, 7/8 KS pass vs 8x8 5/8, only shift_dx 0.0326; BF corr 0.941 near-miss + max|dlogBF| 12.40 KDE-tail artifact; OOD ID-op 31.79 only), gate_consts_4.jl byte-locked
 - [Phase 07-06]: fixed a Rule-1 numerical crash in the shipped non-clamped KDE BF baseline (bf.jl kde_log_bf_unclamped) — QuadGK adaptive integral overshoots the tail probability a few ulp outside [0,1], crashing log(); clamped to the valid [0,1] domain so a saturated tail yields the honest ±Inf (dropped) NOT the forbidden 1e-8 finite floor; in-range values byte-identical
+- [Phase 08-05]: BOTH physical ground-truth anchors human-verified and pinned (SC1). POSITIVE = TetraSpeck 100 nm multicolor fiducial beads (RegiSTORM v1.0.0 sample data, Zenodo DOI 10.5281/zenodo.5509861, CC-BY-4.0, Karlsson et al. 2023 BMC Bioinformatics 10.1186/s12859-023-05320-1): one physical bead emits in EVERY colour channel ⇒ coloc BY CONSTRUCTION and state-independent (multi-channel STORM .tif frame stacks + ThunderSTORM .csv; a mean/max projection is owed in Phase 16). NEGATIVE = "Light My Cells" (France-BioImaging / ISBI 2024, BioImage Archive S-BIAD1047, CC-BY-4.0, OME-TIFF): nucleus (DNA) vs mitochondria are disjoint BY BIOLOGY from the acquisition design (fields must be FILTERED in Phase 16 to those carrying BOTH channels). Neither label is a computed coloc score (Pitfall 1) and neither is an environment-quenched tandem (Pitfall 2).
+- [Phase 08-05]: D-01 DEVIATION, human-accepted and recorded (never papered over) — the literal decision specified a CELLULAR tandem-fluorophore construct, but no open-licensed, NON-environment-quenched tandem-FP dataset could be verified in any public archive; the deposited tandem-FP sets are quenched mRFP/mCherry-EGFP-LC3 autophagy reporters, which the acceptance bar disqualifies. Substituted a multicolor-bead dataset: the SAME physical particle in both channels is a strictly STRONGER physical positive (no pH/quenching failure mode at all), but it IS a deviation from the literal wording.
+- [Phase 08-05]: D-02 DEVIATION — the matched-same-study preference is NOT satisfiable; no qualifying single-study deposit carrying both a same-particle positive and a segregated negative could be verified. The anchors are cross-study / cross-archive (`ANCHORS_MATCHED = false`). KNOWN LIMITATION: imaging-condition confounds (microscope, objective, exposure, detector, prep) between positive and negative are NOT controlled; Phase 16 must report this.
+- [Phase 08-05]: Hash discipline (T-08-16) — `sha256` uses a deliberately NON-hex `"PENDING-FETCH"` sentinel rather than an empty string (an empty hash is indistinguishable from an unfilled CBS row and could be silently accepted downstream), with `is_real_sha256`/`is_pending_hash` making "real 64-hex digest OR sentinel, never in between" a testable invariant. The bootstrap fetch was DELIBERATELY not executed — the positive anchor is a ~6.3 GB archive, so the bulk download stays an explicit human decision. `bootstrap_anchor_hashes()` is implemented and must be run online+authorized BEFORE Phase 16. No digest was fabricated.
+- [Phase 08-05]: `finalized_manifest()` (corpus/anchor_rows.jl) SUPERSEDES the 08-04 placeholder `committed_manifest()`; `anchor_rows()` is parameterized on sha256/bytes so the pending path and the post-bootstrap path are the SAME code path and both are covered by the offline gate. All anchors remain `physical-primary` + `sealed_holdout`, reachable ONLY via `open_sealed_holdout(; reason)` (D-09) — asserted.
 
 ### Roadmap Evolution
 
@@ -171,7 +183,7 @@ None yet.
 - [Phase 5-iter1]: OOD PP channel now VIABLE — finite-guard added in ood.jl (_theta_tuple maps non-finite posterior θ̂ to in-range fallbacks) so strong-misspec re-simulation no longer crashes; PP θ̂ finite on all 4 families. Still excluded from the reported OR-fusion (with_pp=false unchanged in run_ood.jl); available to re-enable in Phase-6/7.
 - [Phase 5-iter2 (2026-07-02)]: TASK 1 — retrained the NRE on the SAME 50k (θ,summary) cache the NPE used (assemble_ratio_data_cache; 16× the prior 3k fresh-sim pairs, leak-free: cache gen-seed 0x134d8f3 disjoint from VAL/NPE seeds), higher capacity (num_summaries 32→64, conditioner 64→3×256), stabler recipe (LR 2.5e-4, batch 128, 300ep/pat40), + research-A7 difference encoding (pair_encode = concat + 64-dim continuous-row correlation CONTRAST, input dim 256→320; shared with bf.jl). Develop DEV 0xDE7C0DE (corr 0.862→0.903); CONFIRMATORY VAL_MASTER_SEED once (run_bf.jl unchanged): corr 0.918→0.936 (↑), max|Δ logBF| 14.4→10.95 (↓). BF gate still FAILS. VERDICT on max|Δ|: it is a KDE-BASELINE TAIL/CLAMP ARTIFACT, not an NRE deficiency — every large-|Δ| sweep point (|Δρ|≳0.4) is where the sharpened NPE Δρ posterior is fully one-sided, forcing the KDE baseline's P(Δρ>0) to its _clampp=1e-8 floor → logBF=±18.41, while the amortized NRE (correctly) stays bounded ~±8; mid-range (|Δρ|<0.4) agrees within ~1-2. D-08b (max|Δ|≤0.5) is structurally unclearable against a clamped-KDE baseline at the sweep tails — a pre-registration nuance, consts.jl untouched. BF fast test 17/17.
 - [Phase 5-iter2]: TASK 2 — added an AUXILIARY image-noise OOD channel (ood.jl Channel 3: noise_features/fit_noise_null/noise_score) OR-fused with the density channel, closing the detector-noise blind spot. 10 scale/rotation/permutation-INVARIANT features (HF energy ratio, robust HF scale ratio, outlier fraction, HF excess kurtosis, lag-1 autocorr; ∇² via finite difference, NO FFT/new dep) designed from the SMOOTH training distribution (SC5, not the held-out test set). Null + robust-z fit on a fresh TRAIN-ONLY ID pool; reported detector = per-sample max of density/noise robust-z (continuous OR, D-05). maha_auc/combined_auc now report the FUSED detector; density maha_thr unchanged so run_ood's density-only neg-control flag is byte-identical. Develop DEV (noise-family AUC 0.0→1.0); CONFIRMATORY VAL once (run_ood.jl unchanged): OOD gate PASSES — all 4 families best-AUC=1.0 (noise 1.0 at every level), combined pooled AUC=1.0, ID fire-rate 0.05, neg-controls KS-invariant + density-quiet. OOD fast test 27/27. Updated blind-spot framing: affine+rotate stay quiet on ALL channels (true blind spots); block-permute stays density-quiet (frozen gate passes) but the noise channel correctly FIRES on its tile-seam HF artifacts (~0.93) — so block is no longer summary-orthogonal to the fused detector. Remaining blind spot is NARROWER: orthogonal to BOTH the 8×8 correlation summary AND the image-noise features (e.g. a pure positive-affine rescale, still exactly invariant). consts.jl BYTE-UNCHANGED (verified vs e9c91d3).
-- [Phase 8-05 — HUMAN-VERIFY BLOCKER (2026-07-20)]: Waves 1–4 (08-01..08-04) are COMPLETE and green (offline gate 138/138, `src/` + `spike/` provably untouched phase-wide, zero image bytes staged). **Phase 8 is NOT complete** — Wave 5 (08-05 `autonomous: false`) is BLOCKED awaiting human verification and CANNOT be done in this background/offline session. 08-05 Tasks 1 & 2 are `blocking-human` checkpoints requiring a human to select and confirm TWO real biological dataset accessions: (1) a POSITIVE tandem-fluorophore construct (single polypeptide → 100%-coloc by construction, NOT environment-quenched à la mCherry-GFP-LC3 Pitfall 2), and (2) a matched/segregated distinct-compartment two-fluorophore NEGATIVE anchor — each must resolve (DOI/IDR/BioImage-Archive/S-BIAD/Zenodo), carry an unambiguous biological (not computed-score) label, and hold an open/redistributable license (D-01/D-02/D-03). Task 3 (auto) is downstream of those human-provided accession/URL/license/citation/channel-layout values and cannot run without them. Per orchestrator directive I did NOT fabricate accessions or SHA-256 hashes. **To unblock:** provide the two confirmed anchors (accession/DOI + direct URL + license + citation + channel layout, positive first then negative — negative preferably matched to the positive's study), then re-run `/gsd:execute-phase 8` (or `/gsd:resume-work`) so an executor runs 08-05 Task 3: build `corpus/anchor_rows.jl`, bootstrap the real SHA-256 via `fetch_verified(url, dest, nothing)` when online (offline records the explicit `"PENDING-FETCH"` sentinel, never a fabricated digest), finalize `corpus/manifest.csv` (CBS rows + 2 sealed_holdout physical anchors), add `corpus/test/test_anchors.jl`, then phase verification + completion. Candidate leads (ALL [ASSUMED], research confidence LOW-MEDIUM, must be human-verified): positive = published cytosolic tandem EGFP-mCherry/dTomato fusion OR TetraSpeck multicolor beads (confirmatory 2nd positive); negative = matched dual-compartment FP pair (H2B-GFP + Lyn-mCherry / mito-vs-nucleus) or a licensed BBBC two-channel set. See 08-05-PLAN.md + 08-RESEARCH.md (§Candidate Datasets, §Acceptance Predicate, Pitfall 2).
+- [Phase 8-05 — RESOLVED 2026-07-21]: The human-verify blocker is CLEARED. The human confirmed both anchors and 08-05 Task 3 executed (commit 8eb9147): `corpus/anchor_rows.jl` + `corpus/test/test_anchors.jl` created, `corpus/manifest.csv` finalized (30 CBS + 2 sealed physical anchors), offline gate 217/217, `git ls-files corpus/data` empty, `src/` untouched. **Phase 8 is COMPLETE.** THREE residual items carried to Phase 16, all recorded honestly in `ANCHOR_PROVENANCE_NOTES`: (1) **sha256 = "PENDING-FETCH" on BOTH anchors** — the bootstrap fetch was DELIBERATELY not run because the positive anchor is a ~6.3 GB archive and a bulk download must stay an explicit human decision; no digest was fabricated (T-08-16). `bootstrap_anchor_hashes()` is implemented and must be run when online + authorized, and the sentinel replaced BEFORE Phase 16 opens the sealed holdout. (2) **D-01 substitution (human-accepted)** — no open-licensed, non-environment-quenched tandem-fluorophore dataset exists in any public archive (every deposited tandem-FP set is a quenched mRFP/mCherry-EGFP-LC3 autophagy reporter, disqualified by Pitfall 2). POSITIVE = TetraSpeck 100 nm multicolor beads (RegiSTORM sample data, Zenodo 10.5281/zenodo.5509861, CC-BY-4.0): the same physical particle emits in both channels, so coloc is by construction AND state-independent. (3) **D-02 preference unmet** — NEGATIVE = "Light My Cells" (BioImage Archive S-BIAD1047, CC-BY-4.0, nucleus vs mitochondria). Cross-study / cross-archive (`ANCHORS_MATCHED=false`); imaging-condition confounds between the two anchors are NOT controlled and Phase 16 MUST report this limitation. Phase-16 conversion work still owed: mean/max frame projection for the positive STORM stacks, and field-filtering the negative to fields carrying BOTH the nucleus and mitochondria channels.
 
 ## Deferred Items
 
@@ -184,7 +196,12 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T15:25:38.523Z
-Stopped at: Phase 8 Waves 1–4 complete; Wave 5 (08-05) BLOCKED on human-verify anchor accessions (see Blockers/Concerns)
-Resume file: .planning/phases/08-external-physical-ground-truth-corpus/08-05-PLAN.md
-Resume action: provide the two human-verified physical anchors (positive tandem-fluorophore + matched segregated negative: accession/DOI + URL + license + citation + channel layout), then re-run `/gsd:execute-phase 8` to execute 08-05 Task 3 + phase verification.
+Last session: 2026-07-21T07:20:00.000Z
+Stopped at: Phase 8 COMPLETE (08-05 executed: both physical anchors human-verified + pinned, offline gate 217/217)
+Resume file: .planning/phases/07-productionization-conditional-on-go/07-07-PLAN.md
+Resume action: return to the ACTIVE phase — Phase 7, plan 07-07, wave 6 of 8. The 16x16 training has COMPLETED
+(`artifacts/grid_16` exists) and the fresh 16x16 ship-gate pre-registration `test/gate/gate_consts_16.jl` is
+committed (7e2318b); next step is running the 16x16 ship gate via `test/gate/run_gate.jl --grid 16 --sbc --bf --ood`
+and recording the outcome. Separately, before Phase 16: run `bootstrap_anchor_hashes()` (corpus/anchor_rows.jl)
+when online and authorized to replace the `PENDING-FETCH` sentinel on both physical anchors with real SHA-256
+digests (the positive anchor is a ~6.3 GB download — an explicit human decision).
