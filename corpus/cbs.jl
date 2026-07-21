@@ -221,6 +221,11 @@ end
 
 The committed versioned contract (SC3): the full CBS corpus with a seeded dev/eval split, PLUS
 the two sealed physical-anchor placeholder rows, assembled and VALIDATED. 32 rows total.
+
+SUPERSEDED for the on-disk contract by `finalized_manifest()` (corpus/anchor_rows.jl, 08-05),
+which substitutes the HUMAN-VERIFIED anchor rows for these "PENDING" placeholders. This function
+is retained only as the placeholder-shape reference; write `corpus/manifest.csv` via
+`write_finalized_manifest()`, NOT via `write_committed_manifest(committed_manifest())`.
 """
 function committed_manifest()
     rows = vcat(assign_cbs_split(cbs_rows()), anchor_placeholder_rows())
