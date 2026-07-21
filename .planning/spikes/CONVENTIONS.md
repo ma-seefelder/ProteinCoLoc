@@ -49,3 +49,25 @@ the eventual `src/` refactor, plus conventions for any future spikes in this rep
   `with_theme(...) do … end`, never a global `set_theme!` that bleeds into the image plots.
 - **Validate against the resolved stack:** the installed Turing (0.43–0.45) ≠ the legacy ADVI/`vi`
   API in `bayes.jl`; resolve `Manifest.toml` and port before relying on the posterior path.
+
+## Numerics / gate-diagnostic spikes (added in session 006-008)
+
+- **Isolated figure environment.** `CairoMakie` is NOT a root dependency and the root
+  co-resolution is fragile (the GLMakie/Makie 0.21-vs-0.24 conflict cost a Phase-7 plan). Render
+  figures from `.planning/spikes/figenv` (`julia --project=.planning/spikes/figenv fig.jl`) and
+  never add plotting deps to the root `Project.toml`/`Manifest.toml`.
+- **Avoid new root deps in spikes generally** — a 3-line local `logsumexp` beats adding
+  `LogExpFunctions` to the root manifest.
+- **DEV seeds only, asserted disjoint.** Any spike touching the ship-gate machinery must run on a
+  DEV seed and `@assert` it is disjoint from `PROD_SEED*`, `VAL_MASTER_SEED` (0x5BC0FFEE),
+  `NPE_MASTER_SEED` (0xC0FFEE) and previously used dev seeds. Never consume a pre-registered seed
+  in a spike, and never write a gate report from one.
+- **Store the intermediate quantities, not just the verdict.** Spike 006 stored `p_post` per pair,
+  which let Spike 007 answer a different question with *zero* additional inference cost. Cheap
+  insurance against re-running expensive draws.
+- **Validate a replacement estimator against the incumbent where both are well-defined** before
+  interpreting where they differ. Spike 008's median agreement of 0.002 in the non-degenerate
+  regime is what made its tail disagreement interpretable rather than suspect.
+- **Report a refuted hypothesis as the finding.** Spike 008's proposed remedy failed; the failure
+  identified the real problem (the baseline is unresolvable in the tail). Verdict PARTIAL, not a
+  quiet rewrite of the question.
