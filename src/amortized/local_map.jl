@@ -65,7 +65,10 @@ per-region uncertainty.
 - `tiles::Tuple{Int,Int}`: the `(rows, cols)` sub-tile layout of the map.
 - `delta_rho::Matrix{Float64}`: `rows×cols` per-tile Δρ; unscorable tiles hold `LOCAL_MAP_SENTINEL`.
 - `ood_flag::Matrix{Bool}`: `rows×cols` per-tile flag — `true` for a fired OOD channel OR a sentinel tile.
-- `meta::NamedTuple`: provenance (`N`, `ood_score`, `n_sentinel`, `tile_size`, `channels`).
+- `meta::NamedTuple`: provenance (`N`, `ood_score`, `n_sentinel`, `tile_size`, `channels`,
+  `sentinel`, `ood_thr`). `ood_thr` is the recorded pre-registered operating point the flags were
+  decided against; `nothing` means none was available, so a `false` flag on a non-sentinel tile
+  means "NOT CHECKED", not "in distribution".
 """
 struct LocalColocMap
     grid      :: Int
@@ -73,6 +76,81 @@ struct LocalColocMap
     delta_rho :: Matrix{Float64}
     ood_flag  :: Matrix{Bool}
     meta      :: NamedTuple
+end
+
+"""
+    _recorded_ood_threshold(artifact_dir, grid) -> Union{Float64, Nothing}
+
+Read the grid's ALREADY-PRE-REGISTERED OOD operating point out of the gate report
+(`artifact_dir/gate_report_G.jld2` → `report.ood.id_threshold`, as written by the D-05 ship-gate
+through `write_gate_report`). Nothing is re-run, re-scored or re-chosen here: this only recovers
+the number the gate committed BEFORE seeing misspecified data.
+
+Returns `nothing` — never a substitute value — when the report is absent, unreadable, carries no
+OOD section, or records a non-finite threshold. A missing operating point must leave the flag
+HONESTLY INERT rather than silently default to something arbitrary.
+"""
+function _recorded_ood_threshold(artifact_dir, grid)
+    path = joinpath(artifact_dir, "gate_report_$(Int(grid)).jld2")
+    isfile(path) || return nothing
+    rep = try
+        d = JLD2.load(path)
+        get(d, "report", nothing)
+    catch e
+        e isa InterruptException && rethrow()
+        nothing
+    end
+    (rep isa NamedTuple && haskey(rep, :ood)) || return nothing
+    o = rep.ood
+    (o isa NamedTuple && haskey(o, :id_threshold)) || return nothing
+    t = o.id_threshold
+    return (t isa Real && isfinite(t)) ? float(t) : nothing
+end
+
+"""
+    _activate_recorded_ood_threshold(b::EstimatorBundle, artifact_dir) -> EstimatorBundle
+
+Wire the grid's RECORDED pre-registered OOD operating point into the bundle's `ood_nulls` as
+`:thr`, so `ood_verdict` actually decides instead of returning `flag = false` for every tile.
+
+The persisted `ood_nulls_G.jld2` carries only the frozen `:density` fit (`_train_grid_pipeline`
+step 5) — no `:thr`. Without one, `ood_verdict` short-circuits to `flag = false` and the per-tile
+flag is VACUOUS: it then fires only structurally (sentinel tiles), never as a detector, which
+silently understates risk.
+
+**SCALE GUARD (mandatory).** The gate's `id_threshold` is the `OOD_ID_QUANTILE` quantile of RAW
+`maha_score(density, ·)` values (`ood_gate` in `test/gate/run_gate.jl`). `ood_verdict` compares
+`thr` against its FUSED statistic, which equals that same raw density Mahalanobis score only when
+(a) there is no `:zref` (else channels are robust-z rescaled) and (b) no other channel is active
+(`:noise`, `:model` would enter the `max` on their own raw scales). If either holds, the recorded
+number is NOT comparable, so the threshold is NOT installed and the flag stays inert with a loud
+warning — a mis-scaled threshold is worse than an inert flag.
+
+A bundle that already carries a `:thr` is returned untouched (never overwritten).
+"""
+function _activate_recorded_ood_threshold(b::EstimatorBundle, artifact_dir)
+    nulls = b.ood_nulls
+    _has(k) = haskey(nulls, k) && getfield(nulls, k) !== nothing
+    _has(:thr) && return b                       # already carries its own operating point
+
+    if _has(:zref) || _has(:noise) || _has(:model)
+        @warn "_activate_recorded_ood_threshold: ood_nulls carries extra channels/zref, so the " *
+              "gate's raw density-Mahalanobis `id_threshold` is NOT on the same scale as the " *
+              "fused ood_verdict statistic — the recorded operating point was NOT installed and " *
+              "the per-tile OOD flag stays INERT (structural/sentinel firing only)." grid = b.grid
+        return b
+    end
+
+    thr = _recorded_ood_threshold(artifact_dir, b.grid)
+    if thr === nothing
+        @warn "_activate_recorded_ood_threshold: no recorded OOD operating point in " *
+              "$(joinpath(artifact_dir, "gate_report_$(b.grid).jld2")) — the per-tile OOD flag " *
+              "is INERT (it can only fire structurally, on sentinel tiles)." grid = b.grid maxlog = 1
+        return b
+    end
+
+    return EstimatorBundle(b.grid, b.npe, b.ratio, merge(nulls, (; thr = thr)),
+                           b.zt, b.θzt, b.calibration)
 end
 
 """
@@ -88,6 +166,10 @@ This is the WAVE-6 bridge over the not-yet-wired Artifacts path: it does NOT cal
 package's own gate pipeline (trusted dev-time inputs, T-7-01); the public, content-hashed
 distribution path is wired by a later Phase-7 plan. A missing artifact errors loudly and names
 `train_and_register(grid)`.
+
+The registered bundle also gets the grid's RECORDED, pre-registered OOD operating point wired in
+via `_activate_recorded_ood_threshold` (read from `gate_report_G.jld2`, scale-guarded), so the
+per-tile `ood_verdict` flag is operative rather than vacuously `false`.
 """
 function _ensure_grid_registered(grid::Integer;
                                  artifact_dir = _grid_dir(default_artifacts_root(), grid))
@@ -100,7 +182,8 @@ function _ensure_grid_registered(grid::Integer;
         isfile(p) || error("_ensure_grid_registered: no artifact at $p — the $(g)×$(g) bundle " *
                            "has not been produced yet. Build one with `train_and_register($g)`.")
     end
-    return register!(_bundle_from_artifacts(g, npe_path, ratio_path, ood_path))
+    b = _bundle_from_artifacts(g, npe_path, ratio_path, ood_path)
+    return register!(_activate_recorded_ood_threshold(b, artifact_dir))
 end
 
 # Split one channel matrix into an r×c grid of sub-tile matrices, reusing the package's own
@@ -230,8 +313,12 @@ function local_coloc_map(img::MultiChannelImage, control::MultiChannelImage,
         flag[i, j]  = v.flag
     end
 
+    # `ood_thr` is the operating point the flags were actually decided against — `nothing` means
+    # NO threshold was available, i.e. the non-sentinel flags are inert, not "in distribution".
+    thr = haskey(b.ood_nulls, :thr) ? b.ood_nulls.thr : nothing
+
     return LocalColocMap(G, (r, c), Δ, flag,
                          (; N = Int(N), ood_score = score, n_sentinel = n_sentinel,
                             tile_size = size(xs[1, 1]), channels = collect(Int, channels),
-                            sentinel = LOCAL_MAP_SENTINEL))
+                            sentinel = LOCAL_MAP_SENTINEL, ood_thr = thr))
 end

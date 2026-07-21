@@ -38,7 +38,19 @@ function _tiny_bundle_artifacts(G::Int, dir::String; n::Int = 48)
     ProteinCoLoc.save_estimator(joinpath(dir, "npe_$(G).jld2"), npe.estimator, npe.θzt, zt, npe.arch)
     ProteinCoLoc.save_ratio(joinpath(dir, "ratio_$(G).jld2"), ratio)
     ProteinCoLoc.save_ood_nulls(joinpath(dir, "ood_nulls_$(G).jld2"), nulls)
-    return dir
+    return (; dir = dir, Zstd = Zstd, nulls = nulls)
+end
+
+# Write a gate report in EXACTLY the layout `test/gate/run_gate.jl`'s `write_gate_report` emits,
+# carrying `report.ood.id_threshold` — the pre-registered OOD operating point the registration
+# bridge is supposed to activate.
+function _write_gate_report_fixture(G::Int, dir::String, thr::Float64)
+    path = joinpath(dir, "gate_report_$(G).jld2")
+    JLD2.jldsave(path; schema_version = 1,
+                 report = (status = :ran, grid = G, seed = 0, sbc = nothing, bf = nothing,
+                           ood = (grid = G, n = 200, id_threshold = thr, auc = nothing,
+                                  auc_pass = nothing, passed = nothing)))
+    return path
 end
 
 # EXECUTABLE code of a source file: docstrings (`\"\"\"…\"\"\"`), `#=…=#` blocks and `#` lines are
@@ -61,9 +73,10 @@ end
 @testset "windowed sub-tile local map (07-08)" begin
     G   = 4
     dir = mktempdir()
-    _tiny_bundle_artifacts(G, dir)
+    fix = _tiny_bundle_artifacts(G, dir)
 
     # --- Task 1: in-process registration bridge -------------------------------------------
+    # (`dir` deliberately carries NO gate report — see the inert-flag assertions below.)
     # Earlier testsets in this suite register their own grid-4 bundles; start from an EMPTY
     # slot so the bridge is proven to populate it (and clear it again at the end).
     delete!(ProteinCoLoc._REGISTRY, G)
@@ -98,6 +111,12 @@ end
     @test size(m.meta.ood_score) == (2, 3)
     @test m.meta.tile_size == (32, 21)            # 64÷2 × 64÷3 (patch() trims the remainder)
 
+    # No gate report in `dir` ⇒ NO recorded operating point ⇒ the flag is HONESTLY INERT: the
+    # bundle carries no `:thr`, `meta.ood_thr` says so, and no scorable tile fires.
+    @test !haskey(b.ood_nulls, :thr)
+    @test m.meta.ood_thr === nothing
+    @test !any(m.ood_flag[i] for i in eachindex(m.ood_flag) if isfinite(m.meta.ood_score[i]))
+
     # A degenerate layout (sub-tiles smaller than the patch grid) is SENTINELLED + flagged,
     # never fatal (T-7-04).
     md = local_coloc_map(img, ctrl, [1, 2]; grid = G, tiles = (32, 32), N = 8, artifact_dir = dir)
@@ -121,6 +140,107 @@ end
     delete!(ProteinCoLoc._REGISTRY, G)             # leave the registry as we found it
 end
 
+#########################################################################################
+# The per-tile OOD flag must be OPERATIVE, not vacuous.
+#
+# `ood_nulls_G.jld2` carries only the frozen `:density` fit — no `:thr` — so `ood_verdict`
+# used to short-circuit to `flag = false` on EVERY non-degenerate tile. The registration
+# bridge now installs the grid's RECORDED, pre-registered operating point
+# (`gate_report_G.jld2` → `report.ood.id_threshold`) into the bundle, and this testset proves
+# the resulting flag really discriminates: an in-distribution tile is NOT flagged, an
+# out-of-distribution tile IS.
+#
+# The fixture mirrors the gate's own procedure exactly (`ood_gate` in test/gate/run_gate.jl):
+# the density null is fit on ID image summaries, and the threshold is `id_threshold` at
+# `OOD_ID_QUANTILE` of those same raw Mahalanobis scores. Nothing is tuned to the answer.
+#########################################################################################
+
+# A 2-channel image whose channels are INDEPENDENT — the patch correlations collapse toward 0,
+# far off the strongly-correlated ID manifold below. This is the OOD family.
+function _uncorr_mci(sz::Tuple{Int,Int}, name::String)
+    a = rand(sz...) .+ 0.5
+    b = rand(sz...) .+ 0.5
+    return MultiChannelImage([a, b], ["c1", "c2"], name, ["", ""], sz, [0.5, 0.5])
+end
+
+# A bundle whose density null is fit on REAL ID image summaries (so Mahalanobis scores are on the
+# same footing as the ones `local_coloc_map` computes per tile), plus a gate report carrying the
+# `id_threshold` of those ID scores. Returns `(dir, thr)`.
+function _ood_family_artifacts(G::Int, dir::String; n::Int = 400, tile = (32, 32))
+    Zraw = Float64.(hcat([ProteinCoLoc.encode_d01(
+                              ProteinCoLoc.patch_summary(_synth_mci(tile, "fit$i"), G))
+                          for i in 1:n]...))
+    zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
+    Zstd = ProteinCoLoc.standardize_summary(Zraw, zt, :min)
+    nulls = (; density = ProteinCoLoc.fit_ood_nulls(Float32.(Zstd); variant = :min))
+
+    θ   = randn(7, n)
+    Z32 = Float32.(Zstd)
+    npe = ProteinCoLoc.train_npe(Z32, Z32, θ, θ; use_gpu = false, epochs = 2, batchsize = 32,
+                                 dstar = 8, depth = 1, width = 16, num_coupling_layers = 2,
+                                 flow_depth = 1, flow_width = 8, stopping_epochs = 2)
+    ratio = ProteinCoLoc.train_ratio(Z32, vec(θ[1, :]); n = 64, use_gpu = false, epochs = 2,
+                                     batchsize = 32, num_summaries = 8, summary_width = 16,
+                                     stopping_epochs = 2)
+    ProteinCoLoc.save_estimator(joinpath(dir, "npe_$(G).jld2"), npe.estimator, npe.θzt, zt, npe.arch)
+    ProteinCoLoc.save_ratio(joinpath(dir, "ratio_$(G).jld2"), ratio)
+    ProteinCoLoc.save_ood_nulls(joinpath(dir, "ood_nulls_$(G).jld2"), nulls)
+
+    # The gate's operating point, computed the gate's way: the OOD_ID_QUANTILE quantile of the
+    # RAW in-distribution density-Mahalanobis scores.
+    id  = [ProteinCoLoc.maha_score(nulls.density, view(Zstd, :, i)) for i in 1:n]
+    thr = ProteinCoLoc.id_threshold(id; q = ProteinCoLoc.OOD_ID_QUANTILE)
+    _write_gate_report_fixture(G, dir, float(thr))
+    return (; dir = dir, thr = float(thr))
+end
+
+@testset "per-tile OOD flag is operative (recorded operating point)" begin
+    G   = 4
+    dir = mktempdir()
+    fx  = _ood_family_artifacts(G, dir)
+
+    prior = get(ProteinCoLoc._REGISTRY, G, nothing)
+    delete!(ProteinCoLoc._REGISTRY, G)
+    b = ProteinCoLoc._ensure_grid_registered(G; artifact_dir = dir)
+
+    # The RECORDED threshold is now wired into the bundle, verbatim (not re-derived, not rounded).
+    @test haskey(b.ood_nulls, :thr)
+    @test b.ood_nulls.thr == fx.thr
+    # And it is the SAME number the report records — read back from the artifact, not restated.
+    @test JLD2.load(joinpath(dir, "gate_report_$(G).jld2"))["report"].ood.id_threshold == b.ood_nulls.thr
+
+    # --- in-distribution map: at least one tile reads as IN distribution ------------------
+    m_id = local_coloc_map(_synth_mci((64, 64), "id_s"), _synth_mci((64, 64), "id_c"), [1, 2];
+                           grid = G, tiles = (2, 2), N = 16, artifact_dir = dir)
+    @test m_id.meta.n_sentinel == 0
+    @test m_id.meta.ood_thr == fx.thr
+    @test !all(m_id.ood_flag)                       # the flag is NOT stuck on
+
+    # --- out-of-distribution map: EVERY tile fires ---------------------------------------
+    m_ood = local_coloc_map(_uncorr_mci((64, 64), "ood_s"), _uncorr_mci((64, 64), "ood_c"), [1, 2];
+                            grid = G, tiles = (2, 2), N = 16, artifact_dir = dir)
+    @test m_ood.meta.n_sentinel == 0                # every flag below is a REAL detection, not a sentinel
+    @test all(m_ood.ood_flag)                       # the flag is NOT stuck off — it really fires
+    @test all(m_ood.meta.ood_score .> fx.thr)
+    @test minimum(m_ood.meta.ood_score) > maximum(m_id.meta.ood_score)   # genuine separation
+
+    # Every flag on a scorable tile is exactly the threshold decision (no vacuous `false`).
+    for mm in (m_id, m_ood), i in eachindex(mm.ood_flag)
+        isfinite(mm.meta.ood_score[i]) && @test mm.ood_flag[i] == (mm.meta.ood_score[i] > fx.thr)
+    end
+
+    # A bundle whose nulls already carry a `:thr` is never overwritten.
+    b2 = ProteinCoLoc.EstimatorBundle(G, b.npe, b.ratio, merge(b.ood_nulls, (; thr = 1.5)),
+                                      b.zt, b.θzt, b.calibration)
+    @test ProteinCoLoc._activate_recorded_ood_threshold(b2, dir).ood_nulls.thr == 1.5
+
+    # A missing/unreadable gate report yields NO threshold (honestly inert, never a default).
+    @test ProteinCoLoc._recorded_ood_threshold(mktempdir(), G) === nothing
+    @test ProteinCoLoc._recorded_ood_threshold(dir, G) == fx.thr
+
+    prior === nothing ? delete!(ProteinCoLoc._REGISTRY, G) : (ProteinCoLoc._REGISTRY[G] = prior)
+end
+
 # --- OPTIONAL: the real 8×8 bundle, when this checkout has it -------------------------------
 # `artifacts/` is gitignored (regenerable cache), so this smoke is conditional by design: it
 # proves the SHIPPED must-have — the gated 8×8 bundle registered in-process from
@@ -134,8 +254,21 @@ let root = joinpath(dirname(@__DIR__), "artifacts", "grid_8"),
             # really loads artifacts/grid_8/*.jld2, then restore whatever was there.
             prior = get(ProteinCoLoc._REGISTRY, 8, nothing)
             delete!(ProteinCoLoc._REGISTRY, 8)
-            ProteinCoLoc._ensure_grid_registered(8)
+            b8 = ProteinCoLoc._ensure_grid_registered(8)
             @test haskey(ProteinCoLoc._REGISTRY, 8)
+
+            # The 8×8 ship-gate's RECORDED operating point must now be live on the bundle. The
+            # expected value is READ FROM THE ARTIFACT — never restated as a literal here.
+            rp = joinpath(root, "gate_report_8.jld2")
+            if isfile(rp)
+                thr8 = JLD2.load(rp)["report"].ood.id_threshold
+                @test haskey(b8.ood_nulls, :thr)
+                @test b8.ood_nulls.thr == thr8
+            else
+                @info "test_local_map: artifacts/grid_8/gate_report_8.jld2 absent — the per-tile " *
+                      "OOD flag stays inert for this checkout (no recorded operating point)"
+                @test !haskey(b8.ood_nulls, :thr)
+            end
             img  = _synth_mci((256, 256), "sample8")
             ctrl = _synth_mci((256, 256), "control8")
             m = local_coloc_map(img, ctrl, [1, 2]; tiles = (2, 2), N = 32)   # grid = 8 default
@@ -143,6 +276,14 @@ let root = joinpath(dirname(@__DIR__), "artifacts", "grid_8"),
             @test size(m.delta_rho) == (2, 2)
             @test all(isfinite, m.delta_rho)
             @test m.meta.n_sentinel == 0            # 128² tiles clear the ≥15-survivor floor
+            # The map's flags are the threshold decision, not a vacuous `false`.
+            if haskey(b8.ood_nulls, :thr)
+                @test m.meta.ood_thr == b8.ood_nulls.thr
+                @test all(m.ood_flag[i] == (m.meta.ood_score[i] > b8.ood_nulls.thr)
+                          for i in eachindex(m.ood_flag))
+                @info "test_local_map (8×8): per-tile OOD scores vs recorded operating point" thr =
+                      b8.ood_nulls.thr scores = m.meta.ood_score fired = count(m.ood_flag)
+            end
             prior === nothing ? delete!(ProteinCoLoc._REGISTRY, 8) :
                                 (ProteinCoLoc._REGISTRY[8] = prior)
         end
