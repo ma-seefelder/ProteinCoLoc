@@ -128,9 +128,31 @@ those readings and are treated as genuine 16×16 grid-resolution weaknesses.
 - `.gitignore:63` ignores `artifacts/`; the recorded markdown numbers are the committed deliverable
   (07-05 / 07-06 precedent).
 
+**4. [Process error] `gate-16x16.md` was written concurrently by two agents; one clobbered the other**
+- **Found during:** Task 3 (commit step)
+- **Issue:** Two agents were both executing Task 3 against the same working tree. The gate itself ran
+  **once** (`gate_report_16.jld2` written 09:33:34, atomically) and both agents authored their report
+  from that **same** artifact — so all recorded numbers are identical and the verdict is unaffected.
+  But the second agent wrote `gate-16x16.md` with the Write tool **without reading the existing file
+  first**, silently overwriting the version committed at `c8ab484` (commit `7f093a1`). A subsequent
+  `e8f6a9d` then sharpened the overwritten version, compounding the tangle.
+- **Disposition:** `c8ab484`'s version was restored byte-for-byte as the base (commit `94a7a6a`), so
+  no authored content was lost — the restored version already carried a stronger OOD framing ("NOT
+  RUN / INCONCLUSIVE. This is NOT a pass." plus the "Recorded as a gap" paragraph) than the 3-line
+  sharpening `e8f6a9d` had added, which was verified line-by-line before restoring. One addition was
+  made on top: an explicit **"NOT eligible for default registry population"** verdict, which the plan
+  requires to be stated plainly on a FAIL and which the restored version had left deferred to 07-10.
+- **Not a scientific deviation:** `test/gate/gate_consts_16.jl` is byte-identical to `7e2318b`
+  throughout (verified by `git diff 7e2318b` returning empty at every step), `spike/` is untouched,
+  and no threshold, seed, M, L, or bin count was altered. The incident is a version-control /
+  coordination failure, not a data-integrity one.
+- **Lesson:** never `Write` over a file that may already exist without reading it first; and a plan
+  should have exactly one executor per task.
+
 ---
 
-**Total deviations:** 3 (1 unscored gate recorded as a gap, 1 provenance gap, 1 repo convention).
+**Total deviations:** 4 (1 unscored gate recorded as a gap, 1 provenance gap, 1 repo convention,
+1 concurrent-write clobber that was detected and fully restored).
 No pre-registration constant was altered.
 
 ## Next Phase Readiness
