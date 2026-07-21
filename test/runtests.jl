@@ -760,6 +760,52 @@ include(joinpath(@__DIR__, "gate", "run_gate.jl"))   # brings gate_consts + harn
 end
 
 ##########################################################################################
+### OOD control simulators for the ship-gate's --ood arm (07-09b, D-03/D-04)
+###
+### `test/gate/misspec.jl` supplies the POSITIVE controls (the four Phase-5 misspecification
+### families) and the summary-orthogonal NEGATIVE controls the `--ood` arm needs in order to
+### score a separability AUC at all. This smoke asserts the family surface, the imsize guard,
+### the simulator-contract wrapper, and that the negative-control transforms really do leave the
+### patch-Pearson summary (near-)invariant — the D-04 named blind spot, measured.
+##########################################################################################
+@testset "OOD control simulators (gate/misspec.jl, 07-09b)" begin
+    G = 4; ims = (64, 64)
+    @test length(OOD_FAMILIES) == 4
+    @test collect(keys(OOD_FAMILIES)) == [:texture, :noise, :optics, :background]
+
+    rng = prod_rng(G)
+    θ   = ProteinCoLoc.sample_prior(rng)
+    for (fam, gen) in pairs(OOD_FAMILIES)
+        img = gen(rng, θ; imsize = ims, level = OOD_GRID_LEVELS, G = G)
+        @test length(img) == 2
+        @test all(ch -> size(ch) == ims, img)
+        @test all(ch -> all(isfinite, ch) && all(>=(0.0), ch), img)
+        # Grid-generalized imsize guard (mirrors simulate_pair's entry validation).
+        @test_throws ArgumentError gen(rng, θ; imsize = (32, 32), level = 1, G = G)
+    end
+
+    # The simulator-contract wrapper drops straight into the harness seam.
+    ps = misspec_simulator(OOD_FAMILIES.texture; level = 2, G = G)
+    for f in (:sample_prior, :simulate_pair, :build_mci)
+        @test haskey(ps, f)
+    end
+    @test length(ps.simulate_pair(rng, θ; imsize = ims)) == 2
+
+    # Negative controls: correlation-preserving ⇒ (near-)KS-invariant summary (D-04 blind spot).
+    base = ProteinCoLoc.simulate_pair(rng, θ; imsize = ims)
+    negs = gate_negctrls(G; rng_factory = () -> prod_rng(G))
+    for (name, tf) in pairs(negs)
+        out = tf(base)
+        @test length(out) == 2 && all(ch -> size(ch) == ims, out)
+        δ = verify_summary_invariance(base, tf, G)
+        @test isfinite(δ)
+        # A G×G summary has only G² values, so the KS statistic is quantized in 1/G² steps;
+        # a correlation-preserving transform must stay within a couple of those steps.
+        @test δ <= 3 / G^2 + 1e-9
+    end
+end
+
+##########################################################################################
 ### GPU-train smoke — graceful CPU fallback + CPU-resident persistence (07-04 Task 3, D-06)
 ##########################################################################################
 include(joinpath(@__DIR__, "gpu_smoke.jl"))
