@@ -145,7 +145,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 07-05-PLAN.md — 8×8 pipeline: train → fresh CPU SBC/BF/OOD gate → register (proves gate machinery) (PROD-02)
 - [x] 07-06-PLAN.md — 4×4 pipeline (coarse-robust): train → fresh CPU gate (PROD-02)
 - [x] 07-07-PLAN.md — 16×16 pipeline (≥512² data, min-image-size caveat): train → fresh CPU gate (PROD-02) — honest FAIL recorded; grid 16 NOT registry-eligible by default
-- [ ] 07-08-PLAN.md — 8×8 sub-tile windowed coarse local colocalization map (inherits 8×8 gate; Phase-12 point clean) (PROD-02)
+- [x] 07-08-PLAN.md — 8×8 sub-tile windowed coarse local colocalization map (inherits 8×8 gate; Phase-12 point clean) (PROD-02) — `local_coloc_map`/`LocalColocMap` + in-process `_ensure_grid_registered` bridge; full suite green
 - [ ] 07-09-PLAN.md — 32×32 CONDITIONAL pipeline (≥1024² data) + user ship-with-caveat vs cap decision; 64×64 DROPPED (PROD-02)
 - [ ] 07-10-PLAN.md — Public colocalization_amortized API + content-hashed Artifacts + register only gate-PASSED grids + integration test (PROD-01, PROD-02)
 

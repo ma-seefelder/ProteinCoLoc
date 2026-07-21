@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Phase 7 plan 07-07 COMPLETE (16x16 ship-gate ran, honest FAIL recorded). 8/11 plans; next is 07-08 (wave 6). Phase 8 remains COMPLETE.
-last_updated: "2026-07-21T08:00:00.000Z"
-last_activity: 2026-07-21 -- Phase 07 plan 07-07 executed: 16x16 CPU ship-gate ran on PROD_SEED[16], honest FAIL recorded (gate-16x16.md); grid 16 flagged NOT registry-eligible
+stopped_at: Phase 7 plan 07-08 COMPLETE (windowed sub-tile local coloc map shipped, full suite green). 9/11 plans; next is 07-09 (wave 7, autonomous:false — needs human authorization). Phase 8 remains COMPLETE.
+last_updated: "2026-07-21T12:00:00.000Z"
+last_activity: 2026-07-21 -- Phase 07 plan 07-08 executed: local_coloc_map/LocalColocMap + in-process _ensure_grid_registered bridge; Pkg.test() green incl. a real-8x8 windowed smoke
 progress:
   total_phases: 16
   completed_phases: 9
   total_plans: 53
-  completed_plans: 50
+  completed_plans: 51
   percent: 56
 ---
 
@@ -25,8 +25,30 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-**ACTIVE phase: 07 (productionization)** — 8 of 11 plans complete, wave 6 of 8; **07-07 is COMPLETE**,
-next plan is **07-08**.
+**ACTIVE phase: 07 (productionization)** — 9 of 11 plans complete, wave 6 of 8 DONE; **07-08 is
+COMPLETE**, next plan is **07-09** (wave 7 — `autonomous: false`, long 32×32 training run, MUST NOT
+start without explicit human authorization).
+
+**07-08 (2026-07-21):** the windowed sub-tile local colocalization map shipped
+(`src/amortized/local_map.jl`, commits 25037e6 / 90f612e). `local_coloc_map(img, control,
+channels; grid=8, tiles=(r,c))` cuts both images into r×c sub-tiles with the package's own
+`patch()` tiler and scores each tile against its control tile through the FROZEN, already-gated
+bundle — no training, no new gate, so the map inherits the 8×8 gate verdict verbatim (residual
+FAILs included). Because 07-10 has not wired Artifacts yet, `_ensure_grid_registered(grid;
+artifact_dir)` bridges in-process from the local `artifacts/grid_G/*.jld2` via
+`_bundle_from_artifacts` + `register!` (touches neither `_lazy_load_from_artifact!` nor
+Artifacts.toml). Degenerate tiles (below the grid size, zero survivors of the ≥15 floor, or a
+non-finite read) take `LOCAL_MAP_SENTINEL = 0.0` AND a forced OOD flag — never a crash (T-7-04).
+Phase-12 `SpatialColocResult`/`delta_rho_map`/`uncertainty_map` remain sketch-only in
+`src/results.jl` (machine-asserted absent from the new module's executable code). `Pkg.test()`
+green: windowed-map 30/30 plus a conditional real-8×8 smoke 5/5 (zero sentinels at 2×2 on 256²).
+
+**Two carry-forward notes for 07-10:** (1) `_ensure_grid_registered` is a NO-OP when the grid is
+already registered — an explicit registration always wins over a disk artifact, so superseding one
+needs explicit invalidation, not a second `_ensure_*` call. (2) `_train_grid_pipeline` persists
+ood_nulls with the `:density` channel ONLY (no `:noise`, no `:model`, **no `:thr`**), so
+`ood_verdict` currently computes a score but has no threshold and returns `flag = false`; per-tile
+OOD flagging is structural (degenerate tiles) only until the fitted `thr`/`zref` are persisted.
 The 16×16 ship-gate RAN to completion (~16.5 min, `gate_report_16.jld2`, `status = :ran`) against the
 byte-locked `gate_consts_16.jl` (7e2318b) on the fresh disjoint `PROD_SEED[16] = 0xb906f369f6cacf91`.
 Recorded verdict is an **honest FAIL** (`gate-16x16.md`, commits 7f093a1 / e8f6a9d): SBC
@@ -43,9 +65,9 @@ Offline gate `julia --project=. corpus/test/runtests.jl` → 217/217, ZERO netwo
 untouched; `git ls-files corpus/data` empty. NOTE: this Current Position was previously clobbered by a
 parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
 
-Last activity: 2026-07-21 -- Phase 07 plan 07-07 executed (16x16 ship-gate, honest FAIL); Phase 8 remains complete
+Last activity: 2026-07-21 -- Phase 07 plan 07-08 executed (windowed sub-tile local map, suite green); Phase 8 remains complete
 
-Progress: [█████░░░░░] 56% of phases (9/16); 50/53 plans
+Progress: [█████░░░░░] 56% of phases (9/16); 51/53 plans
 
 ## Resolved (2026-07-03): 07-00 CO-RESOLUTION GATE — GREEN
 
@@ -109,6 +131,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 | Phase 07 P07-03 | 50min | 4 tasks | 9 files |
 | Phase 07 P07-04 | 55min | 3 tasks | 7 files |
 | Phase 7 P6 | 40min | 3 tasks | 4 files |
+| Phase 07 P07-08 | 55min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -151,6 +174,7 @@ Recent decisions affecting current work:
 - [Phase 07-02]: Declared LinearAlgebra as a direct stdlib dep (cholesky/Symmetric/I for the OOD Mahalanobis) — a stdlib already in the Manifest with no version to resolve, so the co-resolution gate stays 4/4 green (NeuralEstimators 0.2.1 / Flux 0.16.10 pins intact); Pkg.test fully green (infer 11/11, bf 18/18, ood 31/31); spike/ byte-untouched.
 - [Phase 07-04]: Per-grid CPU-reproducible ship-gate machinery (D-05) delivered to test/gate/{harness,sbc,gate_consts_template,run_gate}.jl + test/gpu_smoke.jl (PROD-02) — no grid trained yet; this is the gate the per-grid plans invoke. harness.jl draw_simulate_infer(m,rng;G,...) + paired-Δρ path is grid-parametrized (patch_summary(mci,G)), CPU-only (use_gpu=false on EVERY NeuralEstimators call), and loads a per-grid net via load_estimator (not the fixed spike trained_npe.jld2); frozen zt/θzt applied never re-fit (Pitfall 5). sbc.jl: M×8 rank table (7 θ + dedicated paired-draw Δρ column), KS+χ² uniformity via HypothesisTests (never hand-rolled), coverage curve, ported ECE/MCE CalibrationResult traffic-light, aggregated sbc_gate verdict. gate_consts_template.jl is the FRESH-per-grid pre-registration (SBC/BF/OOD consts) carrying a disjoint PROD_SEED[G] via a Philox stream salted (PROD_SALT) off the FORBIDDEN VAL_MASTER_SEED=0x5BC0FFEE and NPE_MASTER_SEED=0xC0FFEE — unit-asserted PROD_SEED[G]∉{those} for G∈{4,8,16,32} + 4 distinct seeds (anti-snooping Pitfall 3/T-7-08); BF gate uses the non-clamped kde_log_bf_unclamped baseline (Memo §5/T-7-06), OOD gate with_pp=true. run_gate.jl per-grid CLI --grid G [--sbc --bf --ood] loads the grid net + selected artifacts, runs the gates (use_gpu=false), writes an atomic .tmp→integrity→mv gate report; invocable before any grid is trained (missing NPE → :not_trained, no crash). bf_gate is self-contained (amortized_log_bf vs non-clamped KDE, no Turing); ood_gate computes the pre-registered id_threshold now + control-separability AUC when the per-grid plan injects pos_sim. gpu_smoke.jl: train_npe(...;use_gpu=true) runs on GPU when present and DEGRADES CLEANLY to CPU when CUDA absent (no error, CLAUDE.md graceful-fallback), asserts CPU-resident Flux.state persistence reloads/infers CPU-side; CUDA-present branch guarded by has_cuda_device() (==false here → fallback path exercised). Forward simulator NOT yet promoted (referenced-only in datagen/ood bodies) → harness takes an injectable `sim` seam (default_simulator resolves the promoted chain, errors clearly until then), mirroring 07-03's injectable datagen; the fixture SBC smoke injects a lightweight fake simulator. Pkg.test green (gate harness+SBC 29/29, GPU smoke 8/8, co-resolution 4/4 intact, no new external deps); spike/ byte-untouched.
 - [Phase 07-07]: 16x16 (SHIP-WITH-CAVEAT fine grid) trained via _train_grid_pipeline(16) (80k pairs, 68k train, NPE d_in=512/dstar=64/10 coupling, NRE input_dim=1280) and CPU-gated on fresh disjoint PROD_SEED[16]=0xb906f369f6cacf91 with SBC_IMSIZE raised to 512^2. HONEST FAIL, constants byte-locked: SBC ks_pass=false/ece_pass=true with only 4/8 KS pass and the HEADLINE rho_true itself rejected (KS p=7.0e-4, ECE 0.0240) plus spillover 0.0027 -- both were comfortably uniform at 8x8 (0.567) and 4x4 (0.427), so the documented 'M=2000 over-sensitivity on summary-uninformative nuisance parameters' reading does NOT cover this; the paired Delta-rho column survives (KS 0.161, chi2 0.897, ECE 0.0060). BF corr 0.9150 (LOWEST of the three grids: 8x8 0.9472, 4x4 0.9410) AND max|d logBF| 12.72 (documented KDE-tail artifact), n=15 finite of 25. OOD NOT RUN / INCONCLUSIVE -- auc=nothing, passed=nothing (no pos_sim positive control injected); id_threshold=378.44 only, explicitly NOT a pass. CONSEQUENCE for 07-10: grid 16 recommended NOT eligible for default registry population (leave out of _SHIPPED_GRIDS or ship only behind explicit sign-off), and any entry must carry the >=512^2 minimum-image-size caveat (256 px/patch at 256^2 is marginal after background exclusion). PROVENANCE GAP: _train_grid_pipeline does not persist imsize_set, so the realized training image distribution is not recoverable from artifacts/grid_16/* alone.
+- [Phase 07-08]: Local localisation ships as WINDOWED sub-tile inference over the frozen 8x8 bundle (src/amortized/local_map.jl), NOT a new fine-grid model — local_coloc_map returns a lightweight LocalColocMap (grid, tiles, delta_rho::Matrix, ood_flag::Matrix, meta), deliberately NOT an AbstractColocResult (no draws / no BF / no per-region uncertainty to back that interface). grid is a defaulted KEYWORD (8) so the map inherits whichever grid's gate the caller picks and CI can drive a tiny grid-4 bundle. Sub-tiles come from the package's OWN patch(img,nx,ny) (same trimming as the summary path) and tile MCIs carry the PARENT Otsu thresholds (tile-local Otsu would make tiles incomparable). Degenerate tiles take LOCAL_MAP_SENTINEL=0.0 AND a forced ood_flag=true so 'unscorable' can never read as 'measured no difference' (T-7-04). Wave-6 bridge _ensure_grid_registered(grid; artifact_dir) reuses _bundle_from_artifacts + register! rather than restating the three loads; it is a NO-OP on an already-registered grid.
 - [Phase 07-03]: Amortized TRAINING layer promoted to src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl (PROD-01/02). build_estimator input-width-agnostic (q a NormalisingFlow INSTANCE positional; NPE_* Phase-5 consts); train_npe/train_ratio default use_gpu=has_cuda_device() with the spike use_gpu&&throw guards REMOVED (D-06) and LR/decay kept Float64 (AdamW-CosAnneal gotcha); ratio conditioner width from ratio_input_dim(G)=5G² (not 320), no custom loss (v0.2.1 hard-codes logit-BCE). SHIPPED PERSISTENCE migrated to CPU-resident Flux.state(cpu(est))+arch metadata → build_estimator/build_ratio_estimator + Flux.loadmodel! on load (Pitfall 4/T-7-07: device-independent, narrower deserialization surface T-7-01); OOD nulls persist directly; all through the atomic .tmp→reopen-integrity-@assert→mv(force=true) wrapper + schema_version + _estimator_ok/_ratio_ok/_ood_nulls_ok SKIP-IF-DONE predicates; seeded save→load→CPU inference bitwise-equal. _train_grid_pipeline(grid;...) factors datagen→zt→train_npe→train_ratio→fit_ood_nulls→persist→EstimatorBundle (SKIP-IF-DONE loads valid artifacts; injectable datagen seam makes it testable without the not-yet-promoted simulator; default_imsize_for 16→≥512²/32→≥1024²); train_and_register(grid) now runs it (D-04 on-ramp is real code, stub removed). Docstring documents -t auto datagen + Philox-per-index thread-count-independent byte-identical repro. GPU path plumbed but NOT exercised (has_cuda_device()==false, no CUDA loaded); CPU path fully green. Pkg.test green under -t auto (train_npe 11/11, train_ratio 12/12, persist 17/17, pipeline 19/19; co-resolution 4/4, no new external deps); spike/ byte-untouched.
 - [Phase 07-06]: 4x4 bundle produced via the PUBLIC train_and_register(4) path (PROD-02/D-04 user-definable-grid happy path proven end-to-end; estimator_for(4) confirmed in-process), imsize_set constrained to ((256,256),) for the CPU budget; gate on fresh disjoint PROD_SEED[4]=0x8c0ad97b99bd6031 recorded honest FAIL (SBC ECE-green all 8, 7/8 KS pass vs 8x8 5/8, only shift_dx 0.0326; BF corr 0.941 near-miss + max|dlogBF| 12.40 KDE-tail artifact; OOD ID-op 31.79 only), gate_consts_4.jl byte-locked
 - [Phase 07-06]: fixed a Rule-1 numerical crash in the shipped non-clamped KDE BF baseline (bf.jl kde_log_bf_unclamped) — QuadGK adaptive integral overshoots the tail probability a few ulp outside [0,1], crashing log(); clamped to the valid [0,1] domain so a saturated tail yields the honest ±Inf (dropped) NOT the forbidden 1e-8 finite floor; in-range values byte-identical
