@@ -113,7 +113,9 @@ Pre-registered pass conditions: positive-control separability ROC AUC ≥ `OOD_A
 | ID operating point `id_threshold` | 378.44 | — | 95th ID quantile → ~5% ID fire-rate by construction |
 | per-family separability AUC | not computed (`nothing`) | ≥ 0.80 | no positive-control simulator injected |
 
-- **OOD verdict: indeterminate (operating point only).**
+- **OOD verdict: NOT RUN / INCONCLUSIVE (operating point only) — this is explicitly NOT a pass.**
+  `passed = nothing` is an *absent* verdict, not a green one: there is no evidence in this gate that
+  the 16×16 misspecification flag separates OOD from ID inputs.
 - **Reading:** the bare `run_gate.jl --ood` CLI computes the pre-registered ID operating point but
   injects **no** positive-control (misspecified) simulators, so no separability AUC is scored
   (`auc = nothing`, `passed = nothing`) — identical by-design behavior to the 8×8 and 4×4 gates. The

@@ -136,10 +136,13 @@ No pre-registration constant was altered.
 ## Next Phase Readiness
 - The 16×16 bundle exists on-disk (`artifacts/grid_16/`, gitignored); 07-10 can regenerate via
   `train_and_register(16)` (SKIP-IF-DONE loads if present).
-- **07-10 caution:** unlike 4×4 and 8×8, the 16×16 residuals are not fully attributable to
-  pre-registration/baseline design. If registered at all it must be SHIP-WITH-CAVEAT and carry
-  (a) the ≥512² minimum-image-size requirement, (b) the ρ_true SBC-KS rejection, (c) the
-  un-validated OOD flag. The disposition decision belongs to 07-10 / the phase verifier.
+- **07-10 recommendation — grid 16 is NOT eligible for default registry population.** Unlike 4×4 and
+  8×8, the 16×16 residuals are not fully attributable to pre-registration/baseline design: the
+  headline `ρ_true` KS rejection (7.0e-4) has no documented non-method cause, and the BF corr
+  (0.9150) is below both sibling grids. `gate-16x16.md` recommends leaving grid 16 out of
+  `_SHIPPED_GRIDS`, or shipping it only behind explicit user sign-off carrying (a) the ≥512²
+  minimum-image-size caveat, (b) the ρ_true SBC-KS rejection, (c) the unscored OOD flag. Final
+  disposition belongs to 07-10 / the phase verifier.
 
 ## Known Stubs
 None. The trained bundle is real (finite CPU draws), the gate report is real (`status = :ran`), and
