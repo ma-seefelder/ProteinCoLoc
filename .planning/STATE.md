@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Phase 8 COMPLETE (08-05 anchors pinned, gate 217/217). Active phase is Phase 7 — 7/11 plans, mid wave 6/8 (plan 07-07); its 16x16 training has COMPLETED (artifacts/grid_16 exists)
-last_updated: "2026-07-21T07:20:00.000Z"
-last_activity: 2026-07-21 -- Phase 08 Wave 5 (08-05) executed; both physical anchors human-verified + pinned; Phase 8 complete
+stopped_at: Phase 7 plan 07-07 COMPLETE (16x16 ship-gate ran, honest FAIL recorded). 8/11 plans; next is 07-08 (wave 6). Phase 8 remains COMPLETE.
+last_updated: "2026-07-21T08:00:00.000Z"
+last_activity: 2026-07-21 -- Phase 07 plan 07-07 executed: 16x16 CPU ship-gate ran on PROD_SEED[16], honest FAIL recorded (gate-16x16.md); grid 16 flagged NOT registry-eligible
 progress:
   total_phases: 16
   completed_phases: 9
   total_plans: 53
-  completed_plans: 49
+  completed_plans: 50
   percent: 56
 ---
 
@@ -21,13 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 07 — productionization (plan 07-07, wave 6/8; 16×16 training complete, ship-gate run next). Phase 08 closed 2026-07-21.
+**Current focus:** Phase 07 — productionization (plan 07-07 COMPLETE; next 07-08, wave 6/8). Phase 08 closed 2026-07-21.
 
 ## Current Position
 
-**ACTIVE phase: 07 (productionization)** — 7 of 11 plans complete, mid wave 6 of 8, current plan **07-07**.
-The 07-07 16×16 training has **COMPLETED** (`artifacts/grid_16` exists); the fresh 16×16 ship-gate
-pre-registration (`test/gate/gate_consts_16.jl`) is committed (7e2318b) and the gate run is the next step.
+**ACTIVE phase: 07 (productionization)** — 8 of 11 plans complete, wave 6 of 8; **07-07 is COMPLETE**,
+next plan is **07-08**.
+The 16×16 ship-gate RAN to completion (~16.5 min, `gate_report_16.jld2`, `status = :ran`) against the
+byte-locked `gate_consts_16.jl` (7e2318b) on the fresh disjoint `PROD_SEED[16] = 0xb906f369f6cacf91`.
+Recorded verdict is an **honest FAIL** (`gate-16x16.md`, commits 7f093a1 / e8f6a9d): SBC
+`ks_pass=false` / `ece_pass=true` with **only 4/8 KS pass and the headline ρ_true itself rejected at
+p = 7.0e-4**; BF corr 0.9150 < 0.95 AND max|Δ logBF| 12.72 > 0.5 (n=15 finite of 25); OOD
+**NOT RUN / INCONCLUSIVE** (`auc = nothing`, `passed = nothing` — no `pos_sim` injected; ID operating
+point 378.44 only, explicitly NOT a pass). No pre-registered constant was tuned.
+**07-10 consequence:** grid 16 is recommended **NOT eligible** for default registry population — the
+ρ_true rejection has no documented non-method cause, unlike the 8×8/4×4 residuals.
 
 **Phase 08 (external-physical-ground-truth-corpus) — COMPLETE (2026-07-21).** 5 of 5 plans done.
 Wave 5 (08-05) is unblocked and executed: both physical anchors human-verified, pinned, and sealed.
@@ -35,9 +43,9 @@ Offline gate `julia --project=. corpus/test/runtests.jl` → 217/217, ZERO netwo
 untouched; `git ls-files corpus/data` empty. NOTE: this Current Position was previously clobbered by a
 parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
 
-Last activity: 2026-07-21 -- Phase 08 Wave 5 (08-05) executed; Phase 8 complete
+Last activity: 2026-07-21 -- Phase 07 plan 07-07 executed (16x16 ship-gate, honest FAIL); Phase 8 remains complete
 
-Progress: [█████░░░░░] 56% of phases (9/16); 49/53 plans
+Progress: [█████░░░░░] 56% of phases (9/16); 50/53 plans
 
 ## Resolved (2026-07-03): 07-00 CO-RESOLUTION GATE — GREEN
 
@@ -142,6 +150,7 @@ Recent decisions affecting current work:
 - [Phase 07-02]: Amortized READ surfaces promoted to src/amortized/{infer,bf,ood}.jl (PROD-01), grid-general + CPU-default (use_gpu=false everywhere, D-06). infer.jl: standardize_summary (frozen zt, mask bypass) + posterior_for/rho_draws/delta_rho (StatsBase.reconstruct BEFORE ρ read, Pitfall 5). bf.jl: amortized_log_bf (one NRE pass, measured log_prior_odds subtracted) + pair_encode (nc=G² derived ⇒ 5G²) + kde_log_bf_unclamped (Memo §5/T-7-06: compute_BayesFactor KDE math WITHOUT the 1e-8 _clampp floor so max|Δ logBF| is artifact-free). ood.jl: density (fit_ood_nulls continuous-rows+ridge) + noise (10 invariant features) + re-enabled posterior-predictive channel (ood_verdict defaults with_pp=true, Memo §5/T-7-04, kept crash-free by the iter1 _finite_or/_theta_tuple finite-guard) OR-fused by ood_verdict → OODVerdict. OOD ship-gate experiment (misspec families/ood_roc_over_grid, need simulator+ImageFiltering) deferred to 07-03+.
 - [Phase 07-02]: Declared LinearAlgebra as a direct stdlib dep (cholesky/Symmetric/I for the OOD Mahalanobis) — a stdlib already in the Manifest with no version to resolve, so the co-resolution gate stays 4/4 green (NeuralEstimators 0.2.1 / Flux 0.16.10 pins intact); Pkg.test fully green (infer 11/11, bf 18/18, ood 31/31); spike/ byte-untouched.
 - [Phase 07-04]: Per-grid CPU-reproducible ship-gate machinery (D-05) delivered to test/gate/{harness,sbc,gate_consts_template,run_gate}.jl + test/gpu_smoke.jl (PROD-02) — no grid trained yet; this is the gate the per-grid plans invoke. harness.jl draw_simulate_infer(m,rng;G,...) + paired-Δρ path is grid-parametrized (patch_summary(mci,G)), CPU-only (use_gpu=false on EVERY NeuralEstimators call), and loads a per-grid net via load_estimator (not the fixed spike trained_npe.jld2); frozen zt/θzt applied never re-fit (Pitfall 5). sbc.jl: M×8 rank table (7 θ + dedicated paired-draw Δρ column), KS+χ² uniformity via HypothesisTests (never hand-rolled), coverage curve, ported ECE/MCE CalibrationResult traffic-light, aggregated sbc_gate verdict. gate_consts_template.jl is the FRESH-per-grid pre-registration (SBC/BF/OOD consts) carrying a disjoint PROD_SEED[G] via a Philox stream salted (PROD_SALT) off the FORBIDDEN VAL_MASTER_SEED=0x5BC0FFEE and NPE_MASTER_SEED=0xC0FFEE — unit-asserted PROD_SEED[G]∉{those} for G∈{4,8,16,32} + 4 distinct seeds (anti-snooping Pitfall 3/T-7-08); BF gate uses the non-clamped kde_log_bf_unclamped baseline (Memo §5/T-7-06), OOD gate with_pp=true. run_gate.jl per-grid CLI --grid G [--sbc --bf --ood] loads the grid net + selected artifacts, runs the gates (use_gpu=false), writes an atomic .tmp→integrity→mv gate report; invocable before any grid is trained (missing NPE → :not_trained, no crash). bf_gate is self-contained (amortized_log_bf vs non-clamped KDE, no Turing); ood_gate computes the pre-registered id_threshold now + control-separability AUC when the per-grid plan injects pos_sim. gpu_smoke.jl: train_npe(...;use_gpu=true) runs on GPU when present and DEGRADES CLEANLY to CPU when CUDA absent (no error, CLAUDE.md graceful-fallback), asserts CPU-resident Flux.state persistence reloads/infers CPU-side; CUDA-present branch guarded by has_cuda_device() (==false here → fallback path exercised). Forward simulator NOT yet promoted (referenced-only in datagen/ood bodies) → harness takes an injectable `sim` seam (default_simulator resolves the promoted chain, errors clearly until then), mirroring 07-03's injectable datagen; the fixture SBC smoke injects a lightweight fake simulator. Pkg.test green (gate harness+SBC 29/29, GPU smoke 8/8, co-resolution 4/4 intact, no new external deps); spike/ byte-untouched.
+- [Phase 07-07]: 16x16 (SHIP-WITH-CAVEAT fine grid) trained via _train_grid_pipeline(16) (80k pairs, 68k train, NPE d_in=512/dstar=64/10 coupling, NRE input_dim=1280) and CPU-gated on fresh disjoint PROD_SEED[16]=0xb906f369f6cacf91 with SBC_IMSIZE raised to 512^2. HONEST FAIL, constants byte-locked: SBC ks_pass=false/ece_pass=true with only 4/8 KS pass and the HEADLINE rho_true itself rejected (KS p=7.0e-4, ECE 0.0240) plus spillover 0.0027 -- both were comfortably uniform at 8x8 (0.567) and 4x4 (0.427), so the documented 'M=2000 over-sensitivity on summary-uninformative nuisance parameters' reading does NOT cover this; the paired Delta-rho column survives (KS 0.161, chi2 0.897, ECE 0.0060). BF corr 0.9150 (LOWEST of the three grids: 8x8 0.9472, 4x4 0.9410) AND max|d logBF| 12.72 (documented KDE-tail artifact), n=15 finite of 25. OOD NOT RUN / INCONCLUSIVE -- auc=nothing, passed=nothing (no pos_sim positive control injected); id_threshold=378.44 only, explicitly NOT a pass. CONSEQUENCE for 07-10: grid 16 recommended NOT eligible for default registry population (leave out of _SHIPPED_GRIDS or ship only behind explicit sign-off), and any entry must carry the >=512^2 minimum-image-size caveat (256 px/patch at 256^2 is marginal after background exclusion). PROVENANCE GAP: _train_grid_pipeline does not persist imsize_set, so the realized training image distribution is not recoverable from artifacts/grid_16/* alone.
 - [Phase 07-03]: Amortized TRAINING layer promoted to src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl (PROD-01/02). build_estimator input-width-agnostic (q a NormalisingFlow INSTANCE positional; NPE_* Phase-5 consts); train_npe/train_ratio default use_gpu=has_cuda_device() with the spike use_gpu&&throw guards REMOVED (D-06) and LR/decay kept Float64 (AdamW-CosAnneal gotcha); ratio conditioner width from ratio_input_dim(G)=5G² (not 320), no custom loss (v0.2.1 hard-codes logit-BCE). SHIPPED PERSISTENCE migrated to CPU-resident Flux.state(cpu(est))+arch metadata → build_estimator/build_ratio_estimator + Flux.loadmodel! on load (Pitfall 4/T-7-07: device-independent, narrower deserialization surface T-7-01); OOD nulls persist directly; all through the atomic .tmp→reopen-integrity-@assert→mv(force=true) wrapper + schema_version + _estimator_ok/_ratio_ok/_ood_nulls_ok SKIP-IF-DONE predicates; seeded save→load→CPU inference bitwise-equal. _train_grid_pipeline(grid;...) factors datagen→zt→train_npe→train_ratio→fit_ood_nulls→persist→EstimatorBundle (SKIP-IF-DONE loads valid artifacts; injectable datagen seam makes it testable without the not-yet-promoted simulator; default_imsize_for 16→≥512²/32→≥1024²); train_and_register(grid) now runs it (D-04 on-ramp is real code, stub removed). Docstring documents -t auto datagen + Philox-per-index thread-count-independent byte-identical repro. GPU path plumbed but NOT exercised (has_cuda_device()==false, no CUDA loaded); CPU path fully green. Pkg.test green under -t auto (train_npe 11/11, train_ratio 12/12, persist 17/17, pipeline 19/19; co-resolution 4/4, no new external deps); spike/ byte-untouched.
 - [Phase 07-06]: 4x4 bundle produced via the PUBLIC train_and_register(4) path (PROD-02/D-04 user-definable-grid happy path proven end-to-end; estimator_for(4) confirmed in-process), imsize_set constrained to ((256,256),) for the CPU budget; gate on fresh disjoint PROD_SEED[4]=0x8c0ad97b99bd6031 recorded honest FAIL (SBC ECE-green all 8, 7/8 KS pass vs 8x8 5/8, only shift_dx 0.0326; BF corr 0.941 near-miss + max|dlogBF| 12.40 KDE-tail artifact; OOD ID-op 31.79 only), gate_consts_4.jl byte-locked
 - [Phase 07-06]: fixed a Rule-1 numerical crash in the shipped non-clamped KDE BF baseline (bf.jl kde_log_bf_unclamped) — QuadGK adaptive integral overshoots the tail probability a few ulp outside [0,1], crashing log(); clamped to the valid [0,1] domain so a saturated tail yields the honest ±Inf (dropped) NOT the forbidden 1e-8 finite floor; in-range values byte-identical
@@ -196,12 +205,11 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T07:20:00.000Z
-Stopped at: Phase 8 COMPLETE (08-05 executed: both physical anchors human-verified + pinned, offline gate 217/217)
-Resume file: .planning/phases/07-productionization-conditional-on-go/07-07-PLAN.md
-Resume action: return to the ACTIVE phase — Phase 7, plan 07-07, wave 6 of 8. The 16x16 training has COMPLETED
-(`artifacts/grid_16` exists) and the fresh 16x16 ship-gate pre-registration `test/gate/gate_consts_16.jl` is
-committed (7e2318b); next step is running the 16x16 ship gate via `test/gate/run_gate.jl --grid 16 --sbc --bf --ood`
-and recording the outcome. Separately, before Phase 16: run `bootstrap_anchor_hashes()` (corpus/anchor_rows.jl)
+Last session: 2026-07-21T08:00:00.000Z
+Stopped at: Phase 7 plan 07-07 COMPLETE (16x16 ship-gate ran; honest FAIL + unscored OOD recorded in gate-16x16.md)
+Resume file: .planning/phases/07-productionization-conditional-on-go/07-08-PLAN.md
+Resume action: continue the ACTIVE phase — Phase 7, plan 07-08, wave 6 of 8. Phase 8 remains COMPLETE.
+NOTE: plan 07-09 (wave 7, the 32x32 grid) is `autonomous: false` and carries a long training run —
+it MUST NOT be started without explicit human authorization. Separately, before Phase 16: run `bootstrap_anchor_hashes()` (corpus/anchor_rows.jl)
 when online and authorized to replace the `PENDING-FETCH` sentinel on both physical anchors with real SHA-256
 digests (the positive anchor is a ~6.3 GB download — an explicit human decision).
