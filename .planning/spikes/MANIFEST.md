@@ -46,6 +46,8 @@ the hot path are backed by a standalone micro-benchmark (`001-hotpath-perf-memor
 | 006 | bf-attrition-mechanism | standard | BF-gate attrition: which side produces the non-finite log-BF, and is it random? | ✅ VALIDATED | bayes-factor, ship-gate, kde, numerics |
 | 007 | bf-survivorship-bias | standard | Does the survivors-only filter bias the gate's correlation estimate? | ✅ VALIDATED | bayes-factor, survivorship-bias, statistics |
 | 008 | bf-baseline-remedies | comparison | clamped vs unclamped vs log-space KDE baseline: is there one that is finite AND unsaturated? | ⚠ PARTIAL | bayes-factor, kde, baseline, remedy |
+| 009 | shrinkage-vs-location | standard | Is the spillover rejection at shrinkage 1.01 a bug, or explainable? | ✅ VALIDATED | sbc, calibration, diagnostics |
+| 010 | calibration-vs-imsize | standard | Why does ρ_true calibration collapse under the image-size mixture? | ✅ VALIDATED | sbc, overconfidence, imsize |
 
 **Verdict legend:** VALIDATED = the refactoring opportunity is real, evidence-backed, and worth doing.
 
