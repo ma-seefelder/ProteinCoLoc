@@ -108,8 +108,13 @@ retrievable two-channel-convertible data.
 
 ## Verification Results
 
-- `julia --project=. corpus/test/runtests.jl` → **217/217 pass** in ~26s, ZERO network
+- `julia --project=. corpus/test/runtests.jl` → **217/217 pass** in ~26s
   (fixture 12 + hashing 17 + fetch 20 + manifest 34 + load 9 + CBS 46 + **anchors 79**).
+  Precisely: the gate is **offline-green / network-optional**, not literally zero-network — the
+  inherited `fetch_cbs_smoke()` (08-04) attempts one real GET and asserts
+  `status ∈ (:skipped, :present)`. On this run the source was unreachable, so the observed run was
+  network-free and `corpus/data/` was empty afterwards. Nothing added by 08-05 touches the network:
+  `bootstrap_anchor_hashes()` is never called by the gate.
 - `git ls-files corpus/data` → **empty** (D-04 / Pitfall 3).
 - `git status --porcelain src/` → **empty**; no `src/` file touched (hard CLAUDE.md constraint).
 - Default accessors verified sealed: `physical_anchors(df)` → 0 rows, `corpus_default(df)` carries
