@@ -35,10 +35,65 @@
 using ProteinCoLoc
 using StatsBase          # reconstruct (inverse ZScoreTransform)
 using Statistics         # mean
+using Random             # seed! — pins the GLOBAL stream sampleposterior draws from
+import Random123: Philox4x   # counter-based derivation of the global seed from PROD_SEED[G]
 
 # Pre-registration consts (SBC_IMSIZE / SBC_L defaults + prod_rng). Guarded: a per-grid consts
 # file included first is respected; a standalone load falls back to the template.
 isdefined(@__MODULE__, :SBC_IMSIZE) || include(joinpath(@__DIR__, "gate_consts_template.jl"))
+
+# =============================================================================================
+# GLOBAL-RNG SEEDING — the second, easily-dropped half of gate reproducibility (07-10)
+# =============================================================================================
+#
+# THE CAVEAT (read before touching `posterior_for` / `rho_draws` below):
+#   `ProteinCoLoc.posterior_for` → `NeuralEstimators.sampleposterior` accepts NO `rng` and threads
+#   none. The normalising flow's base draws therefore come from the **GLOBAL** RNG
+#   (`Random.default_rng()`), NOT from the `rng` argument this harness is given. The passed
+#   `prod_rng(G)` Philox stream drives ONLY the prior draw (`sample_prior`) and the forward
+#   simulation (`simulate_pair`). Pinning it alone does NOT make a rank table reproducible.
+#
+#   The spike knew this and fixed BOTH streams (`spike/demo.jl`: `Random.seed!(seed)` immediately
+#   before `draw_simulate_infer`). The promotion of the harness into `test/gate/` DROPPED the
+#   global half — a reproducibility regression fixed here. If you promote/refactor this code
+#   again: keep `seed_gate_global!` wired into EVERY gate arm, or the reported numbers stop being
+#   reproducible, silently.
+#
+# HISTORICAL HONESTY (do not delete):
+#   The ship-gate SBC rank tables recorded for grids 4 / 8 / 16 in
+#   `artifacts/grid_{4,8,16}/gate_report_*.jld2` were produced BEFORE this fix, i.e. from an
+#   UNSEEDED global posterior stream. They are therefore NOT retroactively reproducible: a re-run
+#   under this fix will legitimately produce a DIFFERENT (but from now on reproducible) rank table.
+#   The recorded verdicts are left untouched on purpose; only FUTURE runs gain reproducibility.
+#
+# SEED PROVENANCE: no new seed constant is introduced. The global seed is a deterministic
+# derivation from the SAME frozen pre-registered `PROD_SEED[G]` already driving the arm — a draw
+# from the Philox stream keyed `(prod_seed(G), 1)`, i.e. the counter-1 sibling of `prod_rng(G)`
+# (which is keyed `(prod_seed(G), 0)`). `gate_consts_<G>.jl` is untouched.
+
+"""
+    gate_global_seed(G) -> UInt64
+
+The deterministic GLOBAL-RNG seed for grid `G`'s ship-gate arms. Derived — never independently
+chosen — from the frozen pre-registered `prod_seed(G)`: one `UInt64` draw from
+`Philox4x(UInt64, (prod_seed(G), 1))`, the counter-1 sibling of the `prod_rng(G)` stream
+(counter 0). Same `G` ⇒ same seed, forever; disjoint from the arm's own Philox stream.
+"""
+gate_global_seed(G::Integer) = rand(Philox4x(UInt64, (prod_seed(G), UInt64(1))), UInt64)
+
+"""
+    seed_gate_global!(G) -> UInt64
+
+Pin the GLOBAL RNG to `gate_global_seed(G)` and return the seed. Called at the top of every gate
+arm (`sbc_ranks_and_spread`, `bf_gate`, `ood_gate`) because `sampleposterior` draws its flow base
+samples from the global stream and threads no `rng` (see the caveat block above). Without this a
+gate re-run cannot reproduce its own rank table.
+"""
+function seed_gate_global!(G::Integer)
+    s = gate_global_seed(G)
+    Random.seed!(s)
+    return s
+end
 
 """
     default_simulator() -> NamedTuple
@@ -74,6 +129,9 @@ function draw_simulate_infer(m, rng; G::Integer, imsize = SBC_IMSIZE, N = SBC_L,
     mci = sim.build_mci(sim.simulate_pair(rng, θ; imsize = imsize))         # forward sim → MCI
     Z   = ProteinCoLoc.standardize_summary(
               ProteinCoLoc.encode_d01(ProteinCoLoc.patch_summary(mci, G)), m.zt, :min)
+    # CAVEAT (see the GLOBAL-RNG SEEDING block above): `posterior_for` → `sampleposterior` takes
+    # NO rng — these N draws come from the GLOBAL stream, not from `rng`. Reproducibility requires
+    # `seed_gate_global!(G)` to have been called by the enclosing gate arm.
     draws_std = ProteinCoLoc.posterior_for(m.estimator, Z; N = N, use_gpu = false)  # CPU gate
     draws     = StatsBase.reconstruct(m.θzt, draws_std)                    # 7×N physical (Pitfall 5)
     return (θ = θ, Z = Z, draws = draws)
@@ -99,6 +157,10 @@ function draw_simulate_infer_paired(m, rng; G::Integer, imsize = SBC_IMSIZE, N =
     Zc   = ProteinCoLoc.standardize_summary(
                ProteinCoLoc.encode_d01(ProteinCoLoc.patch_summary(mcic, G)), m.zt, :min)
 
+    # CAVEAT (see the GLOBAL-RNG SEEDING block above): `rho_draws` also routes through
+    # `posterior_for`/`sampleposterior`, which threads NO rng — both ρ vectors below are drawn from
+    # the GLOBAL stream. `seed_gate_global!(G)` in the enclosing gate arm is what makes them
+    # reproducible; `rng` covers only the prior draws and the forward simulation.
     ρs = ProteinCoLoc.rho_draws(m.estimator, Zs, m.θzt; N = N, use_gpu = false)  # sample ρ_true
     ρc = ProteinCoLoc.rho_draws(m.estimator, Zc, m.θzt; N = N, use_gpu = false)  # control ρ_true
     return (θs = θs, θc = θc, ρs = ρs, ρc = ρc, Zs = Zs, Zc = Zc)

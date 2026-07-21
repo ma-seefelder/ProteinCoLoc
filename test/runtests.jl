@@ -805,7 +805,8 @@ include(joinpath(@__DIR__, "gate", "run_gate.jl"))   # brings gate_consts + harn
     # SEEDING NOTE: `posterior_for` → `NeuralEstimators.sampleposterior` takes no rng, so the flow's
     # posterior draws come from the GLOBAL RNG; the passed `prod_rng(G)` only drives the prior draw
     # and the forward simulation. Reproducing a rank table therefore requires pinning BOTH streams.
-    # This is a pre-existing property of the sampler, independent of this diagnostic.
+    # Since 07-10 the gate arms pin the global stream THEMSELVES (`seed_gate_global!(G)`); the
+    # explicit seed here is retained only to keep this A/B comparison independent of that fix.
     _ranks_via(f) = (Random.seed!(20260721); f())
     base = _ranks_via(() -> sbc_ranks(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L,
                                       imsize = (64, 64), sim = sim, rng = prod_rng(G)))
@@ -838,6 +839,65 @@ include(joinpath(@__DIR__, "gate", "run_gate.jl"))   # brings gate_consts + harn
     rep = run_gate(G; sbc = true, artifacts_root = mktempdir(), sim = sim, write_report = false)
     @test rep.status == :not_trained
     @test rep.grid == G
+
+    # --- 07-10 REGRESSION: the gate arm is self-seeding and BIT-REPRODUCIBLE ------------------
+    #
+    # THE DEFECT THIS GUARDS: `posterior_for` → `NeuralEstimators.sampleposterior` accepts no
+    # `rng`, so the flow's posterior draws come from the GLOBAL RNG. Passing `prod_rng(G)` pins
+    # ONLY the prior draw + forward simulation. The spike pinned both streams
+    # (`spike/demo.jl`: `Random.seed!(seed)` before `draw_simulate_infer`); the promotion into
+    # `test/gate/` dropped the global half, making the recorded rank tables irreproducible.
+    #
+    # WHY THIS TEST IS STRONG: the global RNG is deliberately DESYNCHRONISED before each run (a
+    # different `Random.seed!` plus a random-length burn), and NO external seeding is applied.
+    # If `seed_gate_global!(G)` is ever removed from `sbc_ranks_and_spread` again, run A and run B
+    # start from different global states and the rank tables diverge → this test FAILS.
+    #
+    # HISTORICAL CAVEAT (deliberate, do not "fix"): the grid-4/8/16 rank tables already recorded
+    # in artifacts/ were produced under the UNSEEDED global stream and are NOT retroactively
+    # reproducible. This test proves FUTURE runs are.
+    _desync!(s) = (Random.seed!(s); rand(1 + (s % 97)); nothing)
+    _gate_arm() = sbc_ranks_and_spread(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L,
+                                       imsize = (64, 64), sim = sim, rng = prod_rng(G))
+
+    _desync!(11)
+    runA = _gate_arm()
+    _desync!(9973)                       # global stream now in a totally different state
+    runB = _gate_arm()
+    @test runB.ranks == runA.ranks       # BIT-IDENTICAL rank table across independent runs
+    @test runB.post_sd == runA.post_sd   # …and the posterior draws behind them are identical
+    @test runB.prior_draws == runA.prior_draws
+
+    # Same at the aggregated-verdict level: every reported p-value/ECE is bit-identical.
+    _desync!(4242)
+    gA = sbc_gate(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L, bins = SBC_FIX_BINS,
+                  imsize = (64, 64), sim = sim, rng = prod_rng(G))
+    _desync!(777)
+    gB = sbc_gate(m; G = G, M = SBC_FIX_M, L = SBC_FIX_L, bins = SBC_FIX_BINS,
+                  imsize = (64, 64), sim = sim, rng = prod_rng(G))
+    @test gB.ranks == gA.ranks
+    @test [x.ks_p for x in gB.per_param] == [x.ks_p for x in gA.per_param]
+    @test [x.chi2_p for x in gB.per_param] == [x.chi2_p for x in gA.per_param]
+    @test [x.ece for x in gB.per_param] == [x.ece for x in gA.per_param]
+    @test gB.passed == gA.passed
+
+    # CONTROL: without the arm's internal seeding the tables WOULD diverge — i.e. the assertions
+    # above are not vacuously true because the estimator happens to be deterministic. Draw the
+    # posterior directly (bypassing the arm, hence the seeding) from two different global states.
+    Zprobe = ProteinCoLoc.standardize_summary(
+                 ProteinCoLoc.encode_d01(ProteinCoLoc.patch_summary(
+                     fake_mci(fake_pair(prod_rng(G), nothing)), G)), m.zt, :min)
+    _desync!(11)
+    dA = ProteinCoLoc.posterior_for(m.estimator, Zprobe; N = SBC_FIX_L, use_gpu = false)
+    _desync!(9973)
+    dB = ProteinCoLoc.posterior_for(m.estimator, Zprobe; N = SBC_FIX_L, use_gpu = false)
+    @test dA != dB                       # posterior draws DO depend on the global RNG state
+
+    # The global seed is derived from the frozen pre-registration, not a new constant.
+    @test gate_global_seed(G) == gate_global_seed(G)          # deterministic
+    @test gate_global_seed(4) != gate_global_seed(8)          # per-grid
+    @test gate_global_seed(G) != prod_seed(G)                 # disjoint from the arm's own stream
+    @test seed_gate_global!(G) == gate_global_seed(G)
 end
 
 ##########################################################################################

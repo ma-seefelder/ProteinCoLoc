@@ -121,6 +121,9 @@ Turing). Returns `(grid, n, corr, max_abs_delta, corr_pass, tol_pass, passed)`.
 """
 function bf_gate(m, ratio; G::Integer, sim, rng = prod_rng(G), n::Integer = BF_SWEEP_N,
                  L::Integer = SBC_L, imsize = SBC_IMSIZE, prior_n::Integer = 4000)
+    # REPRODUCIBILITY (07-10): the ρ draws behind every log-BF come from the GLOBAL stream
+    # (`sampleposterior` threads no rng — see harness.jl). Pin it from the frozen PROD_SEED[G].
+    seed_gate_global!(G)
     # Prior Δρ sample (independent θ*.ρ_true differences) for the KDE baseline denominator.
     prior_draws = Float64[sim.sample_prior(rng).ρ_true - sim.sample_prior(rng).ρ_true
                           for _ in 1:prior_n]
@@ -178,7 +181,11 @@ function ood_gate(m, ood_nulls; G::Integer, sim, rng = prod_rng(G), n::Integer =
                   pos_sim = nothing, neg_sim = nothing,
                   families = OOD_FAMILIES, levels::Integer = OOD_GRID_LEVELS,
                   n_pos::Integer = 40, negctrl_reps::Integer = 30)
-    density = haskey(ood_nulls, :density) ? ood_nulls.density : ood_nulls
+    # REPRODUCIBILITY (07-10): the OOD arm's scores ride draw_simulate_infer / gate_ood_roc, whose
+    # posterior draws come from the GLOBAL stream (`sampleposterior` threads no rng — see
+    # harness.jl). Pin it from the frozen PROD_SEED[G] so a re-run reproduces its own AUC table.
+    seed_gate_global!(G)
+    density =haskey(ood_nulls, :density) ? ood_nulls.density : ood_nulls
 
     # --- single-simulator override (one pooled AUC, density channel) -------------------------
     if pos_sim !== nothing

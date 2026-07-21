@@ -159,6 +159,14 @@ verdict computed from it, is unchanged.
 function sbc_ranks_and_spread(m; G::Integer, M::Integer = SBC_M, L::Integer = SBC_L,
                               imsize = SBC_IMSIZE, sim = default_simulator(),
                               rng = prod_rng(G))
+    # REPRODUCIBILITY (07-10): pin BOTH streams. `rng` (prod_rng(G)) drives the prior draw + the
+    # forward simulation; the flow's posterior draws come from the GLOBAL RNG because
+    # `sampleposterior` threads no rng (see the GLOBAL-RNG SEEDING block in harness.jl). Seeding
+    # here — deterministically from the SAME frozen PROD_SEED[G] — is what makes this rank table
+    # reproducible bit-for-bit on a re-run. NOTE: the grid-4/8/16 tables already recorded in
+    # artifacts/ predate this fix and were drawn from an UNSEEDED global stream; they are NOT
+    # retroactively reproducible, and a re-run will legitimately differ from them.
+    seed_gate_global!(G)
     rank_table  = Matrix{Int}(undef, M, 8)
     post_sd     = Matrix{Float64}(undef, M, 8)
     prior_draws = Matrix{Float64}(undef, M, 8)
