@@ -505,11 +505,57 @@ end
                                  num_coupling_layers = 2, flow_depth = 1, flow_width = 8,
                                  stopping_epochs = 2, verbose = false)
     @test res.d_in == d
-    @test length(res.θzt.mean) == 7
+    @test length(res.θzt.zt.mean) == 7          # bounded θ-space: z-score lives inside (F2)
     @test res.arch.dstar == 8
     # posterior draws are reachable through the frozen read surface (7×N un-standardized).
     draws = ProteinCoLoc.posterior_for(res.estimator, Ztr[:, 1]; N = 8, use_gpu = false)
     @test size(draws, 1) == 7
+end
+
+##########################################################################################
+### Bounded θ-space (07-CALIBRATION-FINDINGS F2)
+###
+### The prior box is the SINGLE SOURCE OF TRUTH (derived from the prior objects `sample_prior`
+### draws from), the logit bijection round-trips, and — the point of the fix — EVERY value the
+### inverse map can produce lies inside the prior support, so a flow draw can never leak
+### out-of-support the way the plain-ZScoreTransform θ-space did.
+##########################################################################################
+@testset "bounded θ-space (F2)" begin
+    for f in (:theta_prior_bounds, :theta_to_unbounded, :theta_from_unbounded,
+              :BoundedThetaTransform)
+        @test isdefined(ProteinCoLoc, f)
+    end
+
+    b = ProteinCoLoc.theta_prior_bounds()
+    @test length(b) == 7
+    # SINGLE SOURCE OF TRUTH: every bound is the prior object's own support, not a literal.
+    @test b[2] == (minimum(ProteinCoLoc.SPILLOVER_PRIOR), maximum(ProteinCoLoc.SPILLOVER_PRIOR))
+    @test b[4] == (minimum(ProteinCoLoc.LABEL_EFFICIENCY_PRIOR),
+                   maximum(ProteinCoLoc.LABEL_EFFICIENCY_PRIOR))
+    @test b[7] == (minimum(ProteinCoLoc.NOISE_PRIOR), maximum(ProteinCoLoc.NOISE_PRIOR))
+    # ρ_true = ghat(μ*) is a CLAMPED map ⇒ its exact range is the first/last ρ knot.
+    @test b[1] == (first(ProteinCoLoc.GHAT_RHO_KNOTS), last(ProteinCoLoc.GHAT_RHO_KNOTS))
+    @test all(lo < hi for (lo, hi) in b)
+
+    # Real prior draws round-trip through the fitted transform (ε-clamp tolerance at the atoms).
+    rngp = Random123.Philox4x(UInt64, (UInt64(20260721), UInt64(0)))
+    θp   = hcat([collect(values(ProteinCoLoc.sample_prior(rngp))) for _ in 1:200]...)
+    t    = ProteinCoLoc.fit_theta_transform(θp)
+    @test t isa ProteinCoLoc.BoundedThetaTransform
+    @test length(t.zt.mean) == 7
+    Yp = StatsBase.transform(t, θp)
+    @test all(isfinite, Yp)
+    @test maximum(abs.(StatsBase.reconstruct(t, Yp) .- θp)) < 1e-4
+
+    # THE GUARANTEE: arbitrary (even extreme) flow-space values map back INSIDE the prior box.
+    wild = 50.0 .* randn(7, 500)
+    back = StatsBase.reconstruct(t, wild)
+    @test all(b[p][1] <= back[p, j] <= b[p][2] for p in 1:7, j in 1:size(back, 2))
+    # Float32 draws (what `sampleposterior` returns) keep their element type.
+    @test eltype(StatsBase.reconstruct(t, Float32.(wild))) == Float32
+    # The map is strictly monotone per parameter ⇒ SBC ranks are invariant to the change of space.
+    mono = StatsBase.reconstruct(t, repeat(collect(-6.0:0.5:6.0)', 7, 1))
+    @test all(issorted(mono[p, :]) for p in 1:7)
 end
 
 ##########################################################################################

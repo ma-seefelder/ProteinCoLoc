@@ -43,7 +43,7 @@ import JLD2
     # (a) use_gpu = true: runs on GPU if present, else degrades to CPU with NO error.
     res = ProteinCoLoc.train_npe(Zstd, Zstd, θ, θ; use_gpu = true, epochs = 2, tiny...)
     @test res.d_in == d
-    @test length(res.θzt.mean) == 7
+    @test length(res.θzt.zt.mean) == 7          # bounded θ-space: z-score lives inside (F2)
     # posterior draws are reachable through the CPU read surface (7×N).
     @test size(ProteinCoLoc.posterior_for(res.estimator, Zstd[:, 1]; N = 8, use_gpu = false), 1) == 7
 

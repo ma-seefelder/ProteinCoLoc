@@ -119,6 +119,34 @@ function sample_prior(rng::AbstractRNG)
     )
 end
 
+"""
+    theta_prior_bounds() -> NTuple{7,Tuple{Float64,Float64}}
+
+The SUPPORT BOX of the simulator prior π(θ), in `sample_prior` FIELD ORDER (θ row order:
+ρ_true, spillover, autofluorescence, label_efficiency, shift_dx, shift_dy, noise).
+
+**SINGLE SOURCE OF TRUTH.** Every bound is DERIVED from the prior objects defined above — the
+nuisance bounds from `Distributions.minimum/maximum` of the very `Uniform`s `sample_prior` draws
+from, and the ρ_true bounds from the extrema of the frozen `GHAT_RHO_KNOTS` (ρ_true = `ghat(μ*)`
+is a CLAMPED piecewise-linear map, so its exact range is the first/last ρ knot, attained with
+positive probability at both ends). Nothing here is a duplicated literal: change a prior above and
+this box follows.
+
+Consumed by `BoundedThetaTransform` (architecture.jl) to map θ into an unconstrained space for the
+`NormalisingFlow` and back, so posterior draws are guaranteed to lie inside the prior support
+(07-CALIBRATION-FINDINGS F2: the unbounded flow cannot represent a truncated box and its learned
+conditional drifts off-centre).
+"""
+theta_prior_bounds() = (
+    (first(GHAT_RHO_KNOTS), last(GHAT_RHO_KNOTS)),                       # ρ_true = ghat(μ*)
+    (minimum(SPILLOVER_PRIOR),        maximum(SPILLOVER_PRIOR)),
+    (minimum(AUTOFLUORESCENCE_PRIOR), maximum(AUTOFLUORESCENCE_PRIOR)),
+    (minimum(LABEL_EFFICIENCY_PRIOR), maximum(LABEL_EFFICIENCY_PRIOR)),
+    (minimum(SHIFT_PRIOR),            maximum(SHIFT_PRIOR)),             # shift_dx
+    (minimum(SHIFT_PRIOR),            maximum(SHIFT_PRIOR)),             # shift_dy
+    (minimum(NOISE_PRIOR),            maximum(NOISE_PRIOR)),
+)
+
 # =============================== the 2-channel 2D forward model (SIM-01) =====================
 # Fixed nuisance constants (copied UNCHANGED from spike/simulator/forward.jl).
 const σ_psf      = 1.3      # diffraction-limited fixed PSF (D-05), ≈1.0-1.5 px

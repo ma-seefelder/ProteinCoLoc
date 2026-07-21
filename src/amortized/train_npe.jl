@@ -46,14 +46,35 @@ import Flux
 import StatsBase
 
 """
-    fit_theta_transform(θtr::AbstractMatrix) -> ZScoreTransform
+    fit_theta_transform(θtr::AbstractMatrix; bounds = theta_prior_bounds()) -> BoundedThetaTransform
 
-Fit a leak-free per-parameter `ZScoreTransform` on the TRAIN θ columns ONLY (`dims = 2`). All 7
-θ rows are continuous, so every row is standardized (no mask bypass, unlike the Z summaries). The
-returned transform is FROZEN and persisted so posterior draws can be un-standardized with
-`StatsBase.reconstruct` before any ρ read (Pitfall 5).
+Fit the leak-free FROZEN θ transform on the TRAIN θ columns ONLY (`dims = 2`).
+
+**BOUNDED θ-SPACE (07-CALIBRATION-FINDINGS F2).** θ is FIRST mapped out of the truncated prior box
+onto ℝ by a per-parameter logit bijection (`theta_to_unbounded`, bounds from the single-source
+`theta_prior_bounds()`), and the `ZScoreTransform` is fitted in THAT unconstrained space. The
+`NormalisingFlow` therefore models an unbounded quantity — which is what it can actually
+represent — and `StatsBase.reconstruct` maps every posterior draw back STRICTLY INSIDE the prior
+support. Previously this was a plain `ZScoreTransform` on raw θ, which left the flow unable to
+represent the box: measured out-of-support leakage plus a location-biased `label_efficiency`
+conditional (SBC z = +7.4 at G = 8).
+
+`bounds` is a keyword ONLY so tests can exercise a different box; production callers must let it
+default so the prior definition stays the single source of truth. Rows whose logit-space spread is
+degenerate (a synthetic all-identical θ row) get a unit scale instead of a 0 divisor.
 """
-fit_theta_transform(θtr::AbstractMatrix) = StatsBase.fit(StatsBase.ZScoreTransform, θtr; dims = 2)
+function fit_theta_transform(θtr::AbstractMatrix; bounds = theta_prior_bounds())
+    lo = Float64[b[1] for b in bounds]
+    hi = Float64[b[2] for b in bounds]
+    size(θtr, 1) == length(lo) || throw(DimensionMismatch(
+        "fit_theta_transform: θ has $(size(θtr,1)) rows but the prior box has $(length(lo))"))
+    U  = theta_to_unbounded(θtr, lo, hi)
+    zt = StatsBase.fit(StatsBase.ZScoreTransform, U; dims = 2)
+    @inbounds for i in eachindex(zt.scale)      # degenerate-row guard (never a 0 divisor)
+        (isfinite(zt.scale[i]) && zt.scale[i] > 0) || (zt.scale[i] = 1.0)
+    end
+    return BoundedThetaTransform(lo, hi, zt)
+end
 
 """
     fit_summary_transform(Ztr_raw::AbstractMatrix; variant::Symbol = :min) -> ZScoreTransform
@@ -78,7 +99,7 @@ end
 
 Train the amortized NPE on the ALREADY-STANDARDIZED train/val summaries `Ztr_std`/`Zva_std`
 (`d_in×n`, frozen-`zt` space; the pipeline standardizes) and the RAW train/val θ `θtr`/`θva`
-(`7×n`). Fits a leak-free θ `ZScoreTransform` on `θtr`, standardizes θ, builds
+(`7×n`). Fits the leak-free BOUNDED θ transform on `θtr` (logit-of-prior-box ∘ z-score, F2), builds
 `build_estimator(size(Ztr_std,1), ...)`, and calls the FIXED-DATA
 `train(est, θtr_std, θva_std, Ztr_std, Zva_std; use_gpu, ...)` with AdamW weight decay and early
 stopping.

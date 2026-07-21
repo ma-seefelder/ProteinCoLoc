@@ -228,3 +228,59 @@ custom `datagen`, the keywords do not describe the pool and the provenance is li
 - **No pre-registered constant touched.** `test/gate/gate_consts_{4,8,16}.jl` are frozen
   pre-registration and remain byte-identical. The two mitigations shipped alongside this document
   are a metadata addition and a reporting addition; neither changes a threshold or a verdict.
+
+---
+
+## F2 REMEDY EXPERIMENT — bounded θ-space (DIAGNOSTIC, DEV seed, 2026-07-21)
+
+**Status: DIAGNOSTIC ONLY. Not a gate result. Nothing here is pre-registered evidence.**
+
+**The change (single variable).** θ is now mapped out of the truncated prior box onto ℝ by a
+per-parameter **logit bijection** before the z-score, and back on read-out
+(`BoundedThetaTransform`, `src/amortized/architecture.jl`; bounds derived — never duplicated —
+from the prior objects via `theta_prior_bounds()`, `src/amortized/simulator.jl`). Grid 8 was
+retrained with the **identical** run-07-05 configuration (`imsize_set = ((256,256),)`,
+`n_pairs = 50 000`, same architecture/optimizer, `master_seed = 0x1`, CPU) into a SEPARATE store
+`artifacts/bounded_theta/grid_8/`. `artifacts/grid_8/` is byte-identical (sha256 verified
+before/after).
+
+**Anti-snooping.** Evaluated on a DEV seed (`0xDE7C0DE`, plus a replicate `0xDE7C0DE2`), asserted
+disjoint from every `PROD_SEED[G]`, `VAL_MASTER_SEED`, `NPE_MASTER_SEED` and `DEFAULT_MASTER_SEED`.
+The pre-registered ship-gate was NOT run and no `gate_consts_*.jl` was touched.
+
+**MEASURED** — paired (same θ* draws, same simulated images, same per-draw flow RNG for both nets),
+M = 1000, L = 999, imsize 256², `u = (rank+0.5)/(L+1)`, `z = (mean(u)−0.5)/√((1/12)/M)`,
+`shrinkage = mean(post_sd)/prior_sd`, leak = % of posterior draws outside the prior box:
+
+| param | old mean(u) / z | new mean(u) / z | old shrink | new shrink | old leak | new leak |
+|---|---|---|---|---|---|---|
+| ρ_true | 0.5005 / +0.05 | 0.4886 / −1.25 | 0.156 | 0.156 | 2.78% | **0.00%** |
+| spillover | 0.4860 / −1.54 | 0.4927 / −0.80 | 0.976 | 0.950 | 2.78% | **0.00%** |
+| autofluorescence | 0.4857 / −1.57 | 0.4947 / −0.58 | 0.982 | 0.998 | 3.19% | **0.00%** |
+| **label_efficiency** | **0.5381 / +4.18** | **0.4978 / −0.24** | **0.818** | **0.841** | 2.16% | **0.00%** |
+| shift_dx | 0.5133 / +1.46 | 0.5493 / **+5.40** | 0.979 | 0.950 | 3.50% | **0.00%** |
+| shift_dy | 0.4968 / −0.35 | 0.5017 / +0.18 | 0.997 | 0.995 | 3.44% | **0.00%** |
+| noise | 0.4917 / −0.91 | 0.4886 / −1.25 | 0.972 | 0.970 | 2.87% | **0.00%** |
+
+Replicate on the second dev seed reproduces the headline: `label_efficiency` mean(u)
+0.5520 (z = +5.70) → 0.5084 (z = +0.92), shrinkage 0.817 → 0.838. The mean(u) shift is
+−0.040 / −0.044 across the two seeds — stable in size and sign.
+
+**Verdict on F2:** the mechanism is **CONFIRMED and the remedy works for the target parameter**.
+The `label_efficiency` location bias collapses (z +4.2/+5.7 → −0.2/+0.9) while the shrinkage stays
+comparable (0.82 → 0.84, both far from the 0.95 vacuity cutoff) — so this is **not** an F3-style
+vacuous pass: the net still learns as much. ρ_true shrinkage is **identical** (0.156), i.e. the
+bounded space costs nothing on the parameter that matters most, despite ρ_true's endpoint atoms.
+Out-of-support leakage is 0 by construction and was verified to actually be 0.
+
+**Honest caveats (NOT tuned away):**
+1. `shift_dx` acquires a location bias in the bounded net (z +5.40 / +2.74 across the two dev
+   seeds, vs +1.46 / −1.16 for the old net). It is a near-vacuous column (shrinkage ≈ 0.94–0.95),
+   but the effect is directionally consistent and is a genuine new observation.
+2. The `z` statistic uses the uniformity-null SE `√((1/12)/M)`; when a rank distribution is itself
+   non-uniform (ρ_true carries prior atoms) that SE is anti-conservative, so |z| across dev seeds
+   varies more than N(0,1) would suggest. Read the table as an effect-size comparison, not as a
+   test.
+3. The bounded net's validation risk diverges after its best epoch (early-stopped at 55, best 14)
+   — logit space has heavier tails than raw θ. Training recipe was deliberately NOT re-tuned.
+4. F5 (covariate shift in image size) is untouched by this experiment.

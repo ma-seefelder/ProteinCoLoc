@@ -38,6 +38,127 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import Flux: Chain, Dense, gelu
 import NeuralEstimators: PosteriorEstimator, NormalisingFlow
+import StatsBase
+
+# =============================================================================================
+# BOUNDED θ-SPACE (07-CALIBRATION-FINDINGS F2)
+# =============================================================================================
+#
+# THE DEFECT: π(θ) is a hard-truncated BOX (e.g. `label_efficiency ~ Uniform(0.6, 1.0)`), but
+# `NeuralEstimators.NormalisingFlow` models θ in an UNBOUNDED space after a plain z-score. It
+# cannot represent the truncated support, and NPE's forward-KL objective constrains nothing about
+# the implied marginal ∫q(θ|Z)p(Z)dZ = π(θ). Measured consequence (grid 8, `label_efficiency`):
+# SBC mean rank 0.548 (z = +7.4) with ~2% of posterior mass leaking outside [0.6, 1.0], the
+# leakage sign-matched to the bias.
+#
+# THE FIX: interpose a per-parameter LOGIT bijection from the prior box onto ℝ BEFORE the
+# z-score, and invert it on read-out. The flow then works in a space where the whole real line is
+# legal, and every posterior draw maps back STRICTLY INSIDE the prior box — out-of-support mass is
+# 0 BY CONSTRUCTION, not by learning.
+#
+#   forward :  u = (θ − lo)/(hi − lo) ∈ [0,1]  →  y = logit(clamp(u, ε, 1−ε))  →  z-score
+#   inverse :  un-z-score  →  θ = lo + (hi − lo)·logistic(y)                    ∈ [lo, hi]
+#
+# The map is STRICTLY MONOTONE per component, so SBC ranks are identical whether computed in
+# θ-space or in flow-space — the fix changes what the flow must represent, not what is measured.
+#
+# BOUNDS PROVENANCE: `lo`/`hi` come from `theta_prior_bounds()` (simulator.jl), which DERIVES them
+# from the prior objects `sample_prior` draws from. No bound is ever hardcoded here.
+#
+# ε GUARD: ρ_true = `ghat(μ*)` is a CLAMPED map, so it puts genuine POINT MASSES on both endpoints
+# (μ* outside the swept knot range). `logit` of an exact endpoint is ±Inf, so u is clamped into
+# [ε, 1−ε] — the atoms become the large-but-finite values ±logit(ε). ε is a numerical guard only;
+# it never widens the support (the INVERSE is exact and always lands in [lo, hi]).
+#
+# DISPATCH-COMPATIBLE: `StatsBase.transform`/`StatsBase.reconstruct` methods are defined for this
+# type, so EVERY existing call site (`infer.jl` ρ reads, `ood.jl`, `local_map.jl`, the gate
+# harness) is unchanged — they already call `reconstruct(θzt, draws)` generically. A previously
+# frozen artifact carrying a plain `ZScoreTransform` keeps working through StatsBase's own methods.
+
+"""
+    THETA_LOGIT_EPS
+
+Numerical clamp for the logit forward map (`u ∈ [ε, 1−ε]`). Guards the prior's endpoint ATOMS
+(ρ_true = `ghat(μ*)` clamps) against `logit(0) = -Inf`. It bounds the magnitude of the mapped
+atoms (`|y| ≤ logit(ε) ≈ 13.8`); it does NOT widen the support, because the inverse map is exact.
+"""
+const THETA_LOGIT_EPS = 1e-6
+
+"""
+    BoundedThetaTransform
+
+The frozen θ transform for a bounded-support prior: a per-parameter logit bijection from the prior
+box `[lo, hi]` onto ℝ, composed with a `ZScoreTransform` fitted in that unconstrained space.
+
+Fields: `lo`/`hi` (the prior box, from `theta_prior_bounds()`) and `zt` (the leak-free
+train-fitted `ZScoreTransform` in logit space).
+
+Implements `StatsBase.transform` (θ → flow space) and `StatsBase.reconstruct` (flow space → θ),
+so it is a DROP-IN for the plain `ZScoreTransform` at every existing call site. `reconstruct`
+output is guaranteed to lie in `[lo, hi]`.
+"""
+struct BoundedThetaTransform{T<:Real,Z}
+    lo::Vector{T}
+    hi::Vector{T}
+    zt::Z
+end
+
+_logit_eps(u::Real, ε::Real) = (c = clamp(u, ε, one(u) - ε); log(c / (one(c) - c)))
+_logistic(y::Real) = inv(one(y) + exp(-y))
+
+"""
+    theta_to_unbounded(θ, lo, hi; eps = THETA_LOGIT_EPS) -> Matrix
+
+Per-row logit map of a `d×n` θ matrix from the prior box onto ℝ. Rows are parameters. Inputs are
+`clamp`ed into `[lo, hi]` first, so a caller that hands over synthetic (out-of-box) θ degrades to
+the boundary rather than producing `NaN`.
+"""
+function theta_to_unbounded(θ::AbstractMatrix, lo::AbstractVector, hi::AbstractVector;
+                            eps::Real = THETA_LOGIT_EPS)
+    size(θ, 1) == length(lo) == length(hi) ||
+        throw(DimensionMismatch("theta_to_unbounded: θ rows $(size(θ,1)) vs bounds $(length(lo))"))
+    out = Matrix{Float64}(undef, size(θ))
+    @inbounds for i in axes(θ, 1)
+        w = hi[i] - lo[i]
+        w > 0 || throw(ArgumentError("theta_to_unbounded: degenerate bound on row $i"))
+        for j in axes(θ, 2)
+            out[i, j] = _logit_eps((clamp(θ[i, j], lo[i], hi[i]) - lo[i]) / w, eps)
+        end
+    end
+    return out
+end
+
+"""
+    theta_from_unbounded(Y, lo, hi) -> Matrix
+
+Inverse of `theta_to_unbounded`: `θ = lo + (hi − lo)·logistic(y)`, row-wise. The result is
+GUARANTEED inside `[lo, hi]` (a final `clamp` absorbs float round-off at the extremes), which is
+the whole point — no posterior draw can leave the prior support.
+"""
+function theta_from_unbounded(Y::AbstractMatrix, lo::AbstractVector, hi::AbstractVector)
+    size(Y, 1) == length(lo) == length(hi) ||
+        throw(DimensionMismatch("theta_from_unbounded: rows $(size(Y,1)) vs bounds $(length(lo))"))
+    out = similar(Y, float(eltype(Y)))
+    @inbounds for i in axes(Y, 1)
+        w = hi[i] - lo[i]
+        for j in axes(Y, 2)
+            out[i, j] = clamp(lo[i] + w * _logistic(Y[i, j]), lo[i], hi[i])
+        end
+    end
+    return out
+end
+
+function StatsBase.transform(t::BoundedThetaTransform, θ::AbstractMatrix)
+    return StatsBase.transform(t.zt, theta_to_unbounded(θ, t.lo, t.hi))
+end
+StatsBase.transform(t::BoundedThetaTransform, v::AbstractVector) =
+    vec(StatsBase.transform(t, reshape(v, :, 1)))
+
+function StatsBase.reconstruct(t::BoundedThetaTransform, Y::AbstractMatrix)
+    return theta_from_unbounded(StatsBase.reconstruct(t.zt, Y), t.lo, t.hi)
+end
+StatsBase.reconstruct(t::BoundedThetaTransform, v::AbstractVector) =
+    vec(StatsBase.reconstruct(t, reshape(v, :, 1)))
 
 # --- Architecture constants (Phase-5 calibrated; every consumer reuses these) ---------------
 # The frozen Phase-4 topology (dstar=32, depth=2/width=128, 6 coupling layers) produced
