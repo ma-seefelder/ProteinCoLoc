@@ -49,6 +49,7 @@ the hot path are backed by a standalone micro-benchmark (`001-hotpath-perf-memor
 | 009 | shrinkage-vs-location | standard | Is the spillover rejection at shrinkage 1.01 a bug, or explainable? | ✅ VALIDATED | sbc, calibration, diagnostics |
 | 010 | calibration-vs-imsize | standard | Why does ρ_true calibration collapse under the image-size mixture? | ✅ VALIDATED | sbc, overconfidence, imsize |
 | 011 | sbc-power-nuisance | standard | Is the M=2000 SBC KS test over-powered for non-identified nuisances? | ✅ VALIDATED | sbc, power-analysis, over-power |
+| 012 | capacity-lever | standard | Does raising flow capacity fix the residual nuisance marginal drift? | ⚠ PARTIAL | npe, capacity, nuisance, flow |
 
 **Verdict legend:** VALIDATED = the refactoring opportunity is real, evidence-backed, and worth doing.
 
