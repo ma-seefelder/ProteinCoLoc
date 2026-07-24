@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Phase 7 plan 07-08 COMPLETE (windowed sub-tile local coloc map shipped, full suite green). 9/11 plans; next is 07-09 (wave 7, autonomous:false — needs human authorization). Phase 8 remains COMPLETE.
-last_updated: "2026-07-21T12:00:00.000Z"
-last_activity: 2026-07-21 -- Phase 07 plan 07-08 executed: local_coloc_map/LocalColocMap + in-process _ensure_grid_registered bridge; Pkg.test() green incl. a real-8x8 windowed smoke
+stopped_at: Calibration investigation complete (spikes 006-013 wrapped into spike-findings-proteincoloc skill). Amended grid-8 ship-gate FAILED (one-shot); diagnosis shows coloc TARGETS rho_true/Δρ ARE calibrated, residual fails are a prior-atom artifact + M=2000 nuisance over-power + KDE-baseline defect. Both model levers (capacity 012, truncation 013) tested — neither earns the §6.4 model change. Decision pending: final bundled amendment vs Go/No-Go with named limits.
+last_updated: "2026-07-24T12:00:00.000Z"
+last_activity: 2026-07-24 -- spike-wrap-up: 13 spikes packaged into .claude/skills/spike-findings-proteincoloc/ (3 blueprints); STATE reconciled to the calibration-diagnosis line
 progress:
   total_phases: 16
   completed_phases: 9
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus:** Phase 07 — productionization (plan 07-07 COMPLETE; next 07-08, wave 6/8). Phase 08 closed 2026-07-21.
+**Current focus (2026-07-24):** Phase 07 productionization is PAUSED at 9/11 plans (07-09 32×32 training never authorized). A calibration investigation (spikes 006-013) diagnosed the amended grid-8 ship-gate FAIL: coloc TARGETS ρ_true/Δρ are calibrated; ρ_true SBC-fail = prior-atom artifact (test-fixable via randomized ranks); nuisance fails = 0.06-SD marginal drift at the M=2000 over-power edge (test-fixable via a nuisance equivalence rule, spec draft `07-NUISANCE-SBC-SPEC-DRAFT.md`); BF attrition = KDE-baseline defect (Memo §5 incomplete). Neither model lever (capacity/truncation) earns the §6.4 retrain. **Open decision:** final bundled amendment on a retrained model vs Go/No-Go re-eval publishing with named limits. Findings in `Skill("spike-findings-proteincoloc")`.
 
 ## Current Position
 
