@@ -1,0 +1,28 @@
+=============== POST-HOC RE-ANALYSIS (test-side route) ===============
+Basis: independent DEV seed 0x00A1CE01, M=2000, L=999. Prior UNCHANGED.
+
+ρ_true atoms (exact ±0.99): 129 = 6.45%
+ρ_true KS raw            = 5.875e-04  (reject — atoms make SBC undefined)
+ρ_true KS randomized-rank= 0.716  (median over 20 seeds, range [0.530, 0.854])
+Δρ KS (from reported gate table) = 0.196
+
+TARGETS — Holm-adjusted: ρ_true=0.716  Δρ=0.393  →  PASS
+
+NUISANCES — TOST equivalence (δ = 0.1 posterior-SD), 90% CI ⊂ ±δ:
+parameter           mean(u)   drift_SD     shrink   verdict
+spillover            0.5137      0.048      1.009   EQUIV ok (90% CI [+0.012,+0.084])
+autofluorescence     0.5243      0.084      0.997   NOT equiv (90% CI [+0.047,+0.121])
+label_efficiency     0.5210      0.073      0.964   NOT equiv (90% CI [+0.035,+0.110])
+shift_dx             0.4881      0.041      0.979   EQUIV ok (90% CI [-0.078,-0.004])
+shift_dy             0.4948      0.018      0.979   EQUIV ok (90% CI [-0.055,+0.019])
+noise                0.4896      0.036      1.020   EQUIV ok (90% CI [-0.072,+0.000])
+
+======================================================================
+TARGETS calibrated (Holm)   : YES
+NUISANCES equivalent (TOST) : NO
+OVERALL post-hoc SBC        : FAIL
+======================================================================
+
+-- confirmation vs reported gate ranks (PROD_SEED_V2, rank-based atom proxy) --
+  gate ρ_true KS raw = 1.120e-07 ; randomized (rank-proxy atoms, n=142) = 0.000
+  (rank-proxy slightly over-counts atoms vs exact θ*; consistent with the DEV result)
