@@ -71,3 +71,36 @@ the eventual `src/` refactor, plus conventions for any future spikes in this rep
 - **Report a refuted hypothesis as the finding.** Spike 008's proposed remedy failed; the failure
   identified the real problem (the baseline is unresolvable in the tail). Verdict PARTIAL, not a
   quiet rewrite of the question.
+
+## Calibration / retrain-comparison spikes (added in session 009-013)
+
+- **DEV-seed disjointness, made explicit and enumerated.** Every SBC/calibration spike ran on a DEV
+  seed `@assert`ed disjoint from the *full enumerated* forbidden set — `PROD_SEED_V2`, every v1
+  `PROD_SEED[G]`, `VAL_MASTER_SEED` (0x5BC0FFEE), `NPE_MASTER_SEED` (0xC0FFEE), and all prior dev
+  seeds (012 asserted against 20 forbidden seeds by name). No production seed consumed, no gate
+  report written, from any spike.
+- **Separate artifact root + byte-identical baseline proof for any retrain.** A spike that retrains
+  a net writes to its **own** artifact root (`artifacts/spike012_highcap/`, `artifacts/spike013_trunc/`)
+  and captures `sha256_before.txt`, then re-verifies the frozen bundles are **byte-identical** after
+  (amended_v2 `npe_8` sha256 `198bb078…` unchanged). This is how a retrain-comparison spike proves it
+  did not perturb the pre-registered model.
+- **Inject model changes through a seam, never by editing `src/`.** Spike 013 changed the prior via a
+  custom `sample_prior_trunc`/`trunc_datagen` passed into `_train_grid_pipeline`'s `datagen` seam —
+  `src/` stayed untouched while still training a genuinely different statistical model. Prefer an
+  existing injection seam over any edit to frozen code.
+- **Compare nets on the SAME DEV seed, and trust the band not the cell.** 012/013 evaluated both nets
+  on one shared DEV seed (M=1000–2000, L=999) with atom-aware ρ_true handling. Per-parameter pass/fail
+  carries ~±1.5 z-units of seed noise (Spike 010), so the reportable result is the **drift-magnitude
+  band** (0.02–0.09 SD) and the **direction of change**, not an individual parameter's verdict on one
+  seed. State the single-seed limit every time.
+- **Randomized ranks are the standard fix for a mixed (discrete+continuous) prior.** When θ* can land
+  on a prior atom (ρ_true = ghat(μ) clamped to ±0.99), plain SBC ranks are invalid. Replace atom-case
+  ranks with fresh uniforms (or exclude atoms and report the excluded fraction) before the KS test —
+  prefer this test-side correction over changing the model.
+- **Read shrinkage as width, not location; state both readings of `vacuous`.** `vacuous = shrinkage
+  ≥ 0.95` flags *uninformative about spread*, not *posterior = prior*. A vacuous parameter can still
+  reject SBC on a location shift. Always report location (mean-u z) and shape (tail/middle) separately.
+- **Justify a test-design change with an outcome-independent argument.** A practical-equivalence band
+  for non-identified nuisances is defensible only via a power analysis that does **not** depend on the
+  results (Spike 011) — the amendment §5 refused a results-dependent band to avoid a p-hacking
+  appearance. Keep the justification outcome-independent, and route any change through §6.
