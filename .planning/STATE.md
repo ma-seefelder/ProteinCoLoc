@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Calibration investigation complete (spikes 006-013 wrapped into spike-findings-proteincoloc skill). Amended grid-8 ship-gate FAILED (one-shot); diagnosis shows coloc TARGETS rho_true/Δρ ARE calibrated, residual fails are a prior-atom artifact + M=2000 nuisance over-power + KDE-baseline defect. Both model levers (capacity 012, truncation 013) tested — neither earns the §6.4 model change. Decision pending: final bundled amendment vs Go/No-Go with named limits.
-last_updated: "2026-07-24T12:00:00.000Z"
-last_activity: 2026-07-24 -- spike-wrap-up: 13 spikes packaged into .claude/skills/spike-findings-proteincoloc/ (3 blueprints); STATE reconciled to the calibration-diagnosis line
+stopped_at: GO decision taken (2026-07-24, Option A — GO with named limits, 07-GO-NO-GO-UPDATE.md). v2.0 ships/publishes as a calibrated coloc tool: TARGETS ρ_true/Δρ SBC-calibrated (randomized ranks), BF simulation-based AUC 0.994 (spike 014, KDE baseline replaced), OOD pass; nuisance marginal drift + twice-amended gate + atom handling documented as named limits. No further training/gate iteration. Option B (BF §6 gate integration + summary redesign) deferred.
+last_updated: "2026-07-24T18:00:00.000Z"
+last_activity: 2026-07-24 -- spikes 006-014 + post-hoc re-analysis + updated Go/No-Go; user chose GO with named limits (Option A)
 progress:
   total_phases: 16
   completed_phases: 9

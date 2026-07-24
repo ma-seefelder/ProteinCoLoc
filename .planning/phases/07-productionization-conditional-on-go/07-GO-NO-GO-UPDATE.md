@@ -1,5 +1,10 @@
 # Go/No-Go — Updated Verdict (supersedes the Phase-6 "Clean Go")
 
+> **DECISION (2026-07-24, user): GO with named limits — Option A.** v2.0 ships/publishes as a
+> calibrated colocalization tool with the §5 honesty items carried into the manuscript. No further
+> training or gate iteration. Option B (BF-gate §6 integration + summary-redesign for the nuisance
+> drift) is explicitly deferred; revisit only if a venue requires all-parameter SBC.
+
 **Date:** 2026-07-24. This updates `06-GO-NO-GO-MEMO.md` after the amended grid-8 ship-gate ran and
 FAILED, and after the calibration investigation (spikes 006-014) diagnosed every residual. The
 Phase-6 memo's "Clean Go" rested on arguments this investigation has overturned; this document
