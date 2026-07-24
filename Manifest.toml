@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "ff15749fc3731e91e9bb1d8ef86ee2954df441be"
+project_hash = "5185700c7741471019186b44880ed9f5cd33a318"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "d9aaef7c63466eee4de23b4d9dad03629df54bea"
@@ -2006,7 +2006,7 @@ uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
 version = "1.11.0"
 
 [[deps.ProteinCoLoc]]
-deps = ["CSV", "CoordinateTransformations", "DataFrames", "Distributions", "Flux", "GLMakie", "HypothesisTests", "ImageFiltering", "ImageTransformations", "Images", "Interpolations", "JLD2", "KernelDensity", "LinearAlgebra", "NeuralEstimators", "PackageCompiler", "QuadGK", "Random", "Random123", "Statistics", "StatsBase"]
+deps = ["Artifacts", "CSV", "CoordinateTransformations", "DataFrames", "Distributions", "Flux", "GLMakie", "HypothesisTests", "ImageFiltering", "ImageTransformations", "Images", "Interpolations", "JLD2", "KernelDensity", "LinearAlgebra", "NeuralEstimators", "PackageCompiler", "Pkg", "QuadGK", "Random", "Random123", "Statistics", "StatsBase"]
 path = "."
 uuid = "12345678-1234-1234-1234-123456789abc"
 version = "2.0.0"

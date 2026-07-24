@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: GO decision taken (2026-07-24, Option A — GO with named limits, 07-GO-NO-GO-UPDATE.md). v2.0 ships/publishes as a calibrated coloc tool: TARGETS ρ_true/Δρ SBC-calibrated (randomized ranks), BF simulation-based AUC 0.994 (spike 014, KDE baseline replaced), OOD pass; nuisance marginal drift + twice-amended gate + atom handling documented as named limits. No further training/gate iteration. Option B (BF §6 gate integration + summary redesign) deferred.
-last_updated: "2026-07-24T18:00:00.000Z"
-last_activity: 2026-07-24 -- spikes 006-014 + post-hoc re-analysis + updated Go/No-Go; user chose GO with named limits (Option A)
+stopped_at: "Phase 7 productionization COMPLETE (11/11 plans). Built on the GO decision (2026-07-24, Option A — GO with named limits, 07-GO-NO-GO-UPDATE.md): 07-09 CAPPED 32×32 (not trained/shipped, gate-32x32.md); 07-10 shipped the amortized-only public API — colocalization_amortized (src/amortized/api.jl), _SHIPPED_GRIDS=(8,), content-hashed lazy Artifacts.toml (tree-sha1 verified) loading the amended_v2/grid_8 net, integration test, and docs/amortized.md carrying the named limits. Turing/ADVI path internal-only. No retraining, no gate run, no PROD_SEED_V2 consumed."
+last_updated: "2026-07-24T20:30:00.000Z"
+last_activity: 2026-07-24 -- Phase 7 completed (07-09 CAP 32×32 + 07-10 productionize amortized-only public API, shipped family={8}); full Pkg.test green
 progress:
   total_phases: 16
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 53
-  completed_plans: 51
-  percent: 56
+  completed_plans: 53
+  percent: 63
 ---
 
 # Project State
@@ -21,13 +21,43 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A trained NPE/NRE produces calibrated, amortized colocalization inference (posterior + Bayes factor) in a single forward pass, >100x faster than per-dataset ADVI, with a demonstrated SBC/coverage proof and an honest OOD flag.
-**Current focus (2026-07-24):** Phase 07 productionization is PAUSED at 9/11 plans (07-09 32×32 training never authorized). A calibration investigation (spikes 006-013) diagnosed the amended grid-8 ship-gate FAIL: coloc TARGETS ρ_true/Δρ are calibrated; ρ_true SBC-fail = prior-atom artifact (test-fixable via randomized ranks); nuisance fails = 0.06-SD marginal drift at the M=2000 over-power edge (test-fixable via a nuisance equivalence rule, spec draft `07-NUISANCE-SBC-SPEC-DRAFT.md`); BF attrition = KDE-baseline defect (Memo §5 incomplete). Neither model lever (capacity/truncation) earns the §6.4 retrain. **Open decision:** final bundled amendment on a retrained model vs Go/No-Go re-eval publishing with named limits. Findings in `Skill("spike-findings-proteincoloc")`.
+**Current focus (2026-07-24):** Phase 07 productionization is **COMPLETE (11/11 plans)**, built on the
+GO decision (Option A — GO with named limits, `07-GO-NO-GO-UPDATE.md`). The v2.0 amortized-only
+public API ships on the **8×8 reference grid only**. The prior calibration investigation (spikes
+006-014) stands as the honest basis: coloc TARGETS ρ_true/Δρ are SBC-calibrated (randomized-rank atom
+handling); BF is simulation-validated (spike 014, AUC 0.994, KDE baseline replaced); OOD passes;
+nuisance marginal drift (~0.08 SD), the twice-amended gate, and atom handling are documented as named
+limits (`docs/amortized.md`). No further training/gate iteration; Option B (BF §6 gate integration +
+summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 ## Current Position
 
-**ACTIVE phase: 07 (productionization)** — 9 of 11 plans complete, wave 6 of 8 DONE; **07-08 is
-COMPLETE**, next plan is **07-09** (wave 7 — `autonomous: false`, long 32×32 training run, MUST NOT
-start without explicit human authorization).
+**Phase 07 (productionization) — COMPLETE (11/11 plans).**
+
+**07-09 (2026-07-24) — CAP DECISION (no training):** 32×32 is NOT trained and NOT shipped
+(`gate-32x32.md`, `07-09-SUMMARY.md`). The GO rests on 8×8, and a 32×32 gate would run the KDE-BF /
+non-atom-corrected apparatus spikes 006-014 proved defective (would FAIL like 16×16, contribute
+nothing). User decision: cap-the-family. No `_train_grid_pipeline(32)` run, no `grid_32` artifacts, no
+`gate_consts_32.jl`, no `PROD_SEED[32]` consumed. 64×64 stays dropped.
+
+**07-10 (2026-07-24) — productionize the amortized-only public API:** shipped
+`colocalization_amortized(img, control, channels; num_patches=8, N=2000)` → `AmortizedColocResult`
+(`src/amortized/api.jl`), composing the frozen read surfaces (registry → summary → NPE posterior → Δρ
+cloud → NRE log-BF → density-channel OOD), CPU-default (D-06), with the D-02 accessors dispatching on
+the result. **`_SHIPPED_GRIDS = (8,)`** (4 never post-hoc re-analysed, 16 gate-FAILED, 32 CAPPED, 64
+dropped). The shipped 8×8 bundle (`artifacts/amended_v2/grid_8/`, the retrained bounded-θ /
+realistic-imsize net the GO rests on) loads via a content-hashed **`Artifacts.toml`** entry
+(`git-tree-sha1 = 90e6b63a…`, `lazy = true`, Release-hosted; tarball sha256 `17162904…`), and
+`_lazy_load_from_artifact!(8)` resolves it store→dev-fallback→download, **tree-sha1 verified before
+load** (T-7-01), then wires the recorded density-channel OOD operating point. `Artifacts`+`Pkg`
+stdlibs added to `[deps]` (resolve clean; NeuralEstimators 0.2.1 / Flux 0.16.10 unchanged). Turing
+path stays internal (not exported). `test/test_integration.jl` exercises the full 8×8 public path +
+error paths; `docs/amortized.md` carries the API and the §5 named limits verbatim.
+
+**Two carry-forward notes:** (1) the shipped OOD flag is the **density Mahalanobis channel** only —
+the fused noise/PP channels that reached gate AUC 1.0 are gate-time constructs not in the frozen
+bundle (documented). (2) `AmortizedColocResult.calibration` is the `_bundle_from_artifacts`
+placeholder (`gated=false`); gate provenance + named limits live in `docs/amortized.md` and the memo.
 
 **07-08 (2026-07-21):** the windowed sub-tile local colocalization map shipped
 (`src/amortized/local_map.jl`, commits 25037e6 / 90f612e). `local_coloc_map(img, control,
@@ -177,6 +207,8 @@ Recent decisions affecting current work:
 - [Phase 07-08]: Local localisation ships as WINDOWED sub-tile inference over the frozen 8x8 bundle (src/amortized/local_map.jl), NOT a new fine-grid model — local_coloc_map returns a lightweight LocalColocMap (grid, tiles, delta_rho::Matrix, ood_flag::Matrix, meta), deliberately NOT an AbstractColocResult (no draws / no BF / no per-region uncertainty to back that interface). grid is a defaulted KEYWORD (8) so the map inherits whichever grid's gate the caller picks and CI can drive a tiny grid-4 bundle. Sub-tiles come from the package's OWN patch(img,nx,ny) (same trimming as the summary path) and tile MCIs carry the PARENT Otsu thresholds (tile-local Otsu would make tiles incomparable). Degenerate tiles take LOCAL_MAP_SENTINEL=0.0 AND a forced ood_flag=true so 'unscorable' can never read as 'measured no difference' (T-7-04). Wave-6 bridge _ensure_grid_registered(grid; artifact_dir) reuses _bundle_from_artifacts + register! rather than restating the three loads; it is a NO-OP on an already-registered grid.
 - [Phase 07-03]: Amortized TRAINING layer promoted to src/amortized/{architecture,train_npe,train_ratio,persist,pipeline}.jl (PROD-01/02). build_estimator input-width-agnostic (q a NormalisingFlow INSTANCE positional; NPE_* Phase-5 consts); train_npe/train_ratio default use_gpu=has_cuda_device() with the spike use_gpu&&throw guards REMOVED (D-06) and LR/decay kept Float64 (AdamW-CosAnneal gotcha); ratio conditioner width from ratio_input_dim(G)=5G² (not 320), no custom loss (v0.2.1 hard-codes logit-BCE). SHIPPED PERSISTENCE migrated to CPU-resident Flux.state(cpu(est))+arch metadata → build_estimator/build_ratio_estimator + Flux.loadmodel! on load (Pitfall 4/T-7-07: device-independent, narrower deserialization surface T-7-01); OOD nulls persist directly; all through the atomic .tmp→reopen-integrity-@assert→mv(force=true) wrapper + schema_version + _estimator_ok/_ratio_ok/_ood_nulls_ok SKIP-IF-DONE predicates; seeded save→load→CPU inference bitwise-equal. _train_grid_pipeline(grid;...) factors datagen→zt→train_npe→train_ratio→fit_ood_nulls→persist→EstimatorBundle (SKIP-IF-DONE loads valid artifacts; injectable datagen seam makes it testable without the not-yet-promoted simulator; default_imsize_for 16→≥512²/32→≥1024²); train_and_register(grid) now runs it (D-04 on-ramp is real code, stub removed). Docstring documents -t auto datagen + Philox-per-index thread-count-independent byte-identical repro. GPU path plumbed but NOT exercised (has_cuda_device()==false, no CUDA loaded); CPU path fully green. Pkg.test green under -t auto (train_npe 11/11, train_ratio 12/12, persist 17/17, pipeline 19/19; co-resolution 4/4, no new external deps); spike/ byte-untouched.
 - [Phase 07-06]: 4x4 bundle produced via the PUBLIC train_and_register(4) path (PROD-02/D-04 user-definable-grid happy path proven end-to-end; estimator_for(4) confirmed in-process), imsize_set constrained to ((256,256),) for the CPU budget; gate on fresh disjoint PROD_SEED[4]=0x8c0ad97b99bd6031 recorded honest FAIL (SBC ECE-green all 8, 7/8 KS pass vs 8x8 5/8, only shift_dx 0.0326; BF corr 0.941 near-miss + max|dlogBF| 12.40 KDE-tail artifact; OOD ID-op 31.79 only), gate_consts_4.jl byte-locked
+- [Phase 07-09]: 32×32 CAPPED (user cap-the-family) — NOT trained, NOT shipped (gate-32x32.md). The GO rests on 8×8; a 32×32 gate would run the KDE-BF/non-atom-corrected apparatus spikes 006-014 proved defective. No training run, no grid_32 artifacts, no gate_consts_32.jl, no PROD_SEED[32] consumed. 64×64 stays dropped.
+- [Phase 07-10]: Amortized-only public API shipped — colocalization_amortized(img,control,channels;num_patches=8,N=2000)→AmortizedColocResult (src/amortized/api.jl), composing registry→frozen summary→NPE posterior→Δρ cloud→NRE log-BF→density-channel OOD, CPU-default (D-06), D-02 accessors dispatching. _SHIPPED_GRIDS=(8,) ONLY (Go/No-Go Option A; 4 never post-hoc re-analysed, 16 gate-FAILED, 32 CAPPED, 64 dropped). Content-hashed lazy Artifacts.toml [grid_8] (git-tree-sha1=90e6b63a…, lazy, Release-hosted tarball sha256=17162904…) → _lazy_load_from_artifact!(8) resolves store→dev-fallback→download, tree-sha1 VERIFIED before load (T-7-01), then wires the recorded density-channel OOD op-point 179.14. Shipping bundle = amended_v2/grid_8 (retrained bounded-θ/realistic-imsize net the GO rests on). Artifacts+Pkg stdlibs added to [deps] (resolve clean, NeuralEstimators 0.2.1/Flux 0.16.10 intact). Turing path internal-only. test/test_integration.jl + docs/amortized.md (named limits §5 verbatim). Named limit: shipped OOD flag = density Mahalanobis channel only (fused noise/PP are gate-time constructs).
 - [Phase 07-06]: fixed a Rule-1 numerical crash in the shipped non-clamped KDE BF baseline (bf.jl kde_log_bf_unclamped) — QuadGK adaptive integral overshoots the tail probability a few ulp outside [0,1], crashing log(); clamped to the valid [0,1] domain so a saturated tail yields the honest ±Inf (dropped) NOT the forbidden 1e-8 finite floor; in-range values byte-identical
 - [Phase 08-05]: BOTH physical ground-truth anchors human-verified and pinned (SC1). POSITIVE = TetraSpeck 100 nm multicolor fiducial beads (RegiSTORM v1.0.0 sample data, Zenodo DOI 10.5281/zenodo.5509861, CC-BY-4.0, Karlsson et al. 2023 BMC Bioinformatics 10.1186/s12859-023-05320-1): one physical bead emits in EVERY colour channel ⇒ coloc BY CONSTRUCTION and state-independent (multi-channel STORM .tif frame stacks + ThunderSTORM .csv; a mean/max projection is owed in Phase 16). NEGATIVE = "Light My Cells" (France-BioImaging / ISBI 2024, BioImage Archive S-BIAD1047, CC-BY-4.0, OME-TIFF): nucleus (DNA) vs mitochondria are disjoint BY BIOLOGY from the acquisition design (fields must be FILTERED in Phase 16 to those carrying BOTH channels). Neither label is a computed coloc score (Pitfall 1) and neither is an environment-quenched tandem (Pitfall 2).
 - [Phase 08-05]: D-01 DEVIATION, human-accepted and recorded (never papered over) — the literal decision specified a CELLULAR tandem-fluorophore construct, but no open-licensed, NON-environment-quenched tandem-FP dataset could be verified in any public archive; the deposited tandem-FP sets are quenched mRFP/mCherry-EGFP-LC3 autophagy reporters, which the acceptance bar disqualifies. Substituted a multicolor-bead dataset: the SAME physical particle in both channels is a strictly STRONGER physical positive (no pH/quenching failure mode at all), but it IS a deviation from the literal wording.

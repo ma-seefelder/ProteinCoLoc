@@ -1,0 +1,7 @@
+[grid_8]
+git-tree-sha1 = "90e6b63a8a234d067b407fefd7914f2ae4845448"
+lazy = true
+
+    [[grid_8.download]]
+    sha256 = "17162904c69b30e2a99a6dd934434553d08ebaadbfd55dea664b36efcf92b6d5"
+    url = "https://github.com/ma-seefelder/ProteinCoLoc/releases/download/v2.0.0/grid_8.tar.gz"

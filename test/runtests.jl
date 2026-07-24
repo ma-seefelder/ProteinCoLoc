@@ -298,12 +298,17 @@ end
 ###
 ### The registry keys estimators by patch grid, returns a bundle for a registered grid, and
 ### raises a clear `train_and_register`-pointing error for an unregistered grid. The shipped
-### family is CAPPED to (4,8,16,32) — 64 is DROPPED (D-04).
+### family is {8} ONLY (07-10, Go/No-Go Option A) — 4/16/32 excluded, 64 dropped (D-04).
 ##########################################################################################
 @testset "estimator registry (PROD-02)" begin
-    # Capped shipped family — 64 dropped (D-04).
-    @test ProteinCoLoc._SHIPPED_GRIDS == (4, 8, 16, 32)
+    # Shipped family is {8} ONLY (07-10, Go/No-Go Option A — the GO rests on 8×8). 4×4 (never
+    # post-hoc re-analysed), 16×16 (gate FAILED, gate-16x16.md), 32×32 (CAPPED, gate-32x32.md) and
+    # 64×64 (dropped, D-04) are all EXCLUDED.
+    @test ProteinCoLoc._SHIPPED_GRIDS == (8,)
     @test !(64 in ProteinCoLoc._SHIPPED_GRIDS)
+    @test !(4 in ProteinCoLoc._SHIPPED_GRIDS)
+    @test !(16 in ProteinCoLoc._SHIPPED_GRIDS)
+    @test !(32 in ProteinCoLoc._SHIPPED_GRIDS)
 
     # Unregistered, non-shipped grid → ArgumentError naming train_and_register.
     @test_throws ArgumentError estimator_for(7)
@@ -1005,6 +1010,14 @@ include(joinpath(@__DIR__, "gpu_smoke.jl"))
 ### sentinel, and the Phase-12 extension point left clean.
 ##########################################################################################
 include(joinpath(@__DIR__, "test_local_map.jl"))
+
+##########################################################################################
+### End-to-end public API + content-hashed Artifacts registry (07-10, PROD-01/02)
+###
+### `colocalization_amortized` on the shipped 8×8 grid via the tree-sha1-verified Artifacts
+### lazy-load; the D-02 accessor interface; unshipped/unregistered error paths; Turing internal.
+##########################################################################################
+include(joinpath(@__DIR__, "test_integration.jl"))
 
 ##########################################################################################
 ### RETIRED (v2.0 breaking release, D-01):

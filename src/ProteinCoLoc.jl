@@ -67,6 +67,11 @@ include("amortized/pipeline.jl")
 # surface (summary/infer/ood) and the pipeline's artifact loaders (`_bundle_from_artifacts`,
 # `_grid_dir`) to register a grid in-process before `estimator_for`.
 include("amortized/local_map.jl")
+# Public amortized entry point (PROD-01, D-01): composes the registry + read surfaces into the
+# single `colocalization_amortized` call. Ordered LAST of the amortized files — it uses
+# estimator_for (registry), the summary chain, the infer/bf/ood read surfaces, and the
+# AmortizedColocResult type (results.jl).
+include("amortized/api.jl")
 include("plot.jl")
 include("utils.jl")
 include("main.jl")
@@ -98,6 +103,8 @@ export AbstractColocResult, AmortizedColocResult, OODVerdict, CalibrationMeta
 export delta_rho, bayes_factor, is_ood, posterior_draws
 # Grid-keyed estimator registry (PROD-02, D-04): the public num_patches-as-key entry points.
 export estimator_for, register!, train_and_register
+# Public amortized colocalization entry point (PROD-01, D-01) — the v2.0 primary API.
+export colocalization_amortized
 # Coarse windowed sub-tile local colocalization map (PROD-02). NOT the Phase-12 calibrated
 # per-region map — see the `local_coloc_map` docstring.
 export local_coloc_map, LocalColocMap
