@@ -238,6 +238,7 @@ net that branch 3 declines to train, so choosing it concedes more than the SC2 h
 | `P11_ITERATION_ALLOWANCE` (declared in Tier 1, before any result existed) | **1** |
 | Iterations spent so far | **0** |
 | Iterations remaining | **1** |
+| Spent by this verdict | **0** — the allowance is carried forward UNSPENT |
 
 A **second** iteration is not authorised by the pre-registration file, and — per Tier 1 §10 — it
 cannot be authorised by amending that file. The single allowance is cheapest spent on a
@@ -248,7 +249,61 @@ threw inside a worker thread) produced **no numbers and no artifact** — it abo
 displacement was computed — so it is not an iteration and did not touch the allowance. The single
 reported run is the one stamped `2026-07-25T21:26:36.787Z`.
 
-DECISION: pending
+---
+
+## The decision
+
+DECISION: proceed — **2026-07-25**
+
+**Reason (one sentence, for the ledger):** The pre-registered abort criterion did not fire on
+either leg — `S_probe = 1.0` against a floor of 0.9 and a ladder span of 0.0469 Δρ_eq against a
+floor of 0.02, both re-derived independently from the raw artifact — so the "below resolution"
+branch is not the one this phase is on and training is authorised as planned.
+
+**Downstream authorisation:** Plans 11-07 through 11-11 are authorised as planned.
+Iterations spent: 0 of 1.
+
+Two conditions attach to that authorisation, both pre-registered rather than invented here:
+
+- **`P11_DATAGEN_WALLCLOCK_CEILING_MIN = 150` is a BLOCKER threshold, not a downgrade trigger.**
+  Datagen is expected at roughly 1.2 h at 32 threads from the frozen mixture's own cost model.
+  Exceeding 150 minutes must be RECORDED AS A BLOCKER; it is explicitly **not** licence to
+  downgrade the arm to 256², which would recreate the exact compute-budget artifact the F5
+  amendment exists to correct.
+- **The SC1g λ-ablation tripwire now bars at `P11_LAMBDA_ABLATION_FACTOR = 2.502`**, up from the
+  authored `1.15` placeholder, because the probe measured a λ_max/λ_min ratio of 5.004 and Tier 1
+  halves it. If the tripwire fails at 2.502 in plan 11-07, that is a **result**, not a licence to
+  relax the constant.
+
+### How this checkpoint was resolved
+
+Plan 11-06 Task 2 is a `checkpoint:decision` with `gate="blocking"`. It was resolved
+**autonomously by the orchestrator under the pre-registered rule, with no user present** — the
+phase was executed in a background, non-interactive session in which no interactive prompt could
+be answered.
+
+That is defensible here, and only here, for a specific reason: **the D-06 criterion is
+pre-registered and mechanical, so the verdict is a deterministic evaluation of an already-locked
+rule rather than a fresh judgement.** The floors were frozen in Tier 1 at commit `d336699` before
+the probe existed; the measurements were frozen in Tier 2 at `2780a06`; both legs clear their
+floor, so branches 2 and 3 — whose entry condition is "the criterion fired" — were **not
+available** to be chosen. Branch 1 is the only branch whose stated precondition holds.
+
+The autonomous resolution was made conditional on an independent check rather than taken on
+trust: both statistics were recomputed from the raw per-`(θ, replicate, rung)` tables in the
+artifact using arithmetic written for this verdict, and the re-derivation agreed
+(`REDERIVATION_AGREES`; see the re-derivation table above). Had it disagreed, this verdict would
+have been recorded as **BLOCKED** and the disagreement escalated instead.
+
+For the audit trail:
+
+- `P11_ITERATION_ALLOWANCE = 1` remains **UNSPENT**. Iterations spent: 0 of 1.
+- **No threshold was altered** by this plan. `spike/validation/p11_consts.jl` is byte-unchanged;
+  this plan wrote documents only, ran no simulation, consumed no seed, and installed no package.
+- The discretionary part of the branch choice — whether to spend the allowance *despite* a
+  passing criterion, e.g. to buy a wider ladder — was **not** exercised on the user's behalf. It
+  was left unspent, which is the reversible option: the allowance is still there if plan 11-07 or
+  11-08 needs it, whereas spending it here could not have been undone.
 
 ---
 
