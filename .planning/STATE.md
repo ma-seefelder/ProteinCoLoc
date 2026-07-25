@@ -124,7 +124,7 @@ Offline gate `julia --project=. corpus/test/runtests.jl` → 217/217, ZERO netwo
 untouched; `git ls-files corpus/data` empty. NOTE: this Current Position was previously clobbered by a
 parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
 
-Last activity: 2026-07-25 -- Completed quick task 260725-vl8: masked real-anchor diagnostic; PRIOR-ONLY claim withdrawn (Phase 11 execution in progress)
+Last activity: 2026-07-25 -- Completed quick task 260725-wb7: real anchor now measured on the coloc pair c2/c3 (Phase 11 execution in progress)
 
 Progress: [█████░░░░░] 56% of phases (9/16); 51/53 plans
 
@@ -288,6 +288,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260725-vl8 | Real-anchor diagnostic measures MASKED as well as unmasked; the unqualified "negative tail not physically reachable / PRIOR-ONLY" claim in `ghat.jl` is WITHDRAWN (not inverted) | 2026-07-25 | 151ad79 | [260725-vl8-fix-the-real-anchor-diagnostic-in-spike-](./quick/260725-vl8-fix-the-real-anchor-diagnostic-in-spike-/) |
+| 260725-wb7 | Real-anchor measured on the COLOC pair c2/c3 (green/red), not c1/c2 — `c1` is the DAPI counterstain (`test/runtests.jl:105`). Pair is now a named parameter. Masked: positive **+0.8238**, negative **−0.0338** (superseding 0.3292 / 0.2481). Withdrawal of the PRIOR-ONLY claim STANDS — `neg_reachable` flips to `true` on a value ≈ 0, which is a predicate artifact, not evidence | 2026-07-25 | 78dc37f | [260725-wb7-correct-the-real-anchor-diagnostic-chann](./quick/260725-wb7-correct-the-real-anchor-diagnostic-chann/) |
 
 ## Deferred Items
 
