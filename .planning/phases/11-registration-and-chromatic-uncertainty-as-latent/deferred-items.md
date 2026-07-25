@@ -53,3 +53,46 @@ Out-of-scope discoveries logged during execution. Not fixed here.
   The Phase-11 clause (i) dependency gate that plan 11-04 added to `runtests.jl` is
   **unaffected and green** (`D-04 CPU-only (no CUDA dependency, none loaded)`: 23/23 pass,
   up from 21 assertions).
+
+  **RESOLVED in `b298c00`** (orchestrator post-merge integration gate, wave 3). The fix was
+  larger than the one assertion above: five further sites hardcoded the arity and each was
+  masked by the previous abort. See that commit for the full list. All arity sites are now
+  derived from `sample_prior`. Phase 3 is 70/70; Phase 5 (SBC/BF/OOD) and Phase 9 (comparator)
+  are green. One gate remains red — the next item.
+
+## From the wave-3 post-merge integration gate (orchestrator, commit `b298c00`)
+
+- **BLOCKER — `SPEEDUP_GATE` (NPE-03) now FAILS: median speedup 92.5× and 84.0× on two
+  consecutive runs, against a gate of `> 100.0×`** (`spike/test/test_npe.jl:230`,
+  gate defined at `:74`).
+
+  This is the **only** remaining failure in `spike/test/runtests.jl`. It was invisible before
+  `b298c00` because `test_simulator.jl` aborted the suite four includes earlier.
+
+  **Reproducible, not noise:** 92.50× then 83.97× on two separate serial runs with no other
+  agents active. Both are well below the gate.
+
+  **Most likely cause, stated as a hypothesis and NOT yet confirmed by measurement:** the spike
+  NPE now trains an **8-marginal** flow instead of a 7-marginal one, because `train_fold`
+  derives the flow width from the (now 8-column) θ. A wider flow is a slower forward pass, and
+  the gate measures `t_advi / t_npe`. Confirming this needs an A/B of the same benchmark at
+  `D_flow = 7` vs `8`, which has not been run.
+
+  **Scope — this does NOT invalidate the shipped >100× claim.** The shipped `amended_v2/grid_8`
+  bundle still carries a **7-marginal** flow (`NPE_D = 7`, unmoved per D-16), and its
+  `Artifacts.toml` pin is byte-unchanged. The failing number comes from a spike-side net that,
+  post-D-09, is no longer the shipped one. The claim in `CLAUDE.md` (">100× faster than the
+  existing per-dataset ADVI") is about the shipped path and is untouched by this.
+
+  **Deliberately NOT fixed, and `SPEEDUP_GATE` deliberately NOT lowered.** Lowering a
+  pre-registered threshold after seeing the result it failed is exactly the "amended twice,
+  credibility spent" pattern Phase 7 was burned by (see `07-GATE-AMENDMENT.md` §6.4 and user
+  memory `phase7-amended-gate-diagnosis`). The honest options are (a) confirm the 7-vs-8 flow
+  hypothesis and record it as a named limit scoped to the research net, or (b) accept that the
+  legacy Phase-4 speedup gate is not meaningful against an 8-column prior and retire it
+  explicitly rather than relax it. Both are decisions for the user, not for execution.
+
+  **Carry into the Phase-11 report (plan 11-11).** The report must state that adding
+  `chromatic_eps` cost measurable inference speed on the spike net, and must be scrupulous
+  that the shipped bundle's speed claim is unaffected — the same "which model did this number
+  come from" discipline D-16 already requires.
