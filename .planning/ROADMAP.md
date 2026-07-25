@@ -270,8 +270,21 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
   1. A 3-way `RatioEstimator`/evidence network emits a log-BF simplex over {coloc, random, exclusion} in one forward pass
   2. It reproduces `compute_BayesFactor()` (`src/bayes.jl:109`) in the overlapping 2-way regime without quadgk/KDE
   3. The exclusion hypothesis is validated on segregated ground-truth inputs
-**Plans**: TBD
-- [ ] TBD (run /gsd:plan-phase 13 to break down)
+**Plans**: 14 plans (9 waves — W1 pre-registration ∥ SC2 amendment ; W2 labels ∥ α-series ∥ τ-probe code ; W3 two-head net ; W4 D-07 closed-form verification ; W5 result type + suite wiring ; W6 Phase-11 preconditions ∥ τ-probe run [BLOCKED] ; W7 datagen + training [BLOCKED] ; W8 reported gate ∥ α-series run [BLOCKED] ; W9 phase report [BLOCKED])
+- [ ] 13-01-PLAN.md — Tier-1 pre-registration consts (seeds, τ probe spec, D-07 design + bars, gate floors, ECE band, α ladder) + literal-assertion test (D-01, D-04, D-05, D-06, D-07, D-09, D-10, D-12, D-13, D-14, D-16)
+- [ ] 13-02-PLAN.md — 13-SC2-AMENDMENT.md frozen before any result (two outcome-independent defects) + ROADMAP annotation (D-12, D-02, D-08, D-09, D-13, D-15)
+- [ ] 13-03-PLAN.md — Three-way label surface: two-factor cut on ρ_sample level × control contrast, head_targets, measure_head_log_odds (D-05, D-07, D-08, D-11)
+- [ ] 13-04-PLAN.md — α-graded disjoint-reassignment transform + its four invariants (bitwise α=0, strict positivity, intensity conservation, frozen mask) (D-15, D-16)
+- [ ] 13-05-PLAN.md — Fit-free UNPAIRED τ resolution probe code + abort criterion, needs no trained net (D-06, D-04)
+- [ ] 13-06-PLAN.md — ThreeWayEvidenceNet: shared trunk verbatim + two BCE heads + masked joint loss + per-head read surface, with the A5 train smoke (D-08, D-09, D-10, D-11, D-03)
+- [ ] 13-07-PLAN.md — D-07 correction VERIFIED against a closed-form Gaussian toy, with both negative controls (uncorrected logit, within-class reshape) (D-07, D-11)
+- [ ] 13-08-PLAN.md — ThreeHypothesisColocResult in spike/ (log_bf_vs_random), empty-bin MCE trap demonstrated, resolve-risk clause (i) + suite wiring (D-08, D-13, D-14, D-04)
+- [ ] 13-09-PLAN.md — Phase-11 precondition binding: loud block, no grid-8 fallback, derived conditioning length (D-02, D-03) [BLOCKED: Phase 11]
+- [ ] 13-10-PLAN.md — REPORTED τ probe run + Tier-2 append of the measured τ (two-commit discipline) (D-06, D-04) [BLOCKED: Phase 11 simulator]
+- [ ] 13-11-PLAN.md — Class-frequency-stratified conditioned datagen on the frozen Phase-11 zt + the single training run with measured per-head log-odds (D-02, D-03, D-07, D-10, D-11) [BLOCKED: Phase 11]
+- [ ] 13-12-PLAN.md — REPORTED amended gate: per-class AUC + confusion matrix (descriptive) + per-head ECE with vacuous-pass guard; λ response and binary-NRE continuity reported not gated (D-12, D-13, D-14, D-03, D-05) [BLOCKED: Phase 11]
+- [ ] 13-13-PLAN.md — REPORTED α-ladder run through the trained net: log-BF curves, m̄(α), crossing point α*, sealed holdout untouched (D-15, D-16) [BLOCKED: Phase 11]
+- [ ] 13-14-PLAN.md — Phase-13 report: amended criteria beside originals, the D-05 trap in prose, three named limits, iteration ledger, deferrals (D-05, D-07, D-08, D-12, D-13, D-15, D-16, D-01, D-02, D-04) [BLOCKED: Phase 11]
 
 ### Phase 14: Decision and Abstention Layer
 **Goal**: Turn calibrated posteriors + the 3-way BF into an actionable batch decision {coloc / not / ABSTAIN} at a controlled Bayesian FDR, abstaining exactly when the tool should be silent
