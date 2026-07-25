@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: "Phase 7 productionization COMPLETE (11/11 plans). Built on the GO decision (2026-07-24, Option A — GO with named limits, 07-GO-NO-GO-UPDATE.md): 07-09 CAPPED 32×32 (not trained/shipped, gate-32x32.md); 07-10 shipped the amortized-only public API — colocalization_amortized (src/amortized/api.jl), _SHIPPED_GRIDS=(8,), content-hashed lazy Artifacts.toml (tree-sha1 verified) loading the amended_v2/grid_8 net, integration test, and docs/amortized.md carrying the named limits. Turing/ADVI path internal-only. No retraining, no gate run, no PROD_SEED_V2 consumed."
-last_updated: "2026-07-24T20:30:00.000Z"
-last_activity: 2026-07-24 -- Phase 7 completed (07-09 CAP 32×32 + 07-10 productionize amortized-only public API, shipped family={8}); full Pkg.test green
+stopped_at: Phase 11 context gathered
+last_updated: "2026-07-25T16:48:59.493Z"
+last_activity: 2026-07-21 -- Phase 07 plan 07-08 executed (windowed sub-tile local map, suite green); Phase 8 remains complete
 progress:
   total_phases: 16
   completed_phases: 10
@@ -263,9 +263,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T08:00:00.000Z
-Stopped at: Phase 7 plan 07-07 COMPLETE (16x16 ship-gate ran; honest FAIL + unscored OOD recorded in gate-16x16.md)
-Resume file: .planning/phases/07-productionization-conditional-on-go/07-08-PLAN.md
+Last session: 2026-07-25T16:48:59.485Z
+Stopped at: Phase 11 context gathered
+Resume file: .planning/phases/11-registration-and-chromatic-uncertainty-as-latent/11-CONTEXT.md
 Resume action: continue the ACTIVE phase — Phase 7, plan 07-08, wave 6 of 8. Phase 8 remains COMPLETE.
 NOTE: plan 07-09 (wave 7, the 32x32 grid) is `autonomous: false` and carries a long training run —
 it MUST NOT be started without explicit human authorization. Separately, before Phase 16: run `bootstrap_anchor_hashes()` (corpus/anchor_rows.jl)
