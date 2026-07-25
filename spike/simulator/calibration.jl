@@ -177,9 +177,9 @@ _channel_label(i::Int) = "c$(i) = $(ANCHOR_CHANNEL_NAMES[i])"
 #               `_exclude_zero` (src/colocalization.jl:154-169) then drops any pixel
 #               pair carrying a 0.0 -- so only pixels above the per-channel Otsu
 #               threshold in BOTH channels survive.
-# BOTH are reported, with their surviving-patch counts, because they disagree in
-# SIGN and in ORDER and are biased in OPPOSITE directions (see the anchor caveat
-# emitted into ghat.jl). Neither is presented as "the" real-fluorescence number.
+# BOTH are reported, with their surviving-patch counts, because they differ sharply
+# in magnitude and carry different, well-known biases (see the anchor caveat emitted
+# into ghat.jl). Neither is presented as "the" real-fluorescence number.
 
 # (μ, n) for one MCI. `n` counts the 8x8 summary entries that actually enter the
 # mean -- non-`missing` AND finite -- out of 64. `patch_summary` is called, never
@@ -344,25 +344,39 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #   σ/τ consistency  : induced per-patch-corr pooled SD = $(round(r.diag.pooled_sd; digits=4)) (within Truncated(Cauchy(0.1,0.3),1e-4,1): $(r.sigma_ok))
 #   ν consistency    : per-patch-corr excess kurtosis = $(round(r.diag.kurtosis; digits=4)) (>0 ⇒ heavier-than-Gaussian ⇒ finite-ν Exponential plausible)
 #   real anchor (D-16): faithful LoadImages.jl load_tiff (NOT luminance), measured BOTH ways
+#     channel pair     : c$(r.anchor_pair[1])/c$(r.anchor_pair[2]) = $(ANCHOR_CHANNEL_NAMES[r.anchor_pair[1]])/$(ANCHOR_CHANNEL_NAMES[r.anchor_pair[2]])  (ANCHOR_CHANNEL_PAIR = $(r.anchor_pair))
+#     channel map (test/runtests.jl:105): $(_channel_label(1)), $(_channel_label(2)), $(_channel_label(3))
+#     why the pair matters: c1 is a nuclear COUNTERSTAIN, not a target protein, so any pair
+#       involving it measures counterstain-vs-protein overlap and NOT colocalization. The earlier
+#       figures (positive 0.3292 / negative 0.2481, unmasked c1/c2) were measured against the
+#       counterstain and are SUPERSEDED, not merely updated.
 #     UNMASKED (what patch_summary / the v2.0 training + inference path sees -- no Otsu mask):
 #       positive μ = $(round(r.anchor.positive.unmasked_mu; digits=4)) ($(r.anchor.positive.unmasked_n)/64 patches), negative μ = $(round(r.anchor.negative.unmasked_mu; digits=4)) ($(r.anchor.negative.unmasked_n)/64 patches)
 #     MASKED (the v1.0 analysis pipeline: per-channel Otsu _apply_mask! then _exclude_zero):
 #       positive μ = $(round(r.anchor.positive.masked_mu; digits=4)) ($(r.anchor.positive.masked_n)/64 patches), negative μ = $(round(r.anchor.negative.masked_mu; digits=4)) ($(r.anchor.negative.masked_n)/64 patches)
-#   anchor caveat    : the two estimators disagree in SIGN and in ORDER, and BOTH are biased --
+#   anchor caveat    : on this pair the two estimators AGREE in order -- positive > negative under
+#     BOTH -- and the MASKED pair separates the controls far more sharply ($(round(r.anchor.positive.masked_mu; digits=4)) vs
+#     $(round(r.anchor.negative.masked_mu; digits=4))) than the unmasked pair does ($(round(r.anchor.positive.unmasked_mu; digits=4)) vs $(round(r.anchor.negative.unmasked_mu; digits=4))). Both still carry biases:
 #     - UNMASKED is biased POSITIVE: background pixels are dark in both channels and co-vary,
-#       so the shared background alone lifts the per-patch correlation.
-#     - MASKED is biased NEGATIVE: each channel is thresholded INDEPENDENTLY and _exclude_zero
-#       then keeps only pixels bright in BOTH -- a selection on both variables, which restricts
-#       the joint range and induces spurious negative correlation. This is the known weakness
-#       of thresholded Pearson (the reason Manders/Costes coefficients exist). Masking also
-#       leaves only ~20 of 64 patches above the >=15-survivor floor.
-#   negative tail    : neg_reachable (masked negative-fixture μ < 0) = $(r.neg_reachable).
-#     NOT ESTABLISHED either way -- n = 2 fixtures and two estimators biased in OPPOSITE
-#     directions cannot settle whether a negative induced-μ tail is physically reachable. The
-#     former unqualified "physically reachable = false => PRIOR-ONLY" rested on the unmasked
-#     numbers alone and is WITHDRAWN. The SIM-02 consistency claim stays scoped to the realized
-#     range [GHAT_MU_MIN, GHAT_MU_MAX]; that scoping is unchanged and does not depend on this
-#     anchor.
+#       so the shared background alone lifts the per-patch correlation. On this pair that also
+#       COMPRESSES the contrast between the controls, which is why the unmasked pair barely
+#       separates them.
+#     - MASKED carries a RANGE-RESTRICTION caveat: each channel is thresholded INDEPENDENTLY and
+#       _exclude_zero then keeps only pixels bright in BOTH -- a selection on both variables,
+#       which can attenuate or distort the correlation. This is the known weakness of thresholded
+#       Pearson (the reason Manders/Costes coefficients exist), and masking leaves only ~20-22 of
+#       64 patches above the >=15-survivor floor. The earlier "MASKED is biased NEGATIVE" framing
+#       OVERSTATED it: here the masked POSITIVE control reads $(round(r.anchor.positive.masked_mu; digits=4)), so the selection does
+#       not prevent detecting strong colocalization -- the large negative readings that motivated
+#       that wording were predominantly the wrong-channel (counterstain) artifact, not the mask.
+#   negative tail    : neg_reachable (masked negative-fixture μ < 0, on the configured pair) = $(r.neg_reachable).
+#     STILL NOT ESTABLISHED either way. The masked negative fixture reads $(round(r.anchor.negative.masked_mu; digits=4)), which is
+#     approximately ZERO rather than convincingly negative, and n = 2 fixtures cannot settle
+#     whether a negative induced-μ tail is physically reachable. The former unqualified
+#     "physically reachable = false => PRIOR-ONLY" reading stays WITHDRAWN and is NOT reinstated;
+#     equally, the clean +$(round(r.anchor.positive.masked_mu; digits=2)) / $(round(r.anchor.negative.masked_mu; digits=2)) control separation is NOT evidence for the opposite
+#     claim. The SIM-02 consistency claim stays scoped to the realized range
+#     [GHAT_MU_MIN, GHAT_MU_MAX]; that scoping is unchanged and does not depend on this anchor.
 
 const GHAT_MU_KNOTS  = $(_fmt(r.mu_knots))
 
@@ -414,10 +428,13 @@ if abspath(PROGRAM_FILE) == @__FILE__
     println("σ/τ pooled SD    : $(round(r.diag.pooled_sd;digits=4))  within scale prior = $(r.sigma_ok)")
     println("ν excess kurtosis: $(round(r.diag.kurtosis;digits=4))  (>0 ⇒ heavier-than-Gaussian)")
     println("real anchor (D-16): faithful load_tiff (NOT luminance), measured BOTH ways")
+    println("   channel pair: c$(r.anchor_pair[1])/c$(r.anchor_pair[2]) = $(ANCHOR_CHANNEL_NAMES[r.anchor_pair[1]])/$(ANCHOR_CHANNEL_NAMES[r.anchor_pair[2]])  (ANCHOR_CHANNEL_PAIR = $(r.anchor_pair))")
+    println("   channel map (test/runtests.jl:105): $(_channel_label(1)), $(_channel_label(2)), $(_channel_label(3))")
+    println("   why: c1 is a nuclear COUNTERSTAIN, not a target protein -- any pair involving it measures counterstain-vs-protein overlap, NOT colocalization; the earlier unmasked c1/c2 figures (positive 0.3292 / negative 0.2481) are SUPERSEDED")
     println("   UNMASKED (patch_summary / v2.0 train+infer path): positive μ = $(round(r.anchor.positive.unmasked_mu;digits=4)) ($(r.anchor.positive.unmasked_n)/64), negative μ = $(round(r.anchor.negative.unmasked_mu;digits=4)) ($(r.anchor.negative.unmasked_n)/64)")
     println("   MASKED   (v1.0 analysis pipeline: Otsu _apply_mask! + _exclude_zero): positive μ = $(round(r.anchor.positive.masked_mu;digits=4)) ($(r.anchor.positive.masked_n)/64), negative μ = $(round(r.anchor.negative.masked_mu;digits=4)) ($(r.anchor.negative.masked_n)/64)")
-    println("   caveat: BOTH biased -- UNMASKED positive (dark background co-varies across channels); MASKED negative (independent per-channel Otsu + _exclude_zero keeps only pixels bright in BOTH ⇒ range restriction, the known thresholded-Pearson weakness behind Manders/Costes)")
-    println("negative tail    : neg_reachable (masked negative μ < 0) = $(r.neg_reachable) -- NOT ESTABLISHED either way on n=2 fixtures with two oppositely-biased estimators; the former \"physically reachable = false ⇒ PRIOR-ONLY\" reading is WITHDRAWN (SIM-02 stays scoped to the realized μ range, unchanged)")
+    println("   caveat: the estimators AGREE in order (positive > negative under both); MASKED separates the controls far more sharply than UNMASKED. UNMASKED is biased POSITIVE (dark background co-varies across channels), which also COMPRESSES the control contrast. MASKED carries a RANGE-RESTRICTION caveat (independent per-channel Otsu + _exclude_zero keeps only pixels bright in BOTH, ~20-22 of 64 patches survive; the known thresholded-Pearson weakness behind Manders/Costes) -- but the earlier \"MASKED is biased NEGATIVE\" framing OVERSTATED it: the masked positive control reads $(round(r.anchor.positive.masked_mu;digits=4)), so the large negative readings were predominantly the wrong-channel (counterstain) artifact, not the mask")
+    println("negative tail    : neg_reachable (masked negative μ < 0, configured pair) = $(r.neg_reachable) -- STILL NOT ESTABLISHED either way: the masked negative fixture reads $(round(r.anchor.negative.masked_mu;digits=4)), approximately ZERO rather than convincingly negative, and n=2 fixtures cannot settle reachability. The former \"physically reachable = false ⇒ PRIOR-ONLY\" reading stays WITHDRAWN and is NOT reinstated; the clean control separation is NOT evidence for the opposite claim (SIM-02 stays scoped to the realized μ range, unchanged)")
     println("frozen ĝ written : $p")
     println("==========================================================================")
 end
