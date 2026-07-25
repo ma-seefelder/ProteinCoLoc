@@ -154,6 +154,20 @@ function _ks_stat(sample::Vector{Float64}, d)
 end
 
 # --- FAITHFUL real anchor (D-16): the package's own load_tiff, NOT luminance ------
+#
+# WHICH CHANNELS ARE MEASURED (explicit, and defaulted to the colocalization pair).
+# The fixtures in test/test_images/ carry three channels; test/runtests.jl:105 records
+# them as `channels = ["blue", "green", "red"]`. Channel 1 (blue) is the DAPI/Hoechst
+# NUCLEAR COUNTERSTAIN, not a target protein -- so ANY pair involving c1 measures
+# counterstain-vs-protein overlap, which is not colocalization and reads as noise. The
+# colocalization pair is green/red = channels 2 and 3. The pair is therefore an
+# explicit, named, defaulted parameter (and is recorded in the emitted provenance and
+# the printed report), so no future reader has to guess which channels produced a
+# number.
+const ANCHOR_CHANNEL_PAIR  = (2, 3)
+const ANCHOR_CHANNEL_NAMES = ("blue (DAPI/Hoechst nuclear counterstain)", "green", "red")
+_channel_label(i::Int) = "c$(i) = $(ANCHOR_CHANNEL_NAMES[i])"
+
 # Each fixture is measured TWICE, because the two available estimators disagree:
 #   UNMASKED -- what `patch_summary` (and therefore the v2.0 training AND inference
 #               path) actually sees: no Otsu mask, every pixel enters the per-patch
@@ -180,11 +194,12 @@ end
 # downstream shape total so interpolation/report code cannot throw).
 _anchor_na() = (unmasked_mu = NaN, unmasked_n = 0, masked_mu = NaN, masked_n = 0)
 
-function _real_anchor()
+function _real_anchor(; pair::Tuple{Int,Int} = ANCHOR_CHANNEL_PAIR)
     measure_one(cond) = begin
-        c1 = load_tiff(joinpath(_REPO_ROOT, "test", "test_images", cond, "$(cond)_c1.tif"))
-        c2 = load_tiff(joinpath(_REPO_ROOT, "test", "test_images", cond, "$(cond)_c2.tif"))
-        mci = build_mci([Matrix{Float64}(c1), Matrix{Float64}(c2)]; name = cond)
+        cA = load_tiff(joinpath(_REPO_ROOT, "test", "test_images", cond, "$(cond)_c$(pair[1]).tif"))
+        cB = load_tiff(joinpath(_REPO_ROOT, "test", "test_images", cond, "$(cond)_c$(pair[2]).tif"))
+        mci = build_mci([Matrix{Float64}(cA), Matrix{Float64}(cB)];
+                        name = "$(cond)_c$(pair[1])c$(pair[2])")
         # ORDER IS LOAD-BEARING: `_apply_mask!` MUTATES `mci.data` in place, so the
         # UNMASKED measurement must be taken BEFORE the mask is applied.
         unmasked_mu, unmasked_n = _anchor_measure(mci)
@@ -203,7 +218,8 @@ end
 function calibrate(rng::AbstractRNG = Random.Xoshiro(2026);
                    imsize::Tuple{Int,Int} = (512, 512),
                    n_grid::Int = 25, n_per::Int = 100,
-                   metric_N::Int = 300)
+                   metric_N::Int = 300,
+                   anchor_pair::Tuple{Int,Int} = ANCHOR_CHANNEL_PAIR)
 
     # (1) SWEEP ρ_true ∈ [−0.99, 0.99] (PAST ±0.9 -- Open Q1 RESOLVED) ------------
     ρ_grid  = collect(range(-0.99, 0.99; length = n_grid))
@@ -266,21 +282,22 @@ function calibrate(rng::AbstractRNG = Random.Xoshiro(2026);
 
     # (4d) FAITHFUL real anchor + negative-tail reachability (D-16) ---------------
     anchor = try
-        _real_anchor()
+        _real_anchor(; pair = anchor_pair)
     catch err
         @warn "real anchor load failed" err
         (positive = _anchor_na(), negative = _anchor_na())
     end
-    # Derived from the MASKED negative-fixture μ: that is the estimator comparable to
-    # the v1.0 analysis pipeline. This predicate is NOT by itself evidence of physical
-    # reachability -- the masked and unmasked estimators are biased in OPPOSITE
-    # directions (two-sided bias recorded in the emitted ghat.jl header), and n = 2
-    # fixtures cannot settle negative-tail reachability either way.
+    # Derived from the MASKED negative-fixture μ on the CONFIGURED pair: the masked
+    # estimator is the one comparable to the v1.0 analysis pipeline. This predicate is
+    # NOT by itself evidence of physical reachability. On the colocalization pair the
+    # masked negative fixture reads approximately ZERO (about -0.03), so the predicate
+    # can be `true` while establishing nothing -- n = 2 fixtures cannot settle
+    # negative-tail reachability either way, in either direction.
     neg_reachable = (isfinite(anchor.negative.masked_mu) && anchor.negative.masked_mu < 0.0)
 
     return (; ρ_grid, mu_mean, mu_sd, spearman, mu_knots, rho_knots, mu_min, mu_max,
             w1, ks, induced_n = length(induced), si, si_rhos, si_sizes, si_maxdev,
-            diag, sigma_ok, anchor, neg_reachable, imsize, n_grid, n_per)
+            diag, sigma_ok, anchor, anchor_pair, neg_reachable, imsize, n_grid, n_per)
 end
 
 # --- Freeze ĝ + evidence into spike/simulator/ghat.jl ----------------------------
