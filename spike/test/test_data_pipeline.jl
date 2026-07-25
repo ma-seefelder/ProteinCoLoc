@@ -72,11 +72,14 @@ const DP_LOAD_DIR  = generate_cache(mktempdir(); N = DP_N_LOAD,
     @testset "SC-1 generator → 128-vector" begin
         # Wave W2: generate.jl + encode.jl produce a (128, N) summary_min whose
         # rows 65:128 are the {0,1} mask, mask=0 ⟺ value row==0, all isfinite, and
-        # θ is the 7-vector.
+        # θ is the THETA_DIM-vector. Phase 11 (D-09) moved θ from 7 to 8 columns
+        # (`chromatic_eps`); asserting against THETA_DIM rather than a literal
+        # keeps this a real shape check instead of a value that must be chased.
         out = generate_samples(DP_N_FIXTURE; master_seed = DP_SC1_SEED, parallel = false)
         sm  = out.summary_min
         @test size(sm) == (128, DP_N_FIXTURE)
-        @test size(out.theta) == (7, DP_N_FIXTURE)
+        @test size(out.theta) == (THETA_DIM, DP_N_FIXTURE)
+        @test THETA_DIM == length(sample_prior(Random.Xoshiro(0)))  # derived, not drifting
         mask = sm[65:128, :]
         vals = sm[1:64, :]
         @test all(x -> x == 0.0 || x == 1.0, mask)        # rows 65:128 ∈ {0,1}

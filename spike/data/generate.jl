@@ -53,6 +53,16 @@ isdefined(@__MODULE__, :write_shard) || include(joinpath(@__DIR__, "cache.jl"))
 # Default master seed (a config value, NOT a secret). Overridable per call.
 const DEFAULT_MASTER_SEED = 0x0000_0000_0000_0001
 
+# θ arity, DERIVED from prior.jl rather than hardcoded. Phase 11 (D-09) appended
+# `chromatic_eps` as an 8th column; the literal `7` that used to live here (and in
+# `generating_config`'s `theta_dim`, and in `_write_holdout`) silently disagreed
+# with the prior and surfaced as a DimensionMismatch only once an unrelated test
+# stopped aborting first. Deriving it means a future θ extension cannot drift.
+# NOTE: `theta_dim` is a cache-invalidation field — it moving 7 → 8 correctly
+# orphans caches generated against the pre-Phase-11 prior, which is the honest
+# outcome (that data was drawn from a different π(θ)).
+const THETA_DIM = length(sample_prior(Random.Xoshiro(0)))
+
 """
     generate_sample(master_seed::Integer, idx::Integer) -> NamedTuple
 
@@ -105,7 +115,7 @@ function generate_samples(N::Integer; master_seed::Integer = DEFAULT_MASTER_SEED
     idxv = collect(indices)
     @assert length(idxv) == N "indices length $(length(idxv)) != N=$N"
 
-    theta        = Matrix{Float64}(undef, 7, N)
+    theta        = Matrix{Float64}(undef, THETA_DIM, N)
     summary_min  = Matrix{Float64}(undef, 128, N)
     summary_aug  = Matrix{Float64}(undef, AUG_DIM, N)
     global_index = Vector{Int}(undef, N)
@@ -154,7 +164,7 @@ function generating_config(N::Integer; master_seed::Integer, k::Integer,
         shard_size      = Int(shard_size),
         master_seed     = UInt64(master_seed),
         k               = Int(k),
-        theta_dim       = 7,
+        theta_dim       = THETA_DIM,
         imsize_set      = IMSIZE_SET,
         imsize_weights  = IMSIZE_WEIGHTS,
         summary_min_dim = 128,
@@ -169,7 +179,7 @@ end
 # main pool. Stored `global_index` is NEGATIVE (-1,-2,…) so it shares no value
 # with the positive 1:N main pool -- disjointness is structural, not by-value.
 function _write_holdout(dir, master_seed::Integer, H::Integer)
-    theta        = Matrix{Float64}(undef, 7, H)
+    theta        = Matrix{Float64}(undef, THETA_DIM, H)
     summary_min  = Matrix{Float64}(undef, 128, H)
     summary_aug  = Matrix{Float64}(undef, AUG_DIM, H)
     global_index = Vector{Int}(undef, H)

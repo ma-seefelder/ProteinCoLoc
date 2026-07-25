@@ -121,7 +121,13 @@ function train_fold(dir, fold::Integer; master_seed = NPE_MASTER_SEED,
     θva_std  = Float32.(StatsBase.transform(θzt, fold_data.θva))
 
     d_in = size(fold_data.Ztr, 1)
-    est  = build_estimator(d_in; dstar = dstar, depth = depth, width = width,
+    # Derive the flow's marginal count from the DATA, not from the `NPE_D` default.
+    # Phase 11 (D-09) moved the prior to 8 columns (`chromatic_eps`) while `NPE_D`
+    # stays 7 — the two only ever coincided. Keeping the default would build a
+    # 7-marginal flow against 8-row θ and trip `AssertionError: d == flow.d`.
+    # Mirrors the identical fix made in `src/amortized/train_npe.jl` (plan 11-02).
+    D_flow = size(θtr_std, 1)
+    est  = build_estimator(d_in, D_flow; dstar = dstar, depth = depth, width = width,
                            num_coupling_layers = num_coupling_layers,
                            flow_depth = flow_depth, flow_width = flow_width)
 

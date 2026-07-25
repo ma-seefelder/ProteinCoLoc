@@ -248,8 +248,9 @@ const ABL_FIX_RESULT = ablate(NPE_REPRO_DIR; master_seed = NPE_MASTER_SEED, K = 
         # differs — so the comparison isolates the SUMMARY, not the network.
         r = ABL_FIX_RESULT
 
-        # (a) K×2×7 RMSE table: K folds × {:min,:aug} × 7 θ, all FINITE for BOTH arms.
-        @test size(r.rmse_table) == (5, 2, 7)
+        # (a) K×2×THETA_DIM RMSE table: K folds × {:min,:aug} × θ, FINITE for BOTH arms.
+        # THETA_DIM (not a literal 7) since Phase 11 D-09 appended `chromatic_eps`.
+        @test size(r.rmse_table) == (5, 2, THETA_DIM)
         @test all(isfinite, r.rmse_table)
         @test r.variants == (:min, :aug)                 # slice 1 = :min, slice 2 = :aug
         @test r.K == 5

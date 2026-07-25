@@ -195,10 +195,14 @@ end
         @test all(-1.0 .≤ ρ .≤ 1.0)              # ρ_true stays in simulate_pair's domain
     end
 
-    @testset "sample_prior: 7-field θ, in-range ρ_true, deterministic (D-14)" begin
+    @testset "sample_prior: 8-field θ, in-range ρ_true, deterministic (D-14)" begin
+        # Phase 11 (D-09) appended `chromatic_eps` as the 8th θ column; the prior
+        # arity is now 8. This is deliberately NOT the shipped flow's marginal
+        # count (still 7, see `NPE_D`) — the two merely coincided before Phase 11.
         θ = sample_prior(Random.Xoshiro(11))
         @test keys(θ) == (:ρ_true, :spillover, :autofluorescence,
-                          :label_efficiency, :shift_dx, :shift_dy, :noise)
+                          :label_efficiency, :shift_dx, :shift_dy, :noise,
+                          :chromatic_eps)
         @test -1.0 ≤ θ.ρ_true ≤ 1.0
         @test all(isfinite, values(θ))
         @test sample_prior(Random.Xoshiro(11)) == sample_prior(Random.Xoshiro(11))

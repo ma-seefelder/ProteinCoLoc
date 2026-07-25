@@ -142,7 +142,10 @@ IDENTICAL across variants; only the cached summary changes (D-06). CPU-only
 """
 function ablate(dir; master_seed = NPE_MASTER_SEED, K::Integer = 5, N::Integer = 2000,
                 epochs::Integer = 200, batchsize::Integer = 64)
-    rmse_table   = Array{Float64,3}(undef, K, length(ABL_VARIANTS), 7)
+    # θ arity is DERIVED from the first fold's RMSE vector, not hardcoded: Phase 11
+    # (D-09) moved the prior from 7 to 8 columns and the literal 7 here would have
+    # silently truncated the new column (or thrown on assignment).
+    rmse_table   = Array{Float64,3}(undef, K, length(ABL_VARIANTS), THETA_DIM)
     rho_per_fold = Matrix{Float64}(undef, K, length(ABL_VARIANTS))
 
     for f in 1:K, (vi, variant) in enumerate(ABL_VARIANTS)

@@ -35,17 +35,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     _rmse_vector(rmse_df) -> Vector{Float64}
 
 Extract the per-parameter RMSE from a NeuralEstimators `rmse(assessment)` DataFrame
-into an `NPE_D`-vector in θ field order (ρ_true first). Keyed by the default parameter
-names `θ1..θNPE_D` (NPE_D = 7 today, from architecture.jl) so a re-ordered DataFrame
-cannot scramble the parameter axis, and the extraction tracks the true θ dimension
-rather than a hardcoded 7 (IN-03). Uses plain `getproperty`/`getindex` on the DataFrame
+into a θ-arity vector in θ field order (ρ_true first). Keyed by the default parameter
+names `θ1..θD` so a re-ordered DataFrame cannot scramble the parameter axis.
+
+The arity is read off the DataFrame itself rather than from `NPE_D`. Phase 11 (D-09)
+appended `chromatic_eps`, moving the prior to 8 columns while `NPE_D` deliberately
+stays 7 (it names the SHIPPED bundle's frozen flow marginal count, which must not
+move — D-16). Those two numbers merely coincided before Phase 11; keying off `NPE_D`
+returned a 7-vector that then failed to broadcast against an 8-element θ scale in
+`ablation.jl`. Counting the `θ<i>` rows present tracks the true θ dimension (IN-03)
+under any future extension. Uses plain `getproperty`/`getindex` on the DataFrame
 (no `using DataFrames`, a transitive dep).
 """
 function _rmse_vector(rmse_df)
     names  = rmse_df.parameter
     values = rmse_df.rmse
     lut    = Dict(String(names[i]) => Float64(values[i]) for i in 1:length(values))
-    return [lut["θ$i"] for i in 1:NPE_D]   # track the true θ dimension, not a magic 7 (IN-03)
+    D      = count(k -> occursin(r"^θ\d+$", k), keys(lut))
+    return [lut["θ$i"] for i in 1:D]
 end
 
 """
