@@ -111,6 +111,20 @@ using Pkg
         @test !haskey(Pkg.project().dependencies, "InvertibleNetworks")
         @test !haskey(Pkg.project().dependencies, "Turing")
         @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
+        # (i) RESOLVE-RISK GATE (Phase 11): the registration/chromatic research lane adds NO
+        #     new package at all. D-01 scopes that work to a spike-local research net trained
+        #     on a fresh DEV seed, with the shipped artifact and the Phase-7 GO untouched — so
+        #     the pinned, reproducible dependency set must be BYTE-IDENTICAL to the pre-Phase-11
+        #     one. The research net's model surface (a ported theta transform, a lambda encoder,
+        #     a 129-row input, an 8-marginal flow) is built entirely from packages Phases 1–5
+        #     already resolved. Asserted as an EXPLICIT NAME SET rather than a count, so an
+        #     addition names itself in the failure, and then the v0.2.1 pin is re-asserted with
+        #     the Phase-11 code on disk (the same GLMakie-class regression as (d)–(h)).
+        @test Set(keys(Pkg.project().dependencies)) == Set([
+            "BenchmarkTools", "CSV", "CairoMakie", "CoordinateTransformations", "DataFrames",
+            "Distributions", "Flux", "HypothesisTests", "ImageFiltering", "ImageTransformations",
+            "Images", "Interpolations", "JLD2", "NeuralEstimators", "Random123", "StatsBase"])
+        @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
     end
 
 end
