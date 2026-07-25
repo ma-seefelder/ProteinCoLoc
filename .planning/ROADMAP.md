@@ -237,8 +237,18 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
   1. dx/dy (+ optional 1-param chromatic warp) is added to θ (extending `spike/simulator/forward.jl` stage 6 + `prior.jl`) and the NPE is retrained on the extended prior
   2. Posterior width increases monotonically with injected registration uncertainty on a controlled sweep
   3. Deliberately mis-registered test images are handled without silent overconfidence
-**Plans**: TBD
-- [ ] TBD (run /gsd:plan-phase 11 to break down)
+**Plans**: 11 plans (9 waves — W1 pre-registration+golden ; W2 the D-11/D-12 single commit ; W3 regression+provenance ∥ research-net scaffold ; W4 pre-flight probe+Tier-2 ; W5 probe-verdict checkpoint ; W6 λ-hierarchical datagen+training ; W7 SC2 ladder ; W8 SC3 breakdown+attenuation ∥ real-image ; W9 report+docs)
+- [ ] 11-01-PLAN.md — Tier-1 pre-registration consts, TOST/Wilson/Holm-direction stats, pre-edit golden fixture + PHASE11_BASE_SHA (D-01, D-04, D-07, D-08, D-10, D-14)
+- [ ] 11-02-PLAN.md — THE D-11/D-12 SINGLE COMMIT: chromatic ε as an 8th θ column, single composed affine stage 6 in both simulators, θ-arity ripple through src/ and the root suite, named limit #8 with the pinned pre-ε sha (D-02, D-09, D-10, D-11, D-12, D-15)
+- [ ] 11-03-PLAN.md — Exact-equality stage-6 regression vs the pre-edit golden, D-12 sha verification, the five §F20c decoupling commands, shipped-bundle load + colocalization_amortized regression (D-01, D-10, D-11, D-12, D-16)
+- [ ] 11-04-PLAN.md — Research-net scaffold: BoundedThetaTransform port + λ encoder/augmenter, d_in=129/D=8 smoke train, the λ-ablation tripwire (D-01, D-02, D-03, D-04)
+- [ ] 11-05-PLAN.md — D-06 pre-flight probe (paired, F5 mixture + 256² arm) and the append-only Tier-2 probe-derived constants (D-04, D-06, D-07, D-08, D-09)
+- [ ] 11-06-PLAN.md — Probe verdict: mechanical abort-criterion evaluation, blocking branch decision, iteration ledger (D-04, D-06)
+- [ ] 11-07-PLAN.md — λ-hierarchical datagen (50k, F5 mixture) + research-net training + the λ-ablation tripwire firing green (D-01, D-02, D-03, D-09)
+- [ ] 11-08-PLAN.md — SC2 ladder (GATED): λ-aware harness, permutation-Spearman monotonicity, per-rung TOST equivalence with the inverted Holm direction, per-rung shrinkage/vacuity (D-05, D-07, D-08, D-13)
+- [ ] 11-09-PLAN.md — SC3 beyond-prior breakdown curve at λ=3.0 and λ=1.0 + the D-02 ρ_true attenuation measurement, both reported-not-gated (D-02, D-13, D-14, D-15)
+- [ ] 11-10-PLAN.md — D-17 qualitative real-image transfer check on test/test_images/ with null-warp and integer-offset controls, sealed corpus holdout untouched (D-13, D-15, D-17)
+- [ ] 11-11-PLAN.md — Figures, the Phase-11 results report, and the D-16 interpretation section in docs/amortized.md (D-01, D-05, D-12, D-13, D-14, D-16, D-17)
 
 ### Phase 12: Spatial Colocalization Map (GP/CAR)
 **Goal**: Replace exchangeable patch pooling with a spatial lattice prior over the correlation grid, producing an amortized per-region Δρ map with calibrated per-region uncertainty — the feature that makes v2.0 "spatial" and differentiates it from Tapqir
