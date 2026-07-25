@@ -31,6 +31,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # GHAT_MU_MAX and ghat() are byte-identical to the generated artifact; nothing outside
 # the comment header was touched.
 #
+# HAND-PATCH PROVENANCE (2026-07-25, second entry): the same "real anchor" / "negative
+# tail" block was hand-patched AGAIN, this time to change the measured CHANNEL PAIR from
+# c1/c2 to c2/c3. test/runtests.jl:105 records the fixture channels as ["blue","green",
+# "red"], so c1 is the DAPI/Hoechst nuclear COUNTERSTAIN and every c1 pair measured
+# counterstain-vs-protein overlap rather than colocalization. The reason for hand-patching
+# is unchanged: re-running calibration.jl would re-run the stochastic sweep and RE-FIT the
+# map, changing the frozen GHAT_* knots -- forbidden. The wording below is again copied
+# verbatim from the corrected calibration.jl emit template, so a future regeneration stays
+# a no-op on this block, and the knots and ghat() remain byte-identical.
+#
 # ĝ is a clamped piecewise-linear interpolation of the monotone (isotonic-regressed)
 # induced-μ sweep, inverted so prior.jl can draw μ*~Truncated(Cauchy(0,0.3),-1,1) and
 # set ρ_true = ghat(μ*). Monotone by construction (knots strictly increasing in μ).
@@ -46,25 +56,39 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #   σ/τ consistency  : induced per-patch-corr pooled SD = 0.3169 (within Truncated(Cauchy(0.1,0.3),1e-4,1): true)
 #   ν consistency    : per-patch-corr excess kurtosis = -0.0518 (>0 ⇒ heavier-than-Gaussian ⇒ finite-ν Exponential plausible)
 #   real anchor (D-16): faithful LoadImages.jl load_tiff (NOT luminance), measured BOTH ways
+#     channel pair     : c2/c3 = green/red  (ANCHOR_CHANNEL_PAIR = (2, 3))
+#     channel map (test/runtests.jl:105): c1 = blue (DAPI/Hoechst nuclear counterstain), c2 = green, c3 = red
+#     why the pair matters: c1 is a nuclear COUNTERSTAIN, not a target protein, so any pair
+#       involving it measures counterstain-vs-protein overlap and NOT colocalization. The earlier
+#       figures (positive 0.3292 / negative 0.2481, unmasked c1/c2) were measured against the
+#       counterstain and are SUPERSEDED, not merely updated.
 #     UNMASKED (what patch_summary / the v2.0 training + inference path sees -- no Otsu mask):
-#       positive μ = 0.3292 (64/64 patches), negative μ = 0.2481 (64/64 patches)
+#       positive μ = 0.4603 (64/64 patches), negative μ = 0.3815 (64/64 patches)
 #     MASKED (the v1.0 analysis pipeline: per-channel Otsu _apply_mask! then _exclude_zero):
-#       positive μ = -0.0729 (21/64 patches), negative μ = 0.1149 (20/64 patches)
-#   anchor caveat    : the two estimators disagree in SIGN and in ORDER, and BOTH are biased --
+#       positive μ = 0.8238 (22/64 patches), negative μ = -0.0338 (20/64 patches)
+#   anchor caveat    : on this pair the two estimators AGREE in order -- positive > negative under
+#     BOTH -- and the MASKED pair separates the controls far more sharply (0.8238 vs
+#     -0.0338) than the unmasked pair does (0.4603 vs 0.3815). Both still carry biases:
 #     - UNMASKED is biased POSITIVE: background pixels are dark in both channels and co-vary,
-#       so the shared background alone lifts the per-patch correlation.
-#     - MASKED is biased NEGATIVE: each channel is thresholded INDEPENDENTLY and _exclude_zero
-#       then keeps only pixels bright in BOTH -- a selection on both variables, which restricts
-#       the joint range and induces spurious negative correlation. This is the known weakness
-#       of thresholded Pearson (the reason Manders/Costes coefficients exist). Masking also
-#       leaves only ~20 of 64 patches above the >=15-survivor floor.
-#   negative tail    : neg_reachable (masked negative-fixture μ < 0) = false.
-#     NOT ESTABLISHED either way -- n = 2 fixtures and two estimators biased in OPPOSITE
-#     directions cannot settle whether a negative induced-μ tail is physically reachable. The
-#     former unqualified "physically reachable = false => PRIOR-ONLY" rested on the unmasked
-#     numbers alone and is WITHDRAWN. The SIM-02 consistency claim stays scoped to the realized
-#     range [GHAT_MU_MIN, GHAT_MU_MAX]; that scoping is unchanged and does not depend on this
-#     anchor.
+#       so the shared background alone lifts the per-patch correlation. On this pair that also
+#       COMPRESSES the contrast between the controls, which is why the unmasked pair barely
+#       separates them.
+#     - MASKED carries a RANGE-RESTRICTION caveat: each channel is thresholded INDEPENDENTLY and
+#       _exclude_zero then keeps only pixels bright in BOTH -- a selection on both variables,
+#       which can attenuate or distort the correlation. This is the known weakness of thresholded
+#       Pearson (the reason Manders/Costes coefficients exist), and masking leaves only ~20-22 of
+#       64 patches above the >=15-survivor floor. The earlier "MASKED is biased NEGATIVE" framing
+#       OVERSTATED it: here the masked POSITIVE control reads 0.8238, so the selection does
+#       not prevent detecting strong colocalization -- the large negative readings that motivated
+#       that wording were predominantly the wrong-channel (counterstain) artifact, not the mask.
+#   negative tail    : neg_reachable (masked negative-fixture μ < 0, on the configured pair) = true.
+#     STILL NOT ESTABLISHED either way. The masked negative fixture reads -0.0338, which is
+#     approximately ZERO rather than convincingly negative, and n = 2 fixtures cannot settle
+#     whether a negative induced-μ tail is physically reachable. The former unqualified
+#     "physically reachable = false => PRIOR-ONLY" reading stays WITHDRAWN and is NOT reinstated;
+#     equally, the clean +0.82 / -0.03 control separation is NOT evidence for the opposite
+#     claim. The SIM-02 consistency claim stays scoped to the realized range
+#     [GHAT_MU_MIN, GHAT_MU_MAX]; that scoping is unchanged and does not depend on this anchor.
 
 const GHAT_MU_KNOTS  = [-0.67976, -0.626569, -0.538958, -0.488021, -0.415148, -0.359152, -0.295677, -0.227874, -0.152285, -0.102842, -0.033647, 0.028099, 0.086485, 0.159778, 0.208655, 0.273921, 0.328753, 0.4088, 0.469433, 0.519385, 0.586926, 0.652623, 0.717369, 0.787807, 0.847149]
 
