@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Phase 11 planned (11 plans, 9 waves) — ready to execute; Phase 12 context gathered
-last_updated: "2026-07-25T18:43:11.823Z"
-last_activity: 2026-07-21 -- Phase 07 plan 07-08 executed (windowed sub-tile local map, suite green); Phase 8 remains complete
+stopped_at: Phase 12 context gathered
+last_updated: "2026-07-25T18:45:55.028Z"
+last_activity: 2026-07-25 -- Phase 11 execution started
 progress:
   total_phases: 16
   completed_phases: 10
@@ -32,6 +32,8 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 ## Current Position
 
+Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — EXECUTING
+Plan: 1 of 11
 **STATUS: Ready to execute — Phase 11 planned (2026-07-25), 11 plans in 9 waves.**
 
 **Phase 11 (Registration and Chromatic Uncertainty as Latent) — PLANNED, not started.**
@@ -122,7 +124,7 @@ Offline gate `julia --project=. corpus/test/runtests.jl` → 217/217, ZERO netwo
 untouched; `git ls-files corpus/data` empty. NOTE: this Current Position was previously clobbered by a
 parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
 
-Last activity: 2026-07-21 -- Phase 07 plan 07-08 executed (windowed sub-tile local map, suite green); Phase 8 remains complete
+Last activity: 2026-07-25 -- Phase 11 execution started
 
 Progress: [█████░░░░░] 56% of phases (9/16); 51/53 plans
 
