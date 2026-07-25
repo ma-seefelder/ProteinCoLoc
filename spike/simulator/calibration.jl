@@ -326,8 +326,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #   size-invariance  : max |Δ E[μ]| vs 512² across {256²,512²,1024²} = $(round(r.si_maxdev; digits=5))
 #   σ/τ consistency  : induced per-patch-corr pooled SD = $(round(r.diag.pooled_sd; digits=4)) (within Truncated(Cauchy(0.1,0.3),1e-4,1): $(r.sigma_ok))
 #   ν consistency    : per-patch-corr excess kurtosis = $(round(r.diag.kurtosis; digits=4)) (>0 ⇒ heavier-than-Gaussian ⇒ finite-ν Exponential plausible)
-#   real anchor (D-16): faithful LoadImages.jl load_tiff (NOT luminance): positive μ = $(round(r.anchor.positive; digits=4)), negative μ = $(round(r.anchor.negative; digits=4))
-#   negative tail    : physically reachable in real fluorescence = $(r.neg_reachable) $(r.neg_reachable ? "" : "⇒ negative μ-prior tail documented PRIOR-ONLY; consistency scoped to realized range")
+#   real anchor (D-16): faithful LoadImages.jl load_tiff (NOT luminance), measured BOTH ways
+#     UNMASKED (what patch_summary / the v2.0 training + inference path sees -- no Otsu mask):
+#       positive μ = $(round(r.anchor.positive.unmasked_mu; digits=4)) ($(r.anchor.positive.unmasked_n)/64 patches), negative μ = $(round(r.anchor.negative.unmasked_mu; digits=4)) ($(r.anchor.negative.unmasked_n)/64 patches)
+#     MASKED (the v1.0 analysis pipeline: per-channel Otsu _apply_mask! then _exclude_zero):
+#       positive μ = $(round(r.anchor.positive.masked_mu; digits=4)) ($(r.anchor.positive.masked_n)/64 patches), negative μ = $(round(r.anchor.negative.masked_mu; digits=4)) ($(r.anchor.negative.masked_n)/64 patches)
+#   anchor caveat    : the two estimators disagree in SIGN and in ORDER, and BOTH are biased --
+#     - UNMASKED is biased POSITIVE: background pixels are dark in both channels and co-vary,
+#       so the shared background alone lifts the per-patch correlation.
+#     - MASKED is biased NEGATIVE: each channel is thresholded INDEPENDENTLY and _exclude_zero
+#       then keeps only pixels bright in BOTH -- a selection on both variables, which restricts
+#       the joint range and induces spurious negative correlation. This is the known weakness
+#       of thresholded Pearson (the reason Manders/Costes coefficients exist). Masking also
+#       leaves only ~20 of 64 patches above the >=15-survivor floor.
+#   negative tail    : neg_reachable (masked negative-fixture μ < 0) = $(r.neg_reachable).
+#     NOT ESTABLISHED either way -- n = 2 fixtures and two estimators biased in OPPOSITE
+#     directions cannot settle whether a negative induced-μ tail is physically reachable. The
+#     former unqualified "physically reachable = false => PRIOR-ONLY" rested on the unmasked
+#     numbers alone and is WITHDRAWN. The SIM-02 consistency claim stays scoped to the realized
+#     range [GHAT_MU_MIN, GHAT_MU_MAX]; that scoping is unchanged and does not depend on this
+#     anchor.
 
 const GHAT_MU_KNOTS  = $(_fmt(r.mu_knots))
 
@@ -378,8 +396,11 @@ if abspath(PROGRAM_FILE) == @__FILE__
     end
     println("σ/τ pooled SD    : $(round(r.diag.pooled_sd;digits=4))  within scale prior = $(r.sigma_ok)")
     println("ν excess kurtosis: $(round(r.diag.kurtosis;digits=4))  (>0 ⇒ heavier-than-Gaussian)")
-    println("real anchor (D-16): positive μ = $(round(r.anchor.positive;digits=4)), negative μ = $(round(r.anchor.negative;digits=4))")
-    println("negative tail    : physically reachable = $(r.neg_reachable)")
+    println("real anchor (D-16): faithful load_tiff (NOT luminance), measured BOTH ways")
+    println("   UNMASKED (patch_summary / v2.0 train+infer path): positive μ = $(round(r.anchor.positive.unmasked_mu;digits=4)) ($(r.anchor.positive.unmasked_n)/64), negative μ = $(round(r.anchor.negative.unmasked_mu;digits=4)) ($(r.anchor.negative.unmasked_n)/64)")
+    println("   MASKED   (v1.0 analysis pipeline: Otsu _apply_mask! + _exclude_zero): positive μ = $(round(r.anchor.positive.masked_mu;digits=4)) ($(r.anchor.positive.masked_n)/64), negative μ = $(round(r.anchor.negative.masked_mu;digits=4)) ($(r.anchor.negative.masked_n)/64)")
+    println("   caveat: BOTH biased -- UNMASKED positive (dark background co-varies across channels); MASKED negative (independent per-channel Otsu + _exclude_zero keeps only pixels bright in BOTH ⇒ range restriction, the known thresholded-Pearson weakness behind Manders/Costes)")
+    println("negative tail    : neg_reachable (masked negative μ < 0) = $(r.neg_reachable) -- NOT ESTABLISHED either way on n=2 fixtures with two oppositely-biased estimators; the former \"physically reachable = false ⇒ PRIOR-ONLY\" reading is WITHDRAWN (SIM-02 stays scoped to the realized μ range, unchanged)")
     println("frozen ĝ written : $p")
     println("==========================================================================")
 end
