@@ -80,6 +80,9 @@ import Pkg
         Zprobe = ProteinCoLoc.standardize_summary(
             ProteinCoLoc.encode_d01(ProteinCoLoc.patch_summary(
                 ProteinCoLoc._pair_mci(img, [1, 2]), 8)), b.zt, :min)
+        # 7, NOT the current θ arity: `b` is the SHIPPED grid-8 bundle, whose flow marginal count
+        # is frozen in the artifact and read off disk (`persist.load_estimator` uses `arch.D`).
+        # Extending the simulator prior does not — and must not — move this number.
         draws = ProteinCoLoc.posterior_for(b.npe, Zprobe; N = 16, use_gpu = false)
         @test size(draws, 1) == 7 && all(isfinite, draws)
 
@@ -89,7 +92,7 @@ import Pkg
         @test r.grid == 8
 
         # D-02 shared accessor interface dispatches on the result.
-        @test size(posterior_draws(r)) == (7, 200)
+        @test size(posterior_draws(r)) == (7, 200)   # frozen shipped-bundle D (see above)
         @test all(isfinite, posterior_draws(r))
         @test length(delta_rho(r)) == 200
         @test all(isfinite, delta_rho(r))

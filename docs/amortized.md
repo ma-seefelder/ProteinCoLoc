@@ -149,6 +149,27 @@ shipped 8×8 estimator and its calibration evidence; they must be stated with an
    density channel alone has a documented blind spot on detector-noise misspecification. Known OOD
    blind spot: correlation-preserving affine transforms.
 
+8. **The shipped `grid_8` bundle's training distribution is pinned by git reference, not by the
+   current tree.** `src/amortized/simulator.jl` gained a radial chromatic-scale parameter
+   `chromatic_eps` in Phase 11 (research lane — no retraining, no reship, no new artifact). The
+   shipped 8×8 net was trained by `src/amortized/simulator.jl` **as of commit
+   `17ebd1edf6f7f7af51e4ae7f9f0c3faa3fc9d348`**, before that parameter existed; the file is
+   byte-unchanged from that commit through this edit's immediate parent
+   `a2ced26d93c7409a465aa50320e188868b3ab462`, and the current file is a strict superset whose
+   `chromatic_eps = 0` behaviour is byte-identical to the pinned version and regression-tested
+   against a pre-edit golden fixture (`spike/test/fixtures/p11_stage6_golden.jld2`). Because
+   `simulator.jl` is a `DATAGEN_HASH_SRC_FILES` member (`src/amortized/datagen.jl:208-213`), the
+   edit re-digests the training-data cache directory and orphans the pool the shipped net was
+   trained from — and the hashed `generating_config` field `theta_dim` moves 7 → 8 in the same
+   change, so the cache directory changes for **two** independent reasons, not one. Orphaned caches
+   are retained, not pruned: they are the byte-level fallback if the git-pinned reconstruction is
+   ever disputed. **The artifact itself is unaffected** — it is pinned by `git-tree-sha1` in
+   `Artifacts.toml`, not by the datagen digest — so download, verification and
+   `colocalization_amortized(...)` are unchanged. The training distribution remains exactly
+   recoverable via `git show 17ebd1edf6f7f7af51e4ae7f9f0c3faa3fc9d348:src/amortized/simulator.jl`.
+   This is a provenance-by-reference repair, **not** a change to the shipped estimator.
+
 **Findings and scripts:** `Skill("spike-findings-proteincoloc")`, `07-GO-NO-GO-UPDATE.md`,
 `.planning/phases/07-productionization-conditional-on-go/` (gate reports, `posthoc_reanalysis.jl`),
+`.planning/phases/11-registration-and-chromatic-uncertainty-as-latent/11-REPORT.md`,
 `.planning/spikes/006-014`.

@@ -53,6 +53,14 @@ const DEFAULT_MASTER_SEED = 0x0000_0000_0000_0001   # a config value, NOT a secr
 const SHARD_SIZE          = 10_000                   # ~10-20 MB/shard; bounds resume + write unit
 const SCHEMA_VERSION      = 2                         # on-disk schema tag (2 = grid-parametric, :min-only)
 
+# --- θ arity: DERIVED, never a literal ------------------------------------------------------
+# The single source of truth for how many rows a θ column has. `theta_prior_bounds()`
+# (simulator.jl, included immediately before this file) enumerates the prior support box in
+# `sample_prior` field order, so `collect(values(θ))` and every θ buffer here are the same length
+# by construction. Deriving it means a future θ extension (D-09 added `chromatic_eps` as row 8)
+# needs no edit at the buffer sites — the Phase-11 chore that motivated this constant.
+const DATAGEN_THETA_DIM = length(theta_prior_bounds())
+
 # --- Disjoint Random123 key-namespace salts (D-10) -----------------------------------------
 # Fixed nonzero UInt64s XOR-ed into the first key word to carve provably disjoint draw streams
 # (SplitMix64 / golden-ratio mixing constants; only nonzero-and-distinct matters).
@@ -124,13 +132,13 @@ end
 Generate ONE training sample for a `grid×grid` summary, keyed by `(master_seed, grid, idx)`:
 
   rng = sample_rng(master_seed, idx)
-  θ   = sample_prior(rng)                                    # Phase-2 prior (7-field NamedTuple)
+  θ   = sample_prior(rng)                                    # Phase-2 prior (8-field NamedTuple)
   isz = sample_imsize(rng; imsize_set, imsize_weights)       # per-sample image size (D-03)
   mci = build_mci(simulate_pair(rng, θ; imsize = isz))       # Phase-2 forward model
   M   = patch_summary(mci, grid)                             # grid-parametric GxG summary
 
-Returns `(theta, s_min, idx, imsize)` where `theta = collect(values(θ))` (7-vector, prior field
-order) and `s_min = encode_d01(M)` (length `summary_dim(grid) = 2·grid²`).
+Returns `(theta, s_min, idx, imsize)` where `theta = collect(values(θ))` (a `DATAGEN_THETA_DIM`-
+vector, prior field order) and `s_min = encode_d01(M)` (length `summary_dim(grid) = 2·grid²`).
 """
 function generate_sample(master_seed::Integer, idx::Integer, grid::Integer;
                          imsize_set = IMSIZE_SET, imsize_weights = IMSIZE_WEIGHTS)
@@ -140,7 +148,7 @@ function generate_sample(master_seed::Integer, idx::Integer, grid::Integer;
     mci = build_mci(simulate_pair(rng, θ; imsize = isz))
     M   = patch_summary(mci, grid)                          # grid-parametric summary
     return (
-        theta  = collect(values(θ)),          # 7-vector, prior field order
+        theta  = collect(values(θ)),          # DATAGEN_THETA_DIM-vector, prior field order
         s_min  = encode_d01(M),               # summary_dim(grid)-dim D-01 encoding
         idx    = Int(idx),
         imsize = isz,
@@ -154,7 +162,8 @@ Generate `N` samples for `grid` into pre-allocated, column-major matrices (one s
 column). The summary buffer is `Matrix(summary_dim(grid), N)` — the grid coupling threaded from
 the single-source dimension helper, NOT a literal 128.
 
-Returns `(theta::Matrix 7×N, summary_min::Matrix summary_dim(grid)×N, global_index::Vector{Int},
+Returns `(theta::Matrix DATAGEN_THETA_DIM×N, summary_min::Matrix summary_dim(grid)×N,
+global_index::Vector{Int},
 imsize::Vector)`. Every column is a pure function of `(master_seed, grid, indices[j])`, so the
 `parallel` and serial paths are BYTE-IDENTICAL for any thread count (D-11/D-12).
 """
@@ -167,7 +176,7 @@ function generate_samples(N::Integer; grid::Integer,
     @assert length(idxv) == N "indices length $(length(idxv)) != N=$N"
 
     d            = summary_dim(grid)                        # grid coupling (single source)
-    theta        = Matrix{Float64}(undef, 7, N)
+    theta        = Matrix{Float64}(undef, DATAGEN_THETA_DIM, N)
     summary_min  = Matrix{Float64}(undef, d, N)            # summary_dim(grid)×N, NOT 128×N
     global_index = Vector{Int}(undef, N)
     imsize       = Vector{Tuple{Int,Int}}(undef, N)
@@ -271,7 +280,9 @@ function generating_config(N::Integer; grid::Integer, master_seed::Integer, k::I
         master_seed     = UInt64(master_seed),
         k               = Int(k),
         grid            = Int(grid),
-        theta_dim       = 7,
+        theta_dim       = DATAGEN_THETA_DIM,      # HASHED field: a θ-arity change re-digests the
+                                                  # cache dir INDEPENDENTLY of the source-byte
+                                                  # change to simulator.jl (two flips, not one)
         imsize_set      = imsize_set,
         imsize_weights  = imsize_weights,
         summary_min_dim = summary_dim(grid),      # grid coupling ⇒ per-grid cache separation
@@ -364,6 +375,12 @@ creating it if absent. On an EXISTING dir with a stored `meta.jld2`, recompute t
 compare; on mismatch ERROR with the diverging source sub-hashes rather than reusing stale data. A
 changed config/source resolves to a DIFFERENT dir (the hash names it), so versions — and grids —
 auto-separate.
+
+ORPHANED CACHES ARE RETAINED, NOT PRUNED. A directory left behind by a source or config change is
+never read again, and nothing here deletes it. That is deliberate: an orphaned pool is the only
+byte-level record of the data a previously-trained net came from, and it is the fallback if a
+git-pinned reconstruction of the generating sources is ever disputed (`docs/amortized.md` named
+limit #8). The stale `meta.jld2` keeps `subhashes()`, so any later prune is auditable.
 """
 function open_or_invalidate(cache_root, config)
     h         = cache_hash(config)
@@ -390,7 +407,7 @@ end
 function _write_holdout(dir, master_seed::Integer, H::Integer, grid::Integer;
                         imsize_set = IMSIZE_SET, imsize_weights = IMSIZE_WEIGHTS)
     d            = summary_dim(grid)
-    theta        = Matrix{Float64}(undef, 7, H)
+    theta        = Matrix{Float64}(undef, DATAGEN_THETA_DIM, H)
     summary_min  = Matrix{Float64}(undef, d, H)
     global_index = Vector{Int}(undef, H)
     imsize       = Vector{Tuple{Int,Int}}(undef, H)

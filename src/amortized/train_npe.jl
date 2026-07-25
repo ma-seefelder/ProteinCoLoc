@@ -99,8 +99,9 @@ end
 
 Train the amortized NPE on the ALREADY-STANDARDIZED train/val summaries `Ztr_std`/`Zva_std`
 (`d_in×n`, frozen-`zt` space; the pipeline standardizes) and the RAW train/val θ `θtr`/`θva`
-(`7×n`). Fits the leak-free BOUNDED θ transform on `θtr` (logit-of-prior-box ∘ z-score, F2), builds
-`build_estimator(size(Ztr_std,1), ...)`, and calls the FIXED-DATA
+(`length(theta_prior_bounds())×n`). Fits the leak-free BOUNDED θ transform on `θtr`
+(logit-of-prior-box ∘ z-score, F2), builds
+`build_estimator(size(Ztr_std,1), size(θtr,1), ...)`, and calls the FIXED-DATA
 `train(est, θtr_std, θva_std, Ztr_std, Zva_std; use_gpu, ...)` with AdamW weight decay and early
 stopping.
 
@@ -133,7 +134,14 @@ function train_npe(Ztr_std::AbstractMatrix, Zva_std::AbstractMatrix,
     θva_std = Float32.(StatsBase.transform(θzt, θva))
 
     d_in = size(Ztr_std, 1)
-    est  = build_estimator(d_in; dstar = dstar, depth = depth, width = width,
+    # The flow's marginal count is DERIVED from the θ actually being trained on, never from a
+    # module literal: `fit_theta_transform` already requires `size(θtr, 1) == length(
+    # theta_prior_bounds())`, so a hardcoded D silently disagrees with the θ transform the moment
+    # the prior gains a parameter. `build_estimator`'s own default (NPE_D) is deliberately left
+    # alone — it is what `persist.load_estimator` falls back on for the frozen shipped bundle,
+    # whose `D` is read off disk.
+    D_theta = size(θtr, 1)
+    est  = build_estimator(d_in, D_theta; dstar = dstar, depth = depth, width = width,
                            num_coupling_layers = num_coupling_layers,
                            flow_depth = flow_depth, flow_width = flow_width)
 
@@ -144,7 +152,9 @@ function train_npe(Ztr_std::AbstractMatrix, Zva_std::AbstractMatrix,
                 optimiser = Flux.Optimisers.AdamW(learning_rate, (0.9, 0.999), weight_decay),
                 stopping_epochs = stopping_epochs, verbose = verbose)
 
-    arch = (d_in = d_in, D = NPE_D, dstar = dstar, depth = depth, width = width,
+    # `arch.D` MUST record the flow that was actually built: `load_estimator` rebuilds from it and
+    # `Flux.loadmodel!` fails on a marginal-count disagreement.
+    arch = (d_in = d_in, D = D_theta, dstar = dstar, depth = depth, width = width,
             num_coupling_layers = num_coupling_layers,
             flow_depth = flow_depth, flow_width = flow_width)
     return (estimator = est, θzt = θzt, d_in = d_in, variant = :min, arch = arch)

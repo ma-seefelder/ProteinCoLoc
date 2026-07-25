@@ -64,8 +64,13 @@ const P11_FT_THETA = sample_prior(p11_rng(P11_FIXTURE_COUNTER))
 
     @testset "sample_prior row alignment under a forced subset" begin
         θ = P11_FT_THETA
+        # POST-EDIT (D-09): `chromatic_eps` is appended at the END, so rows 1..7 are exactly the
+        # pre-edit key order. Both halves are asserted so a re-ordering — not just an extension —
+        # still breaks this loudly.
+        @test keys(θ)[1:7] == (:ρ_true, :spillover, :autofluorescence, :label_efficiency,
+                               :shift_dx, :shift_dy, :noise)
         @test keys(θ) == (:ρ_true, :spillover, :autofluorescence, :label_efficiency,
-                          :shift_dx, :shift_dy, :noise)
+                          :shift_dx, :shift_dy, :noise, :chromatic_eps)
 
         forced = (shift_dx = 1.25, shift_dy = -0.5)
         θf = merge(θ, forced)
@@ -77,6 +82,7 @@ const P11_FT_THETA = sample_prior(p11_rng(P11_FIXTURE_COUNTER))
         # Every other row is bit-identical to the unforced draw.
         @test collect(values(θf))[1:4] == collect(values(θ))[1:4]
         @test collect(values(θf))[7]   == collect(values(θ))[7]
+        @test collect(values(θf))[8]   == collect(values(θ))[8]   # chromatic_eps (D-09)
         # The forced fields are readable by name too, so a positional and a named read agree.
         @test θf.shift_dx == 1.25
         @test θf.shift_dy == -0.5
@@ -85,15 +91,25 @@ const P11_FT_THETA = sample_prior(p11_rng(P11_FIXTURE_COUNTER))
     @testset "θ arity is derived, never literal" begin
         θ = P11_FT_THETA
         @test length(collect(values(θ))) == length(keys(θ))
-        # TODAY the last field is `noise`. Asserting that here makes the append-at-end
-        # contract for `chromatic_eps` checkable BEFORE and AFTER the θ-arity edit: after it,
-        # `last(keys(θ))` becomes `:chromatic_eps` and rows 1..7 must be unchanged.
-        @test last(keys(θ)) == :noise
-        # An appended 8th field leaves the first seven rows exactly where they were.
-        θ8 = merge(θ, (chromatic_eps = 0.0,))
-        @test length(keys(θ8)) == length(keys(θ)) + 1
-        @test last(keys(θ8)) == :chromatic_eps
-        @test collect(values(θ8))[1:length(keys(θ))] == collect(values(θ))
+        # POST-EDIT (D-09). Before the θ-arity edit the last field was `noise` and this block
+        # asserted that, so the edit had to come through here to land. It has: `chromatic_eps`
+        # is now the last field, and rows 1..7 are unchanged (asserted above). The same
+        # append-at-end contract is re-checked below on a SYNTHETIC 8-field tuple, so this stays
+        # a real tripwire rather than a restatement of the prior's current shape.
+        @test last(keys(θ)) == :chromatic_eps
+        @test length(keys(θ)) == 8
+        # `merge` on an EXISTING key overwrites in place: forcing chromatic_eps must not grow or
+        # re-order the tuple, which is what makes D-15's forced-θ injection safe for row 8 too.
+        θf8 = merge(θ, (chromatic_eps = 0.017,))
+        @test keys(θf8) == keys(θ)
+        @test length(keys(θf8)) == length(keys(θ))
+        @test collect(values(θf8))[1:7] == collect(values(θ))[1:7]
+        @test collect(values(θf8))[8]   == 0.017
+        # A genuinely NEW key still appends at the end, leaving every prior row in place.
+        θ9 = merge(θ, (future_param = 0.0,))
+        @test length(keys(θ9)) == length(keys(θ)) + 1
+        @test last(keys(θ9)) == :future_param
+        @test collect(values(θ9))[1:length(keys(θ))] == collect(values(θ))
         # The draw is deterministic under the fixed DEV stream (D-01 reproducibility).
         @test collect(values(sample_prior(p11_rng(P11_FIXTURE_COUNTER)))) == collect(values(θ))
     end

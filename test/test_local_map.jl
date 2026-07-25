@@ -27,7 +27,7 @@ function _tiny_bundle_artifacts(G::Int, dir::String; n::Int = 48)
     Zraw = vcat(randn(nc, n) .* 2 .+ 3, Float64.(rand(Bool, nc, n)))
     zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
     Zstd = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
-    θ    = randn(7, n)
+    θ    = randn(length(ProteinCoLoc.theta_prior_bounds()), n)   # θ arity DERIVED
     npe  = ProteinCoLoc.train_npe(Zstd, Zstd, θ, θ; use_gpu = false, epochs = 2, batchsize = 16,
                                   dstar = 8, depth = 1, width = 16, num_coupling_layers = 2,
                                   flow_depth = 1, flow_width = 8, stopping_epochs = 2)
@@ -174,7 +174,7 @@ function _ood_family_artifacts(G::Int, dir::String; n::Int = 400, tile = (32, 32
     Zstd = ProteinCoLoc.standardize_summary(Zraw, zt, :min)
     nulls = (; density = ProteinCoLoc.fit_ood_nulls(Float32.(Zstd); variant = :min))
 
-    θ   = randn(7, n)
+    θ   = randn(length(ProteinCoLoc.theta_prior_bounds()), n)    # θ arity DERIVED
     Z32 = Float32.(Zstd)
     npe = ProteinCoLoc.train_npe(Z32, Z32, θ, θ; use_gpu = false, epochs = 2, batchsize = 32,
                                  dstar = 8, depth = 1, width = 16, num_coupling_layers = 2,

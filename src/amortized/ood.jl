@@ -120,7 +120,15 @@ _finite_or(x, default) = isfinite(x) ? float(x) : default
 # Reconstruct a simulate_pair-valid θ NamedTuple from a physical-θ posterior-mean vector, first
 # mapping any non-finite component to an in-range fallback, then clamping into the prior-valid
 # ranges (mirrors simulate_pair's entry guard: ρ∈[-1,1], spillover∈[0,1], autofluorescence≥0,
-# label_efficiency∈[0,1], noise≥0).
+# label_efficiency∈[0,1], noise≥0, chromatic_eps>-1).
+#
+# `chromatic_eps` is emitted ONLY when the vector is long enough. `v` comes off a TRAINED net's
+# posterior mean, and the SHIPPED bundle's flow has 7 marginals (its `D` is read off disk, not
+# from NPE_D), so a 7-row `v` must stay a valid input. The `length(v) >= 8` guard is that
+# compatibility hinge: a short vector means "no chromatic aberration", which simulate_pair
+# reproduces bit-identically to its pre-D-09 behaviour. The lower clamp mirrors simulate_pair's
+# strictly-greater-than-(-1) entry guard with a margin, so a pathological θ̂ cannot make the
+# stage-6 scale 1/(1 + chromatic_eps) blow up or flip sign.
 _theta_tuple(v) = (
     ρ_true           = clamp(_finite_or(v[1], 0.0), -1.0, 1.0),
     spillover        = clamp(_finite_or(v[2], 0.0),  0.0, 1.0),
@@ -129,6 +137,7 @@ _theta_tuple(v) = (
     shift_dx         = _finite_or(v[5], 0.0),
     shift_dy         = _finite_or(v[6], 0.0),
     noise            = max(_finite_or(v[7], 0.0), 0.0),
+    chromatic_eps    = length(v) >= 8 ? clamp(_finite_or(v[8], 0.0), -0.999, 1.0) : 0.0,
 )
 
 """
