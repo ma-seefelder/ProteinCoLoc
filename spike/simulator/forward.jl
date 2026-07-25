@@ -35,19 +35,29 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #   (3) fixed Gaussian PSF      imfilter(·, Kernel.gaussian(σ_psf))  [D-05 nuisance, NOT in θ]
 #   (4) 2×2 directional spillover  ch1 += spillover·ch2  (directional, NOT symmetric)
 #   (5) autofluorescence offset + BG_FLOOR  (background stays small-positive, never hard 0.0)
-#   (6) sub-pixel shift ch2 only   warp(ch2, Translation(dy,dx); fillvalue=BG_FLOOR)
+#   (6) misregistration of ch2 only -- ONE composed affine (D-10): a radial
+#       chromatic magnification difference about the image centre (chromatic_eps)
+#       COMPOSED with the sub-pixel registration shift (dy, dx), applied in a
+#       SINGLE resampling pass with fillvalue = BG_FLOOR. One pass is a
+#       correctness requirement, not a style choice: every interpolation pass
+#       smooths and smoothing decorrelates, so a second pass would widen the
+#       posterior for a reason unrelated to misalignment.
 #   (7) Poisson(shot) + Gaussian(read) noise   (scaled by θ.noise)  [D-07]
 #
 # Output is a 2-element Vector{Matrix{Float64}} (all finite, ≥ 0, mostly-non-zero)
 # that flows UNCHANGED through spike/contract.jl's build_mci/summary (SIM-03).
 #
-# θ is the 7-field NamedTuple (D-04):
-#   (ρ_true, spillover, autofluorescence, label_efficiency, shift_dx, shift_dy, noise)
+# θ is the 8-field NamedTuple (the 7 D-04 fields plus chromatic_eps, D-09):
+#   (ρ_true, spillover, autofluorescence, label_efficiency, shift_dx, shift_dy,
+#    noise, chromatic_eps)
+# chromatic_eps is APPENDED LAST (downstream code indexes θ positionally) and is
+# read DEFENSIVELY, so a legacy 7-field θ remains a valid input meaning
+# "no chromatic aberration" and reproduces the pre-D-09 output bit for bit.
 
 using Distributions
 using ImageFiltering                 # imfilter, Kernel.gaussian (PSF + field smoothing)
 using ImageTransformations           # warp (sub-pixel shift)
-using CoordinateTransformations      # Translation
+using CoordinateTransformations      # Translation, LinearMap, recenter (the composed affine)
 using Interpolations                 # BSpline, Linear (warp interpolation scheme)
 using Statistics                     # mean, std (field standardization)
 using Random                         # AbstractRNG, Xoshiro
@@ -91,8 +101,10 @@ end
 """
     simulate_pair(rng::AbstractRNG, θ; imsize=(256,256)) -> Vector{Matrix{Float64}}
 
-Generate a 2-channel microscopy image pair from the 7-field θ NamedTuple (D-04)
-by running the seven D-06 stages in order on the explicitly-threaded `rng` (D-14).
+Generate a 2-channel microscopy image pair from the 8-field θ NamedTuple (the 7
+D-04 fields plus `chromatic_eps`, D-09) by running the seven D-06 stages in order
+on the explicitly-threaded `rng` (D-14). A legacy 7-field θ is still accepted and
+is treated as `chromatic_eps = 0`, which reproduces the pre-D-09 output exactly.
 
 Stage 1 is the spike-validated shared-latent correlated smooth Gaussian-field
 generator (D-15): `c1 = softplus(√|ρ|·L + √(1−|ρ|)·ε₁)`,
@@ -116,8 +128,13 @@ function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256)
     (imsize[1] ≥ 64 && imsize[2] ≥ 64) ||
         throw(ArgumentError("imsize dims must be ≥ 64 for the 8×8 patch grid to " *
                             "produce non-missing patches (>15 px each), got $imsize"))
+    # D-09 backward compatibility (SC1e): chromatic_eps is read through ONE defensive local
+    # binding, computed here so both the guard below and stage 6 share it. A legacy 7-field θ
+    # (e.g. the θ reconstructed by src/amortized/ood.jl `_theta_tuple` from a 7-row posterior
+    # mean) is therefore a valid input meaning "no chromatic aberration".
+    chromatic_eps_val = hasproperty(θ, :chromatic_eps) ? θ.chromatic_eps : 0.0
     all(isfinite, (θ.ρ_true, θ.spillover, θ.autofluorescence, θ.label_efficiency,
-                   θ.shift_dx, θ.shift_dy, θ.noise)) ||
+                   θ.shift_dx, θ.shift_dy, θ.noise, chromatic_eps_val)) ||
         throw(ArgumentError("all θ fields must be finite, got $θ"))
     (-1.0 ≤ θ.ρ_true ≤ 1.0) ||
         throw(ArgumentError("ρ_true must be in [-1, 1], got $(θ.ρ_true)"))
@@ -132,6 +149,13 @@ function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256)
         throw(ArgumentError("label_efficiency must be in [0, 1], got $(θ.label_efficiency)"))
     (0.0 ≤ θ.noise) ||
         throw(ArgumentError("noise must be ≥ 0, got $(θ.noise)"))
+    # WR-07 (D-09): the stage-6 backward scale is s = 1/(1 + chromatic_eps), so 1 + chromatic_eps
+    # must stay STRICTLY POSITIVE. At chromatic_eps = -1 the scale is a division by zero; below
+    # -1 it goes negative and the affine map MIRRORS channel 2 instead of magnifying it. This is
+    # a correctness bound, not a style choice (T-11-07).
+    (-1.0 < chromatic_eps_val) ||
+        throw(ArgumentError("chromatic_eps must be > -1 (so 1 + chromatic_eps stays positive), " *
+                            "got $(chromatic_eps_val)"))
 
     ρ = θ.ρ_true
 
@@ -165,12 +189,32 @@ function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256)
     ch1 = ch1 .+ θ.autofluorescence .+ BG_FLOOR
     ch2 = ch2 .+ θ.autofluorescence .+ BG_FLOOR
 
-    # --- (6) sub-pixel registration shift on channel 2 only (fillvalue > 0) ------
-    # WR-06: Translation(a, b) shifts the FIRST array axis (rows = vertical = dy) by a
-    # and the SECOND (columns = horizontal = dx) by b. Pass (dy, dx) so the named
-    # fields map to their conventional physical axes (dx horizontal, dy vertical).
-    shifted = warp(ch2, Translation(θ.shift_dy, θ.shift_dx), axes(ch2);
-                   method = BSpline(Linear()), fillvalue = BG_FLOOR)
+    # --- (6) ONE composed affine on channel 2 only: radial chromatic scale ∘ registration
+    #         shift (D-10; fillvalue > 0) ------------------------------------------------
+    # WR-06 (RE-DERIVED for the composed map, D-10). `warp` is BACKWARD-mode:
+    #     out[I] = ch2[A(I)]        (ImageTransformations warp.jl:4 and :167-176)
+    # so `A` maps a DESTINATION index to the SOURCE index it samples, and the image CONTENT
+    # therefore undergoes A⁻¹. Two consequences:
+    #   • The Translation slot order is UNCHANGED by the composition: slot 1 is the FIRST array
+    #     axis (rows = vertical = dy), slot 2 the SECOND (columns = horizontal = dx). Pass
+    #     (dy, dx) exactly as before, so the named fields keep their conventional physical axes.
+    #   • To MAGNIFY channel 2's content by (1 + chromatic_eps) about the image centre, the
+    #     BACKWARD map must SHRINK coordinates by that factor — hence s = 1/(1 + chromatic_eps).
+    #     The guard above keeps 1 + chromatic_eps strictly positive, so s is finite and positive.
+    # `recenter(t, c) == Translation(c) ∘ t ∘ Translation(-c)` (CoordinateTransformations
+    # core.jl:103-105), which is what applies the scale about `c`, the geometric centre of
+    # axes(ch2) (128.5, 128.5 at 256²) rather than about the origin. `c` is a plain Tuple —
+    # recenter's Tuple method converts it internally, so no StaticArrays import is needed.
+    # The whole composition COLLAPSES to a single AffineMap (compose methods, affine.jl:139-165),
+    # so exactly ONE interpolation pass runs — the D-10 correctness requirement, because every
+    # resampling pass smooths and smoothing decorrelates, which would contaminate the very
+    # posterior width SC2 measures. At chromatic_eps = 0 the linear part is the exact identity
+    # and the result is bit-identical to the previous translation-only stage (regression-tested
+    # against spike/test/fixtures/p11_stage6_golden.jld2).
+    s = 1.0 / (1.0 + chromatic_eps_val)
+    c = map(ax -> (first(ax) + last(ax)) / 2, axes(ch2))
+    A = Translation(θ.shift_dy, θ.shift_dx) ∘ recenter(LinearMap([s 0.0; 0.0 s]), c)
+    shifted = warp(ch2, A, axes(ch2); method = BSpline(Linear()), fillvalue = BG_FLOOR)
     ch2 = Matrix{Float64}(collect(shifted))
 
     # --- (7) Poisson(shot) + Gaussian(read) noise (scaled by θ.noise) -----------

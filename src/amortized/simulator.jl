@@ -21,7 +21,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 # Promoted VERBATIM (prior ranges + physics unchanged) from the proven spike:
 #   spike/simulator/ghat.jl    -> ghat, GHAT_MU_KNOTS/RHO_KNOTS (frozen induced-μ inverse)
-#   spike/simulator/prior.jl   -> sample_prior (π(θ), the 7-field D-04 NamedTuple)
+#   spike/simulator/prior.jl   -> sample_prior (π(θ), the 8-field NamedTuple: the 7 D-04 fields
+#                                 plus `chromatic_eps`, D-09)
 #   spike/simulator/forward.jl -> simulate_pair (the 7-stage 2-channel 2D forward model)
 #   spike/contract.jl:60-70    -> build_mci (2-channel matrices -> MultiChannelImage)
 #
@@ -44,7 +45,7 @@ import Random: AbstractRNG
 import Statistics: mean, std
 import ImageFiltering: imfilter, Kernel
 import ImageTransformations: warp
-import CoordinateTransformations: Translation
+import CoordinateTransformations: Translation, LinearMap, recenter
 import Interpolations: BSpline, Linear
 
 # =============================== FROZEN induced-μ inverse ĝ (SIM-02) =========================
@@ -91,20 +92,44 @@ const SIM02_W1_TOL = 0.10
 const SPILLOVER_PRIOR        = Uniform(0.0, 0.2)   # directional bleed-through (modest)
 const AUTOFLUORESCENCE_PRIOR = Uniform(0.0, 0.1)   # additive background offset
 const LABEL_EFFICIENCY_PRIOR = Uniform(0.6, 1.0)   # Bernoulli keep-probability
-const SHIFT_PRIOR            = Uniform(-1.0, 1.0)  # sub-pixel registration error (dx, dy)
+const SHIFT_PRIOR            = Uniform(-1.0, 1.0)  # sub-pixel registration error (dx, dy); ±1, see below
+const CHROMATIC_PRIOR        = Uniform(-0.02, 0.02) # radial chromatic scale (D-09/D-11), see below
 const NOISE_PRIOR            = Uniform(0.0, 1.0)   # Poisson+Gaussian noise scale
+
+# SHIFT PRIOR SCOPE (ruling Q2 / D-02): the spike's Phase-11 RESEARCH prior widens the shift range
+# to ±3 px, and that widening is DELIBERATELY NOT MIRRORED here. D-02 scopes it to the research
+# net; D-11 mirrors ONLY the chromatic term. Widening this line would desynchronise
+# `theta_prior_bounds()[5:6]` from the shipped bundle's FROZEN `theta_zt.lo`/`.hi` (persisted
+# training-time data, architecture.jl:100-104), a silent semantic drift on the reconstruct path.
+#
+# CHROMATIC PRIOR (D-09): a 1-parameter RADIAL magnification difference between the channels —
+# zero at the image centre, maximal at the corners — which a global dx/dy translation cannot
+# represent. On a 256² field the half-diagonal is ≈181 px, so corner displacement ≈ ε·181
+# (0.02 → ≈3.6 px), magnitude-comparable to the registration-shift range. SYMMETRIC because
+# channel ordering is the USER's choice, not the model's.
+#
+# PROVENANCE (D-12): `simulator.jl` is a `DATAGEN_HASH_SRC_FILES` member (datagen.jl:208-213), so
+# adding this parameter re-digests the training-data cache directory and orphans the pool the
+# shipped 8×8 net was trained from. The shipped net's training distribution is pinned BY GIT
+# REFERENCE instead — see named limit #8 in `docs/amortized.md`. The artifact is unaffected (it is
+# pinned by `git-tree-sha1` in `Artifacts.toml`, not by the datagen digest).
 
 """
     sample_prior(rng::AbstractRNG) -> NamedTuple
 
-Draw one θ from the simulator prior π(θ) (the 7-field D-04 NamedTuple). The colocalization knob is
-set through the frozen induced-μ inverse:
+Draw one θ from the simulator prior π(θ) (the 8-field NamedTuple: the 7 D-04 fields plus
+`chromatic_eps`, D-09). The colocalization knob is set through the frozen induced-μ inverse:
 
   μ* ~ Truncated(Cauchy(0,0.3),-1,1)      # the Turing μ-prior (MU_PRIOR)
   ρ_true = ghat(μ*)                        # so E[induced μ | ρ_true] = μ*
 
-and the 6 nuisances are drawn from their own priors. Deterministic under a fixed `rng` (D-14). The
+and the 7 nuisances are drawn from their own priors. Deterministic under a fixed `rng` (D-14). The
 result flows straight into `simulate_pair(rng, θ; imsize)`.
+
+**`chromatic_eps` is APPENDED AT THE END of the field order, never slotted beside
+`shift_dx`/`shift_dy`.** θ is consumed POSITIONALLY downstream (`collect(values(θ))` is the θ→row
+map in `datagen.jl`; `ood.jl` `_theta_tuple` indexes `v[1]..v[7]`), so appending is what keeps
+every pre-existing row index valid.
 """
 function sample_prior(rng::AbstractRNG)
     μ_star = rand(rng, MU_PRIOR)
@@ -116,14 +141,15 @@ function sample_prior(rng::AbstractRNG)
         shift_dx         = rand(rng, SHIFT_PRIOR),
         shift_dy         = rand(rng, SHIFT_PRIOR),
         noise            = rand(rng, NOISE_PRIOR),
+        chromatic_eps    = rand(rng, CHROMATIC_PRIOR),   # D-09: appended LAST (positional θ)
     )
 end
 
 """
-    theta_prior_bounds() -> NTuple{7,Tuple{Float64,Float64}}
+    theta_prior_bounds() -> NTuple{8,Tuple{Float64,Float64}}
 
 The SUPPORT BOX of the simulator prior π(θ), in `sample_prior` FIELD ORDER (θ row order:
-ρ_true, spillover, autofluorescence, label_efficiency, shift_dx, shift_dy, noise).
+ρ_true, spillover, autofluorescence, label_efficiency, shift_dx, shift_dy, noise, chromatic_eps).
 
 **SINGLE SOURCE OF TRUTH.** Every bound is DERIVED from the prior objects defined above — the
 nuisance bounds from `Distributions.minimum/maximum` of the very `Uniform`s `sample_prior` draws
@@ -145,6 +171,7 @@ theta_prior_bounds() = (
     (minimum(SHIFT_PRIOR),            maximum(SHIFT_PRIOR)),             # shift_dx
     (minimum(SHIFT_PRIOR),            maximum(SHIFT_PRIOR)),             # shift_dy
     (minimum(NOISE_PRIOR),            maximum(NOISE_PRIOR)),
+    (minimum(CHROMATIC_PRIOR),        maximum(CHROMATIC_PRIOR)),           # chromatic_eps (D-09)
 )
 
 # =============================== the 2-channel 2D forward model (SIM-01) =====================
@@ -174,21 +201,31 @@ end
 """
     simulate_pair(rng::AbstractRNG, θ; imsize=(256,256)) -> Vector{Matrix{Float64}}
 
-Generate a 2-channel microscopy image pair from the 7-field θ NamedTuple (D-04) by running the
-seven D-06 stages in order on the explicitly-threaded `rng` (D-14): (1) shared-latent correlated
-smooth Gaussian fields (D-15; `sign(ρ)` on channel-2's shared component makes anti-correlation
-reachable at negative ρ_true), (2) Bernoulli thinning, (3) fixed Gaussian PSF, (4) directional
-spillover, (5) autofluorescence + background floor, (6) sub-pixel registration shift on ch2, (7)
-Poisson+Gaussian noise. Returns `[ch1, ch2]`, each `imsize`, all finite and ≥ 0 with a
-small-positive background. Throws `ArgumentError` on out-of-range θ or `imsize` dim < 64.
+Generate a 2-channel microscopy image pair from the 8-field θ NamedTuple (the 7 D-04 fields plus
+`chromatic_eps`, D-09) by running the seven D-06 stages in order on the explicitly-threaded `rng`
+(D-14): (1) shared-latent correlated smooth Gaussian fields (D-15; `sign(ρ)` on channel-2's shared
+component makes anti-correlation reachable at negative ρ_true), (2) Bernoulli thinning, (3) fixed
+Gaussian PSF, (4) directional spillover, (5) autofluorescence + background floor, (6) ONE composed
+affine misregistration of ch2 — radial chromatic scale about the image centre composed with the
+sub-pixel registration shift, in a SINGLE resampling pass (D-10) — (7) Poisson+Gaussian noise.
+Returns `[ch1, ch2]`, each `imsize`, all finite and ≥ 0 with a small-positive background. Throws
+`ArgumentError` on out-of-range θ or `imsize` dim < 64.
+
+**A legacy 7-field θ remains a valid input**, read as `chromatic_eps = 0` and reproducing the
+pre-D-09 output bit for bit — the compatibility contract the posterior-predictive OOD channel
+(`ood.jl` `_theta_tuple`, which reconstructs θ from a 7-row posterior mean) depends on.
 """
 function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256))
     # --- θ / imsize validation at entry (T-02-IV: untrusted parameter vector) ---
     (imsize[1] ≥ 64 && imsize[2] ≥ 64) ||
         throw(ArgumentError("imsize dims must be ≥ 64 for the patch grid to produce " *
                             "non-missing patches (>15 px each), got $imsize"))
+    # D-09 backward compatibility: `chromatic_eps` is read through ONE defensive local binding
+    # shared by the guard below and stage 6, so a legacy 7-field θ (e.g. `ood.jl` `_theta_tuple`
+    # on a 7-row posterior mean) stays valid and means "no chromatic aberration".
+    chromatic_eps_val = hasproperty(θ, :chromatic_eps) ? θ.chromatic_eps : 0.0
     all(isfinite, (θ.ρ_true, θ.spillover, θ.autofluorescence, θ.label_efficiency,
-                   θ.shift_dx, θ.shift_dy, θ.noise)) ||
+                   θ.shift_dx, θ.shift_dy, θ.noise, chromatic_eps_val)) ||
         throw(ArgumentError("all θ fields must be finite, got $θ"))
     (-1.0 ≤ θ.ρ_true ≤ 1.0) ||
         throw(ArgumentError("ρ_true must be in [-1, 1], got $(θ.ρ_true)"))
@@ -200,6 +237,11 @@ function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256)
         throw(ArgumentError("label_efficiency must be in [0, 1], got $(θ.label_efficiency)"))
     (0.0 ≤ θ.noise) ||
         throw(ArgumentError("noise must be ≥ 0, got $(θ.noise)"))
+    # D-09: stage 6's backward scale is s = 1/(1 + chromatic_eps), so 1 + chromatic_eps must stay
+    # STRICTLY POSITIVE — at -1 it divides by zero, below -1 the affine map MIRRORS channel 2.
+    (-1.0 < chromatic_eps_val) ||
+        throw(ArgumentError("chromatic_eps must be > -1 (so 1 + chromatic_eps stays positive), " *
+                            "got $(chromatic_eps_val)"))
 
     ρ = θ.ρ_true
 
@@ -231,10 +273,21 @@ function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256)
     ch1 = ch1 .+ θ.autofluorescence .+ BG_FLOOR
     ch2 = ch2 .+ θ.autofluorescence .+ BG_FLOOR
 
-    # --- (6) sub-pixel registration shift on channel 2 only (fillvalue > 0) ------
-    # WR-06: Translation(dy, dx) — first array axis (rows = vertical = dy), second (cols = dx).
-    shifted = warp(ch2, Translation(θ.shift_dy, θ.shift_dx), axes(ch2);
-                   method = BSpline(Linear()), fillvalue = BG_FLOOR)
+    # --- (6) ONE composed affine on ch2: radial chromatic scale ∘ registration shift (D-10) ----
+    # WR-06 (RE-DERIVED for the composed map). `warp` is BACKWARD-mode — out[I] = ch2[A(I)] —
+    # so `A` maps a DESTINATION index to the SOURCE index it samples and the CONTENT undergoes
+    # A⁻¹. Hence (a) the Translation slot order is unchanged (slot 1 = rows = dy, slot 2 = cols
+    # = dx), and (b) MAGNIFYING content by (1 + chromatic_eps) about the centre requires the
+    # backward map to SHRINK coordinates: s = 1/(1 + chromatic_eps), positive by the guard above.
+    # `recenter(t, c) == Translation(c) ∘ t ∘ Translation(-c)` puts the scale centre at the
+    # geometric centre of axes(ch2); the composition COLLAPSES to a single AffineMap, so exactly
+    # ONE interpolation pass runs. One pass is a correctness requirement (D-10): each resampling
+    # pass smooths, and smoothing decorrelates. At chromatic_eps = 0 the linear part is the exact
+    # identity, so the output is bit-identical to the previous translation-only stage.
+    s = 1.0 / (1.0 + chromatic_eps_val)
+    c = map(ax -> (first(ax) + last(ax)) / 2, axes(ch2))
+    A = Translation(θ.shift_dy, θ.shift_dx) ∘ recenter(LinearMap([s 0.0; 0.0 s]), c)
+    shifted = warp(ch2, A, axes(ch2); method = BSpline(Linear()), fillvalue = BG_FLOOR)
     ch2 = Matrix{Float64}(collect(shifted))
 
     # --- (7) Poisson(shot) + Gaussian(read) noise (scaled by θ.noise) -----------

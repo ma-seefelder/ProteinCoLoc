@@ -35,7 +35,8 @@ import JLD2
     Zraw = vcat(randn(nc, n) .* 2 .+ 3, Float64.(rand(Bool, nc, n)))
     zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
     Zstd = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
-    θ    = randn(7, n)
+    Dθ   = length(ProteinCoLoc.theta_prior_bounds())   # θ arity, DERIVED (never a literal)
+    θ    = randn(Dθ, n)
 
     tiny = (; batchsize = 16, dstar = 8, depth = 1, width = 16,
             num_coupling_layers = 2, flow_depth = 1, flow_width = 8, stopping_epochs = 2)
@@ -43,9 +44,9 @@ import JLD2
     # (a) use_gpu = true: runs on GPU if present, else degrades to CPU with NO error.
     res = ProteinCoLoc.train_npe(Zstd, Zstd, θ, θ; use_gpu = true, epochs = 2, tiny...)
     @test res.d_in == d
-    @test length(res.θzt.zt.mean) == 7          # bounded θ-space: z-score lives inside (F2)
-    # posterior draws are reachable through the CPU read surface (7×N).
-    @test size(ProteinCoLoc.posterior_for(res.estimator, Zstd[:, 1]; N = 8, use_gpu = false), 1) == 7
+    @test length(res.θzt.zt.mean) == Dθ         # bounded θ-space: z-score lives inside (F2)
+    # posterior draws are reachable through the CPU read surface (Dθ×N).
+    @test size(ProteinCoLoc.posterior_for(res.estimator, Zstd[:, 1]; N = 8, use_gpu = false), 1) == Dθ
 
     # (b) the frozen net persists CPU-RESIDENT: Flux.state key (not a whole object), reloads with
     #     no device state, CPU inference runs.
@@ -57,9 +58,11 @@ import JLD2
     @test haskey(on_disk, "model_state")     # CPU-resident Flux.state snapshot
     @test !haskey(on_disk, "estimator")      # NOT the whole PosteriorEstimator object
 
+    # The reload rebuilds from the PERSISTED `arch.D`, so the round-trip must return the marginal
+    # count the net was actually trained with — not a module default.
     loaded = ProteinCoLoc.load_estimator(npe_path)
     draws  = ProteinCoLoc.posterior_for(loaded.estimator, Zstd[:, 1]; N = 8, use_gpu = false)
-    @test size(draws, 1) == 7
+    @test size(draws, 1) == Dθ
     @test loaded.zt.mean == zt.mean
 
     # The CUDA-present branch is guarded so CPU-only CI exercises only the graceful fallback.

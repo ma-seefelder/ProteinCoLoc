@@ -65,7 +65,8 @@ end
     cal = ProteinCoLoc.CalibrationMeta(
         [0.5], [0.5], [0.5], [1], 0.0, 0.0, 8, (; seed = 0, passed = true))
     ood = ProteinCoLoc.OODVerdict(0.1, false, (; density = 0.1))
-    post = reshape(collect(1.0:14.0), 7, 2)      # 7×N physical-θ draws
+    Dθ   = length(ProteinCoLoc.theta_prior_bounds())   # θ arity, DERIVED (never a literal)
+    post = reshape(collect(1.0:float(2Dθ)), Dθ, 2)     # Dθ×N physical-θ draws
     r = ProteinCoLoc.AmortizedColocResult(
         8, post, [0.2, 0.3], -1.5, ood, cal, (; N = 2))
 
@@ -486,13 +487,18 @@ end
         @test isdefined(ProteinCoLoc, f)
     end
 
-    # build_estimator is input-width-agnostic: two different d_in both construct an estimator
-    # (a working estimator yields 7-row posterior draws through the frozen read surface).
+    Dθ = length(ProteinCoLoc.theta_prior_bounds())   # θ arity, DERIVED (never a literal)
+
+    # build_estimator is input-width-agnostic: two different d_in both construct an estimator.
+    # Called WITHOUT a `D` argument it uses its own default `NPE_D`, which is the SHIPPED
+    # bundle's marginal count and is deliberately NOT the current θ arity — `load_estimator`
+    # falls back on it for the frozen artifact. Asserted against `NPE_D`, not a literal, so this
+    # can never be "corrected" to the θ arity by mistake.
     for d_in in (32, 72)
         e = ProteinCoLoc.build_estimator(d_in; dstar = 8, depth = 1, width = 16,
                                          num_coupling_layers = 2, flow_depth = 1, flow_width = 8)
         dz = ProteinCoLoc.posterior_for(e, Float32.(randn(d_in)); N = 4, use_gpu = false)
-        @test size(dz, 1) == 7
+        @test size(dz, 1) == ProteinCoLoc.NPE_D
     end
 
     # fit_summary_transform touches the CONTINUOUS rows only (dim G²), mask rows never z-scored.
@@ -504,17 +510,19 @@ end
     # A tiny CPU NPE train (few epochs, small N, use_gpu=false) completes and returns an estimator.
     Ztr = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
     Zva = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
-    θtr = randn(7, n); θva = randn(7, n)
+    θtr = randn(Dθ, n); θva = randn(Dθ, n)
     res = ProteinCoLoc.train_npe(Ztr, Zva, θtr, θva; use_gpu = false, epochs = 2,
                                  batchsize = 16, dstar = 8, depth = 1, width = 16,
                                  num_coupling_layers = 2, flow_depth = 1, flow_width = 8,
                                  stopping_epochs = 2, verbose = false)
     @test res.d_in == d
-    @test length(res.θzt.zt.mean) == 7          # bounded θ-space: z-score lives inside (F2)
+    @test length(res.θzt.zt.mean) == Dθ         # bounded θ-space: z-score lives inside (F2)
     @test res.arch.dstar == 8
-    # posterior draws are reachable through the frozen read surface (7×N un-standardized).
+    # The trained flow's marginal count follows the θ handed to the trainer, not NPE_D.
+    @test res.arch.D == Dθ
+    # posterior draws are reachable through the frozen read surface (Dθ×N un-standardized).
     draws = ProteinCoLoc.posterior_for(res.estimator, Ztr[:, 1]; N = 8, use_gpu = false)
-    @test size(draws, 1) == 7
+    @test size(draws, 1) == Dθ
 end
 
 ##########################################################################################
@@ -531,8 +539,9 @@ end
         @test isdefined(ProteinCoLoc, f)
     end
 
-    b = ProteinCoLoc.theta_prior_bounds()
-    @test length(b) == 7
+    b  = ProteinCoLoc.theta_prior_bounds()
+    Dθ = length(b)                              # θ arity, DERIVED (never a literal)
+    @test Dθ == 8
     # SINGLE SOURCE OF TRUTH: every bound is the prior object's own support, not a literal.
     @test b[2] == (minimum(ProteinCoLoc.SPILLOVER_PRIOR), maximum(ProteinCoLoc.SPILLOVER_PRIOR))
     @test b[4] == (minimum(ProteinCoLoc.LABEL_EFFICIENCY_PRIOR),
@@ -547,20 +556,111 @@ end
     θp   = hcat([collect(values(ProteinCoLoc.sample_prior(rngp))) for _ in 1:200]...)
     t    = ProteinCoLoc.fit_theta_transform(θp)
     @test t isa ProteinCoLoc.BoundedThetaTransform
-    @test length(t.zt.mean) == 7
+    @test length(t.zt.mean) == Dθ
     Yp = StatsBase.transform(t, θp)
     @test all(isfinite, Yp)
     @test maximum(abs.(StatsBase.reconstruct(t, Yp) .- θp)) < 1e-4
 
     # THE GUARANTEE: arbitrary (even extreme) flow-space values map back INSIDE the prior box.
-    wild = 50.0 .* randn(7, 500)
+    wild = 50.0 .* randn(Dθ, 500)
     back = StatsBase.reconstruct(t, wild)
-    @test all(b[p][1] <= back[p, j] <= b[p][2] for p in 1:7, j in 1:size(back, 2))
+    @test all(b[p][1] <= back[p, j] <= b[p][2] for p in 1:Dθ, j in 1:size(back, 2))
     # Float32 draws (what `sampleposterior` returns) keep their element type.
     @test eltype(StatsBase.reconstruct(t, Float32.(wild))) == Float32
     # The map is strictly monotone per parameter ⇒ SBC ranks are invariant to the change of space.
-    mono = StatsBase.reconstruct(t, repeat(collect(-6.0:0.5:6.0)', 7, 1))
-    @test all(issorted(mono[p, :]) for p in 1:7)
+    mono = StatsBase.reconstruct(t, repeat(collect(-6.0:0.5:6.0)', Dθ, 1))
+    @test all(issorted(mono[p, :]) for p in 1:Dθ)
+end
+
+##########################################################################################
+### Chromatic ε as an 8th θ column, and stage 6 as ONE composed affine (D-09 / D-10 / D-11)
+###
+### D-09 adds a 1-parameter RADIAL magnification difference between the channels — zero at the
+### image centre, maximal at the corners — which a global dx/dy translation cannot represent.
+### Three properties are load-bearing and none of them is checked by the compiler:
+###
+###   • APPEND-AT-END. θ is consumed POSITIONALLY (`collect(values(θ))` rows; `_theta_tuple`
+###     indexes v[1]..v[7]). `chromatic_eps` must be the LAST field or every existing row index
+###     silently shifts.
+###   • ONE INTERPOLATION PASS (D-10). The scale and the shift must COLLAPSE into a single
+###     AffineMap. A ComposedFunction here would mean two `warp` passes, and each resampling pass
+###     smooths — smoothing decorrelates, which would widen the posterior for a reason unrelated
+###     to misalignment and contaminate the very quantity the registration study measures.
+###   • LEGACY-θ COMPATIBILITY. `ood.jl` reconstructs θ from a posterior mean whose row count is
+###     the TRAINED net's `D` — 7 for the shipped bundle — so a 7-field θ must remain valid.
+###
+### The `-1 < chromatic_eps` bound is a correctness requirement, not a range preference: the
+### backward scale is 1/(1 + chromatic_eps), which is a division by zero at -1 and mirrors the
+### image below it.
+##########################################################################################
+@testset "chromatic ε (D-09)" begin
+    b  = ProteinCoLoc.theta_prior_bounds()
+    Dθ = length(b)
+    @test Dθ == 8
+    # DERIVE-NEVER-LITERAL: the 8th bound is the prior object's own support.
+    @test b[8] == (minimum(ProteinCoLoc.CHROMATIC_PRIOR),
+                   maximum(ProteinCoLoc.CHROMATIC_PRIOR))
+    # The src shift prior is NOT the spike's widened research prior (ruling Q2 / D-02).
+    @test (minimum(ProteinCoLoc.SHIFT_PRIOR), maximum(ProteinCoLoc.SHIFT_PRIOR)) == (-1.0, 1.0)
+
+    @testset "append-at-end θ layout" begin
+        rng = Random123.Philox4x(UInt64, (UInt64(20260725), UInt64(0)))
+        θ   = ProteinCoLoc.sample_prior(rng)
+        @test length(keys(θ)) == Dθ
+        @test last(keys(θ)) === :chromatic_eps          # LAST, never beside shift_dx/shift_dy
+        @test -0.02 <= θ.chromatic_eps <= 0.02
+        v = collect(values(θ))
+        @test length(v) == Dθ
+        @test v[5] == θ.shift_dx && v[6] == θ.shift_dy  # pre-existing rows did not move
+        @test v[8] == θ.chromatic_eps
+    end
+
+    @testset "_theta_tuple shipped-compat guard" begin
+        v7 = [0.5, 0.1, 0.05, 0.8, 0.3, -0.2, 0.5]
+        @test ProteinCoLoc._theta_tuple(v7).chromatic_eps == 0.0   # 7-row posterior mean stays valid
+        # An 8-long vector is read, and an out-of-range component is clamped back inside the
+        # range simulate_pair's entry guard accepts (1 + chromatic_eps must stay positive).
+        @test ProteinCoLoc._theta_tuple(vcat(v7, 0.01)).chromatic_eps == 0.01
+        @test ProteinCoLoc._theta_tuple(vcat(v7, -5.0)).chromatic_eps == -0.999
+        @test ProteinCoLoc._theta_tuple(vcat(v7, NaN)).chromatic_eps == 0.0
+    end
+
+    @testset "stage 6 is ONE AffineMap, not a composition of two warps (D-10)" begin
+        # Built from the SAME symbols simulator.jl imports, at the identity scale.
+        CT = parentmodule(ProteinCoLoc.Translation)
+        A  = ProteinCoLoc.Translation(0.3, -0.2) ∘
+             ProteinCoLoc.recenter(ProteinCoLoc.LinearMap([1.0 0.0; 0.0 1.0]), (128.5, 128.5))
+        @test A isa CT.AffineMap
+        @test !(A isa ComposedFunction)
+        # At the identity scale the composition reduces to the plain translation exactly.
+        @test A.linear == [1.0 0.0; 0.0 1.0]
+        @test A.translation == [0.3, -0.2]
+    end
+
+    @testset "simulate_pair accepts a legacy 7-field θ (SC1e)" begin
+        θ7  = (ρ_true = 0.5, spillover = 0.1, autofluorescence = 0.05,
+               label_efficiency = 0.8, shift_dx = 0.3, shift_dy = -0.2, noise = 0.5)
+        rng = Random123.Philox4x(UInt64, (UInt64(20260725), UInt64(7)))
+        out = ProteinCoLoc.simulate_pair(rng, θ7; imsize = (64, 64))
+        @test out isa Vector{Matrix{Float64}}
+        @test length(out) == 2
+        @test all(c -> all(isfinite, c), out)
+        # …and it is EXACTLY the chromatic_eps = 0 case, not merely a similar one.
+        rng2 = Random123.Philox4x(UInt64, (UInt64(20260725), UInt64(7)))
+        out8 = ProteinCoLoc.simulate_pair(rng2, merge(θ7, (chromatic_eps = 0.0,));
+                                          imsize = (64, 64))
+        @test out8[1] == out[1] && out8[2] == out[2]
+    end
+
+    @testset "chromatic_eps entry guards (1 + ε must stay positive)" begin
+        θ7 = (ρ_true = 0.5, spillover = 0.1, autofluorescence = 0.05,
+              label_efficiency = 0.8, shift_dx = 0.3, shift_dy = -0.2, noise = 0.5)
+        for bad in (NaN, Inf, -1.0, -2.5)
+            rng = Random123.Philox4x(UInt64, (UInt64(20260725), UInt64(9)))
+            @test_throws ArgumentError ProteinCoLoc.simulate_pair(
+                rng, merge(θ7, (chromatic_eps = bad,)); imsize = (64, 64))
+        end
+    end
 end
 
 ##########################################################################################
@@ -621,7 +721,7 @@ end
     Zraw = vcat(randn(nc, n) .* 2 .+ 3, Float64.(rand(Bool, nc, n)))
     zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
     Zstd = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
-    θ    = randn(7, n)
+    θ    = randn(length(ProteinCoLoc.theta_prior_bounds()), n)   # θ arity DERIVED
     res  = ProteinCoLoc.train_npe(Zstd, Zstd, θ, θ; use_gpu = false, epochs = 2, batchsize = 16,
                                   dstar = 8, depth = 1, width = 16, num_coupling_layers = 2,
                                   flow_depth = 1, flow_width = 8, stopping_epochs = 2)
@@ -697,7 +797,8 @@ end
     # into a temp artifacts root — no forward simulator needed.
     root = mktempdir()
     G = 4; nc = G^2; d = 2 * nc; N = 80
-    synth = () -> (theta = randn(7, N),
+    Dθ = length(ProteinCoLoc.theta_prior_bounds())   # θ arity, DERIVED (never a literal)
+    synth = () -> (theta = randn(Dθ, N),
                    summary_min = vcat(randn(nc, N) .* 2 .+ 3, Float64.(rand(Bool, nc, N))))
     npe_kw = (; batchsize = 16, dstar = 8, depth = 1, width = 16,
               num_coupling_layers = 2, flow_depth = 1, flow_width = 8, stopping_epochs = 2)
@@ -731,7 +832,7 @@ end
     @test b2.grid == G
     Zq = Float32.(ProteinCoLoc.standardize_summary(
         vcat(randn(nc) .* 2 .+ 3, Float64.(rand(Bool, nc))), b2.zt, :min))
-    @test size(ProteinCoLoc.posterior_for(b2.npe, Zq; N = 8, use_gpu = false), 1) == 7
+    @test size(ProteinCoLoc.posterior_for(b2.npe, Zq; N = 8, use_gpu = false), 1) == Dθ
 
     # --- TRAINING IMAGE-SIZE PROVENANCE (F6): persisted in meta, never guessed ----------------
     # This fixture INJECTED `datagen`, so the imsize_set keyword does NOT describe the pool: the
@@ -793,7 +894,8 @@ include(joinpath(@__DIR__, "gate", "run_gate.jl"))   # brings gate_consts + harn
     Zraw = vcat(randn(nc, n) .* 2 .+ 3, Float64.(rand(Bool, nc, n)))
     zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
     Zstd = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
-    θ    = randn(7, n)
+    Dθ   = length(ProteinCoLoc.theta_prior_bounds())   # θ arity, DERIVED (never a literal)
+    θ    = randn(Dθ, n)
     res  = ProteinCoLoc.train_npe(Zstd, Zstd, θ, θ; use_gpu = false, epochs = 2, batchsize = 16,
                                   dstar = 8, depth = 1, width = 16, num_coupling_layers = 2,
                                   flow_depth = 1, flow_width = 8, stopping_epochs = 2)
@@ -808,9 +910,9 @@ include(joinpath(@__DIR__, "gate", "run_gate.jl"))   # brings gate_consts + harn
                                        size(data[1]), [0.5, 0.5])
     sim = (; sample_prior = fake_prior, simulate_pair = fake_pair, build_mci = fake_mci)
 
-    # draw_simulate_infer is grid-parametrized and CPU-only; returns 7×N physical draws.
+    # draw_simulate_infer is grid-parametrized and CPU-only; returns Dθ×N physical draws.
     t = draw_simulate_infer(m, prod_rng(G); G = G, imsize = (64, 64), N = SBC_FIX_L, sim = sim)
-    @test size(t.draws, 1) == 7
+    @test size(t.draws, 1) == Dθ
     @test size(t.draws, 2) == SBC_FIX_L
 
     # tiny-M SBC rank table through the harness: M×8, every rank ∈ 0:L.
@@ -1182,7 +1284,7 @@ end
     Zraw = vcat(randn(nc, n) .* 2 .+ 3, Float64.(rand(Bool, nc, n)))
     zt   = ProteinCoLoc.fit_summary_transform(Zraw; variant = :min)
     Zstd = Float32.(ProteinCoLoc.standardize_summary(Zraw, zt, :min))
-    θ    = randn(7, n)
+    θ    = randn(length(ProteinCoLoc.theta_prior_bounds()), n)   # θ arity DERIVED
     res  = ProteinCoLoc.train_npe(Zstd, Zstd, θ, θ; use_gpu = false, epochs = 2, batchsize = 16,
                                   dstar = 8, depth = 1, width = 16, num_coupling_layers = 2,
                                   flow_depth = 1, flow_width = 8, stopping_epochs = 2)
@@ -1396,7 +1498,7 @@ end
     # unrecorded (the injected-datagen case — and the case of all three v1-frozen bundles).
     aroot = mktempdir()
     ProteinCoLoc._train_grid_pipeline(G;
-        datagen = () -> (theta = randn(7, 60),
+        datagen = () -> (theta = randn(length(ProteinCoLoc.theta_prior_bounds()), 60),
                          summary_min = vcat(randn(nc, 60) .* 2 .+ 3,
                                             Float64.(rand(Bool, nc, 60)))),
         artifacts_root = aroot, use_gpu = false, n_pairs = 60, ratio_n = 60,
