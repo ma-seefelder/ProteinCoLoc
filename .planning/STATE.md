@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Phase 12 context gathered
-last_updated: "2026-07-25T18:42:41.400Z"
+stopped_at: Phase 11 planned (11 plans, 9 waves) — ready to execute; Phase 12 context gathered
+last_updated: "2026-07-25T18:43:11.823Z"
 last_activity: 2026-07-21 -- Phase 07 plan 07-08 executed (windowed sub-tile local map, suite green); Phase 8 remains complete
 progress:
   total_phases: 16
@@ -31,6 +31,33 @@ limits (`docs/amortized.md`). No further training/gate iteration; Option B (BF �
 summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 ## Current Position
+
+**STATUS: Ready to execute — Phase 11 planned (2026-07-25), 11 plans in 9 waves.**
+
+**Phase 11 (Registration and Chromatic Uncertainty as Latent) — PLANNED, not started.**
+Research-lane only (D-01): a Phase-11 net trains in `spike/` on a fresh DEV seed; the shipped
+`amended_v2/grid_8` artifact and the Phase-7 GO (Option A, 2026-07-24) stay untouched — no reship,
+no new artifact, no ship gate reopened, no public API change. ROADMAP SC1 is already nominally
+satisfied (`shift_dx`/`shift_dy` are existing latents), so the phase owns three genuine gaps: the
+missing chromatic term, the never-run SC2 monotone-widening sweep, and SC3.
+Deliverable (D-16) = a results report under `.planning/` + an interpretation note in
+`docs/amortized.md`.
+
+Three ordering constraints are load-bearing and encoded in the wave graph:
+(1) the D-06 simulator-only pre-flight probe runs strictly **before** any datagen/training and
+supplies the SC2 threshold; (2) the D-11 `ε` mirror into `src/amortized/simulator.jl` and the D-12
+named limit #8 in `docs/amortized.md` land in **one commit**; (3) the pre-edit golden fixture and
+the pre-`ε` commit sha are captured **before** the first simulator edit.
+Plan 11-06 is a blocking decision checkpoint (probe verdict) gating ~1.5 h of CPU spend and the
+single declared D-04 iteration allowance.
+
+Eight researcher open questions were resolved as orchestrator rulings at plan time (recorded in each
+implementing plan's `<context>`): D-17 retargets from `corpus/` (sealed-holdout, bytes absent) to
+`test/test_images/`; D-11 mirrors `ε` only (src `SHIFT_PRIOR` stays `Uniform(-1.0, 1.0)`); one λ
+conditioning input, so SC2's widening claim is registration-only; `BoundedThetaTransform` is ported
+into the spike trainer as a named deviation; breakdown curve primary at λ = 3.0, secondary at λ = 1.0;
+no new REQ-IDs; train and evaluate on the F5 image-size mixture (Tier-1 locked); and the narrower
+decoupling claim replaces ROADMAP.md:126's literal `git status`-clean-on-`src/` wording.
 
 **Phase 07 (productionization) — COMPLETE (11/11 plans).**
 

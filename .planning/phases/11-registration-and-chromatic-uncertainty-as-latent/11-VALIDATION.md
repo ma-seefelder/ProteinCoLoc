@@ -1,8 +1,8 @@
 ---
 phase: 11
 slug: registration-and-chromatic-uncertainty-as-latent
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-25
 ---
@@ -113,11 +113,15 @@ tasks are partitioned across plans. Every row must be claimed by at least one ta
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or a Wave 0 dependency
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all ❌ references above
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30 s for spike unit files
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or a Wave 0 dependency
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all ❌ references above — every row is claimed by a task in plans 11-01 … 11-11
+      (verified by `gsd-plan-checker`, 2026-07-25)
+- [x] No watch-mode flags
+- [x] Feedback latency < 30 s for spike unit files
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-25 (plan-checker VERIFICATION PASSED)
+
+`wave_0_complete` stays `false` until the Wave 0 scaffold tasks actually run during
+`/gsd:execute-phase 11`; it is an execution-time flag, not a planning-time one.
