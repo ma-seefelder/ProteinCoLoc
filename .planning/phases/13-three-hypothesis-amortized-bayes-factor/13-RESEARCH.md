@@ -1,11 +1,62 @@
 # Phase 13: Three-Hypothesis Amortized Bayes Factor — Research
 
 **Researched:** 2026-07-25
+**Revised:** 2026-07-25 (D-15 amendment, commit `5b4da6d`)
 **Domain:** Amortized neural model comparison (NRE / BCE-head evidence networks) in Julia;
-NeuralEstimators v0.2.1 + Flux 0.16.10; simulation-based validation; semi-synthetic image ground truth
-**Confidence:** HIGH on API surface, repo facts, prior masses, and the D-07 derivation.
-MEDIUM on the τ probe design (design proposed, not yet measured) and the α-series behaviour.
+NeuralEstimators v0.2.1 + Flux 0.16.10; simulation-based validation; semi-synthetic image ground truth;
+**real committed-fixture microscopy ingestion**
+**Confidence:** HIGH on API surface, repo facts, prior masses, the D-07 derivation, **and (new) every
+real-image ingestion fact in §J4–§J6 — all of them were executed against the actual fixtures this
+session, not reasoned about.**
+MEDIUM on the τ probe design (design proposed, not yet measured).
+**Upgraded to HIGH: the α-series behaviour** — the ladder was run end-to-end on both real image pairs
+and its monotone response measured (§J5).
 LOW on anything downstream of Phase 11 (its research net does not exist yet).
+
+---
+
+## Revision Note (D-15 amendment)
+
+**Amendment:** `13-CONTEXT.md` D-15 was amended in commit **`5b4da6d`** ("docs(12,13): amend
+real-image decisions — corpus anchors are sealed_holdout for Phase 16", 2026-07-25 20:50 +0200,
+also touching `12-CONTEXT.md`) [VERIFIED: `git show --stat 5b4da6d`]. This document was rewritten in
+place against the amended decision. Everything not listed below is unchanged from the 2026-07-25
+original.
+
+### PRESERVED (verified still correct; do not re-derive)
+
+| Section | Content preserved |
+|---|---|
+| §J1 | The corpus audit: 30 `simulated-secondary` CBS Red-Green rows are colocalization **percentages** (so CBS `0.0` = *random*, not exclusion), 1 positive + 1 negative `physical-primary` anchor, **no graded segregation series anywhere in the corpus**. This is exactly why D-16's semi-synthetic series is load-bearing. |
+| §J2 | Both `physical-primary` rows are `sha256 = PENDING-FETCH`, `bytes = 0`, `split = sealed_holdout`; `corpus/data/` is empty; the seal is reachable only via `open_sealed_holdout(df; reason)` (`corpus/manifest.jl:149-157`); it is the D-09 anti-snooping control reserved for **Phase 16's blind evaluation**. |
+| §J2 ruling | Phase 13 must NOT consume the sealed rows, must NOT call `open_sealed_holdout`, and must not reference `corpus/` from any Phase-13 **executable** script. `corpus/manifest.csv` may be cited in prose for provenance. Threat-model entry **`T-13-05`** (information disclosure / anti-snooping, *accept — deferred to Phase 16*) carries forward verbatim; it already appears at `13-02-PLAN.md:306` and `13-04-PLAN.md:323`. |
+| §A–§I, §K | Verified API surface, two-head architecture, Phase-11 dependency, τ probe, D-07 derivation, output semantics, SC2 amendment mechanics, calibration gate, pre-registration/seeds — **all unchanged**. D-07 (§F), D-09/D-10/D-11 (§A–§B), D-02 (§D), D-12 (§H) were re-checked and remain correct. |
+
+### REPLACED (stale under the amendment)
+
+| Was | Now |
+|---|---|
+| §J2's recommendation that the physical mitochondria anchor be "a declared deferral to Phase 16 **or** an authorized fetch + seal break (`checkpoint:human-verify`)" | The seal-break option is **withdrawn**. The amendment settles it: deferral to Phase 16, no checkpoint, no fetch. |
+| The framing that **all** real-image evidence is deferred to Phase 16 | The *sealed corpus* stays deferred; a real-data check on **committed repo fixtures** is added and is now a required Phase-13 deliverable. |
+| §J3's `all(y′ .> 0)` α-series invariant | **Provably wrong on real data** — the fixtures already contain 2–3 exact-zero pixels *before* any α is applied. Restated as a *no-new-zeros* invariant in §J5. |
+| Assumption **A6** (relative size of the `S-BIAD1047` negative anchor) | **Retired** — no longer decision-relevant; nothing in Phase 13 fetches it. |
+| Open Question **3** (does Phase 13 need the CBS bytes?) | **Resolved: no.** The α-series substrate is now simulated pairs **plus** the committed TIFFs; the CBS fetch path is out of scope. |
+| Open Question **4** (is `ε` a second conditioning input?) | **Resolved: no.** Phase 11's own plans lock `d_in = 129` = `128 + 1`, i.e. `n_cond = 1` (§J4.5). |
+
+### ADDED (new investigation, the core of this revision)
+
+- **§J4 — Real-image ingestion path.** The exact constructor, pixel type/range, CWD idiom, full call
+  chain to a summary vector, and the `patch()` non-divisibility behaviour. All executed.
+- **§J5 — The α-graded series on real image pairs**, with **measured** ladders for both fixtures,
+  the corrected invariants, the failure modes, and the one-code-path answer.
+- **§J6 — The honesty consequence**, with copy-paste wording for the plans, the phase report header,
+  and the acceptance criteria — plus the two findings that make the honesty statement *stronger*
+  than "no ground truth": the shipped OOD detector **flags both fixtures**, and the frozen simulator
+  calibration already records that the negative-μ tail is **not physically reachable** in real
+  fluorescence.
+
+**Nothing about the GATE changed.** The gate remains simulator ground truth (`ρ_true < −τ`, exact
+labels, well-powered, D-12/D-13). Every real-image result in §J4–§J6 is SUPPORTING and QUALITATIVE.
 
 ---
 
@@ -112,14 +163,36 @@ LOW on anything downstream of Phase 11 (its research net does not exist yet).
 
 **Exclusion ground truth (SC3)**
 
-- **D-15: Simulator gate + semi-synthetic graded series + the physical anchor as a named check.**
-  **Corpus audit (`corpus/manifest.csv`):** exactly **one** real segregated anchor
-  (`physical-primary | negative | segregated | 0.0 | mitochondria`), one positive coloc anchor, and
-  30 `simulated-secondary` CBS Red-Green rows whose degrees are colocalization *percentages* — so the
-  CBS `0.0` end is **random, not exclusion**. **The corpus has no graded segregation series at all.**
-  Therefore: gate on simulator ground truth (`ρ_true < -τ`, exact labels, well-powered); add a
-  semi-synthetic graded random→exclusion series as supporting evidence; report the single physical
-  anchor as a named qualitative check.
+- **D-15 (AMENDED 2026-07-25, commit `5b4da6d`): Simulator gate + semi-synthetic graded series + a
+  `test/test_images/` qualitative check. The corpus physical anchor is NOT used.**
+
+  > **Amendment rationale — a correction to the original audit.** The first version of this decision
+  > named the physical mitochondria anchor as the real-data check. Verification during Phase 11
+  > planning showed the audit was incomplete: it counted the anchors correctly but did not read their
+  > `split` and `sha256` columns. Both `physical-primary` rows are `sha256 = PENDING-FETCH`,
+  > `bytes = 0`, **`split = sealed_holdout`** — unfetched, and reserved for the **Phase-16 blind
+  > evaluation**. Consuming the segregated anchor here would irreversibly burn Phase 16 on the very
+  > hypothesis Phase 16 would be evaluating. Mirrors the ruling Phase 11's planner made for its D-17
+  > and the amended Phase 12 D-11.
+
+  **Corpus audit (still valid, and still the reason the semi-synthetic series is load-bearing):** the
+  corpus holds exactly one segregated anchor and one coloc anchor, plus 30 `simulated-secondary` CBS
+  Red-Green rows whose degrees are colocalization *percentages* — so the CBS `0.0` end is **random, not
+  exclusion**. **The corpus has no graded segregation series at all**, and now also no *usable* real
+  segregation anchor for this phase.
+
+  Therefore: **gate** on simulator ground truth (`ρ_true < -τ`, exact labels, well-powered); add the
+  D-16 semi-synthetic graded random→exclusion series as supporting evidence — it is now the **only**
+  graded segregation evidence that will exist; and run the qualitative real-data check on the six
+  committed microscopy TIFFs in `test/test_images/` (`positive_c{1,2,3}.tif`, `negative_c{1,2,3}.tif`,
+  1028×1376).
+
+  **Honesty consequence to state in the report:** those images carry no colocalization ground-truth
+  label, so the real-data check is **qualitative only** — it can show that exclusion verdicts behave
+  sensibly on real microscopy, not that they are correct. Real segregation validation is deferred to
+  Phase 16's blind evaluation, which is precisely what the sealed holdout exists for.
+
+  **Do NOT touch `corpus/` sealed_holdout rows in this phase.**
   **Conceptual gap this addresses:** the simulator's "exclusion" is *negative intensity correlation
   across patches*; a biologist's "mutually exclusive" is *disjoint spatial localization*. These
   coincide often but not necessarily, and the semi-synthetic series is the only evidence that probes
@@ -179,7 +252,7 @@ The phase is therefore governed by its three ROADMAP Success Criteria
 |----|---|---|
 | SC1 | "A 3-way `RatioEstimator`/evidence network emits a log-BF simplex over {coloc, random, exclusion} in one forward pass" | **Partially superseded.** D-09 rules out `RatioEstimator`; D-08 rules out "simplex". The surviving, bindable content is: *one network, one forward pass, three-way evidence.* |
 | SC2 | "It reproduces `compute_BayesFactor()` (`src/bayes.jl:109`) in the overlapping 2-way regime without quadgk/KDE" | **AMENDED by D-12.** Replaced by simulation-based 3-way discrimination (per-class AUC + confusion matrix). Binary-NRE continuity reported, not gated. |
-| SC3 | "The exclusion hypothesis is validated on segregated ground-truth inputs" | **Retained, scoped by D-15.** Simulator ground truth gates; α-series is load-bearing supporting evidence; physical anchor is a named qualitative check (see blocker in §J3). |
+| SC3 | "The exclusion hypothesis is validated on segregated ground-truth inputs" | **Retained, scoped by D-15 (AMENDED).** Simulator ground truth **gates**. The D-16 α-series is load-bearing supporting evidence and is now the *only* graded segregation evidence that will exist. A **qualitative** check on the six committed `test/test_images/` TIFFs is a required deliverable but is **explicitly not a gate** — those images carry no colocalization label (§J6). The corpus physical anchor is **not used** (§J2). |
 
 **Planner action:** because SC1 and SC2 as written are no longer literally achievable/desirable, the
 plan must state the amended criteria explicitly and cite the amendment document (§H) — otherwise
@@ -248,6 +321,21 @@ rare" is a false premise: stratification is about **coverage inside the exclusio
 dominated by the 4.85% point mass at ρ = −0.99 (vs 1.91% at +0.99, ratio 2.54× — CONTEXT's ≈2.5×
 confirmed).
 
+**Fourth (added in the D-15 revision) — the real-image arm is cheap, already-proven machinery, and
+its most valuable output is a limitation.** The amended D-15 adds a qualitative check on six
+committed `test/test_images/` TIFFs. Three things make this much less risky than it looks, and one
+makes it much more interesting. (a) The ingestion path is the frozen `MultiChannelImage` /
+`load_tiff` chain the spike's own `ghat` calibration already uses on these exact files — I reproduced
+its recorded anchors `μ_pos = 0.3292` / `μ_neg = 0.2481` to the digit. (b) `patch()` **silently
+truncates**, so 1028 × 1376 needs **no crop and no resize**: at G = 8 it drops 4 of 1028 rows (0.39 %),
+leaves 22 016 px per patch, and produced **zero** `missing` patches on either fixture. (c) The whole
+arm except the final three-way read is **Phase-11-independent** and executable today against the
+shipped `artifacts/grid_8/` bundle — a Wave-0 sequencing win mirroring §E4's τ probe. And (d): the
+shipped OOD detector **flags both fixtures** (density 433.7 vs. ID threshold 179.1), while the frozen
+`ghat.jl:40` already records that the negative-μ tail is *not physically reachable in real
+fluorescence*. So the real-data arm's headline contribution is an honest limit, not a validation —
+which is exactly what D-15's amendment says it is (§J4, §J5, §J6).
+
 **Primary recommendation:** implement the two-head trunk as a `ThreeWayEvidenceNet <: NeuralEstimator`
 with a masked two-term logit-BCE loss, trained through NeuralEstimators' own `train`; take the
 scalar per-head correction route (D-07-i, class-frequency stratification with π-shaped within-class
@@ -273,7 +361,9 @@ Phase 13 is a single-process research computation with no client/server tiers. T
 | Evidence-scale correction | **Phase-13 read surface** (per-head scalar) | — | D-07; must be applied at read time, exactly as `amortized_log_bf` does today. |
 | Discrimination + calibration gate | **Phase-13 validation** (`spike/`), reusing `_bin_calibration` | spike-014 method | D-12/D-13. |
 | Result type | **`spike/`** (see §G3 for the `src/` tension) | `src/results.jl` sketch (comment-only) | D-01 keeps `src/` untouched. |
-| Physical anchor read | `corpus/` sealed holdout | — | **Blocked** (§J3). |
+| **Real-image ingestion** | **Frozen `src/LoadImages.jl` read chain** (`MultiChannelImage(name, paths, channels)` → `load_tiff`) reached read-only via the `spike/contract.jl` `include()` coupling | — | D-15 amended. Never re-implement the loader; the frozen path is the one `ghat`'s real anchor and `test/runtests.jl` already use (§J4). |
+| **α-graded segregation** (D-16) | **Phase-13 spike code** (`spike/p13/alpha_series.jl`), operating on `Matrix{Float64}` channels | Applies identically to simulator output and to loaded TIFFs (§J5.4) | The construction is spatial and substrate-agnostic; only the *source* of the two matrices differs. |
+| Physical anchor read | `corpus/` sealed holdout | — | **Out of scope — reserved for Phase 16** (§J2). Not blocked-and-pending; *decided*. |
 
 ---
 
@@ -1115,32 +1205,52 @@ head) so a green ECE is not a small-sample artifact.
 **There is no graded segregation series.** D-15's premise holds and D-16's α-series is therefore
 load-bearing evidence, exactly as CONTEXT says.
 
-### J2. **BLOCKER — the physical anchor is not readable in Phase 13**
+### J2. The corpus seal — Phase 13 must not open it (D-15 AMENDED, settled)
 
-Three independent obstacles, all verified:
+Three independent obstacles, all verified, **all preserved from the original research**:
 
 1. **`sha256 = "PENDING-FETCH"` on BOTH anchors** — the bootstrap fetch was deliberately not run
    (STATE Phase 08-05, T-08-16). `bootstrap_anchor_hashes()` exists but must be run online **and**
    authorized.
 2. **`corpus/data/` is empty** [VERIFIED: `ls corpus/data` returns nothing] and `git ls-files corpus/data`
-   is empty by design — the bytes are simply not on disk.
+   is empty by design — the bytes are simply not on disk. `bytes = 0` on both rows.
 3. **Both anchors are `split = sealed_holdout`**, reachable **only** through
    `open_sealed_holdout(df; reason)` (`corpus/manifest.jl:149-157`), which is the **D-09 anti-snooping
    seal**. Opening it in Phase 13 spends a control that exists for Phase 16's blind evaluation.
 
-**Recommendation:** Phase 13 should **NOT** open the seal. Plan the physical-anchor check as a
-**declared deferral to Phase 16** with a one-paragraph note in the Phase-13 report, or as an explicit
-`checkpoint:human-verify` if the user wants to authorize both the fetch and the seal break. Either
-way the D-15 gate is unaffected: it rests on simulator ground truth, with the α-series as supporting
-evidence. Both are fully available.
+**RULING (amended D-15 — no longer a recommendation, a decision).** Phase 13:
 
-**Note on the download size:** the ~6.3 GB figure in STATE is the **positive** (TetraSpeck) anchor.
-The segregated negative (`S-BIAD1047`, OME-TIFF from the EBI BioStudies FTP) is the one Phase 13
-would want and is likely far smaller — but its size is recorded as `bytes = 0` (unfetched), so this is
-**unverified**. If the user authorizes, fetching *only* the negative anchor is a much smaller ask than
-STATE's headline number implies. [ASSUMED: relative sizes not measured.]
+- must **NOT** consume the sealed rows;
+- must **NOT** call `open_sealed_holdout` — not in a script, not in a test, not behind a flag;
+- must **NOT** reference `corpus/` from any Phase-13 **executable** artifact. `corpus/manifest.csv`
+  may be cited in *prose* (report, plan context, this document) for provenance only;
+- must **NOT** offer a `checkpoint:human-verify` seal-break escape hatch. The original research
+  floated one; the amendment withdraws it. Do not re-introduce it — consuming the segregated anchor
+  here would irreversibly burn Phase 16 on the very hypothesis Phase 16 exists to evaluate.
+
+**Threat-model entry (carried forward verbatim, already in the plans):**
+
+| ID | STRIDE | Asset | Disposition | Control |
+|---|---|---|---|---|
+| **T-13-05** | Information disclosure (anti-snooping control) | `corpus/` `sealed_holdout` split | **accept (deferred to Phase 16)** | No code path in any Phase-13 plan reaches `corpus/`; a source-grep testset asserts `open_sealed_holdout` and the string `corpus/` are absent from executable code (ASVS V4) |
+
+[VERIFIED: already present at `13-02-PLAN.md:306` and `13-04-PLAN.md:323` — the revision does not
+create this entry, it confirms it survives.]
+
+**Enforcement mechanism to reuse.** Phase 11's plan 11-10 already machine-checks the same claim
+about its own script: `read(@__FILE__, String)` must not contain `"corpus/"` outside the explanatory
+header (`11-10-PLAN.md:191-195`). Phase 13's real-image runner should copy that check verbatim; it
+turns "we intended not to" into "the suite fails if we did".
+
+**The download-size note is retired.** The original §J2 speculated about the relative size of the
+`S-BIAD1047` negative anchor. Nothing in Phase 13 fetches it, so the question is moot. Assumption
+**A6** is withdrawn.
 
 ### J3. D-16's α-graded series — concrete design
+
+> **Read §J4 first** if you are planning the real-image arm — it establishes the ingestion path this
+> section's `x`/`y` matrices come from. §J5 reports the **measured** behaviour of everything designed
+> here, on both real fixtures, and **corrects one invariant stated below** (`all(y′ .> 0)`).
 
 **The trap that dominates this design.** `correlation()` calls `_exclude_zero`
 (`src/colocalization.jl:154-169, 187-203`), which **drops any pixel where *either* channel is 0.0,
@@ -1174,11 +1284,11 @@ end
 
 | Property | Assertion |
 |---|---|
-| `α = 0` reproduces the input **bitwise** | `alpha_segregate(x,y,M,0.0;b) == y` (exact `==`, not `≈`) — the Phase-11 D-10 "`ε=0` regression check" pattern |
-| No pixel becomes zero | `all(alpha_segregate(...) .> 0)` given `b > 0` and `y[.!M] .> 0` |
-| Total intensity preserved | `sum(y') ≈ sum(y)` to `rtol = 1e-10` — so the ladder is not confounded with a brightness change |
+| `α = 0` reproduces the input **bitwise** | `alpha_segregate(x,y,M,0.0;b) == y` (exact `==`, not `≈`) — the Phase-11 D-10 "`ε=0` regression check" pattern. **[VERIFIED true on both real fixtures, §J5.]** |
+| ~~No pixel becomes zero~~ **CORRECTED: no NEW zero is created** | ~~`all(alpha_segregate(...) .> 0)`~~ — **this invariant is FALSE on real data and must not be written.** The committed TIFFs already contain exact-zero pixels before any α (2 px in `positive_c2`, 3 px in `negative_c2`, out of 1 414 528) [VERIFIED, §J5]. The correct assertion is `count(iszero, y′) == count(iszero, y)`, plus reporting the source zero count. Keeping `all(.> 0)` would fail Wave 0 on real input for a reason unrelated to the algorithm. |
+| Total intensity preserved | `sum(y′) ≈ sum(y)` to `rtol = 1e-10` — so the ladder is not confounded with a brightness change. **[VERIFIED true on both real fixtures at every α, §J5.]** |
 | Mask is α-invariant | `M` computed once from the unmodified `x` via `Images.otsu_threshold(x)`; **never** recomputed per α |
-| Monotone | `m̄(α)` (mean patch correlation) should decrease monotonically; report the curve |
+| Monotone | `m̄(α)` (mean patch correlation) should decrease monotonically; report the curve. **[VERIFIED strictly monotone decreasing on both fixtures, §J5.]** |
 
 **Mask construction — reuse the frozen path.** `src/LoadImages.jl:235-241` already defines
 `_calculate_mask(img) = [ch .> thr for (ch,thr) in zip(image_data(img), otsu_thresholds(img))]`, and
@@ -1194,18 +1304,530 @@ only at MCI *construction*]. So rebuilding the modified MCI (which recomputes ch
 perturb the summary. One trap fewer — but the plan should still hold the *mask* fixed across α, per
 the `local_map.jl:208` precedent ("tile-local Otsu would make tiles incomparable").
 
-**What to run the α-series on.** Two substrates, both worth doing:
+**What to run the α-series on (REVISED under the amended D-15).** Two substrates, both required:
 
 | Substrate | Why | Availability |
 |---|---|---|
-| **Simulated images at ρ ≈ 0** (drawn through the Phase-11 simulator) | full control, arbitrary n, known nuisances, guaranteed positive background (`BG_FLOOR = 0.02`), and `α = 0` is *by construction* a random pair | ✓ available |
-| **CBS `cbs-RG-000`** (the 0.0-degree Red-Green row) | real optics/noise; the manifest's own "random" end; `split = eval`, **not** sealed | ✓ available in principle, but `sha256` unfilled for CBS rows too — needs the fetch path. Verify before planning it as a hard deliverable. |
+| **Simulated images at ρ ≈ 0** (drawn through the Phase-11 simulator) | full control, arbitrary n, known nuisances, guaranteed positive background (`BG_FLOOR = 0.02`), and `α = 0` is *by construction* a random pair | ✓ available (gated on the Phase-11 simulator merge) |
+| **The six committed `test/test_images/` TIFFs** — `positive_c{1,2}` and `negative_c{1,2}` | real optics, real noise, real object morphology; **this is the amended D-16 requirement**; no fetch, no sha256 gate, no seal | ✓ **on disk now, verified, and already exercised end-to-end this session (§J5)** |
+| ~~CBS `cbs-RG-000`~~ | ~~real optics; manifest's own "random" end~~ | **DROPPED.** `corpus/data/` is empty and CBS `sha256` is unfilled, so it needs the fetch path; and the amended D-15 supplies a real substrate that needs none. Open Question 3 is resolved: Phase 13 does **not** need the CBS bytes. |
 
 **The scientifically interesting readout** (CONTEXT §Specific Ideas): not merely "does exclusion get
 detected", but **at what α the intensity-correlation notion starts to track disjoint localization**.
 Report `log BF(E:R)(α)` and `log BF(C:R)(α)` as curves, plus `m̄(α)`, plus a **crossing point**
 `α*` = the smallest α at which `log BF(E:R) > 0`. That single number is the phase's most quotable
 result about the correlation-vs-localization gap.
+
+---
+
+### J4. Real-image ingestion path (D-15 AMENDED — NEW)
+
+Everything in this section was **executed** against the actual files this session under
+`julia --startup-file=no --project=spike`. Nothing here is inferred.
+
+#### J4.0 The files, and why they are safe
+
+| Fact | Value | Evidence |
+|---|---|---|
+| Paths | `test/test_images/{positive,negative}/{positive,negative}_c{1,2,3}.tif` | [VERIFIED: `ls`] |
+| Count / size on disk | 6 files, **8 488 000 bytes each** | [VERIFIED: `ls -la`] |
+| Pixel dimensions | **1028 × 1376** (rows × cols as loaded) | [VERIFIED: `size(load_tiff(...))`] |
+| Status | **committed repo fixtures**, tracked in git, not corpus, not sealed, no `sha256` gate, no fetch | [VERIFIED] |
+| Already exercised by the suite | `test/runtests.jl:86` (LoadImages testset) and `:166` (MultiChannelImageStack testset) | [VERIFIED] |
+| Already exercised by the **spike** | `spike/simulator/calibration.jl:156-164` `_real_anchor()` loads `positive_c{1,2}.tif` / `negative_c{1,2}.tif` and pushes them through `induced_mu(build_mci(...))` | [VERIFIED] |
+
+**Provenance finding that materially strengthens the amended D-15.** These are not an arbitrary
+substitute for the corpus anchor — they are **already a frozen reference point in this project's own
+simulator calibration**. `spike/simulator/ghat.jl:39` carries the comment line:
+
+```
+#   real anchor (D-16): faithful LoadImages.jl load_tiff (NOT luminance): positive μ = 0.3292, negative μ = 0.2481
+```
+
+I re-measured both numbers this session and reproduced them **exactly**: positive `m̄ = 0.3292`,
+negative `m̄ = 0.2481` [VERIFIED]. So the Phase-13 real-image check runs on the same six files, through
+the same loader, that the frozen `ghat` calibration used. That is real lineage, and the plan should
+say so — it is a much stronger position than "we picked some TIFFs".
+
+*(Naming collision to avoid in the plans: Phase **02**'s D-16 is the real-anchor decision quoted
+above; Phase **13**'s D-16 is the α-graded series. Different decisions, same label.)*
+
+#### J4.1 The exact constructor and read chain
+
+```julia
+# src/LoadImages.jl:432-455 — the frozen convenience constructor.
+#   MultiChannelImage(name::S, path::Vector{S}, channels::Vector{S} = []) where {S <: AbstractString}
+#   ARGUMENT ORDER IS (name, paths, channels) — NOT (paths, channels, name).
+img = MultiChannelImage(
+        "positive",
+        ["test/test_images/positive/positive_c1.tif",
+         "test/test_images/positive/positive_c2.tif"],     # 2 or 3 channels both work
+        ["ch1", "ch2"])
+```
+
+What the constructor does, line by line [VERIFIED from source]:
+
+| Step | Source | Effect |
+|---|---|---|
+| `data = load_tiff.(path)` | `:433` | one `Matrix{Float64}` per file |
+| empty `channels` ⇒ `["channel_$i"]` + a `@warn` | `:435-438` | **always pass channel names** — the default emits a warning into the report log |
+| length mismatch ⇒ `ArgumentError` | `:441-443` | |
+| `pixel_size = size(data[1])` | `:444` | `(1028, 1376)` — a **pixel-dimension tuple**, *not* micrometres (the docstring at `:109` is wrong; `spike/contract.jl:57` documents the correction as Phase-02 D-11) |
+| `otsu_threshold = Images.otsu_threshold.(data)` | `:445` | per-channel scalar, stored on the struct |
+
+`load_tiff` (`src/LoadImages.jl:214-217`) is one line:
+
+```julia
+load_tiff(path) = Float64.(Images.Gray.(Images.load(path)))
+```
+
+**Pixel type and value range — measured, not assumed:**
+
+| Property | Measured value |
+|---|---|
+| On-disk element type | `RGB{N0f16}` — each `_cN.tif` is itself a **16-bit RGB** image, one file per "channel" |
+| After `Images.Gray` | Rec-601 luma: `0.299R + 0.587G + 0.114B` [VERIFIED: `Gray(RGB(0.2,0.5,0.9)) = 0.45590906` vs Rec601 `0.4559`, Rec709 `0.4651`] |
+| After `Float64.` | `Matrix{Float64}`, values in **[0, 1]**, **not** z-scored, **not** background-subtracted |
+| `positive_c1` actual range | min `6.1036e-5`, max `0.19794`, mean `0.014986` — the images are **dim**; nothing is near 1.0 |
+| Distinct values | 9 608 (of 65 536 possible) — quantized, as expected from N0f16 |
+| Exact zeros | `positive_c1`: **0**. `positive_c2`: **2** of 1 414 528. `negative_c2`: **3**. |
+
+> `spike/NOTES.md:239` says the extraction is "**NOT** a hand-rolled RGB→luminance reduction". Read
+> that precisely: `Images.Gray` *is* a luminance reduction — the claim is that the project uses the
+> package's own `load_tiff` convention rather than a *different*, hand-rolled one. Do not "improve"
+> this by summing channels or taking a max; that would silently move off the frozen anchor.
+
+#### J4.2 The CWD idiom (answers "how does a script under `spike/p13/` resolve these paths?")
+
+`test/runtests.jl:18-21` records the problem and its fix:
+
+```julia
+# Test fixtures are referenced by package-root-relative paths (e.g.
+# "test/test_images/..."). Under `Pkg.test()` the process CWD is not guaranteed to be the
+# package root, so anchor it explicitly to `<pkgroot>` (the parent of this test dir).
+cd(dirname(@__DIR__))                      # test/runtests.jl:21
+```
+
+**Do not copy `cd()` into a spike script** — mutating process CWD inside a reported run is a
+side effect the rest of the harness does not expect. Copy the **spike's own** idiom instead, which
+solves the same problem without `cd`:
+
+```julia
+# spike/simulator/calibration.jl:59 — the established pattern
+const _REPO_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+
+# From spike/p13/, the depth is IDENTICAL (spike/p13/x.jl -> spike/ -> repo root):
+const P13_REPO_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+real_tif(cond, i) = joinpath(P13_REPO_ROOT, "test", "test_images", cond, "$(cond)_c$(i).tif")
+```
+
+`spike/simulator/calibration.jl:157-164` uses exactly this to reach the fixtures, so the idiom is
+already proven from a `spike/<subdir>/` depth. Add `@assert isfile(real_tif(c,i))` with a message
+naming the expected path, per the project's explicit-`ArgumentError` house style (`api.jl:111-120`).
+
+#### J4.3 Preprocessing: what the pipeline does and does **not** apply
+
+This is the question most likely to produce a wrong plan, so it is stated as a hard finding.
+
+**The amortized path applies NO masking and NO background subtraction.** Verified call chain
+(`src/amortized/api.jl:107-148`):
+
+```
+MultiChannelImage(name, paths, channels)        # raw Float64 in [0,1]; api.jl never mutates it
+  └─ _pair_mci(mci, channels)                   # api.jl:49-60 — select 2 channels, CARRY the parent
+     │                                          #   Otsu thresholds; data matrices passed by reference
+     └─ patch_summary(pair, G)                  # summary.jl:50-55
+        ├─ patch.([x, y], G)                    # colocalization.jl:37-60
+        └─ correlation(xp, yp; method=:pearson)  # colocalization.jl:221 (+ _exclude_zero, ≤15 floor)
+     └─ encode_d01(M)                           # summary.jl:72-76 → 2·G² = 128 rows
+        └─ standardize_summary(., b.zt, :min)   # frozen zt; mask rows bypassed
+```
+
+`_apply_mask!` / `apply_mask!` appear **only** in `src/plot.jl:114-115`, `src/plot.jl:224` and
+`src/utils.jl:86` (the legacy Turing/plotting pipeline, where `load_images(...; mask=true)` is
+opt-in) [VERIFIED: repo-wide grep]. They are **not** on the amortized path, and the spike's
+`build_mci` does not call them either.
+
+**Why this matters and must be in the plan:** `_apply_mask!` multiplies sub-threshold pixels by 0
+(`LoadImages.jl:261`), and `_exclude_zero` then *deletes* those pixels from every patch correlation.
+Masking before the summary would therefore change the statistic the net was trained on. **Phase 13
+must not mask.** Otsu is used here only to *define* the D-16 α-series object mask (§J5) — never to
+modify the pixels that feed `patch_summary`.
+
+Corollary [VERIFIED by grep, unchanged from the original §J3]: `Images.otsu_threshold` is consumed
+only at MCI *construction* (`LoadImages.jl:445`, `api.jl:58`, `local_map.jl:208`, `simulator.jl:268`).
+`patch_summary` reads `mci.data` directly, so rebuilding an MCI after modifying ch2 does not perturb
+the summary through the Otsu field.
+
+#### J4.4 **The grid/size feasibility question — RESOLVED: no crop, no resize, no pre-registration needed**
+
+`patch()` **silently truncates**. It does not pad and it does not error
+(`src/colocalization.jl:37-60`):
+
+```julia
+patch_size_x = rows ÷ num_patches                                 # :39  integer division
+patch_size_y = cols ÷ num_patches                                 # :40
+trimmed = @view img[1:num_patches*patch_size_x, 1:num_patches*patch_size_y]   # :43
+```
+
+Measured for the real fixtures at 1028 × 1376 [VERIFIED]:
+
+| G | patch size | region covered | rows dropped | cols dropped | px / patch |
+|---|---|---|---|---|---|
+| 4 | 257 × 344 | 1028 × 1376 | **0** | 0 | 88 408 |
+| **8 (shipped)** | **128 × 172** | **1024 × 1376** | **4 (0.39 %)** | **0** | **22 016** |
+| 16 | 64 × 86 | 1024 × 1376 | 4 | 0 | 5 504 |
+| 32 | 32 × 43 | 1024 × 1376 | 4 | 0 | 1 376 |
+
+`1376 ÷ 8 = 172` **exactly**; `1028 ÷ 8 = 128.5 → 128`, so the last **4 rows of 1028** are dropped.
+That is 0.39 % of the frame, deterministically, always the same 4 rows.
+
+**Therefore:**
+
+- **No crop or resize step is required**, and none should be added. Adding one would be a *new*
+  preprocessing choice requiring D-04 pre-registration and would diverge from the frozen
+  `_real_anchor()` path, which also just calls `patch()` on the full 1028 × 1376 matrix.
+- Every patch holds **22 016 px**, three orders of magnitude above the ≤15-survivor `missing` floor.
+  Measured survivor counts on `positive` ch1×ch2: **min 22 015, max 22 016, median 22 016** across all
+  64 patches [VERIFIED]. **Zero patches went `missing` for any channel pair on either fixture.**
+  The `missing`/mask-row machinery is effectively inert on this substrate.
+- **But the plan MUST state the truncation explicitly in the report**, because a reader who computes
+  `1028/8` will expect 128.5-px patches. One sentence: *"`patch()` truncates to the largest exact
+  multiple; at G=8 the bottom 4 rows (0.39 %) of each 1028 × 1376 frame are not used."*
+
+**The transposition footnote (low risk, worth one line).** `IMSIZE_SET` (`spike/data/seeding.jl:52-58`)
+contains `(1376, 1028)` — annotated in-source as `# ~21.6× -- real-data anchor (D-08)`, i.e. the
+training distribution *deliberately includes this exact frame size*, at weight **0.03**
+(`IMSIZE_WEIGHTS`). Note the axis order: the simulator produces **1376 rows × 1028 cols**, while
+`load_tiff` yields **1028 rows × 1376 cols**. Per-patch pixel count is identical (22 016) and the
+truncation is the same 4 px on the 1028 axis, so the *marginal* statistics match; only the
+column-major `vec()` ordering of the 8 × 8 grid corresponds to a transposed spatial layout. The
+simulator's fields are isotropic and `SHIFT_PRIOR` is symmetric, so this is statistically immaterial —
+but it should be a footnote in the report, not a silent difference.
+
+#### J4.5 **D-03: which λ does a real image take?** — a genuine decision the planner must make explicit
+
+**State of knowledge.** Phase 11's D-03 appends *the shift prior's half-width* as a conditioning
+input. Phase 11's own plans lock the encoding [VERIFIED from `11-01-PLAN.md:203-205`,
+`11-04-PLAN.md:135,190,197`]:
+
+| Constant | Value | Source |
+|---|---|---|
+| `LAMBDA_MIN` | **0.25** px (never 0 — "the 0→0.25 rung is not resolvable") | `11-01-PLAN.md:203` |
+| `LAMBDA_MAX` | **3.0** px (= D-02's widened `SHIFT_PRIOR` half-width) | `11-01-PLAN.md:205` |
+| `encode_lambda(λ)` | maps `[LAMBDA_MIN, LAMBDA_MAX] → [0, 1]`; `encode_lambda(LAMBDA_MIN) == 0.0`, `encode_lambda(LAMBDA_MAX) == 1.0` | `11-04-PLAN.md:233` |
+| `augment_input(Z128, λ)` | `vcat(Z128, fill(Float32(encode_lambda(λ)), 1, size(Z128,2)))` → **129 rows** | `11-04-PLAN.md:135,190` |
+| `n_cond` | **1** | `d_in = 129 = 128 + 1` |
+| Phase-11 read levels | `SC3_READ_LAMBDA_PRIMARY = 3.0`, `SC3_READ_LAMBDA_SECONDARY = 1.0` | `11-01-PLAN.md:210` |
+
+**This resolves the original Open Question 4 and Assumption A9.** `ε` (chromatic) is **not** a second
+conditioning input; λ is a single scalar per acquisition. Phase 13's evidence-net input width is
+therefore `ratio_input_dim(G) + 1 = 5·64 + 1 = 321` at G = 8 — but §D2's rule stands: **derive it, never
+write 321 as a literal.**
+
+**The genuine open question.** A real image has **no known λ.** Its true registration error is
+unmeasured and unmeasurable from the file alone. There is no correct value to plug in.
+
+**Recommendation (planner must pre-register one of these; recommend (a)):**
+
+| Option | What it means | Assessment |
+|---|---|---|
+| **(a) Report the λ-sweep, headline at `λ = LAMBDA_MAX = 3.0`** ← **RECOMMENDED** | Read the three-way evidence at every rung of the Phase-11 ladder and report the whole curve; quote the widest (most conservative) rung as the headline number | Honest: it does not invent a λ it does not know. Consistent with the project's existing posture — the original Open Question 2 recommends exactly this for τ, and Phase 11's own real-image plan (`11-10-PLAN.md`) already reads at **two** λ levels rather than one. A conservative λ makes the evidence *weaker*, so an exclusion verdict that survives `λ = 3.0` is the credible one. |
+| (b) Fix a single mid-ladder λ | one number, simpler table | Requires justifying a λ nobody measured. Rejected. |
+| (c) Estimate λ from the images | e.g. cross-correlation peak offset between channels | A new estimator with its own validation burden, inside a phase that is not about registration. Out of scope; note it as a Phase-11/16 idea. |
+
+**Domain sanity check supporting (a).** These are three-channel widefield fluorescence fixtures at
+1028 × 1376. Chromatic aberration plus filter-cube/stage repeatability on such a system is
+realistically **≥ 1 px**, so `λ = LAMBDA_MIN = 0.25` is not a credible operating point for them.
+Reading at the narrow rung would overstate confidence. [ASSUMED: this is domain judgement about
+typical widefield systems, not a measurement of *these* microscopes — flag it as such in the report
+rather than asserting a registration quality that was never characterized.]
+
+#### J4.6 **Pre-flight finding: the shipped path can be exercised on these images TODAY**
+
+The shipped grid-8 bundle is on disk — `artifacts/grid_8/{npe_8, ratio_8, ood_nulls_8,
+gate_report_8}.jld2` [VERIFIED: `ls -la artifacts/grid_8/`]. So the entire real-image ingestion arm is
+executable **before Phase 11 lands**, using the shipped binary net as a stand-in. I ran it:
+
+```julia
+pos = MultiChannelImage("positive", [.../positive_c1.tif, _c2, _c3], ["c1","c2","c3"])
+neg = MultiChannelImage("negative", [.../negative_c1.tif, _c2, _c3], ["c1","c2","c3"])
+r = colocalization_amortized(pos, neg, [1,2]; num_patches = 8, N = 500)
+```
+
+| Read | `logBF` | mean `ρ_sample` | mean `Δρ` | `is_ood` |
+|---|---|---|---|---|
+| positive as sample, negative as control | **+1.988** | 0.3016 | +0.1088 | **true** |
+| negative as sample, positive as control | **−1.085** | 0.1816 | −0.1143 | **true** |
+
+[VERIFIED: executed 2026-07-25, `julia --project=. `, shipped 8×8 bundle, `N = 500`.]
+
+**Three consequences for planning.**
+
+1. **Sequencing win, exactly like the τ probe (§E4).** The real-image *ingestion, path-resolution,
+   read-only discipline, α-series construction and invariant tests* are all **Phase-11-independent**
+   and belong in Wave 0. Only the final three-way read blocks on the Phase-11 net. Do not schedule
+   the whole real-image arm behind the D-02 block.
+2. **Sanity is confirmed.** Posterior mean `ρ_sample` = 0.302 (positive) / 0.182 (negative) tracks the
+   independent `ghat`-mapped anchors 0.331 / 0.215 (§J5) to within ~0.03. The read chain works and
+   produces coherent numbers on real input.
+3. **⚠ THE OOD DETECTOR FLAGS BOTH FIXTURES.** Mahalanobis density score **433.69** against the
+   frozen ID threshold **179.14** [VERIFIED: `ood_verdict(b.ood_nulls, Zs, Zc)` →
+   `OODVerdict(433.688…, true, (density = 433.688…,))`; `b.ood_nulls.thr = 179.1368`] — **2.4× over**.
+   This is the single most consequential new finding in this revision; see §J6.
+
+---
+
+### J5. The α-graded series on **real** image pairs (D-16, NEW application) — MEASURED
+
+#### J5.1 Available thresholding / segmentation primitives (answers "what exists already?")
+
+**Prefer the existing helper. Add no dependency.**
+
+| Primitive | Location | Status |
+|---|---|---|
+| `Images.otsu_threshold(matrix) -> Float64` | re-exported by `Images` 0.26.2 (already in `spike/Manifest.toml`) | **The house standard.** Called at `src/LoadImages.jl:445`, `src/amortized/api.jl:58`, `local_map.jl:208`, `simulator.jl:268`, `spike/contract.jl:68` |
+| `otsu_thresholds(img)` accessor | `src/LoadImages.jl:81-85` | reads the per-channel field the constructor already populated — **no recomputation needed** |
+| `_calculate_mask(img) -> Vector{Matrix{Bool}}` | `src/LoadImages.jl:235-241` — `[ch .> thr for (ch,thr) in zip(image_data(img), otsu_thresholds(img))]` | **Use this.** It makes D-16's segmentation rule a *frozen, already-shipped* choice, satisfying D-04's "pre-registered choice" at zero cost |
+| `_apply_mask!` | `src/LoadImages.jl:259-269` | **DO NOT CALL** (§J4.3) — it zeroes pixels and `_exclude_zero` then deletes them |
+| `ImageFiltering` 0.7.12 (`imfilter`, `Kernel.gaussian`) | already resolved | available for optional mask smoothing; **not needed** — see the mask-fraction numbers below |
+| `StatsBase` / `Statistics` `quantile` | already resolved | the background floor `b` |
+
+`ImageSegmentation` / `ImageMorphology` are transitively present via `Images` but **must not be added
+to `spike/Project.toml`** — the resolve-risk gate (`spike/test/runtests.jl` clauses (d)–(h)) exists to
+prevent exactly that.
+
+**Measured mask behaviour on the real ch1 (the object channel):**
+
+| Fixture | ch1 Otsu threshold | mask fraction `mean(x .> thr)` | complement |
+|---|---|---|---|
+| positive | 0.028661 | **13.49 %** | 86.5 % |
+| negative | 0.035710 | **22.92 %** | 77.1 % |
+
+Both leave a large complement — the "mask covers most of the frame" failure mode (§J5.3) does **not**
+occur on these fixtures.
+
+#### J5.2 The redistribution rule, restated operationally
+
+The §J3 `alpha_segregate` formulation is correct and I ran it unchanged. Operationally:
+
+> Fix the ch1 object mask `M` once, from the **unmodified** ch1, via the frozen Otsu path. For each
+> α, remove the fraction α of ch2's **above-background** signal inside `M` (leaving the background
+> floor `b` behind, never zero), and return exactly that removed mass to the complement `.!M` by a
+> single uniform multiplicative boost. α = 0 is a bitwise identity; α = 1 reduces ch2 inside the ch1
+> objects to the background floor.
+
+It satisfies the three requested properties as follows:
+
+| Requirement | How it is met | Measured |
+|---|---|---|
+| (a) preserves total ch2 intensity | the boost is `1 + sum(removed)/sum(y[.!M])` by construction | `sum(y′) ≈ sum(y)` at `rtol = 1e-10` for **every** α on **both** fixtures ✓ |
+| (b) deterministic given a seed | **it consumes no randomness at all** — `M`, `b` and the boost are deterministic functions of the input. The only seed dependence is upstream (which simulated pair you drew). State this explicitly; a reader will assume an RNG is involved. | ✓ by construction |
+| (c) α = 0 unchanged, α = 1 fully disjoint | α = 0 multiplies by exactly `0.0` and `1.0`, giving bitwise identity; α = 1 leaves only `b` inside `M` | α=0 bitwise `==` ✓ on both fixtures. **α = 1 is "floored", not "empty"** — see the honest caveat below |
+
+**Honest caveat on "fully disjoint".** At α = 1 the mask region is not empty, it is at the background
+floor `b`. This is deliberate and non-negotiable: emptying it would mean zeros, and `_exclude_zero`
+would *delete* those pixels rather than anti-correlate them (the §J3 trap). So the endpoint of this
+ladder is **"ch2 reduced to background wherever ch1 has objects"**, which is what a biologist means by
+mutually exclusive far better than "ch2 is literally absent". Say this in the report; do not write
+"fully disjoint" without the qualifier.
+
+#### J5.3 **MEASURED ladders** (this is new evidence, not a design proposal)
+
+`b = quantile(vec(y), 0.05)`, `M = x .> otsu_threshold(x)`, `α ∈ {0, 0.25, 0.5, 0.75, 1}`, ch1 × ch2,
+G = 8. `ρ_true` column is `ghat(m̄)` using the frozen `spike/simulator/ghat.jl` map.
+
+**positive** (`b = 0.0062409`, mask 13.49 %, ch2 mass inside mask = 36.8 %, boost at α=1 = **1.509**):
+
+| α | `m̄` (mean patch corr) | `ghat(m̄)` = ρ_true | min patch | max patch | `missing` | Σ preserved |
+|---|---|---|---|---|---|---|
+| 0.00 | **+0.3292** | **+0.3305** | −0.3392 | 0.8665 | 0/64 | — (bitwise identity) |
+| 0.25 | +0.2123 | +0.1696 | −0.5505 | 0.8432 | 0/64 | ✓ |
+| 0.50 | +0.0869 | **+0.0005** | −0.6218 | 0.8032 | 0/64 | ✓ |
+| 0.75 | −0.0385 | −0.1708 | −0.6348 | 0.6805 | 0/64 | ✓ |
+| 1.00 | **−0.1679** | **−0.3470** | −0.6727 | 0.5519 | 0/64 | ✓ |
+
+**negative** (`b = 0.0059052`, mask 22.92 %, ch2 mass inside mask = 43.1 %, boost at α=1 = **1.598**):
+
+| α | `m̄` | `ghat(m̄)` = ρ_true | min patch | max patch | `missing` | Σ preserved |
+|---|---|---|---|---|---|---|
+| 0.00 | **+0.2481** | **+0.2149** | −0.2659 | 0.9220 | 0/64 | — (bitwise identity) |
+| 0.25 | +0.1141 | +0.0311 | −0.4175 | 0.9184 | 0/64 | ✓ |
+| 0.50 | −0.0187 | −0.1450 | −0.5327 | 0.8766 | 0/64 | ✓ |
+| 0.75 | −0.1391 | −0.3080 | −0.6613 | 0.6553 | 0/64 | ✓ |
+| 1.00 | **−0.2520** | **−0.4419** | −0.7178 | 0.4133 | 0/64 | ✓ |
+
+[VERIFIED: executed 2026-07-25 against the committed fixtures via `spike/contract.jl`.]
+
+**What this establishes — five findings the planner can rely on:**
+
+1. **The construction works on real microscopy.** Strictly monotone decreasing `m̄(α)` on both
+   fixtures, no `missing` patches at any α, intensity exactly preserved, bitwise identity at α = 0.
+   The D-16 α-series is **not** a design risk; it is measured behaviour. This is the main reason the
+   α-series confidence upgrades MEDIUM → HIGH.
+2. **It crosses zero, on real data.** The sign transition happens at **α ≈ 0.49** (positive fixture,
+   in `m̄`) and **α ≈ 0.46** (negative fixture). The `α*` "crossing point" statistic that §J3 calls the
+   phase's most quotable result is **reachable and well inside the ladder** — it is not pinned at an
+   endpoint, which is exactly what makes it informative.
+3. **The ladder spans ρ_true ∈ [−0.44, +0.33]** — a densely-covered interior region of
+   `GHAT_RHO_KNOTS`, comfortably away from the ±0.99 clamp atoms that §E2 shows land hardest on the
+   exclusion end. **The α-series therefore does NOT probe the deep-exclusion tail.** State this as a
+   scope limit: it tests the *sign transition and near-exclusion regime*, not `ρ ≈ −0.99`. A reader
+   who assumes otherwise will over-read the result.
+4. **The `all(y′ .> 0)` invariant from §J3 is false and must be replaced.** `positive_c2` contains
+   **2** exact-zero pixels and `negative_c2` contains **3** — present in the source files, before any
+   α. `minimum(y′) = 0.0` at every α including α = 0 (where `y′` *is* `y`). Assert
+   `count(iszero, y′) == count(iszero, y)` and report the source zero count. Getting this wrong costs
+   a red Wave-0 suite and an afternoon.
+5. **`b = quantile(vec(y), 0.05)` is a sound rule on real data.** Measured `b = 0.00624` (positive)
+   and `0.00591` (negative), both strictly positive with margin, both far below the Otsu threshold.
+   Keep it — but **assert `b > 0` at runtime**, because an image with >5 % exact-zero pixels would
+   silently give `b = 0` and re-open the `_exclude_zero` trap.
+
+**Named failure modes** (asked for explicitly):
+
+| Failure mode | Trigger | Measured / mitigation |
+|---|---|---|
+| **Complement too small to hold the mass** | `M` covers most of the frame ⇒ the boost blows up | Measured on a permissive-threshold sweep: mask 1 % → boost 1.010; 5 % → 1.077; 10 % → 1.182; 20 % → 1.478; **50 % → 2.678**. Real Otsu masks (13.5 %, 22.9 %) give boosts of **1.509 / 1.598** — comfortable. **Mitigation: pre-register a mask-fraction guard, e.g. `0.01 ≤ mean(M) ≤ 0.40`, and abort with a named error outside it.** |
+| **Boost pushes intensities out of range** | small, dim complement × large boost | Max post-boost complement value stayed ≤ 0.75 in every sweep arm [VERIFIED]. Note the summary is a per-patch *correlation*, invariant to a global affine rescale — the boost only bites through the mask/complement *contrast within a patch*, which is the intended mechanism. **Mitigation: assert `maximum(y′) ≤ 1.0` and record it; do not clamp silently.** |
+| **`b = 0`** | ≥5 % of ch2 is exactly zero | Not observed (2–3 px of 1.4 M). **Mitigation: `@assert b > 0`.** |
+| **Patches go `missing`** | patch survivors ≤ 15 | Not observed — 22 015–22 016 survivors per patch. **Mitigation: assert the `missing` count is α-invariant; a rise with α means the zero-free property broke.** |
+| **Mask recomputed per α** | recomputing Otsu on the modified ch1 | ch1 is never modified, so this cannot happen if `M` is computed once from `x`. **Mitigation: compute `M` outside the α loop and assert it byte-identical across arms** (the `local_map.jl:208` "tile-local Otsu makes tiles incomparable" precedent). |
+| **Simulator-only interpretation** | reading the *real* ladder as if it had ground truth | It does not (§J6). The ladder's α is a known *construction* parameter, not a measured ρ. |
+
+#### J5.4 One code path or two? (simulator pairs vs. real TIFF pairs)
+
+**One code path. The interface boundary is `Vector{Matrix{Float64}}`.**
+
+```
+                     ┌─ simulate_pair(rng, θ; imsize)  ──┐
+                     │        (spike/simulator)          │
+[x, y] :: Vector{Matrix{Float64}} ────────────────────────┼──► alpha_segregate(y, M, α; b)
+                     │                                   │        └─► build_mci([x, y′])
+                     └─ load_tiff.(paths)[1:2]  ─────────┘             └─► patch_summary(., G)
+                            (src/LoadImages)                              └─► encode_d01 ─► zt
+```
+
+Both producers already emit exactly this type: `simulate_pair` returns
+`Vector{Matrix{Float64}}` (`spike/simulator/forward.jl:103`) and `load_tiff.(path)` returns the same
+(`LoadImages.jl:433`). `build_mci` (`spike/contract.jl:60-70`) accepts it from either source. So
+`alpha_segregate(y, M, α; b)` should be typed on `AbstractMatrix{Float64}` and know nothing about
+where the matrix came from.
+
+**The three substrate-dependent knobs — put them in a small provenance struct, not in the algorithm:**
+
+| Knob | Simulated | Real |
+|---|---|---|
+| background floor `b` | `BG_FLOOR = 0.02` is available as a principled constant (`forward.jl:66`), but for uniformity **use the same `quantile(vec(y), 0.05)` rule** so the two arms are comparable | `quantile(vec(y), 0.05)` ≈ 0.006 |
+| frame size | drawn from `IMSIZE_SET` | fixed 1028 × 1376 |
+| α = 0 semantics | a *genuinely random* pair by construction (draw at ρ ≈ 0) | **NOT random** — measured `m̄ = 0.329 / 0.248`, i.e. the unmodified real pairs are *positively* correlated |
+
+That last row is the one real asymmetry and it must be handled in the reporting, not the code: on
+simulated substrate the ladder runs **random → exclusion**; on real substrate it runs **moderately
+colocalized → near-exclusion**. Both are informative, they are not the same experiment, and the
+report must not average them into one curve.
+
+---
+
+### J6. The honesty consequence (NEW — must be an explicit research finding)
+
+#### J6.1 The finding, stated plainly
+
+**The six `test/test_images/` TIFFs carry no colocalization ground-truth label.** There is no
+recorded ρ, no recorded Δρ, no segregation degree, and no provenance metadata asserting one. The
+folder names `positive/` and `negative/` refer to the original package's biological test conditions —
+they are **not** colocalization labels — and the measured summary confirms this directly: the
+"negative" pair has **positive** mean patch correlation `m̄ = +0.2481` (ρ_true ≈ +0.215). It is not an
+anti-correlated pair. Nothing in this phase may treat `negative/` as an exclusion example.
+
+**Therefore the real-data check is QUALITATIVE ONLY.** It can show that the three-way exclusion
+verdicts behave *sensibly* on real microscopy — that ingestion works, that the evidence responds
+monotonically to a constructed α-ladder, that the sign of the verdict flips where the summary's sign
+flips, that nothing degenerates. **It cannot show the verdicts are correct**, because correctness
+requires a label the data does not have.
+
+**Real segregation validation remains deferred to Phase 16's blind evaluation** — which is precisely
+what the sealed holdout exists for, and precisely why Phase 13 does not open it.
+
+#### J6.2 Two findings that make the honesty statement *stronger* than "no ground truth"
+
+Both are new, both are verified, and both must appear in the report.
+
+**(i) The shipped OOD detector flags both fixtures.** Mahalanobis density score **433.69** vs. the
+frozen ID threshold **179.14** — 2.4× over, `is_ood = true` for both read directions (§J4.6). The
+net's own misspecification flag says real microscopy at this size and statistics sits outside the
+simulator's training distribution. This is not a bug and not a reason to skip the check; it is the
+OOD channel doing its job, and it is arguably the most honest single number the real-data arm will
+produce. **Every real-image result in the report must be printed next to its OOD verdict.** The
+Phase-13 net is a different net and may score differently — that is itself worth measuring and
+reporting as a comparison.
+
+**(ii) The frozen simulator calibration already records that real anti-correlation was never
+observed.** `spike/simulator/ghat.jl:40` (and `spike/NOTES.md:238-247`, `02-03-SUMMARY.md:39`) states:
+
+> `negative tail : physically reachable in real fluorescence = false ⇒ negative μ-prior tail documented PRIOR-ONLY; consistency scoped to realized range`
+
+and NOTES elaborates: *"real anti-correlation never observed; even the 'negative'/non-colocalized
+control sits at +0.25 … documented **PRIOR-ONLY**."*
+
+This is a pre-existing, frozen, Phase-02 finding, and it lands directly on the hypothesis Phase 13
+promotes to first-class. **The exclusion hypothesis has no observed real-data instance anywhere in
+this project.** Every unmodified real image the project has ever measured sits at positive induced μ.
+
+**This is not a reason to weaken the phase — it is the reason the phase's α-series matters.** §J5
+shows that the D-16 construction produces `m̄ = −0.168` / `−0.252` (ρ_true ≈ −0.35 / −0.44) *from real
+microscopy pixels*. That is the first negative induced μ this project has ever obtained from real
+data. It does not refute the Phase-02 verdict (unmodified real fluorescence still sits at μ > 0); it
+sharpens it: **negative μ is constructible from real images but has not been observed to occur
+naturally in the images this project holds.** That sentence, exactly, belongs in the manuscript.
+
+#### J6.3 Where this belongs — three placements, with wording
+
+**(1) As a named limit** (the project's established honesty mechanism — `docs/amortized.md`
+§Named limits, currently #1–#7). Draft text:
+
+> **Named limit (Phase 13): the exclusion hypothesis has no labelled real-data validation.** The
+> three-way evidence network is gated on simulator ground truth. The real-image arm runs on six
+> committed microscopy TIFFs (`test/test_images/`) that carry **no colocalization ground-truth
+> label**; it is a qualitative behaviour check, not a correctness check, and it is explicitly not a
+> gate. Both fixtures are additionally flagged out-of-distribution by the amortized OOD detector
+> (density score 433.7 vs. ID threshold 179.1 on the shipped 8×8 bundle). The corpus holds exactly one
+> physically-segregated anchor; it is `split = sealed_holdout`, unfetched, and reserved for the
+> Phase-16 blind evaluation, so it was deliberately not consumed here. Labelled real segregation
+> validation is deferred to Phase 16.
+
+**(2) In the phase report header** — before any result, per the D-12 "declare the amendment up front"
+discipline. Draft text:
+
+> **Scope of evidence.** The Phase-13 gate is simulator ground truth (`ρ_true < −τ`, exact labels,
+> well-powered). Two further arms are reported and **neither is a gate**: the D-16 semi-synthetic
+> α-graded random→exclusion series, and a qualitative check on six committed real microscopy TIFFs.
+> The TIFFs carry no colocalization label — the folder names `positive`/`negative` are biological
+> conditions, and the "negative" pair in fact has mean patch correlation **+0.25**. The real-data arm
+> can show the three-way verdicts behave sensibly on real microscopy; it cannot show they are
+> correct. The corpus `sealed_holdout` rows were not opened.
+
+**(3) In every plan's acceptance criteria** — as an explicit negative criterion, so
+`/gsd:verify-work` cannot score the real-data arm as a gate. Draft criteria:
+
+- *"(D-15) The real-image check runs on `test/test_images/` only; a source-level assertion proves no
+  Phase-13 executable references `corpus/` and `open_sealed_holdout` is never called."*
+- *"(D-15) The real-image arm is labelled QUALITATIVE / REPORTED-NOT-GATED in the script banner, in
+  the artifact metadata, and in the report — the pass/fail gate is unaffected by its outcome."*
+- *"(D-15) No pass/fail threshold is defined for any real-image quantity."* ← the strongest form: if
+  no threshold exists, it cannot accidentally become a gate.
+- *"(D-15) Every real-image result is reported next to its OOD verdict and its λ."*
+- *"(D-15) The report states that `positive`/`negative` are biological conditions, not colocalization
+  labels, and quotes the measured `m̄ = +0.248` for the 'negative' pair as the evidence."*
+
+**House-shape precedent to copy.** Phase 11's `11-10-PLAN.md` already implements this exact posture
+for its own D-17 real-image check: an ALL-CAPS script banner stating it is CHARACTERIZATION not a
+gate and explicitly that it **cannot be a coverage test**; a written **target-substitution record**
+naming `corpus/` and why it was not used; read-only discipline enforced by a `git ls-files` digest
+check before and after; and a source-text assertion that the script does not contain `"corpus/"`
+outside its header (`11-10-PLAN.md:161-195`). **Phase 13 should mirror this file structure rather than
+invent one** — same reasoning, one phase later, and reusing it makes the two phases' honesty claims
+verifiably consistent.
 
 ---
 
@@ -1276,7 +1898,10 @@ and its own specification are Tier-1 (a seed chosen after seeing probe output is
 | 1 | §F5 verification pass bars (`cor ≥ 0.99`, `max|Δ| ≤ 0.25`) **and** the negative-control requirement | else the verification is unfalsifiable |
 | 1 | D-12 gate numbers: per-class AUC floor, confusion-matrix requirements, `M` (label count) | the reported gate |
 | 1 | D-13 numbers: `P13_ECE_GREEN = 0.05`, `P13_ECE_YELLOW = 0.10`, `n_bins`, min-n per head, **ECE-not-MCE gate rule** (§I1) | |
-| 1 | D-16 α ladder, background-floor rule (`b = quantile(y, 0.05)`), mask rule (`_calculate_mask(mci)[1]`), the three invariants of §J3 | the "pre-registered segmentation choice" D-16 requires |
+| 1 | D-16 α ladder, background-floor rule (`b = quantile(y, 0.05)`), mask rule (`_calculate_mask(mci)[1]`), the invariants of §J3 **as corrected in §J5.3** (`count(iszero, y′) == count(iszero, y)`, **not** `all(y′ .> 0)`), and the **mask-fraction guard** `0.01 ≤ mean(M) ≤ 0.40` | the "pre-registered segmentation choice" D-16 requires |
+| 1 | **`P13_REAL_LAMBDA_READS`** — the λ rungs the real-image arm is read at, and which rung is the headline (§J4.5 recommends the full ladder with `LAMBDA_MAX = 3.0` as headline) | a λ chosen after seeing the real-image verdicts is a snooped λ |
+| 1 | **`P13_REAL_ALPHA_GRID`** and the real-image channel pairing (sample = `positive`, control = `negative`, channels `[1,2]`; optional redundancy arm `[1,3]`) | mirrors `11-10-PLAN.md`'s pre-registered arms |
+| 1 | **An explicit `P13_REAL_IS_GATED = false` sentinel** asserted by the suite | makes "qualitative only" machine-checked rather than merely written (§J6.3) |
 | 1 | `P13_ITERATION_ALLOWANCE = 1` **plus the pre-declared trigger** for spending it (recommend: "exclusion-class per-class AUC below floor *specifically at high \|ρ\|*" ⇒ switch to D-07-ii) | D-04's novelty; naming the trigger in advance is what stops it becoming "amended twice" |
 | 2 — legitimately probe-derived | **`P13_TAU` itself** | this is the one number D-06 says must be *measured*. It is frozen into the consts file **after the probe and before any labelled data is generated** (D-06's exact wording), in a clearly-marked, separately-committed block |
 | 2 | Training recipe values **copied, not chosen**: `epochs=300, batchsize=128, lr=2.5e-4, wd=1e-4, val_frac=0.15, stopping_epochs=40, n=48_000` | read from `train_ratio.jl:155-163`; copying them verbatim is what D-10's attribution argument rests on |
@@ -1296,6 +1921,10 @@ with the probe log attached → *only then* generate labelled data. Any other or
 | ROC / AUC | A new package or a fresh implementation | `roc_auc` in `src/amortized/ood.jl` (hand-rolled, already gate-lineage) | `spike/test/runtests.jl` gate (h) **asserts `ROCAnalysis`/`MLJ` are absent**; adding one breaks the suite |
 | Reliability diagram / ECE / MCE | A new binning routine | `_bin_calibration` (`spike/validation/sbc.jl:82`) | D-13 names it; it carries the gate lineage; a second implementation would need its own validation |
 | Object mask from an image | A new thresholding rule | `_calculate_mask` / `Images.otsu_threshold` (`src/LoadImages.jl:235-241, 445`) | makes D-16's segmentation rule a *frozen, already-shipped* choice, satisfying D-04 at zero cost |
+| **Loading a real TIFF into a summary** | A new loader, a channel-sum, a max-projection, or a hand-rolled RGB→luminance | `MultiChannelImage(name, paths, channels)` → `load_tiff` (`src/LoadImages.jl:432-455, 214-217`), reached read-only through `spike/contract.jl`'s `include()` coupling | `spike/simulator/calibration.jl:157-164` already reads these exact files this way, and `ghat.jl:39`'s frozen anchor numbers are the output. Any other reduction silently moves off the anchor (§J4.1) |
+| **Making 1028 × 1376 fit an 8 × 8 grid** | A crop, a resize, a pad, or a `num_patches` change | Nothing — `patch()` truncates (`colocalization.jl:39-43`) | Verified: 4 rows of 1028 dropped, 22 016 px/patch, 0 `missing`. A crop would be a NEW preprocessing choice needing D-04 pre-registration, and would diverge from the frozen `_real_anchor()` path (§J4.4) |
+| **Background removal before the summary** | `apply_mask!`, a threshold subtraction, a rolling-ball | Nothing — the amortized path is mask-free | `_apply_mask!` zeroes sub-threshold pixels (`LoadImages.jl:261`) and `_exclude_zero` then *deletes* them, changing the statistic the net trained on. Masking lives only in the legacy `plot.jl`/`utils.jl` path (§J4.3) |
+| **A real-image "reported not gated" runner** | A new script shape | `11-10-PLAN.md:161-195`'s structure: ALL-CAPS not-a-gate banner, target-substitution record, `git ls-files` digest before/after, source-text `"corpus/"` assertion | one phase older, same posture, and reuse makes the two phases' honesty claims verifiably consistent (§J6.3) |
 | Pair encoding | A new concat scheme | `pair_encode` (`bf.jl:91-100`) | grid-general, shared by trainer and reader, and its `iseven` assert catches the λ-placement bug (§D2) |
 | Reproducible per-index RNG | `Random.seed!(i)` in a loop | `Philox4x(UInt64,(seed, counter))` via `spike/data/seeding.jl` | thread-count-independent byte-identical generation (STATE 03-02); `seed!`-in-loop is not |
 | Truncated-Cauchy CDF / ρ-prior density | A numeric quadrature | closed forms in §E2 / §F5 | `QuadGK` is **not** in the spike env; the closed forms are exact and atom-aware |
@@ -1323,9 +1952,37 @@ disagreeing by exactly `log(q_E/q_C)` on random-class inputs.
 **What goes wrong:** `_exclude_zero` deletes those pixels, so the ladder is flat and patches may go
 `missing`; the phase concludes "the net cannot see spatial segregation" when it never saw any.
 **Why it happens:** "redistribute signal out of the mask" reads as "set to zero".
-**How to avoid:** the strictly-positive background floor `b` in §J3; assert `all(y' .> 0)`.
-**Warning signs:** rising `missing`-patch counts with α; mask rows of the summary changing with α;
-the OOD flag firing on the α-ladder.
+**How to avoid:** the strictly-positive background floor `b` in §J3, with `@assert b > 0`.
+**Warning signs:** rising `missing`-patch counts with α; mask rows of the summary changing with α.
+
+### Pitfall 2b: Asserting `all(y′ .> 0)` on real images (REVISION-CRITICAL)
+**What goes wrong:** the Wave-0 suite goes red on the real fixtures, at **α = 0**, where `y′` is
+bitwise `y`. Time is then spent debugging a correct algorithm.
+**Why it happens:** the original §J3 stated `all(alpha_segregate(...) .> 0)` as an invariant. It holds
+for simulator output (`BG_FLOOR = 0.02` guarantees positivity) but **not** for real TIFFs: `positive_c2`
+already contains **2** exact-zero pixels and `negative_c2` **3**, of 1 414 528 [VERIFIED].
+**How to avoid:** assert **`count(iszero, y′) == count(iszero, y)`** — "α introduces no NEW zeros" —
+and report the source zero count in the artifact.
+**Warning signs:** `minimum(y′) == 0.0` reported as a failure at α = 0.
+
+### Pitfall 2c: Cropping or resizing the real images to fit the 8 × 8 grid
+**What goes wrong:** a resize resamples (a second interpolation pass, the exact artifact Phase 11's
+null-warp arm exists to bound); a crop is an unregistered preprocessing choice; both diverge from the
+frozen `_real_anchor()` path whose numbers `ghat.jl:39` records.
+**Why it happens:** 1028 is not divisible by 8, so "the grid won't fit" looks like a real problem.
+**How to avoid:** it isn't one. `patch()` truncates (`colocalization.jl:39-43`): 4 rows of 1028
+dropped, 1376 divides exactly, 22 016 px/patch, **0** `missing` patches measured. Feed the full frame.
+**Warning signs:** any `imresize`, `@view img[1:1024, :]`, or `num_patches` change in a Phase-13 diff.
+
+### Pitfall 2d: Presenting a real-image result as evidence of correctness
+**What goes wrong:** the report says "validated on real microscopy"; a reviewer asks for the labels;
+there are none. Worse, `negative/` is read as an exclusion example when its measured `m̄` is **+0.248**.
+**Why it happens:** the folder names `positive`/`negative` *look* like colocalization labels.
+**How to avoid:** §J6's three placements — named limit, report header, and an explicit negative
+acceptance criterion (*"no pass/fail threshold is defined for any real-image quantity"*). Print the
+OOD verdict beside every real-image number.
+**Warning signs:** a real-image quantity acquiring a threshold; the word "validated" near
+`test_images`; a confusion matrix computed on real data.
 
 ### Pitfall 3: Building the three-way label on Δρ
 **What goes wrong:** a strongly colocalized sample under a *more* colocalized control is published as
@@ -1390,6 +2047,37 @@ pass and must be labelled as such (`07-CALIBRATION-FINDINGS.md` F3 precedent).
 world than the net will train in; the frozen τ is optimistic and the random band is too narrow.
 **How to avoid:** §E4 — gate the probe on the Phase-11 *simulator merge*, and record which simulator
 commit the probe ran against in the consts file.
+
+### Pitfall 11: Reaching `corpus/` from Phase-13 executable code
+**What goes wrong:** the anti-snooping seal is spent, and Phase 16's blind evaluation is burned on
+the very hypothesis it exists to evaluate. Irreversible.
+**Why it happens:** the corpus is the obvious home for "real segregation data", `open_sealed_holdout`
+is a public function, and a prose citation of `corpus/manifest.csv` (which *is* allowed) sits one
+copy-paste away from an executable read.
+**How to avoid:** the amended D-15 forbids it outright. Implement the check machine-side, per
+`11-10-PLAN.md:191-195`: `read(@__FILE__, String)` must not contain `"corpus/"` outside the
+explanatory header, and a suite-level grep asserts `open_sealed_holdout` appears nowhere in
+`spike/p13/`.
+**Warning signs:** any `include`/`joinpath` mentioning `corpus`; a `checkpoint:human-verify` proposing
+a fetch or a seal break (the original research floated one; the amendment withdrew it).
+
+### Pitfall 12: Reading a real image at an invented λ
+**What goes wrong:** a single λ is chosen for the real check, the exclusion verdict depends on it,
+and the number is unjustifiable — a real image's registration error is unmeasured.
+**How to avoid:** §J4.5 option (a) — report the whole λ sweep, headline at the most conservative
+rung (`LAMBDA_MAX = 3.0`), pre-register the choice in the consts file before any real read.
+**Warning signs:** a single real-image λ appearing in the report without a curve behind it; a λ
+chosen after the verdicts were seen.
+
+### Pitfall 13: Suppressing or "fixing" the OOD flag on the real images
+**What goes wrong:** the real fixtures score 433.7 against a 179.1 threshold. The temptation is to
+widen the threshold, re-fit the nulls, or omit the flag so the arm "looks clean". That converts the
+most honest number the arm produces into a hidden one.
+**How to avoid:** report it. `is_ood = true` on real microscopy is a *finding* about
+simulator↔reality distance and belongs in the named limit (§J6.2). Never re-fit `ood_nulls` to make
+real data pass.
+**Warning signs:** any Phase-13 change to `ood_nulls`, `thr`, or the OOD read path; a real-image
+table without an OOD column.
 
 ---
 
@@ -1505,6 +2193,48 @@ analytic_log_bf_CR(Z; τ, s, σ) = log_evidence(Z, τ, Inf; s, σ) - log_evidenc
 # PASS bars are pre-registered; the negative control (uncorrected logit) must FAIL them.
 ```
 
+### 5. Real-image ingestion + the α-ladder (D-15 amended, D-16) — RUNS TODAY
+
+Every line below was executed this session against the committed fixtures.
+
+```julia
+# spike/p13/real_images.jl --- REPORTED, NOT GATED. QUALITATIVE ONLY.
+# The six test/test_images TIFFs carry NO colocalization ground-truth label (§J6).
+# This file must not contain the string "corpus/" outside this header, and must never call
+# open_sealed_holdout — asserted at run time, per 11-10-PLAN.md:191-195.
+
+const P13_REPO_ROOT = normpath(joinpath(@__DIR__, "..", ".."))   # spike/p13/ -> repo root
+real_tif(cond, i) = joinpath(P13_REPO_ROOT, "test", "test_images", cond, "$(cond)_c$(i).tif")
+
+# (name, paths, channels) — src/LoadImages.jl:432. Always pass channel names (else a @warn).
+load_real(cond) = MultiChannelImage(cond, [real_tif(cond, 1), real_tif(cond, 2)], ["ch1", "ch2"])
+#   -> data :: Vector{Matrix{Float64}}, each 1028×1376, values in [0,1] (RGB{N0f16} -> Rec601 Gray)
+#   -> NO masking, NO background subtraction anywhere on the amortized path (§J4.3)
+
+pos = load_real("positive"); neg = load_real("negative")
+
+# α-series: ONE code path, shared with simulator pairs (§J5.4). No RNG is consumed.
+x = pos.data[1]; y = pos.data[2]
+M = x .> pos.otsu_threshold[1]              # == _calculate_mask(pos)[1]; computed ONCE, from raw x
+@assert 0.01 <= mean(M) <= 0.40             # pre-registered mask-fraction guard (§J5.3)
+b = quantile(vec(y), 0.05); @assert b > 0   # 0.006241 measured; b == 0 re-opens the _exclude_zero trap
+z0 = count(iszero, y)                       # 2 px on positive_c2 — the source already has zeros
+
+for α in P13_REAL_ALPHA_GRID                # pre-registered ladder
+    y2 = alpha_segregate(y, M, α; b = b)
+    α == 0 && @assert y2 == y                          # BITWISE (verified)
+    @assert count(iszero, y2) == z0                    # no NEW zeros — NOT all(y2 .> 0) (§J5.3 / Pitfall 2b)
+    @assert isapprox(sum(y2), sum(y); rtol = 1e-10)    # intensity preserved (verified)
+    S = patch_summary(build_mci([x, y2]), 8)           # patch() TRUNCATES: 4 of 1028 rows, 0 missing
+    @assert count(ismissing, S) == 0                   # α-invariant (verified: 0/64 at every α)
+    # report m̄ = mean(skipmissing(S)) and ghat(m̄); measured 0.3292 -> −0.1679 as α: 0 -> 1
+end
+```
+*Sources: `src/LoadImages.jl:214-217,235-241,432-455`; `src/colocalization.jl:37-60,154-203`;
+`src/amortized/summary.jl:50-55,72-76`; `src/amortized/api.jl:49-67`; `spike/contract.jl:60-70`;
+`spike/simulator/calibration.jl:59,156-164`; `spike/simulator/ghat.jl:39-49`. All [VERIFIED],
+and the α-ladder numbers were measured, not predicted (§J5.3).*
+
 ---
 
 ## State of the Art
@@ -1532,10 +2262,15 @@ and is explicitly deferred by CONTEXT).
 | A3 | `m̄` (mean present continuous rows) is the right τ statistic | §E3 | A more powerful readout would give a smaller τ; the reported τ is then a *summary-scalar* resolution, not the summary's full resolution. **Mitigation: report the NPE-based τ as a secondary column, labelled as model-dependent.** |
 | A4 | D-07-i (class-frequency stratification) suffices for coverage | §F3 | If the exclusion head is under-resolved at high \|ρ\|, the phase spends its one iteration. **Mitigation: pre-declare that exact trigger.** |
 | A5 | R1 (`<: NeuralEstimator` subtype) works with NeuralEstimators 0.2.1's internal hooks | §B1 | Falls back to R2 (hand-rolled loop), weakening D-10's attribution argument. **Mitigation: a two-epoch Wave-0 smoke test on a 200-sample toy, before any real training.** |
-| A6 | The negative physical anchor (`S-BIAD1047`) is much smaller than the 6.3 GB positive anchor | §J2 | The physical check stays deferred (which is already the recommendation). Low impact. |
+| ~~A6~~ | ~~Relative size of the `S-BIAD1047` negative anchor~~ | ~~§J2~~ | **RETIRED by the D-15 amendment** — nothing in Phase 13 fetches it, so the question is moot. |
 | A7 | Phase 11 will deliver a λ-conditioned net whose λ input is actually informative | §D3 | Phase 13's D-03 conditioning is vacuous too; the log-BF λ-response is flat. **Mitigation: measure and report the response honestly; a flat response is a finding.** |
 | A8 | `P13_DEV_SEED = 0x0B13DE71` / `P13_SALT = 0x2545F4914F6CDD1D` remain unused when Phase 13 executes | §K2 | Seed collision → snooping exposure. **Mitigation: the executable `_p13_forbidden()` assert re-checks at runtime, including recomputed `PROD_SEED_V2`.** |
-| A9 | Two λ values (one per stack) are not wanted; a single λ describes the acquisition | §D2 | Input width off by one and a modelling mismatch with Phase 11. **Mitigation: state it as a pre-registered modelling choice.** |
+| ~~A9~~ | ~~A single λ (not one per stack) describes the acquisition~~ | ~~§D2~~ | **RESOLVED, no longer an assumption.** Phase 11's plans lock `augment_input → 129 rows`, `n_cond = 1`, `ε` not a second input (§J4.5). Still derive the width, never literal-`321`. |
+| **A10** | Reading the real fixtures at the **widest** λ rung (`LAMBDA_MAX = 3.0`) as the headline is the right conservative choice | §J4.5 | If real registration is in fact excellent, the headline understates the evidence. **Mitigation: report the whole λ sweep so a reader can re-read at any rung; the choice is pre-registered, not post-hoc.** |
+| **A11** | Widefield chromatic + stage error on *these particular* microscopes is ≥ 1 px, so `λ = 0.25` is not credible for them | §J4.5 | A domain judgement, not a measurement of this instrument. **Mitigation: label it `[ASSUMED]` in the report; it only motivates the conservative default, it does not gate anything.** |
+| **A12** | The Phase-13 (λ-conditioned, Phase-11-basis) net will also flag these fixtures OOD, as the shipped net does | §J4.6, §J6.2 | If it does not, the named limit's OOD sentence needs rewording. **Mitigation: measure the Phase-13 net's OOD verdict on the same inputs and report it beside the shipped net's 433.7 / 179.1 — a divergence is itself a result.** |
+| **A13** | `b = quantile(vec(y), 0.05)` transfers to simulated substrate as well as it does to real | §J5.4 | The two α-arms would not be comparable if the floor rule differed in effect. **Mitigation: `@assert b > 0` on both arms and record the realized `b` per image in the artifact.** |
+| **A14** | The 1028×1376 vs. `IMSIZE_SET`'s (1376, 1028) axis transposition is statistically immaterial | §J4.4 | If the simulator is anisotropic in some way not noticed, the real summaries sit on a permuted basis. **Mitigation: cheap to falsify — run the α-ladder on the transposed fixture and check `m̄` agrees; one line, do it in Wave 0.** |
 
 ---
 
@@ -1557,18 +2292,16 @@ and is explicitly deferred by CONTEXT).
    - Recommendation: measure `τ(λ)` across the ladder, **freeze the scalar at a pre-registered
      reference λ** (recommend the widest rung — most conservative), report the curve.
 
-3. **Does Phase 13 need the CBS `cbs-RG-000` bytes for the α-series?**
-   - What we know: CBS rows are `split = eval` (not sealed), but their `sha256` column is empty in the
-     committed manifest and `corpus/data/` is empty.
-   - What's unclear: whether the CBS fetch path is runnable without the anchor bootstrap.
-   - Recommendation: plan the α-series on **simulated** substrate as the deliverable; treat the CBS
-     arm as an optional extension gated on a cheap fetch check.
+3. ~~**Does Phase 13 need the CBS `cbs-RG-000` bytes for the α-series?**~~ — **RESOLVED: no.**
+   The amended D-15 supplies a real substrate (`test/test_images/`) that needs no fetch, no sha256
+   gate and no seal. CBS is dropped from scope (§J3). Plan the α-series on **simulated pairs +
+   the committed TIFFs**.
 
-4. **Is `ε` (chromatic) also a conditioning input in Phase 11's net?**
-   - What we know: 11-RESEARCH D13 says `ε` is deliberately *not* λ-scaled and flags a possible second
-     conditioning input in its Open Questions.
-   - Recommendation: derive Phase-13's input width as `ratio_input_dim(G) + length(encode_lambda(...))`;
-     **never write 321 as a literal.**
+4. ~~**Is `ε` (chromatic) also a conditioning input in Phase 11's net?**~~ — **RESOLVED: no.**
+   Phase 11's own plans lock `augment_input(Z128, λ) → 129 rows`, `d_in = 129`, i.e. `n_cond = 1`
+   (`11-04-PLAN.md:135,190,197,233`). Phase-13 evidence-net input width is
+   `ratio_input_dim(G) + 1 = 321` at G = 8 — but the rule stands: **derive it, never write 321 as a
+   literal** (§J4.5).
 
 5. **Should the confusion matrix be reported at `argmax` of the two corrected log-BFs, or at
    `logBF > 0` per head?**
@@ -1580,6 +2313,36 @@ and is explicitly deferred by CONTEXT).
    - Recommendation: gate on **threshold-free** statistics (per-class AUC, one-vs-random) and report
      the argmax confusion matrix as a **descriptive** companion, explicitly labelled as not a decision
      rule. This keeps the Phase-13/Phase-14 boundary clean.
+
+6. **NEW — At which λ is the real-image check read, and which rung is the headline?** *(the one
+   genuinely open decision this revision surfaces)*
+   - What we know: λ is Phase 11's registration-uncertainty *half-width*, `LAMBDA_MIN = 0.25`,
+     `LAMBDA_MAX = 3.0`, `encode_lambda` maps to `[0,1]`, `n_cond = 1` (§J4.5). Phase 11's own real-image
+     plan reads at **two** levels (3.0 primary, 1.0 secondary), not one.
+   - What's unclear: a real image's true registration error is **unmeasured and unmeasurable from the
+     file**. There is no correct λ.
+   - Recommendation: **report the full λ sweep; headline the widest, most conservative rung
+     (`LAMBDA_MAX = 3.0`)**, pre-registered in the consts file before any real read. A conservative λ
+     weakens the evidence, so a verdict that survives it is the credible one. Do **not** estimate λ
+     from the images — that is a new estimator with its own validation burden, and Phase 13 is not
+     about registration.
+
+7. **NEW — Should the Phase-13 net's OOD verdict on the real fixtures be compared to the shipped
+   net's?**
+   - What we know: the shipped 8×8 bundle flags both fixtures, density **433.69** vs. ID threshold
+     **179.14** (§J4.6). The Phase-13 net has a different input surface and a different training pool.
+   - What's unclear: whether the λ-conditioned Phase-11 basis moves real microscopy closer to or
+     further from the training distribution.
+   - Recommendation: **measure and report both.** It costs one extra read, and either outcome is
+     publishable: agreement corroborates the named limit, divergence is a finding about what the
+     registration-aware basis buys on real data.
+
+8. **NEW — Does the `positive`/`negative` naming need an explicit correction in the manuscript?**
+   - What we know: the folder names are biological conditions; the "negative" pair measures
+     `m̄ = +0.2481` (ρ_true ≈ +0.215) — it is **not** an anti-correlated pair (§J6.1).
+   - Recommendation: yes. State it once, with the number, in the report and in the manuscript's data
+     description. A reader who assumes `negative` means "not colocalized" will misread every real-image
+     figure in the phase.
 
 ---
 
@@ -1596,14 +2359,23 @@ and is explicitly deferred by CONTEXT).
 | KernelDensity / QuadGK | (only the retired KDE baseline) | ✗ in `spike/` | — | **Not needed** — D-12 declines to gate on it |
 | **Phase-11 research NPE + `zt` + `encode_lambda`** | **D-02 / D-03 — every labelled-data task** | ✗ | — | **NONE. This is the hard block.** Do not substitute the shipped grid-8 basis. |
 | Phase-11 simulator surgery (`ε`, composed warp, widened `SHIFT_PRIOR`) | τ probe (§E4) | ✗ | — | Probe may run against the old simulator **only** as a throwaway sanity run whose τ is NOT frozen |
-| `corpus/data/` bytes (physical anchors) | D-15's named qualitative check | ✗ (`sha256 = "PENDING-FETCH"`, dir empty, `sealed_holdout`) | — | Defer to Phase 16 (recommended) or an authorized fetch + seal break |
+| **`test/test_images/*.tif`** (6 files, 8 488 000 B each, 1028×1376) | **D-15 amended — the real-data qualitative check and the D-16 real substrate** | **✓ committed, on disk, verified, loaded end-to-end this session** | RGB{N0f16} → Float64 [0,1] | — (none needed) |
+| **`artifacts/grid_8/*.jld2`** (shipped 8×8 bundle: `npe_8`, `ratio_8`, `ood_nulls_8`, `gate_report_8`) | **Phase-11-independent pre-flight of the real-image arm (§J4.6)** | **✓ on disk** | shipped v2.0 | — |
+| `corpus/data/` bytes (physical anchors) | ~~D-15's named qualitative check~~ | ✗ (`sha256 = "PENDING-FETCH"`, `bytes = 0`, dir empty, `sealed_holdout`) | — | **Not a dependency any more.** D-15 amended: reserved for Phase 16, not consumed here, no fetch, no seal break (§J2) |
+| `corpus/` CBS Red-Green bytes | ~~optional α-series substrate~~ | ✗ (`sha256` unfilled) | — | **Dropped.** The committed TIFFs supply a real substrate needing no fetch (§J3) |
 
 **Missing dependencies with no fallback (block execution):**
-- Phase-11 research NPE bundle (net + `zt` + `θzt` + λ encoding + imsize provenance).
+- Phase-11 research NPE bundle (net + `zt` + `θzt` + λ encoding + imsize provenance) — blocks the
+  *final three-way read* only. **It does NOT block real-image ingestion, path resolution, read-only
+  discipline, the α-series construction, or any of its invariant tests** (§J4.6) — those are Wave 0.
 
 **Missing dependencies with fallback:**
 - Phase-11 simulator surgery → τ probe deferred one wave, not blocked outright.
-- Physical anchors → declared deferral to Phase 16; gate is unaffected.
+- Phase-11 net for the real-image *read* → the shipped `artifacts/grid_8/` bundle gives a
+  binary-net pre-flight today; it is a smoke test, **not** the reported result.
+
+**Deliberately not consumed (decided, not missing):**
+- `corpus/` `sealed_holdout` physical anchors → Phase 16. The gate is unaffected.
 
 ---
 
@@ -1637,14 +2409,21 @@ and the decisions that carry testable content.
 | D-02/D-03 | precondition script errors with the Phase-11 pointer when the net is absent; asserts 8-row θ, λ range, imsize provenance | unit | same, `@testset "P13 preconditions"` | ❌ Wave 0 |
 | D-03 | `Z_pair` width `== ratio_input_dim(G) + n_cond`; a naive 129-row `pair_encode` throws | unit | same | ❌ Wave 0 |
 | D-13 | `_bin_calibration` on synthetic perfectly-calibrated input is green; on degenerate input is red; **empty-bin MCE trap** is asserted (documenting why ECE is the gate) | unit | same, `@testset "P13 calibration"` | ⚠ partial — `spike/test/test_sbc.jl:77-86` already covers the base function |
-| **D-16** | `alpha_segregate(x,y,M,0.0;b) == y` **bitwise**; `all(y' .> 0)`; `sum(y') ≈ sum(y)`; mask α-invariant; `m̄(α)` monotone non-increasing on a fixture | unit | same, `@testset "P13 alpha series"` | ❌ Wave 0 |
+| **D-16** | `alpha_segregate(x,y,M,0.0;b) == y` **bitwise**; **`count(iszero,y′) == count(iszero,y)`** (NOT `all(y′ .> 0)` — §J5.3); `sum(y′) ≈ sum(y)` at `rtol=1e-10`; mask α-invariant; mask-fraction guard `0.01 ≤ mean(M) ≤ 0.40`; `@assert b > 0`; `m̄(α)` monotone non-increasing | unit | same, `@testset "P13 alpha series"` | ❌ Wave 0 |
+| **D-15 (real ingestion)** | the six TIFFs load via `MultiChannelImage(name,paths,channels)`; `size == (1028,1376)`; `eltype == Matrix{Float64}`; values in `[0,1]`; `patch(m,8)` returns `(8,8,128,172)`; **`count(ismissing, patch_summary(...)) == 0`**; the frozen anchors reproduce: `m̄_pos ≈ 0.3292`, `m̄_neg ≈ 0.2481` (matching `ghat.jl:39`) | unit (fast — one summary per pair) | same, `@testset "P13 real image ingestion"` | ❌ Wave 0 |
+| **D-15 (real α-ladder)** | ladder on both real pairs is strictly monotone decreasing in `m̄`; crosses zero strictly inside the grid; `missing` count α-invariant at 0; `maximum(y′) ≤ 1.0` | unit (fixture-scale α grid) | same, `@testset "P13 real alpha ladder"` | ❌ Wave 0 |
+| **D-15 (anti-snooping, T-13-05)** | no file under `spike/p13/` contains the string `corpus/` outside an explanatory header; `open_sealed_holdout` appears nowhere in `spike/p13/`; the real-image runner self-checks via `read(@__FILE__, String)` | unit (source grep) | same, `@testset "P13 corpus seal untouched"` | ❌ Wave 0 |
+| **D-15 (read-only discipline)** | `git ls-files -s test/test_images/` digest identical before and after the reported run | integration | real-image runner, self-asserted | ❌ Wave 0 |
+| **D-15 (not-a-gate)** | `P13_REAL_IS_GATED == false`; no real-image quantity has a pass/fail threshold anywhere in `spike/p13/consts.jl` | unit | same, `@testset "P13 real arm is not a gate"` | ❌ Wave 0 |
+| A14 (cheap falsifier) | the α-ladder `m̄` on the **transposed** fixture agrees with the untransposed one | unit | same | ❌ Wave 0 |
 | D-01/D-04 | `P13_DEV_SEED ∉ _p13_forbidden()` including **recomputed** `PROD_SEED` / `PROD_SEED_V2`; `P13_SALT` distinct from all repo salts; consts file re-include is a no-op | unit | same, `@testset "P13 seeds"` | ❌ Wave 0 |
 | D-01 | `src/` provably untouched — `git diff --quiet HEAD -- src/` at the start of the reported run (precedent: `spike/demo.jl` step-0 assertion) | integration | same | ❌ Wave 0 |
 | Decoupling | `spike/Project.toml`/`Manifest.toml` unchanged; `NeuralEstimators == v"0.2.1"` by UUID; `ROCAnalysis`/`MLJ`/`Turing`/`CUDA` absent | integration | same, existing gate clauses (d)–(h) **plus a Phase-13 clause (i)** | ⚠ extend existing |
 | **D-12 (reported gate)** | per-class AUC over {E,R,C} + full confusion matrix at pre-registered thresholds, on the frozen consts | reported script (NOT a unit test) | `julia --project=spike -t auto spike/p13/run_three_way_gate.jl` | ❌ Wave N |
 | D-12 (reported) | binary-NRE continuity at fixed λ — **reported, not gated** | reported script | same runner, separate section | ❌ Wave N |
 | D-13 (reported gate) | per-head reliability ECE ≤ `P13_ECE_GREEN`, with per-head AUC reported beside it (vacuous-pass guard) | reported script | same runner | ❌ Wave N |
-| D-15/D-16 (reported) | α-ladder log-BF curves + crossing point `α*` | reported script | `julia --project=spike spike/p13/run_alpha_series.jl` | ❌ Wave N |
+| D-15/D-16 (reported) | α-ladder log-BF curves + crossing point `α*`, on **both** substrates (simulated pairs and the six real TIFFs), reported separately — never averaged (§J5.4) | reported script | `julia --project=spike spike/p13/run_alpha_series.jl` | ❌ Wave N |
+| **D-15 (reported, QUALITATIVE)** | three-way log-BFs on the real pairs across the λ sweep, each printed **beside its OOD verdict**; the ALL-CAPS not-a-gate banner + target-substitution record present in the script header | reported script (**not** a gate) | `julia --project=spike spike/p13/run_p13_realimage.jl` | ❌ Wave N |
 
 ### Sampling Rate
 
@@ -1664,7 +2443,12 @@ and the decisions that carry testable content.
 - [ ] `spike/p13/net.jl` — `ThreeWayEvidenceNet`, `build_three_way_net`, `masked_two_head_bce`
 - [ ] `spike/p13/labels.jl` — `three_way_label`, `head_targets`, `measure_head_log_odds`
 - [ ] `spike/p13/tau_probe.jl` — the D-06 probe
-- [ ] `spike/p13/alpha_series.jl` — `alpha_segregate` + invariants
+- [ ] `spike/p13/alpha_series.jl` — `alpha_segregate` + the **corrected** invariants (§J5.3)
+- [ ] `spike/p13/real_images.jl` — `P13_REPO_ROOT` / `real_tif` / `load_real` (§J4.2, Code Example 5);
+      **Phase-11-independent — schedule in Wave 0, not behind the D-02 block** (§J4.6)
+- [ ] `spike/p13/run_p13_realimage.jl` — the reported-not-gated runner, structured on
+      `11-10-PLAN.md:161-195` (banner, target-substitution record, `git ls-files` digest,
+      source-text `"corpus/"` self-assertion)
 - [ ] `spike/p13/result.jl` — `ThreeHypothesisColocResult <: AbstractColocResult` (§G3)
 - [ ] `spike/test/test_p13.jl` — every unit testset above, `include`d from `spike/test/runtests.jl`
 - [ ] Extend `spike/test/runtests.jl` resolve-risk gate with a Phase-13 clause (i): no new deps,
@@ -1687,7 +2471,9 @@ the usual sense, so most ASVS categories are genuinely N/A. The two that are **n
 |---|---|---|
 | V2 Authentication | no | No auth surface; local scripts only |
 | V3 Session management | no | No sessions |
-| V4 Access control | **partly** | The `sealed_holdout` seal (`corpus/manifest.jl:156-157`, `open_sealed_holdout(df; reason)` with a non-empty audit reason) is a scientific-integrity access control. Phase 13 must **not** bypass it (§J2). |
+| V4 Access control | **yes (elevated by the D-15 amendment)** | The `sealed_holdout` seal (`corpus/manifest.jl:149-157`, `open_sealed_holdout(df; reason)` with a non-empty audit reason) is a scientific-integrity access control reserved for Phase 16. The amended D-15 makes non-bypass a **hard requirement**, not a preference, and withdraws the previously-floated authorized-seal-break escape hatch. Enforce **machine-side**, not by intent: (i) a source grep asserting `open_sealed_holdout` and the literal `corpus/` appear nowhere in `spike/p13/` executable code, and (ii) the runner's own `read(@__FILE__, String)` self-check (`11-10-PLAN.md:191-195`). Threat **T-13-05**, accept-deferred (§J2). |
+| V5 Input validation (real files) | **yes** | The six TIFFs are trusted repo fixtures, but the *paths* are constructed. Resolve via `normpath(joinpath(@__DIR__, "..", ".."))` — never interpolate, never `cd()` — and `@assert isfile(...)` with a message naming the expected path (§J4.2). Assert `size == (1028,1376)` and `eltype == Float64` at the boundary rather than trusting them. |
+| **Read-only integrity of the fixtures** | **yes** | Phase 13 must not write to `test/test_images/`. Enforce with a `git ls-files -s test/test_images/` digest captured before and re-checked after the reported run (Phase-11 precedent), so an accidental in-place write is caught rather than committed. |
 | V5 Input validation | **yes** | Dimension/shape asserts at every boundary (`pair_encode`'s `iseven` guard, `ratio_input_dim` derivation, the precondition script's field asserts). Follow `api.jl:111-120`'s explicit-`ArgumentError` style. |
 | V6 Cryptography | **yes (integrity only)** | SHA-256 for any fetched corpus bytes — `corpus/` already enforces "real 64-hex digest OR the `PENDING-FETCH` sentinel, never in between" (`is_real_sha256` / `is_pending_hash`, T-08-16). **Never** use Base `hash` for a download check. |
 
@@ -1736,13 +2522,48 @@ the usual sense, so most ASVS categories are genuinely N/A. The two that are **n
   `11-RESEARCH.md` §C9, §D13, §G22-G23 — the upstream contract, probe pattern, and seed inventory
 - `.planning/ROADMAP.md:255-264`; `.planning/REQUIREMENTS.md` (no Phase-13 IDs); `.planning/STATE.md`
 
-### Computed this session (HIGH confidence — reproducible)
+### Primary — added in the D-15 revision (HIGH confidence, read directly)
+
+- `src/LoadImages.jl:118-131` (struct), `:214-217` (`load_tiff`), `:235-241` (`_calculate_mask`),
+  `:259-269` (`_apply_mask!`), `:432-455` (the convenience constructor)
+- `src/colocalization.jl:37-60` (`patch` truncation), `:78-99`, `:154-203` (`_exclude_zero`)
+- `src/amortized/api.jl:49-67` (`_pair_mci` / `_frozen_summary` — **no masking**), `:107-148`
+- `src/utils.jl:60-91` and `src/plot.jl:112-115, 224` — where masking *does* live (legacy path only)
+- `test/runtests.jl:18-21` (the CWD idiom + its rationale), `:80-180` (the fixture testsets)
+- `spike/simulator/calibration.jl:59` (`_REPO_ROOT`), `:156-164` (`_real_anchor`), `:233-244`,
+  `:288-292` (the emitted anchor/reachability comment lines)
+- `spike/simulator/ghat.jl:39-40` — **the frozen real-anchor + negative-tail-reachability comments**
+- `spike/simulator/forward.jl:55-66` (`BG_FLOOR`), `:92-118` (`simulate_pair` contract)
+- `spike/data/seeding.jl:52-65` — `IMSIZE_SET` incl. `(1376,1028)` "real-data anchor (D-08)" at weight 0.03
+- `spike/NOTES.md:215-247` — SIM-02 scope, size-invariance, **real anchor + negative-tail verdict**
+- `.planning/phases/11-.../11-10-PLAN.md:11-206` — the real-image reported-not-gated house shape,
+  target-substitution record, control arms, and the source-text `corpus/` self-assertion
+- `.planning/phases/11-.../11-01-PLAN.md:203-210`, `11-04-PLAN.md:120-237` — `LAMBDA_MIN/MAX`,
+  `encode_lambda`, `augment_input`, `d_in = 129`, the two read levels
+- `.planning/phases/13-.../13-02-PLAN.md:306`, `13-04-PLAN.md:323` — the existing **T-13-05** entry
+- `git show --stat 5b4da6d` — the amendment commit
+
+### Computed / executed this session (HIGH confidence — reproducible)
 
 - Prior class masses, atom asymmetry, `ghat⁻¹(0)`: exact truncated-Cauchy CDF + `ghat` knot inversion
   (`scratchpad/p13probe.jl`) and a 2×10⁶-draw Monte Carlo under `Random.seed!(20260725)`
   (`scratchpad/p13joint.jl`). Both re-runnable with `julia --startup-file=no`.
 - Seed-collision check for `0x0B13DE71` / `0x2545F4914F6CDD1D`: repo-wide case-insensitive `grep`,
   zero hits.
+- **Real-image ingestion probe** (`scratchpad/p13_realimg.jl`, `julia --project=spike`): pixel type
+  `RGB{N0f16}` → Rec601 Gray → `Matrix{Float64}` in [0,1]; ranges/quantiles/zero-counts; `patch()`
+  truncation table for G ∈ {4,8,16,32}; Otsu thresholds and mask fractions; `patch_summary` for all
+  three channel pairs on both fixtures; per-patch survivor counts (22 015–22 016, floor 15).
+- **α-ladder probe** (`scratchpad/p13_alpha.jl`, `julia --project=spike`): the full measured ladders in
+  §J5.3, the intensity-preservation and bitwise-α=0 checks, source zero counts, and the
+  mask-fraction → required-boost sweep (1 % → 1.010 … 50 % → 2.678).
+- **`ghat` mapping** of the measured `m̄` ladders to ρ_true (§J5.3), via the frozen
+  `spike/simulator/ghat.jl`.
+- **Shipped-path pre-flight** (`julia --project=.`): `colocalization_amortized(pos, neg, [1,2];
+  num_patches=8, N=500)` → logBF **+1.988** / **−1.085**, mean ρ_sample 0.3016 / 0.1816,
+  `is_ood = true` both directions; `ood_verdict` density **433.688**, `b.ood_nulls.thr = 179.1368`.
+- `Images.Gray(RGB(0.2,0.5,0.9)) = 0.45590906` vs Rec601 `0.4559` / Rec709 `0.4651` — confirming the
+  luma weights.
 
 ### Secondary (MEDIUM confidence)
 
@@ -1754,9 +2575,15 @@ the usual sense, so most ASVS categories are genuinely N/A. The two that are **n
 
 ### Tertiary (LOW confidence — flagged)
 
-- Relative size of the `S-BIAD1047` negative anchor (§J2 A6) — not measured.
-- Any statement about Phase 11's realized artifact names, `encode_lambda` form, or net quality —
-  Phase 11 has not executed.
+- ~~Relative size of the `S-BIAD1047` negative anchor~~ — **retired**; not decision-relevant under the
+  amended D-15.
+- Any statement about Phase 11's realized artifact names or net **quality** — Phase 11 has not
+  executed. (Its `encode_lambda` / `augment_input` / `d_in = 129` *interface* is now MEDIUM-HIGH: it is
+  written and locked in `11-01`/`11-04-PLAN.md`, but not yet run.)
+- **A11** — that widefield chromatic + stage error on *these particular* microscopes is ≥ 1 px. Domain
+  judgement, not a measurement of this instrument. It motivates the conservative λ default only.
+- **A12** — that the Phase-13 net will also flag these fixtures OOD. The shipped net does (433.7 vs.
+  179.1); the Phase-13 net is untrained.
 
 ---
 
@@ -1772,10 +2599,17 @@ the usual sense, so most ASVS categories are genuinely N/A. The two that are **n
 | D-07 correction derivation | **HIGH (algebra) / MEDIUM (empirics)** | Derivation is complete and elementary; the numerical verification is a planned task, not a result |
 | Repo facts (corpus, seals, seeds, gates, precedents) | **HIGH** | Direct file reads |
 | τ probe design | **MEDIUM** | Sound and cheap, but τ itself is unmeasured; the AUC bar is a recommendation (A2) |
-| α-series design | **MEDIUM** | The `_exclude_zero` trap and the bitwise-α=0 property are verified from source; the ladder's *behaviour* is unmeasured |
+| α-series design | **HIGH (upgraded from MEDIUM)** | The ladder was **executed** on both real fixtures: monotone `m̄`, zero `missing` patches, bitwise α=0, intensity preserved, boost 1.51/1.60, measured crossing near α ≈ 0.47–0.49. One stated invariant was falsified and corrected (§J5.3) |
+| Real-image ingestion path (§J4) | **HIGH** | Constructor, pixel type, value range, CWD idiom, preprocessing chain, `patch()` truncation, survivor counts and the frozen-anchor reproduction were all executed against the actual files, not reasoned about |
+| Real-image OOD verdict (§J4.6) | **HIGH for the shipped net / LOW for the Phase-13 net** | 433.688 vs. thr 179.1368 measured on the shipped 8×8 bundle; the Phase-13 net does not exist (A12) |
+| λ for real images (§J4.5) | **MEDIUM** | The λ *interface* is locked by Phase-11 plans; the *choice of rung* is a recommendation with a pre-registration requirement (A10), and the supporting domain claim is `[ASSUMED]` (A11) |
+| Honesty framing (§J6) | **HIGH** | Grounded in two verified repo facts (`ghat.jl:39-40`, the shipped OOD verdict) plus the measured `m̄ = +0.248` for the "negative" pair |
 | Anything downstream of Phase 11 | **LOW** | Phase 11 has not executed |
 
-**Research date:** 2026-07-25
-**Valid until:** ~2026-08-24 for the API/stack facts (pinned Manifest ⇒ stable).
-**Invalidated earlier by:** Phase 11 landing (re-read its artifact contract), any `spike/Manifest.toml`
-change, or a user override of D-05 variant (a) / the D-07 stratification design.
+**Research date:** 2026-07-25 · **Revised:** 2026-07-25 (D-15 amendment, commit `5b4da6d`)
+**Valid until:** ~2026-08-24 for the API/stack facts (pinned Manifest ⇒ stable). The §J4/§J5
+real-image measurements are valid as long as the six committed TIFFs and `src/LoadImages.jl` /
+`src/colocalization.jl` are unchanged — both are frozen under D-01, so effectively indefinitely.
+**Invalidated earlier by:** Phase 11 landing (re-read its artifact contract and re-measure the OOD
+verdict on the new basis, A12), any `spike/Manifest.toml` change, a user override of D-05 variant (a)
+or the D-07 stratification design, or **any further amendment to D-15/D-16**.
