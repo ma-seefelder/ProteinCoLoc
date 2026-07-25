@@ -160,6 +160,18 @@ label is the true displacement in px (the same convention `SC3_SHIFT_RUNGS` docu
 """
 _diag_shift(magnitude::Real) = (magnitude / sqrt(2.0), magnitude / sqrt(2.0))
 
+# --- The ONLY sanctioned theta mutations ---------------------------------------------------
+# NAMED SETTERS, NOT INLINE `merge` CALLS, FOR A CORRECTNESS REASON. In Julia a one-field
+# `(field = value)` without a trailing comma is NOT a NamedTuple -- it is an assignment
+# expression, and `merge(theta, (field = value))` therefore reaches the keyword-argument method
+# and throws at run time, inside a thread, after the arm has already started. These three
+# one-liners are the only places a rung value enters theta, they carry the comma once, and each
+# is unit-tested to change EXACTLY the field it names and nothing else.
+_set_shift(theta, magnitude::Real) =
+    merge(theta, (shift_dx = magnitude / sqrt(2.0), shift_dy = magnitude / sqrt(2.0)))
+_set_eps(theta, e::Real)   = merge(theta, (chromatic_eps = e,))
+_set_rho(theta, rho::Real) = merge(theta, (ρ_true = rho,))
+
 """
     _ols(x, y) -> (slope, intercept, r2)
 
@@ -262,20 +274,19 @@ function _run_arm(label::Symbol, thetas::Vector, imsize_of::Function)
         # The paired REFERENCE: the same theta with the geometry zeroed, so every displacement
         # below is caused purely by the injected misalignment and not by the theta's own
         # prior-drawn shift/chromatic values.
-        theta0 = merge(theta, (shift_dx = 0.0, shift_dy = 0.0, chromatic_eps = 0.0))
+        theta0 = _set_eps(_set_shift(theta, 0.0), 0.0)
         s_base = _summary(key, theta0; imsize = sz)
 
         for (j, m) in enumerate(PROBE_SHIFT_ARM)
-            dx, dy = _diag_shift(m)
-            s = _summary(key, merge(theta0, (shift_dx = dx, shift_dy = dy)); imsize = sz)
+            s = _summary(key, _set_shift(theta0, m); imsize = sz)
             shift_norm[t, r, j] = _delta_norm(s, s_base)
         end
         for (j, e) in enumerate(PROBE_EPS_ARM)
-            s = _summary(key, merge(theta0, (chromatic_eps = e)); imsize = sz)
+            s = _summary(key, _set_eps(theta0, e); imsize = sz)
             eps_norm[t, r, j] = _delta_norm(s, s_base)
         end
         for (j, d) in enumerate(PROBE_DRHO_ARM)
-            s = _summary(key, merge(theta0, (ρ_true = theta0.ρ_true + dirs[t] * d,)); imsize = sz)
+            s = _summary(key, _set_rho(theta0, theta0.ρ_true + dirs[t] * d); imsize = sz)
             drho_norm[t, r, j] = _delta_norm(s, s_base)
         end
 

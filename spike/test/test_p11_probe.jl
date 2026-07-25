@@ -88,6 +88,30 @@ const PROBE_FIX_THETA  = (ρ_true = 0.4, spillover = 0.1, autofluorescence = 0.0
         end
     end
 
+    @testset "the theta setters change EXACTLY the field they name (arity + comma trap)" begin
+        th = PROBE_FIX_THETA
+        s  = _set_shift(th, 3.0)
+        e  = _set_eps(th, 0.02)
+        r  = _set_rho(th, -0.3)
+        # A one-field `(field = value)` WITHOUT a trailing comma is an assignment, not a
+        # NamedTuple, so `merge` would reach its keyword method and throw at run time inside a
+        # thread. These assertions are what makes that failure mode impossible to reintroduce.
+        for x in (s, e, r)
+            @test x isa NamedTuple
+            @test keys(x) == keys(th)
+            @test length(keys(x)) == 8           # the D-09 eight-field theta arity
+        end
+        @test isapprox(sqrt(s.shift_dx^2 + s.shift_dy^2), 3.0; atol = 1e-12)
+        @test s.ρ_true == th.ρ_true && s.chromatic_eps == th.chromatic_eps && s.noise == th.noise
+        @test e.chromatic_eps == 0.02
+        @test e.shift_dx == th.shift_dx && e.shift_dy == th.shift_dy && e.ρ_true == th.ρ_true
+        @test r.ρ_true == -0.3
+        @test r.chromatic_eps == th.chromatic_eps && r.shift_dx == th.shift_dx
+        # Every setter returns something the simulator actually accepts.
+        @test simulate_pair(p11_rng(P11_FIXTURE_COUNTER), e; imsize = PROBE_FIX_IMSIZE) isa
+              Vector{Matrix{Float64}}
+    end
+
     @testset "the two key families are disjoint and reproducible" begin
         pk = _pair_key.(1:P11_PROBE_R)
         ik = _imsize_key.(1:P11_PROBE_R)
@@ -115,7 +139,7 @@ const PROBE_FIX_THETA  = (ρ_true = 0.4, spillover = 0.1, autofluorescence = 0.0
         @test a[1] == b[1] && a[2] == b[2]
         # The whole summary chain therefore reproduces exactly, so the zero rung is exactly zero.
         s1 = _summary(k, PROBE_FIX_THETA; imsize = PROBE_FIX_IMSIZE)
-        s2 = _summary(k, merge(PROBE_FIX_THETA, (shift_dx = 0.0, shift_dy = 0.0)); imsize = PROBE_FIX_IMSIZE)
+        s2 = _summary(k, _set_shift(PROBE_FIX_THETA, 0.0); imsize = PROBE_FIX_IMSIZE)
         @test _delta_norm(s2, s1) == 0.0
         # A DIFFERENT key on the same theta does NOT reproduce -- so the equality above is a
         # property of the pairing, not of a degenerate simulator.
@@ -127,14 +151,12 @@ const PROBE_FIX_THETA  = (ρ_true = 0.4, spillover = 0.1, autofluorescence = 0.0
         # At R = 2 this is an existence check, not a measurement: the paired displacement under a
         # real misalignment must be SMALLER than the displacement two independent keys produce at
         # IDENTICAL theta. If it were not, the probe would be reporting Monte-Carlo noise.
-        dx, dy = _diag_shift(3.0)
         paired   = Float64[]
         unpaired = Float64[]
         for r in 1:PROBE_FIX_R
             k  = _pair_key(r)
             s0 = _summary(k, PROBE_FIX_THETA; imsize = PROBE_FIX_IMSIZE)
-            sp = _summary(k, merge(PROBE_FIX_THETA, (shift_dx = dx, shift_dy = dy));
-                          imsize = PROBE_FIX_IMSIZE)
+            sp = _summary(k, _set_shift(PROBE_FIX_THETA, 3.0); imsize = PROBE_FIX_IMSIZE)
             su = _summary(_imsize_key(r), PROBE_FIX_THETA; imsize = PROBE_FIX_IMSIZE)
             push!(paired,   _delta_norm(sp, s0))
             push!(unpaired, _delta_norm(su, s0))
@@ -146,10 +168,10 @@ const PROBE_FIX_THETA  = (ρ_true = 0.4, spillover = 0.1, autofluorescence = 0.0
     @testset "the chromatic axis moves the summary on its own (SEPARATE from registration)" begin
         k  = _pair_key(3)
         s0 = _summary(k, PROBE_FIX_THETA; imsize = PROBE_FIX_IMSIZE)
-        se = _summary(k, merge(PROBE_FIX_THETA, (chromatic_eps = 0.02,)); imsize = PROBE_FIX_IMSIZE)
+        se = _summary(k, _set_eps(PROBE_FIX_THETA, 0.02); imsize = PROBE_FIX_IMSIZE)
         @test _delta_norm(se, s0) > 0.0
         # chromatic_eps = 0 is the reference itself, so it must land exactly on zero.
-        sz = _summary(k, merge(PROBE_FIX_THETA, (chromatic_eps = 0.0,)); imsize = PROBE_FIX_IMSIZE)
+        sz = _summary(k, _set_eps(PROBE_FIX_THETA, 0.0); imsize = PROBE_FIX_IMSIZE)
         @test _delta_norm(sz, s0) == 0.0
     end
 
