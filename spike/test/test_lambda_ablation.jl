@@ -96,16 +96,16 @@ const ABLATION_IMSIZE     = P11_PROBE_COMPARABILITY_IMSIZE  # a fixed arm; this 
 # not "the two numbers differ" — floating-point inequality would pass on Monte-Carlo noise alone
 # and the tripwire would be decorative.
 #
-# `P11_LAMBDA_ABLATION_FACTOR` belongs in the TIER-2 block of `spike/validation/p11_consts.jl`,
-# derived from the D-06 probe's measured effect scale. Tier 2 does not exist at authoring time,
-# so it is read defensively with a documented fallback.
+# `P11_LAMBDA_ABLATION_FACTOR` NOW EXISTS in the TIER-2 block of `spike/validation/p11_consts.jl`,
+# derived from the D-06 probe's measured effect scale: the raw dRho_eq(LAMBDA_MAX)/dRho_eq(LAMBDA_MIN)
+# ratio on the F5 arm, attenuated by SC2_SPEARMAN_ATTENUATION and floored at 1.05. It is read
+# through the `isdefined` branch below, which is retained UNCHANGED so this file still loads
+# standalone if the pre-registration is not in scope.
 #
-# 1.15 IS A PLACEHOLDER THAT PLAN 11-05 MUST SUPERSEDE. It is deliberately conservative: the
-# ladder is designed to move the posterior width by a factor of order 3.7x across
-# [LAMBDA_MIN, LAMBDA_MAX] (p11_consts.jl §5), so a 15% floor is far below the effect being
-# claimed and above Monte-Carlo noise at 2000 draws. It is a "the conditioning is alive at all"
-# bar, NOT the SC2 criterion. Once Tier 2 lands, the `isdefined` branch below picks it up with
-# no edit to this file.
+# 1.15 IS THE STANDALONE FALLBACK, NOT THE BAR. It is deliberately conservative — far below the
+# effect being claimed and above Monte-Carlo noise at 2000 draws — and is a "the conditioning is
+# alive at all" bar. The Tier-2 value is materially stricter and is the one that governs whenever
+# the pre-registration is loaded, which is the normal path. Neither is the SC2 criterion.
 const P11_LAMBDA_ABLATION_FACTOR_FALLBACK = 1.15
 const ABLATION_FACTOR = isdefined(@__MODULE__, :P11_LAMBDA_ABLATION_FACTOR) ?
                         P11_LAMBDA_ABLATION_FACTOR : P11_LAMBDA_ABLATION_FACTOR_FALLBACK
@@ -183,8 +183,8 @@ println("SC1g — lambda-conditioning tripwire (R4). BLOCKS the SC2 ladder.")
 println("  net            : $(P11_NET_PATH)")
 println("  lambda arms    : LAMBDA_MIN = $LAMBDA_MIN  vs  LAMBDA_MAX = $LAMBDA_MAX")
 println("  required factor: $(ABLATION_FACTOR) " *
-        (ABLATION_FACTOR_IS_TIER2 ? "(Tier-2, pre-registered)" :
-                                    "(PLACEHOLDER — plan 11-05 must supersede with Tier 2)"))
+        (ABLATION_FACTOR_IS_TIER2 ? "(Tier-2, probe-derived, pre-registered)" :
+                                    "(standalone fallback — the pre-registration is not loaded)"))
 println("  draws/arm      : $ABLATION_N_DRAWS   datasets: $ABLATION_N_DATASETS   " *
         "global seed: $(repr(ABLATION_GLOBAL_SEED))")
 println("-"^78)

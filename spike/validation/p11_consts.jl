@@ -377,3 +377,111 @@ if !isdefined(@__MODULE__, :P11_DEV_SEED)
                                    P11_BREAKDOWN_COUNTER, P11_ATTENUATION_COUNTER,
                                    P11_REALIMAGE_COUNTER)
 end
+
+# =========================================================================================
+# TIER 2 -- PROBE-DERIVED CONSTANTS. APPENDED, NEVER EDITED.
+# =========================================================================================
+#
+# PROVENANCE DISCLOSURE (the gate_consts_8_v2.jl:15-26 voice). Everything in this block is a
+# MEASUREMENT, taken from exactly one artifact:
+#
+#     spike/validation/p11_probe_report.jld2
+#     generated   = 2026-07-25T21:26:36.787Z
+#     elapsed_min = 7.108699997266133
+#     produced by spike/validation/run_p11_probe.jl on the RESERVED stream
+#                 p11_rng(P11_PROBE_COUNTER = 1) off P11_DEV_SEED, in ONE reported run
+#
+# THE TIER-1 BLOCK ABOVE IS BYTE-UNCHANGED since its own commit (d336699) -- this file grew,
+# it did not move. That is checkable mechanically (`git diff` on the appending commit shows
+# additions only) and it is re-asserted as literals in spike/test/test_p11_consts.jl, so an
+# accidental Tier-1 edit during an append breaks the suite loudly rather than quietly rewriting
+# the pre-registration.
+#
+# NOTHING HAS BEEN TRAINED AGAINST THIS FILE. No net exists yet in Phase 11; the probe is
+# simulator-only and consumed no trained model. These constants are therefore measurements of
+# the FORWARD MODEL's sensitivity, frozen before the first training run, exactly as D-06
+# requires ("the probe supplies the SC2 threshold; the threshold is not guessed").
+#
+# WHAT IS JUDGMENT AND WHAT IS MEASUREMENT, KEPT VISIBLY SEPARATE. Every attenuation allowance
+# below is a TIER-1 constant fixed before the probe ran; only the multiplicand is Tier 2. That
+# is why SC2_SPEARMAN_FLOOR is written as a PRODUCT and never as a collapsed decimal.
+#
+# THE ABORT CRITERION IS NOT RE-STATED HERE. `P11_PROBE_S_FLOOR` / `P11_PROBE_SPAN_FLOOR` are
+# Tier 1 and stay Tier 1; this block records only the two raw numbers they are evaluated against,
+# so the verdict is reproducible from the file rather than from a narrative.
+#
+# Guarded as a SECOND block keyed on :SC2_SPEARMAN_FLOOR -- a distinct sentinel from Tier 1's
+# :P11_DEV_SEED, so the two tiers can never collide on re-include.
+
+if !isdefined(@__MODULE__, :SC2_SPEARMAN_FLOOR)
+
+    # --- The two raw numbers the Tier-1 abort criterion is evaluated against ---------------
+    # report field "S_probe": corspearman(SC2_RUNGS, mean dRho_eq per rung) on the F5 mixture
+    # arm. 1.0 means dRho_eq was strictly increasing across all seven SC2 rungs.
+    const P11_PROBE_S_MEASURED    = 1.0
+    # report field "ladder_span": maximum(dRho_eq) - minimum(dRho_eq) over SC2_RUNGS, F5 arm.
+    # Measured 0.0469 against the Tier-1 floor of 0.02 -- above it, by a factor of ~2.3.
+    const P11_PROBE_SPAN_MEASURED = 0.046884564903982365
+
+    # --- The SC2(a) monotonicity floor ------------------------------------------------------
+    # WRITTEN AS A PRODUCT ON PURPOSE. SC2_SPEARMAN_ATTENUATION (Tier 1, 0.5) is the judgment
+    # allowance for the fact that the width-vs-lambda response is a COMPOSITION of (summary
+    # displacement <- lambda), which is what the probe measured, with (posterior width <-
+    # summary), which is a learned and lossy stage the probe cannot see. P11_PROBE_S_MEASURED
+    # is the measurement. Collapsing the two into a single decimal would hide which half is
+    # which, which is precisely the confusion D-04 exists to prevent.
+    const SC2_SPEARMAN_FLOOR = SC2_SPEARMAN_ATTENUATION * P11_PROBE_S_MEASURED
+
+    # --- The dRho_eq calibration axis, frozen -----------------------------------------------
+    # report fields "drho_eq_slope_f5" / "drho_eq_intercept_f5" / "drho_eq_r2_f5": ordinary
+    # least squares of the mean paired 2-norm on the four pre-registered dRho rungs,
+    #     ||ds||_2 = P11_DRHO_EQ_SLOPE * dRho + P11_DRHO_EQ_INTERCEPT
+    # inverted by the ladder as dRho_eq(x) = (x - intercept) / slope. REPORTING ONLY -- no
+    # pass/fail reads these -- but frozen here so the ladder's dRho_eq axis cannot drift.
+    # NOTE for anyone reading a ladder table: because the fit has a positive intercept, a ZERO
+    # displacement maps to a slightly NEGATIVE dRho_eq (-intercept/slope = -0.0028). That is an
+    # artifact of the affine inversion, not a negative effect.
+    const P11_DRHO_EQ_SLOPE     = 6.458505483772493
+    const P11_DRHO_EQ_INTERCEPT = 0.018126542853519556
+    const P11_DRHO_EQ_R2        = 0.9999313512418424
+
+    # report fields "drho_eq_slope_256" / "..._intercept_256" / "..._r2_256": the same fit on the
+    # 256-squared comparability arm, kept ONLY so the pre-registered probe is comparable with the
+    # indicative research run. It is a probe arm, never a training or ladder arm.
+    const P11_DRHO_EQ_SLOPE_256     = 7.318546621771334
+    const P11_DRHO_EQ_INTERCEPT_256 = 0.10002486401477406
+    const P11_DRHO_EQ_R2_256        = 0.9997658248160909
+
+    # --- Which image-size arm the ladder runs on --------------------------------------------
+    # THIS CONSTANT RECORDS THAT THE PROBE DID NOT OVERTURN A TIER-1 CHOICE; it does not make
+    # one. The F5 mixture was already locked in Tier 1 (P11_IMSIZE_SET / P11_IMSIZE_WEIGHTS,
+    # read from the frozen gate file), and the sec-C10(c) branch-2 escape hatch -- move the
+    # ladder to different image sizes -- would only have been taken had the abort criterion
+    # fired. It did not: S_probe = 1.0 >= 0.9 and span = 0.0469 >= 0.02 on the mixture itself.
+    const P11_LADDER_IMSIZE_ARM = :f5_mixture
+
+    # --- The SC1g lambda-ablation tripwire factor -------------------------------------------
+    # report field "lambda_ratio": dRho_eq(LAMBDA_MAX) / dRho_eq(LAMBDA_MIN) across SC2_RUNGS on
+    # the F5 arm. The arithmetic, recorded so it can be re-derived from the artifact:
+    #     raw measured ratio                            = 5.003943268109952
+    #     attenuated by SC2_SPEARMAN_ATTENUATION (0.5)   = 2.501971634054976
+    #     floored at 1.05                               = 2.501971634054976   (floor not binding)
+    # The 1.05 floor exists so the tripwire can NEVER become vacuous: a small measured ratio,
+    # halved, could otherwise land below 1.0 and turn the material inequality into a tautology.
+    # NOTE ON STRICTNESS, stated in advance: this is a MATERIAL bar derived from the forward
+    # model's own sensitivity, not a "conditioning is alive at all" bar. It supersedes the 1.15
+    # placeholder in spike/test/test_lambda_ablation.jl, and it is deliberately harder to clear.
+    # The measured ratio is if anything CONSERVATIVE: dRho_eq(LAMBDA_MIN = 0.25) sits on the
+    # interpolation-onset plateau, which inflates the denominator and shrinks the ratio.
+    const P11_LAMBDA_ABLATION_FACTOR = 2.501971634054976
+
+    # --- EXECUTABLE self-checks (cheap; no inference, no simulation, no file writes) ---------
+    @assert 0.0 <= SC2_SPEARMAN_FLOOR <= 1.0
+    @assert SC2_SPEARMAN_FLOOR == SC2_SPEARMAN_ATTENUATION * P11_PROBE_S_MEASURED
+    @assert -1.0 <= P11_PROBE_S_MEASURED <= 1.0        # it is a rank correlation
+    @assert P11_PROBE_SPAN_MEASURED > 0.0
+    @assert P11_DRHO_EQ_SLOPE > 0.0 && P11_DRHO_EQ_SLOPE_256 > 0.0
+    @assert 0.0 <= P11_DRHO_EQ_R2 <= 1.0 && 0.0 <= P11_DRHO_EQ_R2_256 <= 1.0
+    @assert P11_LAMBDA_ABLATION_FACTOR >= 1.05          # the tripwire can never be vacuous
+    @assert P11_LADDER_IMSIZE_ARM === :f5_mixture
+end
