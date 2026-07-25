@@ -171,7 +171,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 8. External Physical Ground-Truth Corpus | 4/5 | In Progress|  |
 | 9. Cross-Method Comparator Harness | 6/6 | Complete   | 2026-07-02 |
 | 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |
-| 11. Registration + Chromatic Uncertainty as Latent | 5/11 | In Progress|  |
+| 11. Registration + Chromatic Uncertainty as Latent | 6/11 | In Progress|  |
 | 12. Spatial Colocalization Map (GP/CAR) | 0/TBD | Not started | - |
 | 13. Three-Hypothesis Amortized Bayes Factor | 0/TBD | Not started | - |
 | 14. Decision + Abstention Layer | 0/TBD | Not started | - |
@@ -243,7 +243,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 11-03-PLAN.md — Exact-equality stage-6 regression vs the pre-edit golden, D-12 sha verification, the five §F20c decoupling commands, shipped-bundle load + colocalization_amortized regression (D-01, D-10, D-11, D-12, D-16)
 - [x] 11-04-PLAN.md — Research-net scaffold: BoundedThetaTransform port + λ encoder/augmenter, d_in=129/D=8 smoke train, the λ-ablation tripwire (D-01, D-02, D-03, D-04)
 - [x] 11-05-PLAN.md — D-06 pre-flight probe (paired, F5 mixture + 256² arm) and the append-only Tier-2 probe-derived constants (D-04, D-06, D-07, D-08, D-09)
-- [ ] 11-06-PLAN.md — Probe verdict: mechanical abort-criterion evaluation, blocking branch decision, iteration ledger (D-04, D-06)
+- [x] 11-06-PLAN.md — Probe verdict: mechanical abort-criterion evaluation, blocking branch decision, iteration ledger (D-04, D-06)
 - [ ] 11-07-PLAN.md — λ-hierarchical datagen (50k, F5 mixture) + research-net training + the λ-ablation tripwire firing green (D-01, D-02, D-03, D-09)
 - [ ] 11-08-PLAN.md — SC2 ladder (GATED): λ-aware harness, permutation-Spearman monotonicity, per-rung TOST equivalence with the inverted Holm direction, per-rung shrinkage/vacuity (D-05, D-07, D-08, D-13)
 - [ ] 11-09-PLAN.md — SC3 beyond-prior breakdown curve at λ=3.0 and λ=1.0 + the D-02 ρ_true attenuation measurement, both reported-not-gated (D-02, D-13, D-14, D-15)

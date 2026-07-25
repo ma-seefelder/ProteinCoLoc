@@ -33,10 +33,12 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 ## Current Position
 
 Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — EXECUTING
-Plan: 1 of 11
-**STATUS: Ready to execute — Phase 11 planned (2026-07-25), 11 plans in 9 waves.**
+Plan: 6 of 11 complete (waves 1-5 done; wave 6 = training)
+**STATUS: Executing — probe verdict PROCEED; datagen + research-net training authorised.**
 
-**Phase 11 (Registration and Chromatic Uncertainty as Latent) — PLANNED, not started.**
+- **2026-07-25 — Phase 11 probe verdict (plan 11-06): ABOVE RESOLUTION, DECISION `proceed`.** The D-06 abort criterion did not fire: `S_probe = 1.0` against `P11_PROBE_S_FLOOR = 0.9`, and a Δρ_eq ladder span of 0.046885 against `P11_PROBE_SPAN_FLOOR = 0.02` (F5 mixture arm; both independently re-derived from `p11_probe_report.jld2`, agreeing to 1e-16). Plans 11-07 through 11-11 are authorised as planned. `P11_ITERATION_ALLOWANCE = 1` is UNSPENT (0 of 1); no threshold was altered. The ~1.5 h datagen-plus-training spend is authorised, and `P11_DATAGEN_WALLCLOCK_CEILING_MIN = 150` is a BLOCKER threshold, not a downgrade trigger. Checkpoint resolved autonomously by the orchestrator under the pre-registered rule (background session, no user present), conditional on the re-derivation agreeing — which it did. See `11-PROBE-VERDICT.md`.
+
+**Phase 11 (Registration and Chromatic Uncertainty as Latent) — IN PROGRESS.**
 Research-lane only (D-01): a Phase-11 net trains in `spike/` on a fresh DEV seed; the shipped
 `amended_v2/grid_8` artifact and the Phase-7 GO (Option A, 2026-07-24) stay untouched — no reship,
 no new artifact, no ship gate reopened, no public API change. ROADMAP SC1 is already nominally
