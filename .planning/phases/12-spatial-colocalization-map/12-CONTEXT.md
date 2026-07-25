@@ -125,14 +125,30 @@ and the natural descope-to-v2.1 candidate — hence the pre-registered descope t
   **Note:** `LocalColocMap` (`local_map.jl:56-79`) cannot serve as a coverage baseline as-is — its own
   docstring states it "carries no posterior draws, no Bayes factor and no per-region uncertainty".
 
-- **D-11: Score on BOTH `physical-primary` anchors** — the `coloc` anchor and the `segregated`
-  (mitochondria) anchor. At G=8 that is ~128 scored regions across two genuinely different spatial
-  regimes, and a spatial prior that improves coverage on a colocalized specimen but not a segregated
-  one is an important finding, not a footnote.
-  **The 30 CBS Red-Green rows do NOT qualify** — they are labelled `simulated-secondary`
+- **D-11 (AMENDED 2026-07-25): Score on the committed real microscopy TIFFs in `test/test_images/`,
+  NOT on the corpus physical anchors.**
+
+  > **Amendment rationale — a correction to the original audit.** The first version of this decision
+  > selected both `physical-primary` corpus anchors. Verification during Phase 11 planning showed that
+  > audit was incomplete: it counted the anchors correctly but did not read their `split` and `sha256`
+  > columns. Both rows are
+  > `sha256 = PENDING-FETCH`, `bytes = 0`, **`split = sealed_holdout`** — unfetched, and reserved for
+  > the **Phase-16 blind evaluation**. Scoring them here would irreversibly burn Phase 16.
+  > This mirrors the ruling Phase 11's planner independently made for its D-17.
+
+  Use the six committed real microscopy TIFFs — `test/test_images/positive/positive_c{1,2,3}.tif` and
+  `test/test_images/negative/negative_c{1,2,3}.tif` (1028×1376, already exercised by `runtests.jl`).
+  These are genuine microscopy data, so the "real image" requirement of SC3 is met.
+  **This costs Phase 12 very little**, because D-09 already made the coverage criterion
+  ground-truth-free — leave-region-out predictive coverage needs real images, not labelled ones.
+  Coverage is scored **per region**, so at G=8 each image contributes ~64 regions and the effective
+  sample is regions, not images. State that in the report.
+
+  **Still excluded: the 30 CBS Red-Green rows** — labelled `simulated-secondary`
   (Zinchuk & Grossenbacher-Zinchuk benchmark images are computer-generated), so they cannot support a
-  "real image" claim. n=2 images is small, but coverage is scored **per region**, so the effective
-  sample is regions, not images. State both facts.
+  "real image" claim regardless of fetch status. Note that they too are currently unfetched.
+
+  **Do NOT touch `corpus/` sealed_holdout rows in this phase.**
 
 ### Descope trigger and v2.1 fallback
 
@@ -206,11 +222,15 @@ and the natural descope-to-v2.1 candidate — hence the pre-registered descope t
   into a single composed affine warp; D-06's field application stacks on top of that.**
 - `src/bayes.jl` ~274-291 — the Turing μ-prior π(θ) must stay consistent with (CLAUDE.md constraint).
 
-### Ground-truth data (D-11)
-- `corpus/manifest.csv` — `truth_label` / `tier` columns. **Only two rows are `physical-primary`**
-  (`positive|coloc` and `negative|segregated|mitochondria`); the 30 CBS Red-Green rows are
-  `simulated-secondary`. `CORPUS_MASTER_SEED = 0x0000000000c05eed` in the header.
-- `corpus/fetch.jl`, `corpus/load.jl` — the read path.
+### Real-image data (D-11, AMENDED)
+- `test/test_images/positive/positive_c{1,2,3}.tif` and `test/test_images/negative/negative_c{1,2,3}.tif`
+  — **the images D-11 now uses.** Six committed real microscopy TIFFs (1028×1376), already exercised by
+  `test/runtests.jl`.
+- `corpus/manifest.csv` — read for provenance only. **Both `physical-primary` rows are
+  `split = sealed_holdout`, `sha256 = PENDING-FETCH`, `bytes = 0`** — reserved for the Phase-16 blind
+  evaluation and **must not be consumed by this phase**. The 30 CBS Red-Green rows are
+  `simulated-secondary` (computer-generated) and also unfetched.
+  `CORPUS_MASTER_SEED = 0x0000000000c05eed` in the header.
 
 ### Honesty contract and prior findings
 - `docs/amortized.md` §Windowed sub-tile local map (~95-104) — states the coarse map is **not** a

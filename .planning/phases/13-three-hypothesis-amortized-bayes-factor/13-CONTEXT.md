@@ -139,14 +139,36 @@ hypothesis.
 
 ### Exclusion ground truth (SC3)
 
-- **D-15: Simulator gate + semi-synthetic graded series + the physical anchor as a named check.**
-  **Corpus audit (`corpus/manifest.csv`):** exactly **one** real segregated anchor
-  (`physical-primary | negative | segregated | 0.0 | mitochondria`), one positive coloc anchor, and
-  30 `simulated-secondary` CBS Red-Green rows whose degrees are colocalization *percentages* — so the
-  CBS `0.0` end is **random, not exclusion**. **The corpus has no graded segregation series at all.**
-  Therefore: gate on simulator ground truth (`ρ_true < -τ`, exact labels, well-powered); add a
-  semi-synthetic graded random→exclusion series as supporting evidence; report the single physical
-  anchor as a named qualitative check.
+- **D-15 (AMENDED 2026-07-25): Simulator gate + semi-synthetic graded series + a `test/test_images/`
+  qualitative check. The corpus physical anchor is NOT used.**
+
+  > **Amendment rationale — a correction to the original audit.** The first version of this decision
+  > named the physical mitochondria anchor as the real-data check. Verification during Phase 11
+  > planning showed the audit was incomplete: it counted the anchors correctly but did not read their
+  > `split` and `sha256` columns. Both `physical-primary` rows are `sha256 = PENDING-FETCH`,
+  > `bytes = 0`, **`split = sealed_holdout`** — unfetched, and reserved for the **Phase-16 blind
+  > evaluation**. Consuming the segregated anchor here would irreversibly burn Phase 16 on the very
+  > hypothesis Phase 16 would be evaluating. Mirrors the ruling Phase 11's planner made for its D-17
+  > and the amended Phase 12 D-11.
+
+  **Corpus audit (still valid, and still the reason the semi-synthetic series is load-bearing):** the
+  corpus holds exactly one segregated anchor and one coloc anchor, plus 30 `simulated-secondary` CBS
+  Red-Green rows whose degrees are colocalization *percentages* — so the CBS `0.0` end is **random, not
+  exclusion**. **The corpus has no graded segregation series at all**, and now also no *usable* real
+  segregation anchor for this phase.
+
+  Therefore: **gate** on simulator ground truth (`ρ_true < -τ`, exact labels, well-powered); add the
+  D-16 semi-synthetic graded random→exclusion series as supporting evidence — it is now the **only**
+  graded segregation evidence that will exist; and run the qualitative real-data check on the six
+  committed microscopy TIFFs in `test/test_images/` (`positive_c{1,2,3}.tif`, `negative_c{1,2,3}.tif`,
+  1028×1376).
+
+  **Honesty consequence to state in the report:** those images carry no colocalization ground-truth
+  label, so the real-data check is **qualitative only** — it can show that exclusion verdicts behave
+  sensibly on real microscopy, not that they are correct. Real segregation validation is deferred to
+  Phase 16's blind evaluation, which is precisely what the sealed holdout exists for.
+
+  **Do NOT touch `corpus/` sealed_holdout rows in this phase.**
   **Conceptual gap this addresses:** the simulator's "exclusion" is *negative intensity correlation
   across patches*; a biologist's "mutually exclusive" is *disjoint spatial localization*. These
   coincide often but not necessarily, and the semi-synthetic series is the only evidence that probes
@@ -228,10 +250,14 @@ hypothesis.
   posture D-06 here mirrors, D-07/D-08 the widening-and-coverage commitments D-03 here must not
   contradict.
 
-### Ground-truth data (D-15, D-16)
-- `corpus/manifest.csv` — pre-registered corpus manifest; `truth_label` column carries
-  `segregated` / `coloc` / `simulated-degree`. `CORPUS_MASTER_SEED = 0x0000000000c05eed` in the header.
-- `corpus/fetch.jl`, `corpus/load.jl` — the read path for the physical anchor.
+### Ground-truth data (D-15 AMENDED, D-16)
+- `test/test_images/positive/positive_c{1,2,3}.tif`, `test/test_images/negative/negative_c{1,2,3}.tif`
+  — **the real images D-15 now uses** for the qualitative check, and the source images D-16's
+  mask-based α-graded series is constructed from. Six committed microscopy TIFFs (1028×1376), already
+  exercised by `test/runtests.jl`. **No colocalization ground-truth labels.**
+- `corpus/manifest.csv` — read for provenance only. **Both `physical-primary` rows are
+  `split = sealed_holdout`, `sha256 = PENDING-FETCH`, `bytes = 0`** — reserved for the Phase-16 blind
+  evaluation and **must not be consumed by this phase**. `CORPUS_MASTER_SEED = 0x0000000000c05eed`.
 - `spike/validation/consts.jl:72-79` — the pre-registered seed constants and the disjointness
   rationale; the file pattern D-04's Phase-13 consts file should mirror.
 
