@@ -132,8 +132,11 @@ isdefined(@__MODULE__, :P11_DEV_SEED) ||
         @test P11_PROBE_S_FLOOR        == 0.9
         @test P11_PROBE_SPAN_FLOOR     == 0.02
         @test SC2_SPEARMAN_ATTENUATION == 0.5
-        # Tier 2 is NOT here yet -- it is appended in a second guard block after the probe.
-        @test !isdefined(@__MODULE__, :SC2_SPEARMAN_FLOOR)
+        # Tier 2 now EXISTS. Until the probe had run, this testset asserted the opposite
+        # (`!isdefined(..., :SC2_SPEARMAN_FLOOR)`) to prove Tier 2 had not been pre-empted; that
+        # assertion was removed in the SAME commit that appended the Tier-2 block, and only
+        # then. The Tier-2 testset at the foot of this file is what replaces it.
+        @test isdefined(@__MODULE__, :SC2_SPEARMAN_FLOOR)
     end
 
     @testset "the F5 imsize mixture is READ from the frozen gate file (F5)" begin
@@ -171,6 +174,78 @@ isdefined(@__MODULE__, :P11_DEV_SEED) ||
     end
 
     @testset "P11 consts ran CPU-only (D-10)" begin
+        @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
+    end
+
+end
+
+@testset "P11 Tier-2 (probe-derived)" verbose = true begin
+
+    @testset "the judgment factor and the measurement stay visibly separate" begin
+        # SC2_SPEARMAN_FLOOR must remain the PRODUCT of a Tier-1 allowance and a Tier-2
+        # measurement. If someone ever collapses it to a decimal, this breaks.
+        @test isapprox(SC2_SPEARMAN_FLOOR, SC2_SPEARMAN_ATTENUATION * P11_PROBE_S_MEASURED;
+                       atol = 1e-12)
+        @test 0.0 <= SC2_SPEARMAN_FLOOR <= 1.0
+        @test -1.0 <= P11_PROBE_S_MEASURED <= 1.0        # it is a rank correlation
+        @test P11_PROBE_SPAN_MEASURED > 0.0
+    end
+
+    @testset "the measured values are the ones the reported probe produced" begin
+        # Asserted AS LITERALS, so an edit after the fact breaks the suite rather than silently
+        # rewriting the pre-registration (the same discipline the Tier-1 testsets use).
+        @test P11_PROBE_S_MEASURED    == 1.0
+        @test P11_PROBE_SPAN_MEASURED == 0.046884564903982365
+        @test P11_LAMBDA_ABLATION_FACTOR == 2.501971634054976
+        @test P11_LADDER_IMSIZE_ARM   === :f5_mixture
+    end
+
+    @testset "the dRho_eq calibration axis is a usable, frozen line" begin
+        @test P11_DRHO_EQ_SLOPE > 0.0
+        @test P11_DRHO_EQ_SLOPE_256 > 0.0
+        @test 0.0 <= P11_DRHO_EQ_R2 <= 1.0
+        @test 0.0 <= P11_DRHO_EQ_R2_256 <= 1.0
+        @test isfinite(P11_DRHO_EQ_INTERCEPT) && isfinite(P11_DRHO_EQ_INTERCEPT_256)
+        # The inversion the ladder performs is well defined at both ends of the SC2 range.
+        drho_eq(x) = (x - P11_DRHO_EQ_INTERCEPT) / P11_DRHO_EQ_SLOPE
+        @test isfinite(drho_eq(0.0)) && isfinite(drho_eq(3.0))
+        @test drho_eq(P11_DRHO_EQ_SLOPE * 0.1 + P11_DRHO_EQ_INTERCEPT) ≈ 0.1 atol = 1e-12
+    end
+
+    @testset "the SC1g tripwire factor can never be vacuous" begin
+        @test P11_LAMBDA_ABLATION_FACTOR >= 1.05
+        @test isfinite(P11_LAMBDA_ABLATION_FACTOR)
+        # It supersedes the placeholder the tripwire carried before the probe, and it is
+        # STRICTER, not looser -- a derived bar that is easier to clear than the placeholder
+        # would mean the derivation went the wrong way.
+        @test P11_LAMBDA_ABLATION_FACTOR > 1.15
+    end
+
+    @testset "the TIER-1 block is still exactly what plan 11-01 locked" begin
+        # THE POINT OF THE WHOLE TWO-TIER STRUCTURE. Re-assert the Tier-1 literals HERE, in the
+        # same run as the Tier-2 assertions, so an accidental Tier-1 edit made while appending
+        # Tier 2 is caught by this file rather than discovered later in a result.
+        @test P11_DEV_SEED    === 0x0000_0000_0B11_DE71
+        @test P11_SALT        === 0xA24B_AED4_663E_E121
+        @test N_PER_RUNG      == 500
+        @test N_MIN_DERIVED   == 271
+        @test SC2_TOST_DELTA  == 0.03
+        @test SC2_TOST_ALPHA  == 0.05
+        @test SC2_RUNGS       == (0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0)
+        @test SC2_SPEARMAN_ATTENUATION == 0.5
+        @test P11_PROBE_S_FLOOR    == 0.9
+        @test P11_PROBE_SPAN_FLOOR == 0.02
+        @test P11_ITERATION_ALLOWANCE == 1
+    end
+
+    @testset "the probe's own result cleared the Tier-1 abort criterion" begin
+        # RECORDED, NOT RE-DECIDED. The criterion is Tier 1 and was frozen before the probe; this
+        # only makes the comparison reproducible from the file.
+        @test P11_PROBE_S_MEASURED    >= P11_PROBE_S_FLOOR
+        @test P11_PROBE_SPAN_MEASURED >= P11_PROBE_SPAN_FLOOR
+    end
+
+    @testset "P11 Tier-2 ran CPU-only (D-10)" begin
         @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
     end
 
