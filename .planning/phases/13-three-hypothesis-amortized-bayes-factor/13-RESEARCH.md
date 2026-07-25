@@ -2274,9 +2274,18 @@ and is explicitly deferred by CONTEXT).
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Every question below is closed. Questions 3 and 4 were resolved in-line during research; the
+> remaining six were resolved by **adoption** -- each recommendation is now a locked pre-registered
+> constant or a binding ruling in the plan named on its RESOLVED line. Nothing here is still open,
+> and no substance changed when the markers were added.
 
 1. **Does the comment-only `log_bf_simplex` rename land in `src/results.jl` during Phase 13?**
+   — **RESOLVED: no, deferred.** Adopted as `P13_RESULTS_RENAME_DEFERRED = true` in **13-01**
+   (asserted in its self-check) and enforced in **13-08**, which defines `ThreeHypothesisColocResult`
+   with `log_bf_vs_random` in `spike/p13/result.jl`, binds `src/results.jl` byte-unchanged (T-13-26),
+   and records the rename as a productionization item.
    - What we know: it is comment-only, zero provenance cost (`results.jl` ∉ `DATAGEN_HASH_SRC_FILES`),
      zero runtime impact; but it *is* a `src/` edit and CLAUDE.md says `src/` stays provably untouched
      during the spike.
@@ -2287,6 +2296,11 @@ and is explicitly deferred by CONTEXT).
      Surface as a `checkpoint:human-verify` if the user wants it now.
 
 2. **Which λ does the frozen scalar τ correspond to?**
+   — **RESOLVED: freeze at a pre-registered reference rung.** Adopted as
+   `P13_TAU_REFERENCE_LAMBDA_RULE = :widest_rung` with `P13_TAU_REFERENCE_LAMBDA_EXPECTED = 3.0`
+   in **13-01** (rule Tier-1, realized number bound later), measured across the ladder by the
+   **13-05** probe, committed as the Tier-2 τ in **13-10**, and asserted against Phase 11's
+   `LAMBDA_MAX` in **13-09**.
    - What we know: resolution degrades with registration uncertainty, so τ is really `τ(λ)`.
    - What's unclear: whether D-05/D-06 intend a single scalar (their wording suggests yes).
    - Recommendation: measure `τ(λ)` across the ladder, **freeze the scalar at a pre-registered
@@ -2305,6 +2319,10 @@ and is explicitly deferred by CONTEXT).
 
 5. **Should the confusion matrix be reported at `argmax` of the two corrected log-BFs, or at
    `logBF > 0` per head?**
+   — **RESOLVED: gate threshold-free, report argmax descriptively.** Adopted as
+   `P13_CONFUSION_RULE = :argmax_descriptive` in **13-01** and executed by the **13-12** gate
+   runner, which gates on per-class AUC and carries the 3x3 confusion matrix as a labelled
+   descriptive companion, keeping the decision rule in Phase 14.
    - What we know: with two heads and a structural zero for random, "declare the argmax of
      `(logBF_C, 0, logBF_E)`" is the natural rule and needs no extra threshold. Spike 014 used the
      analogous `logBF > 0` rule for the binary case.
@@ -2314,8 +2332,11 @@ and is explicitly deferred by CONTEXT).
      the argmax confusion matrix as a **descriptive** companion, explicitly labelled as not a decision
      rule. This keeps the Phase-13/Phase-14 boundary clean.
 
-6. **NEW — At which λ is the real-image check read, and which rung is the headline?** *(the one
-   genuinely open decision this revision surfaces)*
+6. **NEW — At which λ is the real-image check read, and which rung is the headline?**
+   — **RESOLVED: sweep the full ladder, headline the widest rung.** Adopted as
+   `P13_REAL_LAMBDA_READS_RULE = :full_phase11_ladder`, `P13_REAL_LAMBDA_HEADLINE_RULE = :widest_rung`
+   and `P13_REAL_LAMBDA_HEADLINE_EXPECTED = 3.0` in **13-01**, executed by the reported-not-gated
+   runner in **13-16**. λ is never estimated from the images.
    - What we know: λ is Phase 11's registration-uncertainty *half-width*, `LAMBDA_MIN = 0.25`,
      `LAMBDA_MAX = 3.0`, `encode_lambda` maps to `[0,1]`, `n_cond = 1` (§J4.5). Phase 11's own real-image
      plan reads at **two** levels (3.0 primary, 1.0 secondary), not one.
@@ -2329,6 +2350,10 @@ and is explicitly deferred by CONTEXT).
 
 7. **NEW — Should the Phase-13 net's OOD verdict on the real fixtures be compared to the shipped
    net's?**
+   — **RESOLVED: yes, measure and report both.** Adopted as `P13_REAL_OOD_COMPARISON = true` with
+   the recorded shipped-net reference values `P13_REAL_OOD_SHIPPED_DENSITY = 433.69` and
+   `P13_REAL_OOD_SHIPPED_THRESHOLD = 179.14` in **13-01**, reported side by side in **13-16**. The
+   shipped bundle stays a comparison reference only, never an evidence basis (D-02, T-13-05).
    - What we know: the shipped 8×8 bundle flags both fixtures, density **433.69** vs. ID threshold
      **179.14** (§J4.6). The Phase-13 net has a different input surface and a different training pool.
    - What's unclear: whether the λ-conditioned Phase-11 basis moves real microscopy closer to or
@@ -2338,6 +2363,9 @@ and is explicitly deferred by CONTEXT).
      registration-aware basis buys on real data.
 
 8. **NEW — Does the `positive`/`negative` naming need an explicit correction in the manuscript?**
+   — **RESOLVED: yes, stated once with the number.** Adopted as the string constant
+   `P13_REAL_NAMING_CORRECTION` in **13-01** (self-checked to contain "biological" and "0.2481"),
+   printed by the **13-16** runner and carried into the phase report by **13-14**.
    - What we know: the folder names are biological conditions; the "negative" pair measures
      `m̄ = +0.2481` (ρ_true ≈ +0.215) — it is **not** an anti-correlated pair (§J6.1).
    - Recommendation: yes. State it once, with the number, in the report and in the manuscript's data

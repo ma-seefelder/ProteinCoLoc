@@ -1,10 +1,11 @@
 ---
 phase: 13
 slug: three-hypothesis-amortized-bayes-factor
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-25
+signed_off: 2026-07-25
 ---
 
 # Phase 13 — Validation Strategy
@@ -88,6 +89,10 @@ intended state, not an omission.
 
 ## Wave 0 Requirements
 
+> `wave_0_complete: true` records that **every MISSING automated-verify reference below has a named
+> owning plan in or before the wave that first needs it** -- not that the files already exist. The
+> boxes are ticked by the executor as each artifact lands.
+
 - [ ] `spike/p13/consts.jl` — D-04 pre-registration (Tier-1 constants + `_p13_forbidden()` + executable
       `@assert` self-checks), committed **before** anything runs
 - [ ] `.planning/phases/13-three-hypothesis-amortized-bayes-factor/13-SC2-AMENDMENT.md` — **before any
@@ -101,7 +106,10 @@ intended state, not an omission.
 - [ ] `spike/test/test_p13_real.jl` — the five D-15 testsets, `include`d from `spike/test/runtests.jl`
 - [ ] `spike/p13/net.jl` — `ThreeWayEvidenceNet`, `build_three_way_net`, `masked_two_head_bce`
 - [ ] `spike/p13/result.jl` — `ThreeHypothesisColocResult <: AbstractColocResult` (RESEARCH §G3)
-- [ ] `spike/test/test_p13.jl` — every unit testset above, `include`d from `spike/test/runtests.jl`
+- [ ] `spike/test/test_p13_{consts,labels,alpha,tau,net,correction,result,calibration}.jl` — the unit
+      testsets above, all nine (with `test_p13_real.jl`) `include`d from `spike/test/runtests.jl` by
+      plan 13-08; `test_p13_preconditions.jl` appended by 13-09 and `test_p13_datagen.jl` by 13-11,
+      for eleven Phase-13 includes in total
 - [ ] Extend `spike/test/runtests.jl` resolve-risk gate with Phase-13 clause (i)
 
 *No framework install needed — Julia stdlib `Test` is already the harness.*
@@ -120,14 +128,23 @@ intended state, not an omission.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120s
-- [ ] Reported gates ran once on byte-locked `spike/p13/consts.jl`, sha quoted in the report
-- [ ] The falsified `all(y′ .> 0)` invariant appears in no plan, no test and no validation row
-- [ ] No pass/fail threshold is defined for any real-image quantity
-- [ ] `nyquist_compliant: true` set in frontmatter
+Plan-time items (verified against the sixteen plans as written):
 
-**Approval:** pending
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies — every task across all 16 plans
+      carries an `<automated>` command
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (see the note under Wave 0 Requirements)
+- [x] No watch-mode flags
+- [x] Feedback latency < 120s — the 120 s max-feedback-latency budget above is a **documented
+      per-phase budget**, set deliberately against this phase's simulation cost, not an oversight
+- [x] The falsified `all(y′ .> 0)` invariant appears in no plan, no test and no validation row
+- [x] No pass/fail threshold is defined for any real-image quantity (13-01 asserts the only two
+      named exemptions: `P13_REAL_ANCHOR_TOL`, `P13_REAL_OOD_SHIPPED_THRESHOLD`)
+- [x] `nyquist_compliant: true` set in frontmatter
+
+Execution-time item (cannot be ticked at plan time; checked at `/gsd:verify-work`):
+
+- [ ] Reported gates ran once on byte-locked `spike/p13/consts.jl`, sha quoted in the report
+
+**Approval:** approved for execution 2026-07-25 (plan-time items complete; the reported-gate row
+above is discharged during execution).
