@@ -18,3 +18,38 @@ Out-of-scope discoveries logged during execution. Not fixed here.
   re-run in Phase 11 (D-01), the frozen pre-registration must not be edited, and the loop is
   arity-safe against a wider posterior (it reads the first 7 rows of an 8-row draw matrix).
   Revisit only in a phase that actually re-runs the src gate.
+
+## From plan 11-04 (research-net scaffold)
+
+- **`spike/test/test_simulator.jl:199-200` still pins the PRE-11-02 seven-field θ**, so
+  `julia --project=spike spike/test/runtests.jl` currently exits 1:
+
+  ```
+  sample_prior: 7-field θ, in-range ρ_true, deterministic (D-14): Test Failed at
+    spike/test/test_simulator.jl:200
+    Expression: keys(θ) == (:ρ_true, :spillover, :autofluorescence, :label_efficiency,
+                            :shift_dx, :shift_dy, :noise)
+    Evaluated:  (:ρ_true, …, :noise, :chromatic_eps) == (:ρ_true, …, :noise)
+  ```
+
+  **Pre-existing, and not caused by plan 11-04.** `spike/simulator/prior.jl` gained
+  `chromatic_eps` in `ca02b0e` (plan 11-02); `spike/test/test_simulator.jl` was last touched in
+  `02c3bee` (Phase 2) and was never updated to the post-edit arity the way its sibling
+  `spike/test/test_p11_forced_theta.jl` was (11-02 deviation 3). The failure is present at plan
+  11-04's worktree base `2aae21f` with no 11-04 file loaded.
+
+  **Blast radius is larger than one assertion:** `test_simulator.jl` THROWS, so
+  `runtests.jl` aborts there and the five later includes (`test_data_pipeline.jl`,
+  `test_npe.jl`, `test_sbc.jl`, `test_bf.jl`, `test_ood.jl`, `test_comparator.jl`) do not run
+  at all.
+
+  Not fixed here: `spike/test/test_simulator.jl` is outside plan 11-04's declared file set, and
+  plan 11-03 was executing in parallel against the same phase, so an undeclared edit risked a
+  merge collision on a file neither plan owns. The fix itself is mechanical and mirrors what
+  11-02 already did for `test_p11_forced_theta.jl` — extend the expected tuple with
+  `:chromatic_eps`, keep the assertion a tripwire rather than a restatement, and update the
+  testset name, which still says "7-field θ".
+
+  The Phase-11 clause (i) dependency gate that plan 11-04 added to `runtests.jl` is
+  **unaffected and green** (`D-04 CPU-only (no CUDA dependency, none loaded)`: 23/23 pass,
+  up from 21 assertions).
