@@ -270,7 +270,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
   1. A 3-way `RatioEstimator`/evidence network emits a log-BF simplex over {coloc, random, exclusion} in one forward pass
   2. It reproduces `compute_BayesFactor()` (`src/bayes.jl:109`) in the overlapping 2-way regime without quadgk/KDE
   3. The exclusion hypothesis is validated on segregated ground-truth inputs
-**Plans**: 14 plans (9 waves — W1 pre-registration ∥ SC2 amendment ; W2 labels ∥ α-series ∥ τ-probe code ; W3 two-head net ; W4 D-07 closed-form verification ; W5 result type + suite wiring ; W6 Phase-11 preconditions ∥ τ-probe run [BLOCKED] ; W7 datagen + training [BLOCKED] ; W8 reported gate ∥ α-series run [BLOCKED] ; W9 phase report [BLOCKED])
+**Plans**: 16 plans (9 waves — W1 pre-registration ∥ SC2 amendment ; W2 labels ∥ α-series ∥ τ-probe code ; W3 two-head net ∥ real-image ingestion ; W4 D-07 closed-form verification ; W5 result type + suite wiring ; W6 Phase-11 preconditions ∥ τ-probe run [BLOCKED] ; W7 datagen + training [BLOCKED] ; W8 reported gate ∥ α-series run ∥ real-image run [BLOCKED] ; W9 phase report [BLOCKED])
 - [ ] 13-01-PLAN.md — Tier-1 pre-registration consts (seeds, τ probe spec, D-07 design + bars, gate floors, ECE band, α ladder) + literal-assertion test (D-01, D-04, D-05, D-06, D-07, D-09, D-10, D-12, D-13, D-14, D-16)
 - [ ] 13-02-PLAN.md — 13-SC2-AMENDMENT.md frozen before any result (two outcome-independent defects) + ROADMAP annotation (D-12, D-02, D-08, D-09, D-13, D-15)
 - [ ] 13-03-PLAN.md — Three-way label surface: two-factor cut on ρ_sample level × control contrast, head_targets, measure_head_log_odds (D-05, D-07, D-08, D-11)
@@ -284,7 +284,9 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [ ] 13-11-PLAN.md — Class-frequency-stratified conditioned datagen on the frozen Phase-11 zt + the single training run with measured per-head log-odds (D-02, D-03, D-07, D-10, D-11) [BLOCKED: Phase 11]
 - [ ] 13-12-PLAN.md — REPORTED amended gate: per-class AUC + confusion matrix (descriptive) + per-head ECE with vacuous-pass guard; λ response and binary-NRE continuity reported not gated (D-12, D-13, D-14, D-03, D-05) [BLOCKED: Phase 11]
 - [ ] 13-13-PLAN.md — REPORTED α-ladder run through the trained net: log-BF curves, m̄(α), crossing point α*, sealed holdout untouched (D-15, D-16) [BLOCKED: Phase 11]
-- [ ] 13-14-PLAN.md — Phase-13 report: amended criteria beside originals, the D-05 trap in prose, three named limits, iteration ledger, deferrals (D-05, D-07, D-08, D-12, D-13, D-15, D-16, D-01, D-02, D-04) [BLOCKED: Phase 11]
+- [ ] 13-14-PLAN.md — Phase-13 report: amended criteria beside originals, the D-05 trap in prose, four named limits incl. no labelled real-data validation, the real-image OOD + naming-correction honesty items, iteration ledger, deferrals, all 8 open questions closed (D-05, D-07, D-08, D-12, D-13, D-15, D-16, D-01, D-02, D-04) [BLOCKED: Phase 11]
+- [ ] 13-15-PLAN.md — D-15 (AMENDED) real-image ingestion from `test/test_images/`: P13_REPO_ROOT/real_tif/load_real, ghat-anchor regression, derived grid truncation, the real α-ladder, and the five D-15 testsets (ingestion, real ladder, anti-snooping, read-only, not-a-gate) + A14 falsifier — Phase-11-INDEPENDENT (D-15, D-16, D-01, D-04)
+- [ ] 13-16-PLAN.md — REPORTED real-image qualitative check: λ sweep with every log-BF printed beside its OOD verdict, Phase-13-vs-shipped OOD comparison, real α-ladder through the net, naming correction + target-substitution record, seal intact (D-15, D-16, D-03, D-08, D-01, D-04) [BLOCKED: Phase 11]
 
 ### Phase 14: Decision and Abstention Layer
 **Goal**: Turn calibrated posteriors + the 3-way BF into an actionable batch decision {coloc / not / ABSTAIN} at a controlled Bayesian FDR, abstaining exactly when the tool should be silent
