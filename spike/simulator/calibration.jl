@@ -154,13 +154,47 @@ function _ks_stat(sample::Vector{Float64}, d)
 end
 
 # --- FAITHFUL real anchor (D-16): the package's own load_tiff, NOT luminance ------
+# Each fixture is measured TWICE, because the two available estimators disagree:
+#   UNMASKED -- what `patch_summary` (and therefore the v2.0 training AND inference
+#               path) actually sees: no Otsu mask, every pixel enters the per-patch
+#               Pearson correlation.
+#   MASKED   -- what the v1.0 ANALYSIS pipeline sees: src/utils.jl:84-87 applies
+#               `_apply_mask!(img, _calculate_mask(img))` before correlating, and
+#               `_exclude_zero` (src/colocalization.jl:154-169) then drops any pixel
+#               pair carrying a 0.0 -- so only pixels above the per-channel Otsu
+#               threshold in BOTH channels survive.
+# BOTH are reported, with their surviving-patch counts, because they disagree in
+# SIGN and in ORDER and are biased in OPPOSITE directions (see the anchor caveat
+# emitted into ghat.jl). Neither is presented as "the" real-fluorescence number.
+
+# (μ, n) for one MCI. `n` counts the 8x8 summary entries that actually enter the
+# mean -- non-`missing` AND finite -- out of 64. `patch_summary` is called, never
+# reimplemented.
+function _anchor_measure(mci)
+    s = patch_summary(mci)
+    n = count(v -> !ismissing(v) && isfinite(v), s)
+    return (induced_mu(mci), n)
+end
+
+# Sentinel for a failed fixture load: NaN μ, zero surviving patches (keeps the
+# downstream shape total so interpolation/report code cannot throw).
+_anchor_na() = (unmasked_mu = NaN, unmasked_n = 0, masked_mu = NaN, masked_n = 0)
+
 function _real_anchor()
-    load_one(cond) = begin
+    measure_one(cond) = begin
         c1 = load_tiff(joinpath(_REPO_ROOT, "test", "test_images", cond, "$(cond)_c1.tif"))
         c2 = load_tiff(joinpath(_REPO_ROOT, "test", "test_images", cond, "$(cond)_c2.tif"))
-        induced_mu(build_mci([Matrix{Float64}(c1), Matrix{Float64}(c2)]; name = cond))
+        mci = build_mci([Matrix{Float64}(c1), Matrix{Float64}(c2)]; name = cond)
+        # ORDER IS LOAD-BEARING: `_apply_mask!` MUTATES `mci.data` in place, so the
+        # UNMASKED measurement must be taken BEFORE the mask is applied.
+        unmasked_mu, unmasked_n = _anchor_measure(mci)
+        # v1.0 semantics verbatim (src/utils.jl:86). `_calculate_mask` uses the Otsu
+        # thresholds `build_mci` already stored at load time -- not a re-thresholding.
+        _apply_mask!(mci, _calculate_mask(mci))
+        masked_mu, masked_n = _anchor_measure(mci)
+        (; unmasked_mu, unmasked_n, masked_mu, masked_n)
     end
-    return (positive = load_one("positive"), negative = load_one("negative"))
+    return (positive = measure_one("positive"), negative = measure_one("negative"))
 end
 
 # ================================================================================
@@ -235,9 +269,14 @@ function calibrate(rng::AbstractRNG = Random.Xoshiro(2026);
         _real_anchor()
     catch err
         @warn "real anchor load failed" err
-        (positive = NaN, negative = NaN)
+        (positive = _anchor_na(), negative = _anchor_na())
     end
-    neg_reachable = (isfinite(anchor.negative) && anchor.negative < 0.0)
+    # Derived from the MASKED negative-fixture μ: that is the estimator comparable to
+    # the v1.0 analysis pipeline. This predicate is NOT by itself evidence of physical
+    # reachability -- the masked and unmasked estimators are biased in OPPOSITE
+    # directions (two-sided bias recorded in the emitted ghat.jl header), and n = 2
+    # fixtures cannot settle negative-tail reachability either way.
+    neg_reachable = (isfinite(anchor.negative.masked_mu) && anchor.negative.masked_mu < 0.0)
 
     return (; ρ_grid, mu_mean, mu_sd, spearman, mu_knots, rho_knots, mu_min, mu_max,
             w1, ks, induced_n = length(induced), si, si_rhos, si_sizes, si_maxdev,
