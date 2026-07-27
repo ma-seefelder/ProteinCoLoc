@@ -371,8 +371,11 @@ _hand_bce(logit::Real, target::Real) =
         @test h.head_log_odds == hlo
         @test h.schema_version == P13_NET_SCHEMA
         @test h.cut_variant === P13_CUT_VARIANT
-        # tau is still Tier-2, so the artifact records its absence rather than inventing a value.
-        @test h.tau === nothing
+        # FLIPPED BY PLAN 13-10. tau is Tier-2 and is now MEASURED, so `save_three_way`'s
+        # guarded read resolves and the artifact records the VALUE where it previously
+        # recorded the absence. Either way the artifact never invents a number: the guard in
+        # net.jl is what makes both states honest, and this assertion pins the live one.
+        @test h.tau === Float64(P13_TAU)
         # The provenance sha ties the artifact to the frozen pre-registration.
         @test h.consts_sha == p13_consts_sha() && length(h.consts_sha) == 64
         @test h.meta.note == "gate fixture"
@@ -414,11 +417,20 @@ _hand_bce(logit::Real, target::Real) =
         @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
     end
 
-    @testset "the net does not depend on tau (still Tier-2)" begin
-        # D-06 keeps tau out of the pre-registration until it is MEASURED. The net surface must
-        # therefore be fully testable before that commit -- and it is, because tau enters through
-        # the LABEL boundary, not through the architecture.
-        @test !isdefined(@__MODULE__, :P13_TAU)
+    @testset "the net still does not depend on tau (now that tau is measured)" begin
+        # FLIPPED BY PLAN 13-10, which appended the measured Tier-2 P13_TAU. The CLAIM this
+        # testset protects has not changed at all -- tau enters through the LABEL boundary,
+        # never through the architecture -- but before 13-10 the only way to state it was that
+        # tau did not exist, which proved nothing about the net. Now that tau EXISTS the claim
+        # is testable in its strong form: the net surface may mention tau in exactly ONE place,
+        # the artifact PROVENANCE record, and nowhere that determines a layer, a width or an
+        # input dimension. Word-boundaried so the P13_* recipe knobs are not miscounted.
+        @test isdefined(@__MODULE__, :P13_TAU)
+        tau_lines = filter(l -> occursin(r"\bP13_TAU\b", l), split(P13_NET_CODE, '\n'))
+        @test length(tau_lines) == 1
+        # ...and that one mention is the GUARDED provenance read, which records tau into the
+        # saved artifact rather than feeding it to the architecture.
+        @test occursin("isdefined", only(tau_lines))
     end
 
 end
