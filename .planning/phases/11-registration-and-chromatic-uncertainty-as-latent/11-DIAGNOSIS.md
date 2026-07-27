@@ -13,6 +13,7 @@ artifacts:
   - spike/validation/p11_paired_ridge_report.jld2
   - spike/validation/p11_coverage_report.jld2
   - spike/validation/p11_peakdecomp_report.jld2
+  - spike/validation/p11_rhostrat_report.jld2
 scripts:
   - spike/validation/run_p11_bottleneck.jl
   - spike/validation/run_p11_recovery.jl
@@ -21,7 +22,8 @@ scripts:
   - spike/validation/run_p11_paired_ridge.jl
   - spike/validation/run_p11_coverage.jl
   - spike/validation/run_p11_peakdecomp.jl
-commits: [519a95e, e95771d, f3e7011, 9c77bf4, c2b928a, 1f7fbd0, 7c03680]
+  - spike/validation/run_p11_rhostrat.jl
+commits: [519a95e, e95771d, f3e7011, 9c77bf4, c2b928a, 1f7fbd0, 7c03680, 08382eb, c572ddd, 1918987, fb0a174]
 ---
 
 # Phase 11 — Why the registration ladder is flat
@@ -384,6 +386,67 @@ failed it anyway**, because the gate demanded 2.502 of a quantity whose true val
 randomised, and this test does no atom randomisation), and it is a property of the **research net
 with its four declared deviations, not the shipped bundle**.
 
+### Does colocalization strength change the answer? Not for the real summary.
+
+Shift identifiability is structurally monotone in colocalization strength: when the channels are
+independent, no displacement makes them match better, so the shift is unidentifiable *in principle*.
+Everything above pooled across the whole ρ prior, so a uniform null could have been masking real
+structure at the strong-coloc end — the end that matters practically.
+
+**The stratifier is |ρ|, not signed ρ, and that is not cosmetic.** At ρ = −0.9 the channels are as
+statistically dependent as at +0.9, and displacement degrades that dependence just as
+systematically. It is ρ = 0 that is unidentifiable, not ρ = −1. The pool's ρ prior is skewed
+negative (mean −0.106; only 10.8 % exceed +0.5, but 30.1 % exceed |ρ| = 0.5), so stratifying on
+signed ρ would put most genuinely-identifiable mass into the "low" bins and manufacture a null.
+Signed bins are reported alongside and are likewise flat.
+
+**Confound check, run before interpreting anything:** |cor(|ρ|, ·)| ≤ **0.0066** against every other
+generative quantity and against λ. Any gradient is attributable to ρ.
+
+**The 128-row summary — the one the method actually uses — is FLAT:**
+
+| \|ρ\| bin | n | dx ratio | dy ratio |
+|---|---|---|---|
+| [0.0, 0.2) | 4346 | 0.996 | 0.998 |
+| [0.2, 0.4) | 3229 | 1.000 | 1.000 |
+| [0.4, 0.6) | 1966 | 1.000 | 0.999 |
+| [0.6, 0.8) | 1322 | 0.996 | 0.993 |
+| [0.8, 1.0) | 1637 | 1.001 | 0.998 |
+
+Every bin is well populated, and none departs from 1.0. **The null is uniform: the shift is not
+recoverable from the real summary at ANY colocalization level, including the strongest.** This is
+the stronger of the two pre-committed readings.
+
+**The candidate paired feature does show a gradient — and a sign bug was suppressing it.**
+`_subpixel_peak` takes an argmax, but for an anti-correlated pair the best alignment is the curve's
+*minimum*, so argmax locked onto noise for roughly half the pool. Re-extracted with a sign-aware
+extremum (n = 6000, all bins ≥ 150):
+
+| \|ρ\| bin | n | dx ratio | dy ratio |
+|---|---|---|---|
+| [0.0, 0.2) | 513 | 1.031 | 1.017 |
+| [0.2, 0.4) | 408 | 0.963 | 0.937 |
+| [0.4, 0.6) | 226 | 0.838 | 0.841 |
+| [0.6, 0.8) | 150 | 0.834 | 0.826 |
+| [0.8, 1.0) | 203 | **0.810** | **0.823** |
+
+A clean monotone gradient, in both axes, exactly as the identifiability argument predicts. **But the
+top bin reaches 0.810 / 0.823 — it does NOT clear the pre-committed < 0.8 bar.** Per the criteria
+fixed in advance this is the "in between" case, and it is reported as such rather than rounded to
+the more interesting reading. Even taken at face value, 0.81 is a 19 % error reduction: the shift
+remains mostly undetermined even at maximal colocalization.
+
+**And the sign-aware variant is not a free win.** Its ρ_true positive control degrades from 0.178 to
+**0.755** — by construction, since flipping the curve by its own sign destroys the information about
+ρ's sign. So it would trade away sign-of-correlation recovery, which is central to colocalization,
+to buy a 19 % improvement on a nuisance parameter. That is a bad trade, and it is why this gradient
+does not resurrect the candidate.
+
+**How to read this against standard practice:** real microscopy calibrates channel registration with
+**fiducial beads**, not by inferring it from the biological channels. A negative result here is
+therefore consistent with how the instrument is actually used, and the correct framing is
+"registration must be calibrated externally" — not "the method falls short".
+
 ### What this means for the redesign
 
 Both candidates the measurement supported have now been tested, and neither rescues the single-draw
@@ -442,6 +505,11 @@ Two costs that are **not** compute and should dominate the decision:
 - **Not resolved:** the 37 % x/y asymmetry in the paired feature's per-draw noise (2.835 vs
   2.065 px). Genuine anisotropy or scatter at n = 80 is undetermined; the y-axis SNR of 1.227 should
   not be built on until it is.
+- **Measured in an unfavourable ρ regime:** the SNR and peak-decomposition legs reuse the D-06
+  probe's five frozen theta bases, whose |ρ| values are 0.18, 0.03, 0.19, 0.99, 0.47 — **three of
+  five sit in the lowest, structurally least identifiable bin**. Those legs are therefore dominated
+  by low-colocalization cases. This does NOT affect the 128-row recoverability result, which is
+  stratified over 50,000 samples and flat everywhere; it is a limitation of the SNR numbers only.
 - **Not tested:** the paired feature at larger misalignments or averaged over multiple fields. It is
   unbiased and tracks the true shift on average, so both are plausible routes — but neither was
   measured, and neither is the regime this phase is about.
