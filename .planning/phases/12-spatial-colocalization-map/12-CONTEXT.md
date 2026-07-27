@@ -95,6 +95,68 @@ independent reason (summary content unchanged), which is unaffected either way.
 
 ---
 
+## ORCHESTRATOR RESOLUTIONS 2026-07-27 (R-1 … R-8)
+
+`12-RESEARCH.md` surfaced six open questions plus two under-specifications that would otherwise be
+resolved silently — and badly — by whoever executed first. This discussion delegated **nothing** to
+Claude's discretion, so these are recorded explicitly as **orchestrator calls, not user decisions**.
+Each follows from a decision already locked above plus a measurement the researcher took; none
+introduces new scope. **A user who disagrees should overrule these, not the D-numbers.**
+
+- **R-1 (OQ1) — The global term is the DCT DC coefficient `c₀`, carried as a θ row. The
+  shipped-comparable scalar ρ is reported as a DERIVED read-time quantity, labelled as derived.**
+  D-01 wants continuity of *what is reported*; D-07 forbids inserting a deterministic transform
+  between what is sampled and what is scored (that structure produced the ρ_true atom artifacts of
+  named limit #2). Under the orthonormal DCT rotation `c₀` is genuinely *sampled*, so it satisfies
+  D-07 exactly while a derived read-time ρ satisfies D-01's intent. Follows the research
+  recommendation.
+
+- **R-2 (OQ2) — Parameterize and score the field in GAUSSIAN space. Report BOTH the Gaussian-space
+  SBC (clean) and the randomized-rank ρ-space SBC (comparable to the milestone's existing tables).**
+  Under D-05's copula the *sampled* object is the Gaussian field; ρ is its deterministic monotone
+  transform. Gaussian space is therefore simultaneously D-07-clean **and** atom-free — against a
+  measured **6.79 % per-region atom mass** in ρ space, and against Phase 11's measured cost of
+  skipping randomized ranks (coverage 0.72–0.77 vs nominal 0.90). Cost: one extra table.
+
+- **R-3 (OQ3) — Keep PER-ROW z-scoring as the default** (matches the existing frozen `zt` and
+  loader). Shared-scalar scaling is a declared alternative arm, taken only if the CNN underperforms
+  the MLP control. **Record which was used** — this is exactly the kind of unrecorded choice that
+  makes a later comparison unreadable.
+
+- **R-4 (OQ4) — The D-10 ablation RETRAINS on an ℓ→0 prior. It does not pin ℓ at read time.**
+  D-10's text is "same network, same training, same summary, with the spatial prior neutralized." A
+  read-time pin is an out-of-distribution read, not a matched ablation, and it would confound the
+  very gate D-10 exists to make attributable. It also makes D-13's descope deliverable a genuinely
+  trained model rather than a mis-specified read of another one.
+
+- **R-5 (OQ5) — Mirror Phase 11's Tier-1 / Tier-2 pre-registration structure exactly.** Tier 1 lands
+  in `spike/validation/p12_consts.jl` before anything runs. Tier 2 is **appended, never edited**,
+  each constant carrying one line of provenance naming the artifact it came from. This is how a
+  measurement informs a threshold without data-snooping.
+
+- **R-6 (OQ6) — The `chromatic_eps` identifiability ridge is a Wave-1 reported task.** Cheap,
+  read-only against the existing Phase-11 pool. Because the ε effect *clears* the per-draw noise
+  floor (ratio 1.272 at the prior edge), a positive result is plausible — and would be the project's
+  **first identified nuisance parameter**, which materially changes how limit #4 (vacuous columns) is
+  written up. Reported, never gated.
+
+- **R-7 (under-specification, not an OQ) — The CNN topology is LEAN and must be written into the
+  plan literally.** Measured: a fat CNN (`2→32→64→64`, flatten 4096, `Dense(4096,256)`) costs
+  **12.5 h** at D=72/50k; a 1×1 channel bottleneck (`2→16→32`, `1×1→8`, flatten 512,
+  `Dense(512,128)`) costs **1.8 h** for ~the same job — the `Dense(4096,256)` alone is 92 % of the
+  summary net's parameters. A plan that says only "a CNN" silently picks the 12.5 h version.
+
+- **R-8 (correction to D-05 as written) — The copula needs a per-cell rescale step D-05 does not
+  mention.** CAR marginal variances are **not** uniform (measured sd 0.658 at an edge vs 0.992 in the
+  interior at α = 0.95), so each cell must be divided by `sqrt(diag(Σ))` before Φ. Without it the
+  per-region SIM-02 claim is simply false at the boundary. With it, measured per-region W1 to
+  `MU_PRIOR` is **max 0.00732** against a `SIM02_W1_TOL` of 0.10. Relatedly, **both** the CAR and GP
+  arms must be parametrized by **induced lag-1 correlation**, not by α or ℓ directly — α is a broken
+  knob (lag-1 goes 0.136 → 0.947 across α = 0.5 → 0.999), and a uniform prior on it would walk D-08
+  straight into the S-1 prior-echo trap while appearing to test a prior *shape*.
+
+---
+
 <domain>
 ## Phase Boundary
 
