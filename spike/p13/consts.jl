@@ -716,5 +716,97 @@ if !isdefined(@__MODULE__, :P13_DEV_SEED)
     # TIER 2 MUST NOT BE PRESENT IN THE TIER-1 COMMIT. Plan 13-10 does not DELETE this
     # assertion -- it RELOCATES it above the appended Tier-2 block, so the Tier-1 guard still
     # proves that tau did not exist when the bars were set.
-    @assert !isdefined(@__MODULE__, :P13_TAU) "P13_TAU is Tier-2 and must be absent from the Tier-1 commit"
+    # RELOCATED BY PLAN 13-10, NOT DELETED. At the Tier-1 commit
+    # c42cc8e4a3d33b6ad95e3b5d5af58d84066ab4ad ("feat(13-01): lock the Phase-13 Tier-1
+    # pre-registration") this block ended with the statement
+    #     @assert !isdefined(@__MODULE__, :P13_TAU) "P13_TAU is Tier-2 and must be absent from the Tier-1 commit"
+    # and it HELD: `git show c42cc8e:spike/p13/consts.jl` carries that line, and no P13_TAU
+    # existed anywhere in the repository at that commit. THAT is the pre-registration
+    # guarantee -- the bars were set while tau did not exist -- and it is now a matter of
+    # git history rather than a live runtime check, because the Tier-2 block appended below
+    # legitimately supplies the value. The EQUIVALENT, Tier-2-AWARE live assertion sits
+    # immediately above that block: tau may exist only in the company of its probe
+    # provenance, so a tau smuggled in from anywhere other than the appended block still
+    # fails loudly.
+end
+
+# =========================================================================================
+# THE RELOCATED TIER-1 SELF-CHECK (plan 13-10)
+# =========================================================================================
+# The Tier-1 block asserted that tau did not exist. That statement is preserved verbatim in
+# the comment at the foot of that block, together with the commit at which it held. What
+# survives as EXECUTABLE code is its purpose, restated so it is still falsifiable now that a
+# measured tau legitimately exists: TAU MAY ONLY EVER ARRIVE TOGETHER WITH ITS PROBE
+# PROVENANCE. A P13_TAU defined without P13_TAU_PROBE_ARTIFACT is a tau that came from
+# somewhere other than the appended Tier-2 block below -- a hand-edit, a REPL, a caller
+# setting it -- which is precisely the failure the original assertion existed to catch.
+# It sits ABOVE the Tier-2 block (outside the Tier-1 guard, so it also runs on a re-include)
+# exactly as the Tier-1 header requires.
+@assert (!isdefined(@__MODULE__, :P13_TAU) ||
+         isdefined(@__MODULE__, :P13_TAU_PROBE_ARTIFACT)) "P13_TAU exists without its probe provenance: tau was set outside the appended Tier-2 block"
+
+# =========================================================================================
+# TIER 2 -- PROBE-DERIVED, APPENDED AFTER THE MEASUREMENT
+# =========================================================================================
+# THIS IS THE ONE NUMBER IN PHASE 13 THAT WAS MEASURED RATHER THAN CHOSEN, AND THE ORDER OF
+# OPERATIONS IS WHAT MAKES IT LEGITIMATE.
+#
+# The probe ran on 2026-07-27 (UTC), reported by `spike/p13/run_tau_probe.jl` against the
+# POST-Phase-11 simulator, and persisted its whole A(delta) curve to
+# `spike/p13/tau_probe_report.jld2`. The provenance it recorded:
+#
+#   repo HEAD at the probe run  cecb69c58770a5b45bec8151c657d9024b999f80
+#   simulator commit            78dc37f517ad1b8e1e71afa963691f7ddefe5f63
+#   simulator guard             post_p11 = true; theta arity 8 with chromatic_eps present,
+#                               shift-prior half-width 3.0 == expected 3.0
+#   stream                      P13_DEV_SEED at counter P13_TAU_COUNTER, R = 400 per arm,
+#                               unpaired arms on two provably disjoint Philox keys
+#
+# THE MEASUREMENT, on the frozen grid, as magnitudes max(A, 1-A), both directions:
+#
+#   delta   A_neg      A_pos      A = max    bootstrap median
+#   0.02    0.529025   0.592806   0.592806   0.592806
+#   0.03    0.566481   0.625869   0.625869   0.625184
+#   0.05    0.639375   0.689925   0.689925   0.688956
+#   0.075   0.723788   0.760544   0.760544   0.761053
+#   0.10    0.800338   0.819356   0.819356   0.821203
+#   0.15    0.916356   0.905794   0.916356   0.917831   <-- FIRST delta to clear the bar
+#   0.20    0.978556   0.953612   0.978556   0.978541
+#
+# No arm produced a degenerate all-absent patch grid, so every AUC rests on the full 400
+# draws per arm. The curve is monotone increasing in delta, which is the shape the design
+# predicts and the absence of the "statistic is not tracking rho at all" failure mode.
+#
+# tau = 0.15: the SMALLEST delta on the frozen P13_TAU_DELTA_GRID whose A(delta) reached
+# the pre-registered bar P13_TAU_AUC. The grid was not extended, the bar was not moved, R
+# was not raised and no seed was rerolled -- and none of that was needed, because the bar
+# was cleared on the grid as committed.
+#
+# THIS BLOCK WAS COMMITTED SEPARATELY, AFTER THE ARTIFACT COMMIT
+# 581602a73a3f180f490f1c421c43028aa7cf9d47 that carries the runner and the curve. That
+# separation is the auditable evidence that tau was MEASURED BEFORE IT WAS LOCKED: the
+# measurement exists in git history at a commit that contains no Tier-2 value, so no reader
+# has to take the ordering on trust.
+#
+# Guarded on :P13_TAU, a DIFFERENT sentinel from the Tier-1 block's :P13_DEV_SEED, so this
+# block is independently idempotent under a re-include.
+if !isdefined(@__MODULE__, :P13_TAU)
+    const P13_TAU = 0.15                    # first grid delta clearing the bar; A(tau) = 0.916356
+    const P13_TAU_MEASURED_AUC = 0.91635625 # the realized A(tau) = max(A_neg, A_pos) at tau
+    const P13_TAU_PROBE_SHA = "cecb69c58770a5b45bec8151c657d9024b999f80"
+    const P13_TAU_SIMULATOR_SHA = "78dc37f517ad1b8e1e71afa963691f7ddefe5f63"
+    const P13_TAU_PROBE_ARTIFACT = "spike/p13/tau_probe_report.jld2"
+    # TAU IS REALLY TAU-OF-LAMBDA, so the reference registration uncertainty must travel with
+    # the number or the number is not interpretable. P13_TAU_REFERENCE_LAMBDA_RULE
+    # (= :widest_rung) was RESOLVED at probe time against Phase-11's own frozen ladder: the
+    # widest SC2 rung is LAMBDA_MAX = 3.0, which is also the half-width of the live
+    # SHIFT_PRIOR the probe marginalized over. Because the probe integrates over the FULL
+    # shift prior rather than conditioning on a rung, the measured tau is already the tau at
+    # the widest registration uncertainty -- the conservative reading the rule asks for.
+    const P13_TAU_REFERENCE_LAMBDA = 3.0
+
+    # Executable, not decorative: tau must be a grid point (never an interpolated or rounded
+    # value) and must actually have cleared the frozen bar.
+    @assert P13_TAU in P13_TAU_DELTA_GRID "P13_TAU is not a point on the frozen pre-registered grid"
+    @assert P13_TAU_MEASURED_AUC >= P13_TAU_AUC "P13_TAU_MEASURED_AUC does not clear the frozen P13_TAU_AUC bar"
 end

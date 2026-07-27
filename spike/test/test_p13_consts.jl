@@ -118,13 +118,29 @@ const P13_CONSTS_CODE = join(
         @test P13_TAU_REFERENCE_LAMBDA_EXPECTED == 3.0
     end
 
-    @testset "tau is Tier-2 and absent" begin
-        # PLAN 13-10 FLIPS THIS TESTSET to assert the MEASURED value instead, in a
-        # SEPARATELY-COMMITTED edit made after the probe artifact exists. Until then, tau
-        # not existing is the pre-registration guarantee, and it is asserted, not assumed.
-        @test !isdefined(@__MODULE__, :P13_TAU)
-        @test_throws ErrorException p13_tau()
-        @test occursin("Tier-2", sprint(showerror, try p13_tau() catch e; e end))
+    @testset "tau is measured and locked (Tier 2)" begin
+        # FLIPPED BY PLAN 13-10, which is the plan the previous version of this testset named
+        # as the one that would flip it. Until 13-10 ran, tau NOT existing was the
+        # pre-registration guarantee and was asserted here. 13-10 made the measurement in two
+        # commits, in this order: 581602a (the runner plus the persisted A(delta) curve, with
+        # no Tier-2 value anywhere) and then the Tier-2 append to spike/p13/consts.jl. This
+        # edit belongs to the SECOND of those two commits, so the guarantee that survives is
+        # now the ORDERING, visible in git history, rather than tau's absence.
+        @test isdefined(@__MODULE__, :P13_TAU)
+        # A grid point, never an interpolated or rounded value: tau is read OFF the frozen
+        # grid, so a tau that is not on it would mean the reading rule was bypassed.
+        @test P13_TAU in P13_TAU_DELTA_GRID
+        # The measured discriminability actually cleared the frozen bar.
+        @test P13_TAU_MEASURED_AUC >= P13_TAU_AUC
+        # Both provenance shas are full 40-character hex object names, so the simulator the
+        # probe measured against and the tree it ran on are both pinned rather than described.
+        @test occursin(r"^[0-9a-f]{40}$", P13_TAU_PROBE_SHA)
+        @test occursin(r"^[0-9a-f]{40}$", P13_TAU_SIMULATOR_SHA)
+        # tau is really tau-of-lambda; the reference must travel with the number.
+        @test P13_TAU_REFERENCE_LAMBDA == P13_TAU_REFERENCE_LAMBDA_EXPECTED
+        @test P13_TAU_PROBE_ARTIFACT == "spike/p13/tau_probe_report.jld2"
+        # The Tier-1 accessor now resolves instead of throwing -- same function, no edit.
+        @test p13_tau() === P13_TAU
     end
 
     @testset "D-07 design and bars are locked" begin
