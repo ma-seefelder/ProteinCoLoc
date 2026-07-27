@@ -11,12 +11,16 @@ artifacts:
   - spike/validation/p11_hybrid_report.jld2
   - spike/validation/p11_paired_report.jld2
   - spike/validation/p11_paired_ridge_report.jld2
+  - spike/validation/p11_coverage_report.jld2
+  - spike/validation/p11_peakdecomp_report.jld2
 scripts:
   - spike/validation/run_p11_bottleneck.jl
   - spike/validation/run_p11_recovery.jl
   - spike/validation/run_p11_hybrid.jl
   - spike/validation/run_p11_paired.jl
   - spike/validation/run_p11_paired_ridge.jl
+  - spike/validation/run_p11_coverage.jl
+  - spike/validation/run_p11_peakdecomp.jl
 commits: [519a95e, e95771d, f3e7011, 9c77bf4, c2b928a, 1f7fbd0, 7c03680]
 ---
 
@@ -218,9 +222,11 @@ floor by 10.3×. The ratio is **flat, and if anything slightly worse**. Going to
 full re-validation — new `d_in`, invalidated `zt`, net, SBC proof and OOD flag — and buy nothing.
 **The entire "finer grid" family is ruled out.**
 
-*(Confidence check: the 8×8 SNR here is 0.403 against the 0.406 of §1, measured on a completely
-different code path. Two independent implementations agreeing to three decimals means the
-instrument is sound.)*
+**Instrument check.** The 8×8 SNR here is **0.403**, against **0.406** measured in §1 by
+`run_p11_bottleneck.jl` on a completely independent code path (different script, different summary
+construction, different noise-floor keying). Two independent implementations agreeing to three
+decimal places is the evidence that the measuring instrument itself is sound — without it, every
+null in this report would rest on a single unvalidated harness.
 
 ### Candidate B — a self-referential probe-shift feature: FAILS the recoverability leg
 
@@ -265,6 +271,44 @@ The best rung reaches 0.956 — a ~4 % error reduction — and the smallest-λ b
 guessing. Positive control on the same features: ρ_true ratio **0.183**, so the harness is sound
 (peak height is essentially the correlation).
 
+### Why it is imprecise — the decomposition, and what it rules out
+
+Peak-location precision factorises roughly as *(peak width) / (signal-to-noise of the curve
+points)*, and those are fixed by different means, so the combined 2.5 px number was decomposed.
+
+| quantity | measured |
+|---|---|
+| curve FWHM | **4.62 px** |
+| peak prominence | 0.0521 |
+| per-point curve noise | 0.00328 |
+| curve SNR | **15.9** |
+| factorisation predicts | 0.29 px |
+| **actually measured** | **2.54 px** |
+
+**Neither term explains it.** The curve points are clean (SNR ≈ 16) and the peak is not
+pathologically broad, yet the peak wanders ~9× more than the factorisation predicts. The excess
+cannot be independent point noise — it must be *coherent* shape variation, i.e. the curve's whole
+shape differs between draws in a way that moves the peak bodily.
+
+**Does computing the curve at finer granularity sharpen it? No — and this is a different question
+from the static grid sweep above.**
+
+| curve granularity | FWHM | peak noise | curve SNR |
+|---|---|---|---|
+| 8×8 | 4.626 px | 2.95 px | 14.0 |
+| 16×16 | 4.649 px | 3.08 px | 13.6 |
+| 32×32 | 4.620 px | 2.63 px | 15.8 |
+
+**FWHM is flat to three decimal places.** The peak width was never set by the patch size — at
+4.6 px it is already set by the PSF, which is exactly the width a fine-grained cross-correlation
+would give. There is nothing left for finer granularity to sharpen.
+
+So the limiting factor is neither granularity nor point noise. It is that **each independent draw's
+own best alignment genuinely differs by ~2.5 px**, because the images do not contain enough
+independent structure at the 3 px scale for "best alignment" to be well determined on one draw.
+That is a property of the data, not of the estimator. **No granularity change rescues it, and the
+candidate is dead.**
+
 ### The verdict, against the criteria fixed in advance
 
 **CLEAR FAILURE on the decisive leg.** Success required SNR > 1 **and** ridge < 0.8; the ridge leg
@@ -280,10 +324,65 @@ tracks the true shift on average (2.141 vs 2.121 px). So it would work given **m
 same field, or for **larger** misalignments. What fails is specifically the single-draw, ≤3 px
 regime — which is the regime this phase is about.
 
-**Unresolved, and flagged rather than averaged away:** the x and y per-draw noise differ by 37 %
-(2.835 vs 2.065 px). That may be a genuine anisotropy — the warp's slot order treats rows and
-columns differently — or scatter at n = 80. **The y-axis SNR of 1.227 should not be built on until
-that is resolved.** Combining the two axes into a single friendlier figure would hide this.
+**The x/y anisotropy was a FALSE ALARM — resolved by raising n.** At n = 80 the axes differed by
+37 % (2.835 vs 2.065 px), about 2.8 standard errors: suggestive, and squarely in the zone where
+one fools oneself. Re-measured at **n = 200** it did not replicate and **reversed sign** —
+2.542 (x) vs 2.980 (y), log-ratio +0.317 → **−0.159**. Two marginal results pointing in opposite
+directions are scatter, not a row/column asymmetry in the warp. **The y-axis SNR of 1.227 was the
+favourable half of a coin flip and must not be built on.**
+
+### Is the quadrature double-counting? Yes — and the correct answer is ~1.00
+
+A fair objection to the hybrid column: the training pool draws `shift ~ U(-λ, λ)`, so a
+well-calibrated net's Δρ posterior should *already* marginalise over the shift, and adding σ_reg
+again would double-count.
+
+**The conclusion is robust before the question is even settled.** The truth is bracketed by
+**1.021** (net already contains the whole effect) and **1.134** (net contains none of it). Both
+ends are far below the 2.502 bar, so the mis-specification finding holds under either reading.
+
+But which end is right changes what Phase 11 *claims*, so it was settled directly by calibration
+against simulated truth at fixed λ — 300 datasets per rung, 2000 draws each:
+
+| λ | coverage (nominal 0.90) | z-sd | posterior sd | **RMSE vs truth** |
+|---|---|---|---|---|
+| 0.25 | 0.730 | 1.499 | 0.09023 | **0.13334** |
+| 1.0 | 0.753 | 1.424 | 0.09243 | 0.12936 |
+| 2.0 | 0.767 | 1.389 | 0.09250 | 0.12979 |
+| 3.0 | 0.723 | 1.429 | 0.09392 | **0.13338** |
+
+**The decisive column is RMSE** — the error the posterior mean actually makes against truth, i.e.
+the width the data genuinely demands. Its ratio across the ladder is **1.0003. Flat.** Registration
+uncertainty at ≤3 px does not measurably degrade Δρ estimation at all. The z-sd ratio agrees
+(0.953, not growing); if the net under-propagated, z-sd would *rise* with λ.
+
+This is exactly what the bottleneck finding predicts — if a ≤3 px shift barely perturbs the patch
+correlations, it barely perturbs the Δρ estimate — and the two were measured by completely
+independent routes.
+
+| | width ratio across the ladder |
+|---|---|
+| **what the data demands** | **~1.00** |
+| net-only | 1.021 (approximately right, if anything slightly over) |
+| hybrid quadrature | 1.134 (over-correction — it double-counts) |
+| pre-registered bar | **2.502** |
+
+*Precision, stated rather than glossed:* at n = 300 the relative SE of an RMSE is ~4.1 %, so the
+ratio carries ~5.8 % and the data constrains the true value to roughly [0.89, 1.12] at 1 SE. That
+contains 1.021 and sits against 1.134. It does not separate 1.00 from 1.02 — and does not need to,
+since both say the same thing.
+
+**The one-sentence summary of this entire blocker:** the net's measured SC1g ratios were
+**1.109 / 0.987 / 0.936**, the correct answer is **~1.00**, so **the net was right — and the gate
+failed it anyway**, because the gate demanded 2.502 of a quantity whose true value is 1.
+
+**A separate observation, with two caveats attached.** The research net is under-covered at every
+λ (0.72–0.77 against a nominal 0.90, z-sd ≈ 1.4 — intervals ~40 % too narrow). Both caveats matter:
+(a) it is **flat in λ**, so it cancels in every ratio above and changes none of the conclusions;
+(b) it is **not reported here as a new calibration defect** — it is consistent with the known
+`ρ_true` prior-atom artifact (the v2.0 GO records the targets *are* calibrated once ranks are
+randomised, and this test does no atom randomisation), and it is a property of the **research net
+with its four declared deviations, not the shipped bundle**.
 
 ### What this means for the redesign
 
