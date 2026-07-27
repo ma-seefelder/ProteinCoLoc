@@ -125,6 +125,30 @@ using Pkg
             "Distributions", "Flux", "HypothesisTests", "ImageFiltering", "ImageTransformations",
             "Images", "Interpolations", "JLD2", "NeuralEstimators", "Random123", "StatsBase"])
         @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
+        # (j) RESOLVE-RISK GATE (Phase 13): the three-way evidence net adds NO new package
+        #     either. The two-head trunk is Flux (the shipped topology copied verbatim), the AUC
+        #     is the hand-rolled `roc_auc` (validation/ood.jl:319, tie-aware Mann-Whitney, ~15
+        #     lines), the calibration is the shared `_bin_calibration`, and the D-16 Otsu mask
+        #     comes through `Images` 0.26.2 TRANSITIVELY -- so `ImageSegmentation` and
+        #     `ImageMorphology` must NOT become DIRECT dependencies just because a segmentation
+        #     word appears in the design. `ROCAnalysis`/`MLJ` would duplicate the hand-rolled ROC,
+        #     `NormalizingFlows`/`InvertibleNetworks` are the CLAUDE.md "What NOT to Use" flow
+        #     stacks, and `Turing` caps NeuralEstimators below the pin (the Phase-1 landmine).
+        #     `QuadGK` and `KernelDensity` are the RETIRED KDE Bayes-factor baseline (docs/
+        #     amortized.md named limit 3): D-12 declines to validate against it, and the D-07
+        #     verification is closed-form conjugate-Gaussian precisely so no quadrature is needed
+        #     -- so the retired stack must stay UNREACHABLE from the spike environment rather than
+        #     merely unused. Then the v0.2.1 pin is re-asserted with the Phase-13 code on disk.
+        @test !haskey(Pkg.project().dependencies, "ROCAnalysis")
+        @test !haskey(Pkg.project().dependencies, "MLJ")
+        @test !haskey(Pkg.project().dependencies, "NormalizingFlows")
+        @test !haskey(Pkg.project().dependencies, "InvertibleNetworks")
+        @test !haskey(Pkg.project().dependencies, "Turing")
+        @test !haskey(Pkg.project().dependencies, "ImageSegmentation")
+        @test !haskey(Pkg.project().dependencies, "ImageMorphology")
+        @test !haskey(Pkg.project().dependencies, "QuadGK")
+        @test !haskey(Pkg.project().dependencies, "KernelDensity")
+        @test Pkg.dependencies()[Base.UUID("38f6df31-6b4a-4144-b2af-7ace2da57606")].version == v"0.2.1"
     end
 
 end
@@ -155,3 +179,30 @@ include(joinpath(@__DIR__, "test_ood.jl"))
 # placeholders until later Phase-9 waves fill them) run in the same harness so a single
 # `julia --project=spike spike/test/runtests.jl` stays the gate.
 include(joinpath(@__DIR__, "test_comparator.jl"))
+
+# Phase-13 three-hypothesis evidence net: the unit testsets run in the same harness so a single
+# `julia --project=spike spike/test/runtests.jl` stays the gate. Dependency order -- the frozen
+# pre-registration first, then the class boundary, the alpha ladder, the real-image arm, the tau
+# probe, the net, the result type and the calibration surface. The real-image arm sits directly
+# after the alpha ladder because its unit includes real_images.jl, which includes alpha_series.jl;
+# the guarded-include idiom makes that ordering an optimisation rather than a requirement, but
+# stating it documents the dependency.
+#
+# THE CORRECTION ARM IS LAST, AND DELIBERATELY SO. Its two pre-registered
+# `max |Delta log BF| <= P13_F5_MAXABS_TOL` assertions are MEASURED MISSES (0.5498 and 0.3783
+# against a ceiling of 0.25), committed as-is by plan 13-07 rather than tuned away, so its outer
+# `@testset` throws at the end of the file. A thrown testset aborts the remaining includes, so any
+# sibling placed after it would silently never run. Putting it last keeps every other Phase-13
+# testset executing and reporting while the honest failure still surfaces and still turns the
+# suite red. Resolving that shortfall is a phase-level scientific decision (accept it as a named
+# limit, amend the F5 statistic, or carry it into Phase 14's abstention layer) and is NOT resolved
+# by this wiring.
+include(joinpath(@__DIR__, "test_p13_consts.jl"))
+include(joinpath(@__DIR__, "test_p13_labels.jl"))
+include(joinpath(@__DIR__, "test_p13_alpha.jl"))
+include(joinpath(@__DIR__, "test_p13_real.jl"))
+include(joinpath(@__DIR__, "test_p13_tau.jl"))
+include(joinpath(@__DIR__, "test_p13_net.jl"))
+include(joinpath(@__DIR__, "test_p13_result.jl"))
+include(joinpath(@__DIR__, "test_p13_calibration.jl"))
+include(joinpath(@__DIR__, "test_p13_correction.jl"))
