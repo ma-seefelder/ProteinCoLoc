@@ -36,15 +36,38 @@
 # widths have no coverage guarantee. They are not produced in one forward pass. They cannot be
 # reported as SC2, which is a claim about what the AMORTIZED posterior does on its own.
 #
-# THE CONSTRUCTION, stated plainly so it can be checked:
-#   sigma_reg(lambda) = the Delta-rho-equivalent of a registration error at level lambda, read
-#                       off the D-06 probe's own measured shift -> drho_eq curve (F5 arm) at the
-#                       RMS displacement implied by shift_dx, shift_dy ~ U(-lambda, lambda)
-#                       independently, i.e. |shift|_rms = lambda * sqrt(2/3).
+# THE CONSTRUCTION, stated plainly so it can be checked.
+#
+# The companion diagnostics establish that the summary carries NO recoverable information about
+# the shift. That result does the work here: it means the shift POSTERIOR simply IS the shift
+# PRIOR, `Uniform(-lambda, lambda)` per axis. So there is no posterior to estimate and no
+# approximation to defend -- the honest propagation is to MARGINALISE Delta-rho over the shift
+# prior:
+#
+#   sigma_reg(lambda)^2 = E_{dx,dy ~ U(-lambda,lambda)} [ drho_eq( hypot(dx, dy) )^2 ]
+#
+# where `drho_eq(.)` is the D-06 probe's own MEASURED shift -> Delta-rho-equivalent curve (F5 arm).
+# The expectation is taken by Monte Carlo on a fixed, seeded stream.
+#
+# TWO COEFFICIENT TRAPS, BOTH DELIBERATELY AVOIDED HERE.
+# (1) `lambda_ratio = 5.0039` is a RATIO across the ladder, not a magnitude. It CANNOT be used to
+#     inflate a posterior width by multiplication. This script therefore uses the probe's ABSOLUTE
+#     drho_eq magnitudes and never multiplies any width by 5. `lambda_ratio` appears only as a
+#     reference column, never in the arithmetic.
+# (2) The registration term must be combined with the existing width in QUADRATURE, not multiplied
+#     onto it -- it is an additional independent variance component, not a scale factor.
+#
 #   sd_hybrid(lambda) = sqrt( sd_net(lambda)^2 + sigma_reg(lambda)^2 )
-# Quadrature addition assumes the network's residual uncertainty and the registration-induced
-# perturbation are independent. That is an ASSUMPTION, stated here rather than buried: they are
-# not jointly modelled, which is precisely why this is a correction and not inference.
+#
+# The quadrature step assumes independence between the network's residual uncertainty and the
+# registration-induced perturbation. That is an ASSUMPTION, stated here rather than buried: the two
+# are not jointly modelled, which is precisely why this is a correction and not inference.
+#
+# EXPECT A SMALL NUMBER, AND READ IT AS A RESULT. Given the measured magnitudes it is entirely
+# possible this adds only a little to the Delta-rho posterior. That would NOT be a disappointment
+# or a failure of the method -- it would be the finding: at an 8x8 summary, registration
+# uncertainty is not a major contributor to colocalization uncertainty. Nothing here is tuned to
+# make the number larger.
 #
 # DECOUPLING (S5): spike-local; reads the frozen pre-registration, the committed research net and
 # the existing probe artifact; writes one new artifact. Mutates no constant, retrains nothing,
@@ -148,9 +171,27 @@ function main()
     net_mean = [mean(view(sd_net, :, j)) for j in 1:length(lambdas)]
 
     # --- Analytic registration term per rung -------------------------------------------------
-    # |shift|_rms for shift_dx, shift_dy ~ U(-lam, lam) independent: E[dx^2 + dy^2] = 2 lam^2 / 3.
-    rms_shift = [lam * sqrt(2/3) for lam in lambdas]
-    sigma_reg = [_interp(shift_rungs, shift_drho, m) for m in rms_shift]
+    # MARGINALISE over the shift PRIOR, which the recoverability result licenses: the summary
+    # carries no information about the shift, so the shift posterior IS U(-lam, lam) per axis.
+    #
+    #   sigma_reg(lam)^2 = E_{dx,dy ~ U(-lam,lam)} [ drho_eq(hypot(dx,dy))^2 ]
+    #
+    # Monte Carlo on a fixed seeded stream. This replaces an earlier RMS point-estimate
+    # (drho_eq evaluated at |shift|_rms), which is NOT the same thing whenever drho_eq is
+    # non-linear in the displacement -- and the measured curve is visibly non-linear near zero.
+    # The RMS value is retained below purely as a reported diagnostic, never in the arithmetic.
+    n_mc = 200_000
+    mc_rng    = p11_rng(P11_PROBE_COUNTER * 1000 + 9000)
+    sigma_reg = map(lambdas) do lam
+        acc = 0.0
+        for _ in 1:n_mc
+            dx = (2 * rand(mc_rng) - 1) * lam
+            dy = (2 * rand(mc_rng) - 1) * lam
+            acc += _interp(shift_rungs, shift_drho, hypot(dx, dy))^2
+        end
+        return sqrt(acc / n_mc)
+    end
+    rms_shift = [lam * sqrt(2/3) for lam in lambdas]   # reported only, not used in the arithmetic
 
     # --- Hybrid inflation --------------------------------------------------------------------
     hybrid = sqrt.(net_mean .^ 2 .+ sigma_reg .^ 2)
@@ -212,6 +253,7 @@ function main()
         n_datasets            = HYBRID_N_DATASETS,
         n_draws               = HYBRID_N_DRAWS,
         imsize                = HYBRID_IMSIZE,
+        marginalisation       = "sigma_reg(lambda)^2 = E_{dx,dy~U(-lambda,lambda)}[drho_eq(hypot(dx,dy))^2], Monte Carlo, licensed by the recoverability null: the shift posterior IS the prior.",
         quadrature_assumption = "sd_hybrid = sqrt(sd_net^2 + sigma_reg^2); assumes independence " *
                                 "between the network's residual uncertainty and the " *
                                 "registration-induced perturbation. Stated, not validated.",
