@@ -264,17 +264,18 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 
 ### Phase 13: Three-Hypothesis Amortized Bayes Factor
 **Goal**: Extend the amortized evidence network from two- to three-way model comparison — colocalized / random / mutually-exclusive — so segregation becomes a first-class testable hypothesis, replacing the fragile KDE+quadgk Bayes factor
-**Depends on**: Phase 7
+**Depends on**: Phases 7, 11 (D-02: the three-way evidence net trains on Phase 11's registration-aware frozen `zt` and inherits its uncertainty conditioning input — execution blocks on Phase 11's research net existing; the original entry named Phase 7 only)
 **Requirements**: TBD
 **Success Criteria** (what must be TRUE):
-  1. A 3-way `RatioEstimator`/evidence network emits a log-BF simplex over {coloc, random, exclusion} in one forward pass
-  2. It reproduces `compute_BayesFactor()` (`src/bayes.jl:109`) in the overlapping 2-way regime without quadgk/KDE
-  3. The exclusion hypothesis is validated on segregated ground-truth inputs
+**AMENDED** — SC1, SC2 and SC3 are superseded/scoped by `.planning/phases/13-three-hypothesis-amortized-bayes-factor/13-SC2-AMENDMENT.md` (D-12/D-15, frozen before any Phase-13 result). The original text below is retained and must be cited alongside any amended result.
+  1. A 3-way `RatioEstimator`/evidence network emits a log-BF simplex over {coloc, random, exclusion} in one forward pass (see amendment section 4)
+  2. It reproduces `compute_BayesFactor()` (`src/bayes.jl:109`) in the overlapping 2-way regime without quadgk/KDE (see amendment sections 1-3)
+  3. The exclusion hypothesis is validated on segregated ground-truth inputs (see amendment section 5 — three arms; the simulator ground truth gates, the alpha series and the `test/test_images/` check do not)
 **Plans**: 16 plans (9 waves — W1 pre-registration ∥ SC2 amendment ; W2 labels ∥ α-series ∥ τ-probe code ; W3 two-head net ∥ real-image ingestion ; W4 D-07 closed-form verification ; W5 result type + suite wiring ; W6 Phase-11 preconditions ∥ τ-probe run [BLOCKED] ; W7 datagen + training [BLOCKED] ; W8 reported gate ∥ α-series run ∥ real-image run [BLOCKED] ; W9 phase report [BLOCKED])
-- [ ] 13-01-PLAN.md — Tier-1 pre-registration consts (seeds, τ probe spec, D-07 design + bars, gate floors, ECE band, α ladder) + literal-assertion test (D-01, D-04, D-05, D-06, D-07, D-09, D-10, D-12, D-13, D-14, D-16)
+- [ ] 13-01-PLAN.md — Tier-1 pre-registration consts (seeds, τ probe spec, D-07 design + bars, gate floors, ECE band, α ladder) + literal-assertion test (D-01, D-04, D-05, D-06, D-07, D-09, D-10, D-12, D-13, D-14, D-15, D-16)
 - [ ] 13-02-PLAN.md — 13-SC2-AMENDMENT.md frozen before any result (two outcome-independent defects) + ROADMAP annotation (D-12, D-02, D-08, D-09, D-13, D-15)
 - [ ] 13-03-PLAN.md — Three-way label surface: two-factor cut on ρ_sample level × control contrast, head_targets, measure_head_log_odds (D-05, D-07, D-08, D-11)
-- [ ] 13-04-PLAN.md — α-graded disjoint-reassignment transform + its four invariants (bitwise α=0, strict positivity, intensity conservation, frozen mask) (D-15, D-16)
+- [ ] 13-04-PLAN.md — α-graded disjoint-reassignment transform + its four invariants (bitwise α=0, no NEW zero (count(iszero) preserved), intensity conservation, frozen mask, substrate-agnostic (one code path for simulated and real)) (D-15, D-16)
 - [ ] 13-05-PLAN.md — Fit-free UNPAIRED τ resolution probe code + abort criterion, needs no trained net (D-06, D-04)
 - [ ] 13-06-PLAN.md — ThreeWayEvidenceNet: shared trunk verbatim + two BCE heads + masked joint loss + per-head read surface, with the A5 train smoke (D-08, D-09, D-10, D-11, D-03)
 - [ ] 13-07-PLAN.md — D-07 correction VERIFIED against a closed-form Gaussian toy, with both negative controls (uncorrected logit, within-class reshape) (D-07, D-11)
