@@ -9,10 +9,15 @@ artifacts:
   - spike/validation/p11_bottleneck_report.jld2
   - spike/validation/p11_recovery_report.jld2
   - spike/validation/p11_hybrid_report.jld2
+  - spike/validation/p11_paired_report.jld2
+  - spike/validation/p11_paired_ridge_report.jld2
 scripts:
   - spike/validation/run_p11_bottleneck.jl
   - spike/validation/run_p11_recovery.jl
   - spike/validation/run_p11_hybrid.jl
+  - spike/validation/run_p11_paired.jl
+  - spike/validation/run_p11_paired_ridge.jl
+commits: [519a95e, e95771d, f3e7011]
 ---
 
 # Phase 11 — Why the registration ladder is flat
@@ -39,6 +44,13 @@ something that is not present in the input.
 **There is also a second, independent problem**, found while producing the comparison value, and it
 matters just as much: **even a perfect estimator could not have passed the test as written.** See
 "The second finding" below. Fixing the summary alone would not have made the tripwire pass.
+
+**And the two obvious fixes were built and tested — both fail.** A finer patch grid does not help
+(it raises the noise as fast as the signal), and a self-referential probe-shift feature — which
+measures the right thing and is a genuine 2–3× improvement — is still too imprecise on a single
+image to beat simply guessing. The honest conclusion is that **a 3-pixel misalignment is not
+recoverable from one image using patch correlations at all.** That is a scientific result, not an
+implementation shortfall. Details under "What the summary would need".
 
 ---
 
@@ -158,19 +170,21 @@ Measured magnitudes (12 datasets, 2000 draws per arm):
 
 | λ | net-only Δρ SD | σ_reg (forward model) | hybrid SD | hybrid ratio | fwd-model ratio |
 |---|---|---|---|---|---|
-| 0.25 | 0.09088 | 0.00956 | 0.09138 | 1.000 | 1.000 |
-| 1.0 | 0.09131 | 0.01405 | 0.09238 | 1.011 | 1.289 |
-| 2.0 | 0.09178 | 0.03111 | 0.09691 | 1.061 | 2.988 |
-| 3.0 | 0.09282 | 0.04196 | 0.10186 | **1.115** | **5.004** |
+| 0.25 | 0.09088 | 0.00915 | 0.09134 | 1.000 | 1.000 |
+| 1.0 | 0.09131 | 0.01466 | 0.09248 | 1.013 | 1.289 |
+| 2.0 | 0.09178 | 0.02938 | 0.09637 | 1.055 | 2.988 |
+| 3.0 | 0.09282 | 0.04595 | 0.10357 | **1.134** | **5.004** |
 
 **σ_reg is subdominant by roughly a factor of two at every rung.** Even accounting for the
-registration term *exactly* and adding it in quadrature, the total width grows by **11 %**, not
+registration term *exactly* and adding it in quadrature, the total width grows by **13 %**, not
 150 %. To reach 2.502× the registration term would need to be ≈ 0.21 at λ_max — **five times larger
 than the forward model says it is**.
 
 So the tripwire demanded that a minor variance component drive a 2.5× change in a total it does not
 dominate. **Even a perfect estimator with a perfect summary would have failed it.** This is a
 specification defect in how the bar was derived, not a property of the trained net.
+
+σ_reg is obtained by **marginalising Δρ over the shift prior** — which the recoverability null in §2 licenses, since a summary carrying no shift information leaves the shift posterior equal to its prior `U(-λ, λ)`: `σ_reg(λ)² = E[drho_eq(hypot(dx,dy))²]` by Monte Carlo over the probe's own measured curve. Two traps avoided: `lambda_ratio = 5.0039` is a **ratio**, never used as a multiplier, so absolute `drho_eq` magnitudes are used throughout; and the registration term enters in **quadrature**, not as a scale factor.
 
 *(The hybrid column is an* **analytic correction, not amortized inference** *— no coverage
 guarantee, not produced in one forward pass, not an SC2 result, not a ship path. The quadrature step
@@ -180,37 +194,111 @@ quantity in the table.)*
 
 ---
 
-## What the summary would need
+## What the summary would need — both candidates were BUILT and TESTED, and both fail
 
-Reasoning from the measured curve in §1, not from a generic menu.
+These were not reasoned about and recommended. They were implemented and measured with the same
+noise-floor instrument and the same ridge harness, so every number below is directly comparable to
+§1 and §2. Verdict criteria were **pre-committed before looking**.
 
-The effect crosses the single-draw noise floor at roughly **6–8 px** and sits at 41 % of it at 3 px.
-To make a 3 px shift as visible as an 8 px shift is now, the shift-to-noise ratio must improve by
-about **3×**. Options, in the order the measurement supports them:
+### Candidate A — a finer patch grid: RULED OUT
 
-1. **A finer patch grid (highest leverage, and the direct implication of the arithmetic).** The
-   signal is destroyed by averaging over 172×128 px patches. At a 32×32 grid the patches are
-   ~43×32 px, so 3 px becomes ~7 % of a patch instead of 1.74 % — a ~4× improvement in the ratio
-   that matters, which is the right order. Cost: the summary grows from 64 to 1024 correlation rows,
-   which changes `d_in` and therefore invalidates the frozen `zt`, the trained net, and the SBC
-   calibration.
-2. **A multi-scale summary.** Keep the 8×8 grid for ρ_true (where it demonstrably works — 84 % error
-   reduction) and *add* a fine-grid block carrying the registration signal. Preserves the existing
-   ρ_true performance instead of trading it away, at the cost of a wider input.
-3. **An explicit correlation-vs-probe-shift curve as a summary channel.** Compute the patch
-   correlation at several small probe offsets and append the curve. This is the most direct encoding
-   — it measures exactly the quantity §1 shows is informative under pairing — and it is cheap in
-   dimensions. It is essentially the paired probe design promoted into the summary, which is
-   attractive precisely *because* the paired design is the one that can see the effect.
+The obvious fix does not work, and the reason is that a finer grid raises the **noise** along with
+the signal: fewer pixels per patch means a noisier correlation estimate. The decisive quantity is
+the ratio, and it is flat:
 
-**Option 3 deserves the first look**: §1 shows the effect *is* detectable when a reference is
-available, and a probe-shift curve manufactures that reference inside the summary instead of hoping
-a single draw carries it.
+| grid | signal (3 px) | noise floor | **SNR** |
+|---|---|---|---|
+| 8×8 | 0.4278 | 1.0605 | **0.403** |
+| 16×16 | 1.2386 | 3.6642 | **0.338** |
+| 32×32 | 3.8238 | 10.8835 | **0.351** |
 
-**But note the second finding still applies.** Any of these fixes the *input*; none of them changes
-the fact that σ_reg is subdominant in the total Δρ posterior. A redesign should be paired with a
-re-derived bar that compares like with like — either gate the registration *component*, or set a
-total-width bar from the measured σ_reg, not from `lambda_ratio`.
+The signal and the floor rise **together**: 8×8 → 32×32 multiplies the signal by 8.9× and the noise
+floor by 10.3×. The ratio is **flat, and if anything slightly worse**. Going to 32×32 would cost a
+full re-validation — new `d_in`, invalidated `zt`, net, SBC proof and OOD flag — and buy nothing.
+**The entire "finer grid" family is ruled out.**
+
+*(Confidence check: the 8×8 SNR here is 0.403 against the 0.406 of §1, measured on a completely
+different code path. Two independent implementations agreeing to three decimals means the
+instrument is sound.)*
+
+### Candidate B — a self-referential probe-shift feature: FAILS the recoverability leg
+
+The idea, and it is a good one: the current summary evaluates the patch-correlation function at
+**one** fixed alignment. The registration information does not live in that value — it lives in the
+**shape** of the correlation function around that point, which the current summary discards
+entirely. So displace channel 2 by known sub-pixel probe offsets, recompute the correlations, and
+read features off the resulting curve. This is classical cross-correlation registration with
+sub-pixel peak interpolation. It should work because it compares an observation **against itself**,
+so draw noise is largely common across offsets and cancels — the same mechanism that makes the D-06
+probe sensitive.
+
+**Leg 1 — SNR: a real improvement that straddles the bar.**
+
+| quantity | x axis | y axis |
+|---|---|---|
+| mean \|peak move\| under a 3 px shift | **2.141 px** | 2.534 px |
+| *expected* per-axis move | 2.121 px | 2.121 px |
+| per-draw noise (sd) | 2.835 px | 2.065 px |
+| **SNR** | **0.755** | **1.227** |
+| peak bias at zero shift | 0.198 px | −0.095 px |
+
+The construction **does measure the intended quantity** — the peak moves 2.141 px against 2.121 px
+expected, and is unbiased at zero shift. Against the current summary's 0.406 this is a genuine
+**2–3× improvement**. But one axis clears the SNR > 1 bar and one does not.
+
+**Leg 2 — recoverability: a clear failure.** Same ridge harness, same split discipline, λ still
+excluded, 10 curve features as predictors:
+
+| λ bin | dx ratio | dy ratio |
+|---|---|---|
+| [0.25, 0.5) | 1.108 | 1.151 |
+| [0.5, 1.0) | 1.048 | 1.000 |
+| [1.0, 1.5) | 1.000 | 0.966 |
+| [1.5, 2.0) | 0.986 | 0.974 |
+| [2.0, 2.5) | **0.962** | **0.956** |
+| [2.5, 3.0) | 1.002 | 0.995 |
+| **pooled** | **0.991** | **0.978** |
+
+Against a pre-committed success bar of **< 0.8**, and against **0.998** for the current summary.
+The best rung reaches 0.956 — a ~4 % error reduction — and the smallest-λ bins are *worse* than
+guessing. Positive control on the same features: ρ_true ratio **0.183**, so the harness is sound
+(peak height is essentially the correlation).
+
+### The verdict, against the criteria fixed in advance
+
+**CLEAR FAILURE on the decisive leg.** Success required SNR > 1 **and** ridge < 0.8; the ridge leg
+came back at ~1.0. The SNR leg straddled its bar, so leg 1 alone is ambiguous — but leg 2 is not,
+and leg 2 is the one that asks whether the shift can actually be *estimated*.
+
+Stated plainly, and without softening: **a 3 px shift is not observable from a single image draw at
+any summary built on patch correlations — including a self-referential one.** SNR ≈ 1 means the
+signal is about as large as its own error, which is nowhere near enough to beat a prior.
+
+**The one nuance that is genuinely favourable, and its limit.** The paired feature is *unbiased* and
+tracks the true shift on average (2.141 vs 2.121 px). So it would work given **many** images of the
+same field, or for **larger** misalignments. What fails is specifically the single-draw, ≤3 px
+regime — which is the regime this phase is about.
+
+**Unresolved, and flagged rather than averaged away:** the x and y per-draw noise differ by 37 %
+(2.835 vs 2.065 px). That may be a genuine anisotropy — the warp's slot order treats rows and
+columns differently — or scatter at n = 80. **The y-axis SNR of 1.227 should not be built on until
+that is resolved.** Combining the two axes into a single friendlier figure would hide this.
+
+### What this means for the redesign
+
+Both candidates the measurement supported have now been tested, and neither rescues the single-draw
+case. Before any further redesign spend, note that **the second finding still applies independently**:
+σ_reg is subdominant in the total Δρ posterior, so fixing the input does not by itself make SC1g
+passable. Any redesign must be paired with a re-derived bar that compares like with like — either
+gate the registration *component*, or set a total-width bar from the measured σ_reg rather than from
+`lambda_ratio`.
+
+The honest position is that **registration uncertainty at ≤3 px is below what this measurement
+design can resolve from one image**, and that this is a legitimate scientific result rather than an
+implementation shortfall. Directions not tested here, and not recommended without a fresh
+feasibility check of the kind above: averaging over multiple fields, a summary that keeps spatial
+phase information rather than only correlation magnitude, or accepting the analytic propagation of
+§"second finding" as the honest treatment of registration uncertainty.
 
 ### Rough compute estimate for the deferred Option B redesign
 
@@ -246,10 +334,17 @@ Two costs that are **not** compute and should dominate the decision:
   user as near-tautological, and §2 independently confirms the shift channel carries no image
   information, so it would have measured prior echo over an empty channel.
 - **`src/`, `spike/Project.toml`, `spike/Manifest.toml` byte-unchanged.** No package installed.
-- **Not verified:** that a *non-linear* estimator also fails to recover the shift. §2 is a linear
-  probe. The magnitude argument in §1 is estimator-independent and the trained non-linear net showed
-  the same flat response, which is why confidence is high — but the strict scope of §2 is linear
+- **Not verified:** that a *non-linear* estimator also fails to recover the shift. §2 and the
+  paired-feature recoverability leg are both linear probes. The magnitude arguments (§1 and the SNR
+  legs) are estimator-independent and the trained non-linear net showed the same flat response,
+  which is why confidence is high — but the strict scope of the ridge results is linear
   recoverability.
+- **Not resolved:** the 37 % x/y asymmetry in the paired feature's per-draw noise (2.835 vs
+  2.065 px). Genuine anisotropy or scatter at n = 80 is undetermined; the y-axis SNR of 1.227 should
+  not be built on until it is.
+- **Not tested:** the paired feature at larger misalignments or averaged over multiple fields. It is
+  unbiased and tracks the true shift on average, so both are plausible routes — but neither was
+  measured, and neither is the regime this phase is about.
 - **Not verified:** any coverage or calibration property of the hybrid column. It is a comparison
   value only.
 
