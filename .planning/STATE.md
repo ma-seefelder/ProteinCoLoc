@@ -32,9 +32,19 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 ## Current Position
 
+Two phases are active concurrently. Both lines are authoritative — do not overwrite one with the other.
+
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
 Plan: 1 of 16
 **STATUS: Executing — probe verdict PROCEED; datagen + research-net training authorised.**
+
+Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — BLOCKED
+Plan: 7 of 11 (11-07 blocked at its SC1g gate; 11-08 through 11-11 gated behind it, not started)
+**STATUS: Halted after wave 6 — the pre-registered SC1g λ-ablation tripwire failed while its own
+prescribed diagnosis came back green. Datagen (56.37 min vs the 150-min ceiling) and training
+(16.08 min, d_in = 129, D = 8) both completed inside budget and the research net is persisted.
+A pre-registration decision is required before waves 7-9 may run; nothing was relaxed and
+`P11_ITERATION_ALLOWANCE` stays 1 of 1 UNSPENT. See the blocker below and `11-07-SUMMARY.md`.**
 
 - **2026-07-25 — Phase 11 probe verdict (plan 11-06): ABOVE RESOLUTION, DECISION `proceed`.** The D-06 abort criterion did not fire: `S_probe = 1.0` against `P11_PROBE_S_FLOOR = 0.9`, and a Δρ_eq ladder span of 0.046885 against `P11_PROBE_SPAN_FLOOR = 0.02` (F5 mixture arm; both independently re-derived from `p11_probe_report.jld2`, agreeing to 1e-16). Plans 11-07 through 11-11 are authorised as planned. `P11_ITERATION_ALLOWANCE = 1` is UNSPENT (0 of 1); no threshold was altered. The ~1.5 h datagen-plus-training spend is authorised, and `P11_DATAGEN_WALLCLOCK_CEILING_MIN = 150` is a BLOCKER threshold, not a downgrade trigger. Checkpoint resolved autonomously by the orchestrator under the pre-registered rule (background session, no user present), conditional on the re-derivation agreeing — which it did. See `11-PROBE-VERDICT.md`.
 
