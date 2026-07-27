@@ -38,13 +38,20 @@ Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
 Plan: 1 of 16
 **STATUS: Executing — probe verdict PROCEED; datagen + research-net training authorised.**
 
-Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — BLOCKED
-Plan: 7 of 11 (11-07 blocked at its SC1g gate; 11-08 through 11-11 gated behind it, not started)
-**STATUS: Halted after wave 6 — the pre-registered SC1g λ-ablation tripwire failed while its own
-prescribed diagnosis came back green. Datagen (56.37 min vs the 150-min ceiling) and training
-(16.08 min, d_in = 129, D = 8) both completed inside budget and the research net is persisted.
-A pre-registration decision is required before waves 7-9 may run; nothing was relaxed and
-`P11_ITERATION_ALLOWANCE` stays 1 of 1 UNSPENT. See the blocker below and `11-07-SUMMARY.md`.**
+Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — CLOSED 2026-07-27
+Plan: 7 of 11 executed; 11-08 through 11-11 SUPERSEDED by the diagnosis (reasoning per plan in
+`11-CLOSURE.md`), not silently skipped.
+**STATUS: Closed on a negative-but-useful result. Registration at ≤3 px is NOT inferable from the
+8×8 patch-correlation summary — not at finer resolution, not with a self-referential probe feature,
+and not at any colocalization strength (ridge/prior 0.993–1.001 across five |ρ| bins, n ≥ 1322).
+It also does NOT need to be: the width the data demands is flat in λ (RMSE ratio 1.0003), so the
+posterior does not report false confidence. The SC1g gate is recorded as MIS-SPECIFIED, not failed
+— it was derived from a component ratio (`lambda_ratio`) but applied to a total, and the net's
+measured 1.109/0.987/0.936 sits against a correct answer of ~1.00. No threshold edited,
+`P11_ITERATION_ALLOWANCE` still 1 of 1 UNSPENT, shipped `amended_v2/grid_8` untouched.
+Evidence: `11-DIAGNOSIS.md`. Decisions and limits: `11-CLOSURE.md`.
+FLAGGED FOR THE USER, NOT ACTED ON: Phase 12 was scoped to train on "registration-aware θ"; that
+premise no longer holds as stated and should be revisited before Phase 12 is planned.**
 
 - **2026-07-25 — Phase 11 probe verdict (plan 11-06): ABOVE RESOLUTION, DECISION `proceed`.** The D-06 abort criterion did not fire: `S_probe = 1.0` against `P11_PROBE_S_FLOOR = 0.9`, and a Δρ_eq ladder span of 0.046885 against `P11_PROBE_SPAN_FLOOR = 0.02` (F5 mixture arm; both independently re-derived from `p11_probe_report.jld2`, agreeing to 1e-16). Plans 11-07 through 11-11 are authorised as planned. `P11_ITERATION_ALLOWANCE = 1` is UNSPENT (0 of 1); no threshold was altered. The ~1.5 h datagen-plus-training spend is authorised, and `P11_DATAGEN_WALLCLOCK_CEILING_MIN = 150` is a BLOCKER threshold, not a downgrade trigger. Checkpoint resolved autonomously by the orchestrator under the pre-registered rule (background session, no user present), conditional on the re-derivation agreeing — which it did. See `11-PROBE-VERDICT.md`.
 
