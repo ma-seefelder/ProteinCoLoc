@@ -55,7 +55,15 @@ const P13_RESULT_SRC  = read(joinpath(@__DIR__, "..", "p13", "result.jl"), Strin
 const P13_RESULT_CODE = join(filter(l -> !startswith(strip(l), "#"),
                                     split(P13_RESULT_SRC, '\n')), '\n')
 
-const P13_REPO_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+# GUARDED, NOT REDEFINED. `P13_REPO_ROOT` is already a `const` in spike/p13/real_images.jl:146,
+# and the spike lane is a FLAT top-level namespace: when the whole suite runs in one process the
+# two definitions land in the same module. The values are identical (both normalise to the repo
+# root), but re-`const`-ing a name is exactly the collision class Phase 13's wiring plan warns
+# about, so this file reuses the existing binding when one is present and defines it only when
+# running standalone.
+if !isdefined(@__MODULE__, :P13_REPO_ROOT)
+    const P13_REPO_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+end
 
 # --- Fixtures built ONCE --------------------------------------------------------------------
 # A perfectly calibrated toy reliability input, only so the result has a real CalibrationMeta to
