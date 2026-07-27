@@ -173,7 +173,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |
 | 11. Registration + Chromatic Uncertainty as Latent | 6/11 | In Progress|  |
 | 12. Spatial Colocalization Map (GP/CAR) | 0/TBD | Not started | - |
-| 13. Three-Hypothesis Amortized Bayes Factor | 2/16 | In Progress|  |
+| 13. Three-Hypothesis Amortized Bayes Factor | 5/16 | In Progress|  |
 | 14. Decision + Abstention Layer | 0/TBD | Not started | - |
 | 15. Calibration Operating Envelope + CI Gate | 0/TBD | Not started | - |
 | 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
@@ -274,9 +274,9 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 **Plans**: 16 plans (9 waves — W1 pre-registration ∥ SC2 amendment ; W2 labels ∥ α-series ∥ τ-probe code ; W3 two-head net ∥ real-image ingestion ; W4 D-07 closed-form verification ; W5 result type + suite wiring ; W6 Phase-11 preconditions ∥ τ-probe run [BLOCKED] ; W7 datagen + training [BLOCKED] ; W8 reported gate ∥ α-series run ∥ real-image run [BLOCKED] ; W9 phase report [BLOCKED])
 - [x] 13-01-PLAN.md — Tier-1 pre-registration consts (seeds, τ probe spec, D-07 design + bars, gate floors, ECE band, α ladder) + literal-assertion test (D-01, D-04, D-05, D-06, D-07, D-09, D-10, D-12, D-13, D-14, D-15, D-16)
 - [x] 13-02-PLAN.md — 13-SC2-AMENDMENT.md frozen before any result (two outcome-independent defects) + ROADMAP annotation (D-12, D-02, D-08, D-09, D-13, D-15)
-- [ ] 13-03-PLAN.md — Three-way label surface: two-factor cut on ρ_sample level × control contrast, head_targets, measure_head_log_odds (D-05, D-07, D-08, D-11)
-- [ ] 13-04-PLAN.md — α-graded disjoint-reassignment transform + its four invariants (bitwise α=0, no NEW zero (count(iszero) preserved), intensity conservation, frozen mask, substrate-agnostic (one code path for simulated and real)) (D-15, D-16)
-- [ ] 13-05-PLAN.md — Fit-free UNPAIRED τ resolution probe code + abort criterion, needs no trained net (D-06, D-04)
+- [x] 13-03-PLAN.md — Three-way label surface: two-factor cut on ρ_sample level × control contrast, head_targets, measure_head_log_odds (D-05, D-07, D-08, D-11)
+- [x] 13-04-PLAN.md — α-graded disjoint-reassignment transform + its four invariants (bitwise α=0, no NEW zero (count(iszero) preserved), intensity conservation, frozen mask, substrate-agnostic (one code path for simulated and real)) (D-15, D-16)
+- [x] 13-05-PLAN.md — Fit-free UNPAIRED τ resolution probe code + abort criterion, needs no trained net (D-06, D-04)
 - [ ] 13-06-PLAN.md — ThreeWayEvidenceNet: shared trunk verbatim + two BCE heads + masked joint loss + per-head read surface, with the A5 train smoke (D-08, D-09, D-10, D-11, D-03)
 - [ ] 13-07-PLAN.md — D-07 correction VERIFIED against a closed-form Gaussian toy, with both negative controls (uncorrected logit, within-class reshape) (D-07, D-11)
 - [ ] 13-08-PLAN.md — ThreeHypothesisColocResult in spike/ (log_bf_vs_random), empty-bin MCE trap demonstrated, resolve-risk clause (i) + suite wiring (D-08, D-13, D-14, D-04)
