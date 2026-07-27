@@ -1,4 +1,5 @@
 ---
+status: blocked
 phase: 11-registration-and-chromatic-uncertainty-as-latent
 plan: 07
 subsystem: research-net
