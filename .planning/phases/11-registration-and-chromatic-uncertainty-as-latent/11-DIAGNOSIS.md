@@ -17,7 +17,7 @@ scripts:
   - spike/validation/run_p11_hybrid.jl
   - spike/validation/run_p11_paired.jl
   - spike/validation/run_p11_paired_ridge.jl
-commits: [519a95e, e95771d, f3e7011]
+commits: [519a95e, e95771d, f3e7011, 9c77bf4, c2b928a, 1f7fbd0, 7c03680]
 ---
 
 # Phase 11 — Why the registration ladder is flat
@@ -56,8 +56,9 @@ implementation shortfall. Details under "What the summary would need".
 
 ## What was measured
 
-Three scripts, all research-lane, all gating nothing. Two of them contain **no trained network at
-all**, so a null result from them cannot be blamed on training, capacity or optimisation.
+Five scripts, all research-lane, all gating nothing. Four of them contain **no trained network at
+all**, so a null result from them cannot be blamed on training, capacity or optimisation — only the
+hybrid comparison in "the second finding" reads the trained net, and only for its net-only column.
 
 ### 1. Is the effect bigger than the noise? No — it is a fraction of it.
 
