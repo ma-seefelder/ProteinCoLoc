@@ -44,9 +44,15 @@ only 1.134, and the calibration evidence puts the truth at ~1.00.
 > value is 1.
 
 **No threshold was edited.** Re-deriving the bar is a pre-registration decision and is left open;
-this document records the evidence, not a new constant. Any future phase reusing SC1g must
-re-derive it to compare like with like — either gate the registration *component*, or set a
-total-width bar from the measured σ_reg rather than from `lambda_ratio`.
+this document records the evidence, not a new constant.
+
+The corrected derivation is written up as a specification note in **`11-BAR-DERIVATION.md`** — the
+defect with its arithmetic, the two correct constructions and their trade-offs, the transferable
+rule, and a flagged (unresolved) design point: because the true value of the gated quantity is ~1.00,
+a re-derived bar must be an **equivalence-style test**, not a "must exceed" threshold, or it cannot
+distinguish "correctly flat" from "broken". **Phase 15 should start from that note, not from
+`p11_consts.jl`** — the constant there is correct as a historical record and wrong as a
+specification, and the frozen file cannot say so.
 
 ## Disposition of plans 11-08 through 11-11: SUPERSEDED
 

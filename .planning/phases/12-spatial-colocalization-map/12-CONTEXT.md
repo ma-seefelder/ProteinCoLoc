@@ -2,6 +2,98 @@
 
 **Gathered:** 2026-07-25
 **Status:** Ready for planning
+**AMENDED 2026-07-27 (pre-planning premise audit) — read the amendment block first.**
+
+---
+
+## AMENDMENT 2026-07-27 — Phase-11 premise audit
+
+Phase 11 closed on 2026-07-27 (`9cf6082`) on a **negative-but-useful** result. This context was
+gathered 2026-07-25, while Phase 11 was still expected to deliver a registration-aware trained
+model. Every assumption below was re-checked against `11-DIAGNOSIS.md`, `11-CLOSURE.md` and the
+working tree **before** planning. Verdict on the phase as a whole: **plannable, unchanged in
+substance.** All thirteen decisions D-01 … D-13 stand — the spatial map rests on a lattice prior
+over the correlation grid, not on registration.
+
+### VOID — dropped, do not plan around them
+
+- **V-1. "The spatial map trains on the registration-aware θ"** (ROADMAP *Depends on*, echoed in
+  `<canonical_refs>` → Upstream and sibling phases). **Void.** No registration-aware trained model
+  exists: plans 11-08 … 11-11 were superseded by the diagnosis, and the only net Phase 11 trained is
+  a spike-local research net whose gate is recorded as mis-specified. More decisively, it would buy
+  nothing — 11-DIAGNOSIS measured Δρ RMSE against simulated truth as **flat in λ (ratio 1.0003**
+  across 0.25 → 3.0 px, 300 datasets/rung), so registration uncertainty does not measurably degrade
+  Δρ estimation. Phase 12 needs **no** registration-derived θ column beyond what the simulator
+  already draws, and must not add one.
+
+- **V-2. "Sequencing matters: Phase 11 lands first"** (`<code_context>` → Integration Points).
+  **Void.** Phase 11 is closed; its simulator work landed 2026-07-25. There is nothing to wait for.
+
+- **V-3. "File overlap … serialized to avoid a merge collision"** (ROADMAP *Depends on*). **Void as a
+  live constraint** — no concurrent Phase-11 writer remains. But see K-1: the overlap was real and
+  its edits are already on `HEAD`, so they are Phase 12's *baseline*, not a hazard.
+
+### RETAINED — verified against git, contrary to a briefing that said otherwise
+
+- **K-1. Stage 6 IS the composed affine warp, and it already landed.** Commit
+  `ca02b0e8a696269a2b8710b11ca3073edc5ae6c7` — *"feat(11-02): chromatic ε as an 8th θ column + single
+  composed affine stage 6 (D-09/D-10/D-11)"* — is an ancestor of `HEAD`.
+  `spike/simulator/forward.jl:192-218` composes `Translation(θ.shift_dy, θ.shift_dx) ∘
+  recenter(LinearMap([s 0; 0 s]), c)` with `s = 1/(1 + chromatic_eps)`.
+  **D-06's field application does stack on this — that clause is correct and is kept.**
+  The same commit also modified `spike/simulator/prior.jl` and
+  `src/amortized/{simulator,datagen,ood,train_npe}.jl`. Only the *diagnosis wave* (11-08 onward) left
+  `src/` and the simulator byte-unchanged; the phase as a whole did not.
+
+- **K-2. The spike-lane θ baseline is 8 fields, not 7.** `prior.jl:94-103` draws
+  `(ρ_true, spillover, autofluorescence, label_efficiency, shift_dx, shift_dy, noise,
+  chromatic_eps)`, with `chromatic_eps` **appended last** because downstream code indexes θ
+  positionally (absent ⇒ treated as `0.0` ⇒ bit-identical to pre-D-09 output).
+  `src/amortized/architecture.jl:169` still reads `NPE_D = 7`, which describes the **shipped**
+  estimator and is untouched. `<canonical_refs>`'s "the D-dim (default 7) θ" is therefore right about
+  `src/` and wrong as a starting point for the spike lane. **Phase 12's deviation field and
+  correlation length (D-08) extend from 8.**
+
+### STRENGTHENED — Phase 11 supplies evidence and instruments this phase should use
+
+- **S-1. D-08's hedge should become a pre-registered test.** D-08 already says "expect this column may
+  prove unidentifiable; report it as such if so." Phase 11 shows why prose is not enough: its λ
+  marginals widened **4.84–9.05×** and were read as the conditioning being "alive and used", when
+  **12.0 = `LAMBDA_MAX/LAMBDA_MIN` is the prior-echo ceiling** reachable by a network that ignores the
+  image entirely. The correlation length is exposed to the identical misreading. Phase 11 built the
+  instrument that settles it: **ridge on the summary with the conditioning row EXCLUDED**, scored
+  against a predict-the-conditional-prior-mean baseline, with a **ρ_true positive control** proving
+  the harness is live. Pre-register that test for the correlation length rather than hedge in prose.
+
+- **S-2. Free feasibility evidence FOR this phase.** That same harness recovered **global ρ_true from
+  the 128-row summary at ratio 0.157 — an 84 % error reduction** (11-DIAGNOSIS §2). The summary is
+  *richly* informative about correlation; only the sub-pixel shift was absent. That is direct support
+  for the premise per-region recovery rests on. It does **not** prove per-region recovery — and the
+  cheap Stage-1 D-12 gate is precisely the per-region analogue of this ridge, so it should be built
+  that way.
+
+- **S-3. A measured magnitude for the atom cost.** D-05 applies `ghat` elementwise, so its clamping
+  atoms become per-region. Phase 11 measured what *un*-randomized ranks cost on a live net:
+  **coverage 0.72–0.77 against nominal 0.90** (z-sd ≈ 1.4, intervals ~40 % too narrow), attributed to
+  the known `ρ_true` prior-atom artifact. Phase 12's per-region gate must budget randomized-rank
+  handling from the outset rather than rediscover this.
+
+- **S-4. NEW CONFOUND — chromatic ε makes ρ spatially varying by construction.** Not previously in
+  this context, and it arrived with K-1. `CHROMATIC_PRIOR = Uniform(-0.02, 0.02)` (`prior.jl:57`)
+  applies a **radial** magnification difference to channel 2. The effective per-patch correlation
+  therefore varies **radially in every training draw**, with no biological field present. A spatial
+  Δρ map can score well by learning that radial chromatic signature — structurally the same failure
+  class as D-06's grid-alignment artifact, and it deserves the same explicit guard (e.g. verify
+  performance survives with `chromatic_eps` held at 0, and that the recovered field is not
+  predominantly radial).
+
+### Explicitly NOT generalized
+
+Phase 11's finer-grid null (SNR flat, 0.403 → 0.351 from 8×8 to 32×32) is about **shift** recovery
+only, and must not be restated as evidence about per-region ρ. D-02 holds the grid at G=8 for its own
+independent reason (summary content unchanged), which is unaffected either way.
+
+---
 
 <domain>
 ## Phase Boundary
@@ -245,10 +337,12 @@ and the natural descope-to-v2.1 candidate — hence the pre-registered descope t
   Phase-12 consts file should mirror.
 
 ### Upstream and sibling phases
-- `.planning/phases/11-registration-and-chromatic-uncertainty-as-latent/11-CONTEXT.md` — **ROADMAP
-  makes Phase 12 depend on 11** ("the spatial map trains on the registration-aware θ"); Phase 11 D-10's
-  composed affine warp is the stage-6 baseline D-06 builds on, and D-05 there mirrors the
-  summary-unchanged posture D-02 here preserves.
+- `.planning/phases/11-registration-and-chromatic-uncertainty-as-latent/11-DIAGNOSIS.md` and
+  `11-CLOSURE.md` — **read these, not 11-CONTEXT.md, for what Phase 11 actually delivered.**
+  The ROADMAP dependency clause "the spatial map trains on the registration-aware θ" is **VOID (V-1)**
+  — no such model exists and Δρ RMSE is flat in λ. What **does** stand is Phase 11 D-10's composed
+  affine stage 6, which landed at `ca02b0e` and **is** the baseline D-06 builds on (K-1), and D-05
+  there mirroring the summary-unchanged posture D-02 preserves. See the amendment block at the top.
 - `.planning/phases/13-three-hypothesis-amortized-bayes-factor/13-CONTEXT.md` — sibling research-lane
   phase; its D-16 semi-synthetic construction is the pattern the deferred parameter-coverage option
   here would follow.
@@ -285,10 +379,14 @@ and the natural descope-to-v2.1 candidate — hence the pre-registered descope t
 
 ### Integration Points
 - `src/results.jl:180-191` — the `SpatialColocResult` slot.
-- `spike/simulator/forward.jl` stage 6 — Phase 11's composed affine warp; D-06's spatially-varying
-  mixing stacks on it. **Sequencing matters: Phase 11 lands first.**
+- `spike/simulator/forward.jl:192-218` stage 6 — Phase 11's composed affine warp, **already on `HEAD`
+  (`ca02b0e`)**; D-06's spatially-varying mixing stacks on it. ~~Sequencing matters: Phase 11 lands
+  first.~~ **VOID (V-2)** — Phase 11 is closed and this code has landed; nothing to serialize against.
+  **Also note S-4:** the chromatic term in this same stage already induces a *radial* per-patch
+  correlation gradient, which is a confound for any spatial map.
 - `theta_prior_bounds()` ↔ `architecture.jl:65,187` — θ arity changes with the deviation field and the
-  correlation length.
+  correlation length. **Baseline is 8 in the spike lane, not 7 (K-2):** `prior.jl` appends
+  `chromatic_eps` last; `NPE_D = 7` at `architecture.jl:169` describes the *shipped* estimator only.
 - The ablation model (D-10) is simultaneously the SC3 gate baseline and the D-13 descope deliverable —
   it should be built as a first-class artifact, not a throwaway comparison arm.
 
