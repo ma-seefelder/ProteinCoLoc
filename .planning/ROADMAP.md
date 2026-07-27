@@ -173,7 +173,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |
 | 11. Registration + Chromatic Uncertainty as Latent | 6/11 | In Progress|  |
 | 12. Spatial Colocalization Map (GP/CAR) | 0/TBD | Not started | - |
-| 13. Three-Hypothesis Amortized Bayes Factor | 5/16 | In Progress|  |
+| 13. Three-Hypothesis Amortized Bayes Factor | 7/16 | In Progress|  |
 | 14. Decision + Abstention Layer | 0/TBD | Not started | - |
 | 15. Calibration Operating Envelope + CI Gate | 0/TBD | Not started | - |
 | 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
@@ -277,7 +277,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 13-03-PLAN.md — Three-way label surface: two-factor cut on ρ_sample level × control contrast, head_targets, measure_head_log_odds (D-05, D-07, D-08, D-11)
 - [x] 13-04-PLAN.md — α-graded disjoint-reassignment transform + its four invariants (bitwise α=0, no NEW zero (count(iszero) preserved), intensity conservation, frozen mask, substrate-agnostic (one code path for simulated and real)) (D-15, D-16)
 - [x] 13-05-PLAN.md — Fit-free UNPAIRED τ resolution probe code + abort criterion, needs no trained net (D-06, D-04)
-- [ ] 13-06-PLAN.md — ThreeWayEvidenceNet: shared trunk verbatim + two BCE heads + masked joint loss + per-head read surface, with the A5 train smoke (D-08, D-09, D-10, D-11, D-03)
+- [x] 13-06-PLAN.md — ThreeWayEvidenceNet: shared trunk verbatim + two BCE heads + masked joint loss + per-head read surface, with the A5 train smoke (D-08, D-09, D-10, D-11, D-03)
 - [ ] 13-07-PLAN.md — D-07 correction VERIFIED against a closed-form Gaussian toy, with both negative controls (uncorrected logit, within-class reshape) (D-07, D-11)
 - [ ] 13-08-PLAN.md — ThreeHypothesisColocResult in spike/ (log_bf_vs_random), empty-bin MCE trap demonstrated, resolve-risk clause (i) + suite wiring (D-08, D-13, D-14, D-04)
 - [ ] 13-09-PLAN.md — Phase-11 precondition binding: loud block, no grid-8 fallback, derived conditioning length (D-02, D-03) [BLOCKED: Phase 11]
@@ -286,7 +286,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [ ] 13-12-PLAN.md — REPORTED amended gate: per-class AUC + confusion matrix (descriptive) + per-head ECE with vacuous-pass guard; λ response and binary-NRE continuity reported not gated (D-12, D-13, D-14, D-03, D-05) [BLOCKED: Phase 11]
 - [ ] 13-13-PLAN.md — REPORTED α-ladder run through the trained net: log-BF curves, m̄(α), crossing point α*, sealed holdout untouched (D-15, D-16) [BLOCKED: Phase 11]
 - [ ] 13-14-PLAN.md — Phase-13 report: amended criteria beside originals, the D-05 trap in prose, four named limits incl. no labelled real-data validation, the real-image OOD + naming-correction honesty items, iteration ledger, deferrals, all 8 open questions closed (D-05, D-07, D-08, D-12, D-13, D-15, D-16, D-01, D-02, D-04) [BLOCKED: Phase 11]
-- [ ] 13-15-PLAN.md — D-15 (AMENDED) real-image ingestion from `test/test_images/`: P13_REPO_ROOT/real_tif/load_real, ghat-anchor regression, derived grid truncation, the real α-ladder, and the five D-15 testsets (ingestion, real ladder, anti-snooping, read-only, not-a-gate) + A14 falsifier — Phase-11-INDEPENDENT (D-15, D-16, D-01, D-04)
+- [x] 13-15-PLAN.md — D-15 (AMENDED) real-image ingestion from `test/test_images/`: P13_REPO_ROOT/real_tif/load_real, ghat-anchor regression, derived grid truncation, the real α-ladder, and the five D-15 testsets (ingestion, real ladder, anti-snooping, read-only, not-a-gate) + A14 falsifier — Phase-11-INDEPENDENT (D-15, D-16, D-01, D-04)
 - [ ] 13-16-PLAN.md — REPORTED real-image qualitative check: λ sweep with every log-BF printed beside its OOD verdict, Phase-13-vs-shipped OOD comparison, real α-ladder through the net, naming correction + target-substitution record, seal intact (D-15, D-16, D-03, D-08, D-01, D-04) [BLOCKED: Phase 11]
 
 ### Phase 14: Decision and Abstention Layer
