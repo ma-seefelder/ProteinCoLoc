@@ -160,3 +160,34 @@ This makes concurrent writes non-overlapping by construction instead of relying 
 discipline. **Not restructured mid-flight** — doing so while two phases are actively writing
 STATE.md would cause exactly the contention it aims to prevent. It should be done between
 milestones, when no phase is executing.
+
+---
+
+## Structural: concurrent agents race on the git INDEX, not just on files
+
+**Found:** 2026-07-27, phases 11, 12 and 13 executing concurrently on `gsd/v2.0-milestone`.
+
+**What happened.** Two phase-11 files were staged (`git add`) awaiting their commit when the
+phase-12 planning agent ran a bare `git commit`. Because the index is shared across agents working
+in the same checkout, its commit swept both phase-11 files in alongside its own, under a phase-12
+commit message (`b82a02d`). Content was intact; only attribution was wrong.
+
+**Why it recurs.** `git add` followed by `git commit` is a two-step operation on shared state. Any
+other agent committing in the window between them captures whatever is staged. The existing
+guidance ("commit only the files you create, never `git add -A`") does not prevent this — the
+victim followed it, and was hit by another agent's bare commit.
+
+**Proposed fix.** Use the pathspec form, which bypasses the index entirely and commits exactly the
+named paths regardless of what else is staged:
+
+```bash
+git commit -F <msgfile> -- path/one path/two
+```
+
+This is a one-token change to the executor commit protocol and makes concurrent commits
+non-interfering by construction rather than by timing luck. It composes with the existing
+"never `git add -A`" rule; neither alone is sufficient.
+
+**Do not fix by rewriting history.** With live concurrent writers, an amend or reset is a
+materially worse risk than a mislabelled commit. Correct the record in the affected document
+instead, as `11-CLOSURE.md` does.

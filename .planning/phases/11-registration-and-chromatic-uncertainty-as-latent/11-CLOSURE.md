@@ -130,6 +130,23 @@ In the style of the Phase-7 GO memo. Every item below is measured, not inferred.
 8. **Instrument check belongs in the methods:** the 8×8 SNR was measured as 0.403 and 0.406 by two
    independent implementations on separate code paths.
 
+## Provenance note — where these files were committed
+
+`11-BAR-DERIVATION.md` (new) and the final revision of this file landed in commit **`b82a02d`**,
+whose message reads `docs(12): audit the Phase-11 premises before planning`. That is a commit
+attribution artifact, not a content problem: the phase-12 planning agent ran `git commit` without a
+pathspec while these two phase-11 files were staged in the shared index, so they were swept into its
+commit alongside `12-CONTEXT.md`.
+
+Both files are committed **intact and unaltered** — verified after the fact (`11-BAR-DERIVATION.md`
+complete through its closing cross-references block). **History was deliberately not rewritten:**
+two other agents were committing on this branch concurrently, and an amend or reset with live
+writers is a materially worse risk than a mislabelled commit. The record is corrected here instead,
+which is where a reader checking the commit trail will look.
+
+Filed as a structural item in `deferred-items.md`: concurrent agents on one branch race on the
+**git index**, not only on files. Pathspec-scoped commits (`git commit -- <paths>`) avoid it.
+
 ## Verification at closure
 
 - `spike/validation/p11_consts.jl` — **byte-unchanged**. `LAMBDA_MAX`, `LAMBDA_MIN`,
