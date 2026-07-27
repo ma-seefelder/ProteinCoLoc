@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: in-progress
 stopped_at: Phase 12 context gathered
-last_updated: "2026-07-25T20:15:46.815Z"
-last_activity: 2026-07-25 -- Phase 11 execution started
+last_updated: "2026-07-27T12:26:56.260Z"
+last_activity: 2026-07-27 -- Phase 13 execution started
 progress:
   total_phases: 16
   completed_phases: 10
   total_plans: 80
-  completed_plans: 57
+  completed_plans: 59
   percent: 63
 ---
 
@@ -32,8 +32,8 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 ## Current Position
 
-Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — EXECUTING
-Plan: 6 of 11 complete (waves 1-5 done; wave 6 = training)
+Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
+Plan: 1 of 16
 **STATUS: Executing — probe verdict PROCEED; datagen + research-net training authorised.**
 
 - **2026-07-25 — Phase 11 probe verdict (plan 11-06): ABOVE RESOLUTION, DECISION `proceed`.** The D-06 abort criterion did not fire: `S_probe = 1.0` against `P11_PROBE_S_FLOOR = 0.9`, and a Δρ_eq ladder span of 0.046885 against `P11_PROBE_SPAN_FLOOR = 0.02` (F5 mixture arm; both independently re-derived from `p11_probe_report.jld2`, agreeing to 1e-16). Plans 11-07 through 11-11 are authorised as planned. `P11_ITERATION_ALLOWANCE = 1` is UNSPENT (0 of 1); no threshold was altered. The ~1.5 h datagen-plus-training spend is authorised, and `P11_DATAGEN_WALLCLOCK_CEILING_MIN = 150` is a BLOCKER threshold, not a downgrade trigger. Checkpoint resolved autonomously by the orchestrator under the pre-registered rule (background session, no user present), conditional on the re-derivation agreeing — which it did. See `11-PROBE-VERDICT.md`.
@@ -126,7 +126,7 @@ Offline gate `julia --project=. corpus/test/runtests.jl` → 217/217, ZERO netwo
 untouched; `git ls-files corpus/data` empty. NOTE: this Current Position was previously clobbered by a
 parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
 
-Last activity: 2026-07-25 -- Completed quick task 260725-wb7: real anchor now measured on the coloc pair c2/c3 (Phase 11 execution in progress)
+Last activity: 2026-07-27 -- Phase 13 execution started
 
 Progress: [█████░░░░░] 56% of phases (9/16); 51/53 plans
 
