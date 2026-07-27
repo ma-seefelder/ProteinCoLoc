@@ -96,3 +96,67 @@ Out-of-scope discoveries logged during execution. Not fixed here.
   `chromatic_eps` cost measurable inference speed on the spike net, and must be scrupulous
   that the shipped bundle's speed claim is unaffected — the same "which model did this number
   come from" discipline D-16 already requires.
+
+---
+
+## Structural: `git worktree remove --force` destroys gitignored bulk artifacts
+
+**Found:** 2026-07-27, between plan 11-07 and the SC1g diagnosis.
+
+**What happened.** Plan 11-07's executor generated the 50,000-pair training pool
+(~54 MB, 56 min of CPU) into `spike/data/cache/p11/`, which `.gitignore:407`
+(`spike/data/cache/*`) excludes. The executor ran in a git worktree. Standard wave cleanup runs
+`git worktree remove --force`, which deleted the entire worktree directory **including the
+untracked pool**. The pre-removal rescue step in `execute-phase.md` only rescues `*SUMMARY.md`,
+so nothing caught it. The loss was silent: 11-07-SUMMARY.md's "available for reuse, at no further
+compute cost" line was true when written and false an hour later.
+
+**Why it recurs.** The hazard is structural, not a mistake anyone made. Any expensive artifact that
+is (a) deliberately gitignored because it is bulk and regenerable, and (b) produced inside a
+worktree, is destroyed by cleanup by construction. Phase 13 has the same shape.
+
+**Proposed fixes, in order of preference.**
+1. **Write expensive caches outside the worktree.** Resolve cache roots against the primary
+   worktree (`git worktree list --porcelain | head -1`) rather than the cwd, so a cache written by
+   a worktree agent lands in the main checkout and survives cleanup. Fixes it at the source and
+   needs no workflow change.
+2. **Extend the rescue step beyond `*SUMMARY.md`** to a declared artifact list — e.g. a plan
+   frontmatter key naming paths to preserve before removal.
+3. **At minimum, warn.** Have cleanup refuse (or loudly report) when a worktree contains untracked
+   files above a size threshold, instead of deleting them silently.
+
+**Mitigating property, specific to this pool.** Regeneration is byte-identical: the generating
+config is a pure function of byte-unchanged constants and sampling is counter-based Philox keyed
+per sample index. Restoration cost 52 min and was verified exact (all four realized image-size
+counts reproduced). So this instance cost only compute — but an artifact with any nondeterminism
+would have been unrecoverable.
+
+---
+
+## Structural: STATE.md `## Current Position` is single-slot
+
+**Found:** 2026-07-27, during concurrent execution of phases 11 and 13.
+
+**What happened.** Phases 11 and 13 executed in parallel. The block holds one position, so
+phase 13's executor overwrote phase 11's line and STATE.md showed no trace of an active, blocked
+phase 11. Restored additively in commit `40dbb4b` (10 insertions, 0 deletions, phase 13's block
+byte-unchanged) with a note that both entries are authoritative — but that is a convention, not a
+mechanism, and the next writer can still clobber it.
+
+**Proposed fix.** Make the block **per-phase** rather than single-slot: one subsection per active
+phase, keyed by phase number, with writers required to update only their own subsection.
+
+```markdown
+## Current Position
+
+### Phase 11 — registration-and-chromatic-uncertainty-as-latent
+Status: BLOCKED | Plan: 7 of 11
+
+### Phase 13 — three-hypothesis-amortized-bayes-factor
+Status: EXECUTING | Plan: 6 of 16
+```
+
+This makes concurrent writes non-overlapping by construction instead of relying on each agent's
+discipline. **Not restructured mid-flight** — doing so while two phases are actively writing
+STATE.md would cause exactly the contention it aims to prevent. It should be done between
+milestones, when no phase is executing.
