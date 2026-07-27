@@ -176,6 +176,11 @@ const ABLATION_ROWS = map(1:ABLATION_N_DATASETS) do i
      w_lo = w_lo, w_hi = w_hi, w_ratio = w_hi / w_lo, pair = p)
 end
 
+# Column formatter for the diagnostic table. The SAME helper formats the header labels and the
+# numeric cells, so it must accept both: a string label is padded verbatim, a number is rounded
+# first. Rounding a label is what a numbers-only version did, and it threw a MethodError AFTER
+# every measurement had already been taken -- turning a readable table into a lost run.
+_f(x::AbstractString) = rpad(x, 12)
 _f(x) = rpad(string(round(x; digits = 5)), 12)
 
 println("="^78)
