@@ -146,12 +146,31 @@ over-powered-χ² failure mode this project already hit once in Phase 7.
 
 Signed off 2026-07-28, after the plan-checker gate and the fixes it forced.
 
+> **A SIGN-OFF MUST BE VERIFIED BEFORE IT IS SIGNED, NOT ASSERTED ALONGSIDE THE INTENTION TO FIX.**
+> Recorded because this document got it wrong once, and the failure mode is worth more than the defect.
+> The first version of the checklist below ticked "every verify is falsifiable" and stated that a literal
+> `|| true` had been removed from 12-18's verify. It had not been. The intention to remove it was real and
+> the removal was one keystroke, but the box was ticked while the `|| true` was still on disk at
+> `12-18-PLAN.md:167` — and commit `7e01851`'s message repeated the same false claim. A second gate pass
+> caught it.
+>
+> Why this matters more here than it would in most repositories: the entire manuscript claim of this
+> milestone rests on pre-registered statements meaning exactly what they say. Phase 11's value came
+> precisely from being able to prove that no threshold had been touched. A ticked box that is false spends
+> that credibility directly, and it spends it in the one currency this project cannot replace.
+>
+> The rule, going forward: tick a box only after running the check that proves it, in the same sitting.
+> "I am about to fix this" is not a verified state. Where a claim cannot be checked mechanically, say so
+> and name what a reader would have to do to confirm it.
+
 - [x] All tasks have an `<automated>` verify or a declared Wave 0 dependency
 - [x] **Every verify is falsifiable.** Eight `runtests.jl | grep` verifies were replaced with direct
-      per-file includes (12-03, 12-04, 12-05, 12-07, 12-08 x2, 12-09, 12-12) and a literal `|| true`
-      was removed from 12-18. 12-01's `grep -q` is retained deliberately: its criterion genuinely is
-      "did this testset execute at all", which presence proves and which is the whole point of the
-      include-ordering trap it guards.
+      per-file includes (12-03, 12-04, 12-05, 12-07, 12-08 x2, 12-09, 12-12). The literal `|| true` in
+      12-18's Task-1 verify was removed **on the second pass** — verified absent by
+      `grep -c '|| true' 12-18-PLAN.md` returning 0 — and replaced with a real partition assertion
+      (`sort(vcat(classes)) == collect(1:D)` plus disjointness). 12-01's `grep -q` is retained
+      deliberately: its criterion genuinely is "did this testset execute at all", which presence proves
+      and which is the whole point of the include-ordering trap it guards.
 - [x] Sampling continuity: no 3 consecutive tasks without a falsifiable automated verify. Before the
       fix, waves 2, 3 and 5 had runs of 4, 4 and 3.
 - [x] Wave 0 covers every MISSING reference above
