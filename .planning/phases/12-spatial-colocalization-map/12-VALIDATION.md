@@ -1,10 +1,11 @@
 ---
 phase: 12
 slug: spatial-colocalization-map
-status: draft
-nyquist_compliant: false
+status: planned
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-27
+amended: 2026-07-28
 ---
 
 # Phase 12 — Validation Strategy
@@ -41,12 +42,32 @@ report green by never executing — a silent-pass failure mode, not a cosmetic o
 
 ## Sampling Rate
 
-- **After every task commit:** `julia --project=spike spike/test/runtests.jl` (unit + smoke only)
-- **After every plan wave:** full spike suite **plus** `julia --project=. -e 'using Pkg; Pkg.test()'`
-  (the decoupling proof — run it every wave, not once at the end)
-- **Before `/gsd:verify-work`:** full spike suite green + every reported `.jld2` artifact present and
-  re-derivable + the D-12 Stage-2 verdict recorded
-- **Max feedback latency:** ~120 s for the per-commit tier
+**AMENDED 2026-07-28 after the plan-checker gate.** The original per-commit tier was
+`julia --project=spike spike/test/runtests.jl`, and that is wrong twice over:
+
+1. **It cannot signal a pass.** `runtests.jl` ends with `test_p13_correction.jl`, whose outer
+   `@testset` **throws** on two committed measured misses, so the suite already exits non-zero by
+   design. Any per-commit check whose signal is that process's exit status is unusable, which is why
+   eight plan verifies had been written as `runtests.jl | grep <name>` — and a pipeline's status is
+   `grep`'s, while `grep` matches a *failing* testset's name just as happily as a passing one.
+2. **It cannot meet the stated latency.** Summing the plans' own budgets — prior ≤60 s, architecture
+   ≤60 s with a 1-epoch flow build, datagen ≤90 s, train ≤120 s, coverage ≤120 s, SBC ≤120 s, plus
+   40,000 Cholesky-based lattice draws, five `git` shell-outs in the decoupling tests, and the whole
+   pre-existing Phase-1-5/11/13 suite ahead of them — the realistic figure is 8-10 minutes.
+
+Amended tiers:
+
+- **After every task commit:** run the ONE test file the task touched, directly, so a failing testset
+  throws and the process exits non-zero:
+  `julia --project=spike -e 'using Test; include("spike/test/test_p12_<X>.jl")'`. This is falsifiable
+  and lands in 5-30 s.
+- **After every plan wave:** the full spike suite `julia --project=spike -t auto spike/test/runtests.jl`
+  **plus** `julia --project=. -e 'using Pkg; Pkg.test()'` (the decoupling proof — every wave, not once
+  at the end). At this tier the operator reads the Phase-12 testset results directly; the suite's own
+  exit status is expected non-zero because of the Phase-13 correction arm.
+- **Before `/gsd:verify-work`:** full spike suite with every Phase-12 testset green + every reported
+  `.jld2` artifact present and re-derivable + the D-12 Stage-2 verdict recorded.
+- **Max feedback latency:** ~30 s for the per-commit tier; ~10 min for the per-wave tier.
 
 ---
 
@@ -123,13 +144,30 @@ over-powered-χ² failure mode this project already hit once in Phase 7.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have an `<automated>` verify or a declared Wave 0 dependency
-- [ ] Sampling continuity: no 3 consecutive tasks without an automated verify
-- [ ] Wave 0 covers every MISSING reference above
-- [ ] No watch-mode flags
-- [ ] Every Phase-12 include sits before `test_p13_correction.jl` in `runtests.jl`
-- [ ] Decoupling proof runs every wave, not once
-- [ ] Feedback latency < 120 s for the per-commit tier
-- [ ] `nyquist_compliant: true` set in frontmatter
+Signed off 2026-07-28, after the plan-checker gate and the fixes it forced.
 
-**Approval:** pending
+- [x] All tasks have an `<automated>` verify or a declared Wave 0 dependency
+- [x] **Every verify is falsifiable.** Eight `runtests.jl | grep` verifies were replaced with direct
+      per-file includes (12-03, 12-04, 12-05, 12-07, 12-08 x2, 12-09, 12-12) and a literal `|| true`
+      was removed from 12-18. 12-01's `grep -q` is retained deliberately: its criterion genuinely is
+      "did this testset execute at all", which presence proves and which is the whole point of the
+      include-ordering trap it guards.
+- [x] Sampling continuity: no 3 consecutive tasks without a falsifiable automated verify. Before the
+      fix, waves 2, 3 and 5 had runs of 4, 4 and 3.
+- [x] Wave 0 covers every MISSING reference above
+- [x] No watch-mode flags
+- [x] Every Phase-12 include sits before `test_p13_correction.jl` in `runtests.jl` (12-01 Task 3, and
+      the insertion point is located by CONTENT rather than line number, because Phase 13 is executing
+      concurrently and may have added includes)
+- [x] Decoupling proof runs every wave, not once
+- [x] Feedback latency: ~30 s per-commit tier (see the amended Sampling Rate)
+- [x] `nyquist_compliant: true` set in frontmatter
+
+Every behaviour row above is owned by a plan: Wave-1 rows by 12-06/12-11/12-13, and the Wave-3 rows
+(SBC, leave-region-out coverage on simulation and on the real TIFFs, and the three S-4/D-06 guards) by
+12-18, 12-16, 12-19 and 12-20 respectively — the seven plans that did not exist when this document was
+written.
+
+**Approval:** signed off with one execution blocker outstanding — the Δρ semantics question recorded in
+`12-02-PLAN.md` and `.planning/STATE.md`. That is a scope decision for the user, not a validation gap;
+no wave may execute until it is answered, because 12-02 (Wave 1) freezes the amendment write-once.
