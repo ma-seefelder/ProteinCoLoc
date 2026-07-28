@@ -116,13 +116,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #     write. What CAN be read off the handle is read off the handle -- the theta arity, the
 #     positional prior box including the +/-3.0 shift half-width, the row arithmetic and the
 #     research-lane flags -- so the binding is not merely documentary.
-# (c) `p11_architecture.jl` MUST ALSO PRECEDE `p13/consts.jl`. `p13/consts.jl` RESERVES the name
-#     `P11_DEV_SEED` (its forbidden-seed block, so two research lanes cannot share a Philox key),
-#     and that name is precisely the guard sentinel of `p11_consts.jl`. Include `p13/consts.jl`
-#     first and `p11_consts.jl` believes it has already loaded, skips its whole Tier-1 block, and
-#     then dies on its own out-of-guard self-check with `UndefVarError: SC2_SPEARMAN_ATTENUATION`.
-#     The plan asked for `p13/consts.jl` first; the artifact as built forbids it. Values agree
-#     where the two files overlap, so loading Phase 11 first is a pure ordering fix.
+# (c) THE TWO PRE-REGISTRATIONS COLLIDE ON A GUARD SENTINEL, so Phase 11's Tier-1 constants are
+#     read through an ISOLATED MODULE instead of through `p11_consts.jl`'s own guarded include.
+#     `p13/consts.jl` RESERVES the name `P11_DEV_SEED` in its forbidden-seed block (so two
+#     research lanes provably cannot share a Philox key) -- and that name is PRECISELY the guard
+#     sentinel `p11_consts.jl` keys its whole Tier-1 block on. So once the Phase-13
+#     pre-registration is loaded into a module, `p11_consts.jl` believes it has already installed
+#     itself there, skips its Tier-1 block, and then dies on its own out-of-guard self-check with
+#     `UndefVarError: SC2_SPEARMAN_ATTENUATION`. That is not hypothetical: `runtests.jl` loads
+#     `test_p13_consts.jl` before this file, so the naive ordering fails in the suite while
+#     passing standalone -- the worst shape of failure to leave in place.
+#     NEITHER FILE MAY BE EDITED: both are frozen pre-registrations, and `P11_DEV_SEED` is
+#     reserved in `p13/consts.jl` for a good reason. So the repair is entirely local to this
+#     file: read `p11_consts.jl` in a private module and bind what is needed from there. The two
+#     values that matter (`LAMBDA_MIN`, `LAMBDA_MAX`) are then already in scope when
+#     `p11_architecture.jl` is included, so its own guard makes it skip `p11_consts.jl` and the
+#     shadowed-sentinel path is never taken. THE POINT OF THE REPAIR IS ORDER-INDEPENDENCE: this
+#     file now loads correctly whether the caller reached `p13/consts.jl` first or not, which is
+#     the property the guarded-include idiom is supposed to buy everywhere else in the spike.
 #
 # Flat top-level functions (sibling style of `net.jl` / `harness.jl` -- no module wrapper).
 # Guarded, order-dependent includes keep the file loadable standalone AND idempotent under
@@ -131,12 +142,50 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using StatsBase          # ZScoreTransform (the frozen summary standardizer's concrete type)
 using Statistics         # mean, std (the inherited-versus-re-fit moment check)
 
-# --- ORDER MATTERS. See deviations (a) and (c) above: PHASE 11 FIRST, because it owns the
-#     concrete theta-transform type the artifact stores AND because `p13/consts.jl` shadows
-#     `p11_consts.jl`'s guard sentinel. Then the Phase-13 pre-registration, then the loader whose
-#     `load_npe` reconstructs the handle, then the standardization/read surface, then the
-#     encoding surface that derives the input width, then the simulator halves, the src/ summary
-#     contract, the encoder and the seeding primitives. Guarded for idempotency.
+# --- PHASE 11's TIER-1 PRE-REGISTRATION, READ THROUGH AN ISOLATED MODULE ----------------------
+# This is the deviation-(c) repair: `p13/consts.jl` reserves `P11_DEV_SEED`, which is exactly the
+# guard sentinel `p11_consts.jl` keys its Tier-1 block on, so `p11_consts.jl` can no longer
+# install itself in a module that already holds the Phase-13 pre-registration. Reading it in a
+# private module sidesteps the collision without editing either frozen file: the module gets a
+# clean namespace, so the guard opens and the whole block runs. NO GATE IS RUN AND THE FILE IS
+# NOT MODIFIED -- this is a read. (Same precedent as `module _GC` in `p13/consts.jl` and
+# `module GateV2` in `p11_consts.jl` itself.)
+#
+# THIS SITS OUTSIDE ANY GUARD BLOCK ON PURPOSE: Julia rejects a `module` expression that is not
+# at top level, so it cannot live inside an `if`. Idempotency comes from the guarded-include
+# idiom every caller uses (`isdefined(@__MODULE__, :p13_require_phase11) || include(...)`).
+#
+# NOTE THE PATH DEPTH: from `spike/p13/` the validation directory is one level up, not two.
+module _P11C
+    include(joinpath(@__DIR__, "..", "validation", "p11_consts.jl"))
+end
+
+# Bind, from that isolated read, the Phase-11 Tier-1 constants this lane needs -- NEVER retyped,
+# so they cannot drift from Phase 11's own frozen file. Guarded, so a module that genuinely did
+# manage to load `p11_consts.jl` keeps its own bindings and nothing is redefined.
+#   LAMBDA_MIN / LAMBDA_MAX  the trained lambda range, and the two values `encode_lambda` closes
+#                            over -- putting them in scope HERE is what makes
+#                            `p11_architecture.jl` skip its own `p11_consts.jl` include below
+#   SC2_RUNGS                the frozen lambda ladder, for the reads plan 13-12 sweeps over
+#   P11_IMSIZE_* the F5 training-joint provenance asserted against the Phase-13 mixture
+if !isdefined(@__MODULE__, :LAMBDA_MIN)
+    const LAMBDA_MIN = _P11C.LAMBDA_MIN
+    const LAMBDA_MAX = _P11C.LAMBDA_MAX
+    const SC2_RUNGS  = _P11C.SC2_RUNGS
+end
+if !isdefined(@__MODULE__, :P11_IMSIZE_SET)
+    const P11_IMSIZE_SET     = _P11C.P11_IMSIZE_SET
+    const P11_IMSIZE_WEIGHTS = _P11C.P11_IMSIZE_WEIGHTS
+end
+# Any OTHER Phase-11 Tier-1 constant a later Phase-13 file needs is reachable as `_P11C.NAME`
+# rather than by adding a second include of `p11_consts.jl` somewhere else in the lane.
+
+# --- ORDER MATTERS. See deviation (a) above: PHASE 11's ARCHITECTURE FIRST, because it owns the
+#     concrete theta-transform type the persisted artifact stores, and a `load_npe` without it in
+#     scope only WARNS and substitutes a placeholder. Then the Phase-13 pre-registration, then
+#     the loader whose `load_npe` reconstructs the handle, then the standardization/read surface,
+#     then the encoding surface that derives the input width, then the simulator halves, the src/
+#     summary contract, the encoder and the seeding primitives. Guarded for idempotency.
 isdefined(@__MODULE__, :P11BoundedThetaTransform) ||
     include(joinpath(@__DIR__, "..", "npe", "p11_architecture.jl"))
 isdefined(@__MODULE__, :P13_DEV_SEED)      || include(joinpath(@__DIR__, "consts.jl"))
