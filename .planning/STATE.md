@@ -53,9 +53,14 @@ The gate found 7 blockers; 5 were defects and are fixed. The two decisions are n
      and its 30 CBS rows are `simulated-secondary`. The corpus `role` column is positive/negative/
      benchmark — experimental controls, i.e. DIFFERENT SPECIMENS, not sample/control pairs. So the real
      data stays the six committed TIFFs = 2 specimens = **1 legitimate (sample, control) pair**, and the
-     primary Δρ deliverable has **n = 1** there, not 2. A ±0.03 tolerance at n=1 is noise, so the
-     Stage-2 gate rests on 12-16's simulated arm (N ≥ 271) and the real arm reports all three maps with
-     a per-map n. Recorded as clause (h) of the frozen amendment.
+     SC3 criterion is SINGLE-STACK (D-09 masks one region of ONE image and scores that image's own
+     observed entry), so predictive coverage IS computable on both specimens: n = 2, ~64 regions each.
+     But Δρ needs a MATCHED pair, and the two anchors are role=positive/coloc and role=negative/segregated
+     -- a labelled test pair, not a matched control pair. 12-09's simulated pair shares all seven
+     nuisances by construction; two specimens share none, so their difference absorbs every specimen
+     difference. So **Δρ is NOT computed on real data** and that is a named limit, not an omission.
+     A ±0.03 tolerance at n=2 is still noise, so the Stage-2 gate rests on 12-16's simulated arm
+     (N ≥ 271). Recorded as clause (h) plus §5 of the frozen amendment.
   **OPEN FOR THE USER:** whether to fetch the corpus. Doing so would not change the Δρ n unless the
   fetched data includes genuine sample/control pairs — the sealed rows are single specimens too.
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
