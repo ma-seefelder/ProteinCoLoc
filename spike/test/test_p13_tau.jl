@@ -111,9 +111,15 @@ const TAU_CODE  = join(TAU_LINES, '\n')
         @test UInt64(P13_FIX_SEED) != UInt64(P13_DEV_SEED)
         @test TAU_FIX_KEYS.reference != tau_probe_arm_keys().reference
         @test TAU_FIX_KEYS.contrast  != tau_probe_arm_keys().contrast
-        # P13_TAU is Tier-2 and must still be ABSENT: this whole suite has to be runnable
-        # BEFORE the probe has measured anything (D-06).
-        @test !isdefined(@__MODULE__, :P13_TAU)
+        # FLIPPED BY PLAN 13-10, which measured tau with this very probe. Until then this
+        # asserted P13_TAU's ABSENCE, because the suite had to be runnable before anything had
+        # been measured. The invariant that survives -- and that matters more now -- is that
+        # THE PROBE NEVER READS THE NUMBER IT MEASURES: a probe that consulted P13_TAU would
+        # be circular, and its curve would no longer be a statement about the summary alone.
+        # The word boundary is load-bearing: the probe legitimately reads the frozen P13_TAU_*
+        # SPEC knobs (grid, bar, R, design), and those must not be miscounted as a read of tau.
+        @test isdefined(@__MODULE__, :P13_TAU)
+        @test !occursin(r"\bP13_TAU\b", TAU_CODE)
     end
 
     @testset "m-bar ignores absent patches" begin

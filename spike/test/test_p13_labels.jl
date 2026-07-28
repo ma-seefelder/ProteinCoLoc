@@ -261,14 +261,24 @@ _lbl_mirror(c::ThreeWayClass) =
         end
     end
 
-    @testset "tau is still Tier-2" begin
-        # PLAN 13-10 FLIPS THIS TESTSET once the measured tau is appended to consts.jl. Until
-        # then the throw IS the D-06 ordering guarantee: labelled three-way data cannot be
-        # generated at a tau that has not been measured.
-        @test !isdefined(@__MODULE__, :P13_TAU)
-        @test_throws ErrorException three_way_label(0.5, 0.0)
-        @test_throws ErrorException prior_class_draws(4)
-        @test occursin("Tier-2", sprint(showerror, try three_way_label(0.5, 0.0) catch e; e end))
+    @testset "tau is measured, and the label default resolves to it (Tier 2)" begin
+        # FLIPPED BY PLAN 13-10, exactly as the previous version of this testset said it would
+        # be. Until 13-10 ran, the THROW was the D-06 ordering guarantee: labelled three-way
+        # data could not be generated at a tau that had not been measured. That guarantee is
+        # now carried by git history instead -- artifact commit 581602a, which contains no
+        # Tier-2 value, strictly precedes the Tier-2 append. What must be asserted HERE is the
+        # thing that replaced it: the label boundary's default really is the MEASURED tau and
+        # not some local constant that happens to be in scope.
+        @test isdefined(@__MODULE__, :P13_TAU)
+        @test p13_tau() === P13_TAU
+        @test three_way_label(0.5, 0.0) === three_way_label(0.5, 0.0; tau = P13_TAU)
+        # ...and the default is genuinely load-bearing: the same pair labels differently under
+        # a tau wide enough to swallow it, so a silently wrong default could not pass unnoticed.
+        @test three_way_label(0.5, 0.0) !== three_way_label(0.5, 0.0; tau = 0.6)
+        # The generator no longer throws. It is called on the FIXTURE stream on purpose: its
+        # default rng rides P13_DATAGEN_COUNTER, and a gate that drew from that reported
+        # sub-stream would pre-observe the very draws the labelled data is generated from (D-01).
+        @test length(prior_class_draws(4; rng = p13_fix_rng(P13_FIXTURE_COUNTER))) == 4
         # The frozen variant this file tests is still the frozen variant.
         @test P13_CUT_VARIANT === :tau_contrast
     end
