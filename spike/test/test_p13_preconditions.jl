@@ -226,15 +226,26 @@ const P13_PRE_G = isqrt(128 ÷ 2)
             @test_throws ErrorException assert_frozen_zt(fake, zeros(Float32, 2 * n_cont, 400))
             @test_throws "INHERITED" assert_frozen_zt(fake, zeros(Float32, 2 * n_cont, 400))
 
+            # Both synthetic pools below are drawn from the RESERVED FIXTURE STREAM, never from
+            # the global default RNG. The two verdicts are decided from the pool's MEASURED
+            # moments, so an unseeded draw makes the assertion nondeterministic: a borderline
+            # draw flips :inherited/:refit_suspected and reds the whole suite intermittently.
+            # Observed for real once at 72/74 before this was seeded, then 4/4 green -- the
+            # worst kind of failure, because it looks like a merge broke something. The project
+            # constraint is that everything reproduces from a fixed counter-based seed, and
+            # p13_fix_rng is pre-registered FIXTURES-ONLY and asserted disjoint from every
+            # reported counter, so using it here cannot touch a reported stream.
+            fixrng = p13_fix_rng(P13_FIXTURE_COUNTER)
+
             # The SOFT half (Pitfall 5). A pool that is NOT centred and unit-scaled reads as
             # inherited, which is the expected shape of a frozen transform applied to a
             # different pool.
-            shifted = Float32.(randn(2 * n_cont, 400) .* 2.5 .+ 3)
+            shifted = Float32.(randn(fixrng, 2 * n_cont, 400) .* 2.5 .+ 3)
             @test assert_frozen_zt(b, shifted).verdict === :inherited
             # A pool that IS exactly centred and unit-scaled is the RE-FIT WARNING SIGN: it is
             # REPORTED (verdict plus a warning), never silently accepted and never an error,
             # because two similar joints can legitimately give similar moments.
-            centred = Float32.(randn(2 * n_cont, 4000))
+            centred = Float32.(randn(fixrng, 2 * n_cont, 4000))
             r = (@test_logs (:warn,) match_mode = :any assert_frozen_zt(b, centred))
             @test r.verdict === :refit_suspected
             # Too few columns to judge is `:indeterminate`, never a false clean bill.
