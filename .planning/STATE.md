@@ -56,8 +56,58 @@ The gate found 7 blockers; 5 are fixed in the plans. Two are decisions, not defe
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
-Plan: 1 of 16
-**STATUS: Executing — probe verdict PROCEED; datagen + research-net training authorised.**
+Plan: 11 of 16 complete (13-01…13-10 + 13-15); remaining 13-11, 13-12, 13-13, 13-14, 13-16
+**STATUS: Executing — waves 1-6 done. τ MEASURED (0.15), Phase-11 basis BOUND. Wave 7 (13-11
+datagen + three-way training) is next and is the phase's one large compute spend.**
+
+- **2026-07-28 — 13-10 closed out from its committed artifact (`85a75c2`).** The prior executor
+  landed all three 13-10 commits (`581602a` artifact → `bfba6ac` constant → `45f5a44` tests) in a
+  worktree and died on a session limit before writing the SUMMARY. Resolved via the
+  `safe_resume_gate` "close out manually" path rather than re-dispatch, because re-running the
+  probe would be a SECOND reported measurement of a pre-registered quantity and would have to be
+  declared as spending the D-04 iteration allowance reserved for the stratification switch.
+  **MEASURED `P13_TAU = 0.15`** at A(τ) = 0.916356 against the pre-registered bar 0.9, reference
+  λ = 3.0 (widest rung). Grid NOT extended, bar NOT relaxed, D-04 allowance UNSPENT. τ now flows
+  into 13-11/12/13/14/16 and must always be quoted with its reference λ.
+
+- **2026-07-28 — 13-09 ORCHESTRATOR RULING: Phase 13 binds the Phase-11 research NPE even though
+  Phase 11 closed NEGATIVE.** 13-09's checkpoint asks whether Phase 11 "landed". Taken literally
+  it FAILS: Phase 11 is CLOSED not COMPLETE, `11-07-SUMMARY` is `status: blocked`, and 11-08…11-11
+  are SUPERSEDED. Proceeded anyway, on these grounds, recorded here and in
+  `spike/p13/preconditions.jl` so the decision is auditable rather than implicit:
+  (1) Phase 11's own closure records SC1g as **MIS-SPECIFIED, not failed** — the bar 2.502 was
+  derived from a component ratio but applied to a total, and the true width ratio is ~1.00, so
+  "the net was right and the gate failed it anyway"; (2) the λ conditioning is measurably ALIVE
+  (shift marginals track λ at SD ratios 4.84–9.05); (3) all six items of 13-09's own artifact
+  contract were empirically verified present before dispatch; (4) 13-12 already pre-authorises a
+  FLAT λ response as a reportable finding, so proceeding does not launder a negative result;
+  (5) D-02 claims Phase 13 trains on Phase 11's registration-aware INPUT SURFACE, not that
+  registration is inferable — so Phase 11's negative result leaves D-02 intact.
+  **This is distinct from the Phase-12 premise flagged below, which remains NOT acted on.**
+  Bound: `spike/npe/p11_research_npe.jld2`, frozen `zt` (64 continuous rows), frozen
+  `P11BoundedThetaTransform` (arity 8, chromatic ε 8th at ±0.02), `n_cond = 1` DERIVED via
+  `length(encode_lambda(λ))`, λ ∈ (0.25, 3.0), F5 imsize provenance. No grid-8 fallback exists.
+
+- **2026-07-28 — two defects found and fixed while landing 13-09, both worth carrying forward.**
+  (a) `spike/p13/consts.jl` reserves the name `P11_DEV_SEED`, which is exactly the guard sentinel
+  `spike/validation/p11_consts.jl` keys its whole Tier-1 block on — so loading the Phase-13
+  pre-registration first made `p11_consts.jl` skip its own block and die on its out-of-guard
+  self-check. Repaired by reading it through a private `module _P11C` (the existing `module _GC`
+  precedent); neither frozen consts file was edited. **General lesson: "guarded include ⇒
+  order-free" is FALSE whenever two frozen consts files reserve the same name.**
+  (b) `test_p13_preconditions.jl` drew its `assert_frozen_zt` fixture pools from an UNSEEDED
+  `randn()`, while the verdict is decided from the pool's measured moments — an intermittent
+  suite-reddening flake (observed 72/74 once, then 74/74 four times). Reseeded from
+  `p13_fix_rng(P13_FIXTURE_COUNTER)` (`b9b688e`); 74/74 on five consecutive runs.
+
+- **KNOWN RED, pre-existing, NOT a regression:** `spike/test/runtests.jl` exits non-zero at
+  `test_p13_correction.jl` on exactly 2 assertions — `maxabs` 0.5498 / 0.3783 against
+  `P13_F5_MAXABS_TOL = 0.25`. Plan 13-07 committed these deliberately as an honest finding
+  ("Recorded as an honest finding, not repaired"; its own verification table logs "exits 1: 88
+  pass, 2 fail"). Correlations pass comfortably (0.99751 / 0.9988 vs bar 0.99). Because this
+  abort sits at `runtests.jl:213`, it masks everything after it — a full-suite green is therefore
+  NOT available as a gate signal for the rest of Phase 13, and per-file runs must be used instead.
+  **Re-deriving that bar is a pre-registration decision and is left for the user.**
 
 Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — CLOSED 2026-07-27
 Plan: 7 of 11 executed; 11-08 through 11-11 SUPERSEDED by the diagnosis (reasoning per plan in

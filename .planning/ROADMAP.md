@@ -173,7 +173,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |
 | 11. Registration + Chromatic Uncertainty as Latent | 6/11 | In Progress|  |
 | 12. Spatial Colocalization Map (GP/CAR) | 0/TBD | Not started | - |
-| 13. Three-Hypothesis Amortized Bayes Factor | 10/16 | In Progress|  |
+| 13. Three-Hypothesis Amortized Bayes Factor | 11/16 | In Progress|  |
 | 14. Decision + Abstention Layer | 0/TBD | Not started | - |
 | 15. Calibration Operating Envelope + CI Gate | 0/TBD | Not started | - |
 | 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
@@ -280,7 +280,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 13-06-PLAN.md — ThreeWayEvidenceNet: shared trunk verbatim + two BCE heads + masked joint loss + per-head read surface, with the A5 train smoke (D-08, D-09, D-10, D-11, D-03)
 - [x] 13-07-PLAN.md — D-07 correction VERIFIED against a closed-form Gaussian toy, with both negative controls (uncorrected logit, within-class reshape) (D-07, D-11)
 - [x] 13-08-PLAN.md — ThreeHypothesisColocResult in spike/ (log_bf_vs_random), empty-bin MCE trap demonstrated, resolve-risk clause (i) + suite wiring (D-08, D-13, D-14, D-04)
-- [ ] 13-09-PLAN.md — Phase-11 precondition binding: loud block, no grid-8 fallback, derived conditioning length (D-02, D-03) [BLOCKED: Phase 11]
+- [x] 13-09-PLAN.md — Phase-11 precondition binding: loud block, no grid-8 fallback, derived conditioning length (D-02, D-03) — bound to `spike/npe/p11_research_npe.jld2`, n_cond = 1 derived, 74/74
 - [x] 13-10-PLAN.md — REPORTED τ probe run + Tier-2 append of the measured τ (two-commit discipline) (D-06, D-04) — MEASURED τ = 0.15 at A(τ) = 0.916356 vs bar 0.9, reference λ = 3.0
 - [ ] 13-11-PLAN.md — Class-frequency-stratified conditioned datagen on the frozen Phase-11 zt + the single training run with measured per-head log-odds (D-02, D-03, D-07, D-10, D-11) [BLOCKED: Phase 11]
 - [ ] 13-12-PLAN.md — REPORTED amended gate: per-class AUC + confusion matrix (descriptive) + per-head ECE with vacuous-pass guard; λ response and binary-NRE continuity reported not gated (D-12, D-13, D-14, D-03, D-05) [BLOCKED: Phase 11]
