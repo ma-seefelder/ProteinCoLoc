@@ -205,4 +205,9 @@ include(joinpath(@__DIR__, "test_p13_tau.jl"))
 include(joinpath(@__DIR__, "test_p13_net.jl"))
 include(joinpath(@__DIR__, "test_p13_result.jl"))
 include(joinpath(@__DIR__, "test_p13_calibration.jl"))
+# The D-02/D-03 Phase-11 binding gate. Its absent-artifact assertion -- that a missing Phase-11
+# research NPE is a loud, instructional BLOCK naming the grid-8 prohibition -- runs in ANY state
+# of the repository, while the six-item contract assertions skip explicitly until Phase 11's net
+# is on disk. Placed before the correction arm because that arm throws (see above).
+include(joinpath(@__DIR__, "test_p13_preconditions.jl"))
 include(joinpath(@__DIR__, "test_p13_correction.jl"))
