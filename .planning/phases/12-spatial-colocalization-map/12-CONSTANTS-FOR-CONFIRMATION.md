@@ -33,16 +33,20 @@ them in advance would be the data-snooping the two-tier structure exists to prev
 | **Too narrow** | Excluding the low-r₁ end removes the regime where per-region borrowing is *hardest*, which is precisely where D-12 Stage 1 needs discriminating power. Excluding the high end removes the regime where borrowing should be easiest, i.e. the positive control on the premise. |
 | **Confirm** | That `Uniform` (not a Beta or a log-uniform) is the intended shape. A uniform on r₁ is the honest default given no prior belief about biological smoothness — which is also D-08's stated reason for inferring rather than conditioning. |
 
-## 2. `P12_GOLDEN_IMSIZE` and `P12_GOLDEN_KEYS` — the D-06 golden-fixture scope
+## 2. ~~`P12_GOLDEN_IMSIZE` / `P12_GOLDEN_KEYS`~~ — WITHDRAWN, no decision needed
 
-| | |
-|---|---|
-| **What they gate** | 12-08's exact-`==` byte-for-byte regression claim. They determine **which bytes are frozen**; a fixture captured at a different size or over different keys is a different fixture, and the regression claim is only meaningful if both were locked before the capture ran. |
-| **Proposed** | Mirror Phase 11's `P11_GOLDEN_IMSIZE` / `P11_GOLDEN_KEYS` values exactly, **read from `p11_consts.jl` rather than retyped**, with keys drawn off `P12_FIXTURE_COUNTER = 99`. |
-| **Derivation** | Not argued from any Phase-12 measurement — deliberately inherited, so the Phase-12 golden fixture is directly comparable to Phase 11's and any byte difference is attributable to the stage-1 field edit rather than to a changed capture configuration. |
-| **Too large** | A large `imsize` makes the fixture slow and bulky in git for no added regression power; the stage-1 mixing path is size-independent. |
-| **Too small** | Below roughly 128² the patch grid starts producing masked regions from the ≥15-surviving-pixel floor, so the fixture would freeze a degenerate case and the regression would not exercise the normal path. |
-| **Confirm** | Whether inheriting Phase 11's values is right, or whether the fixture should be captured at the F5 mixture's modal size instead. Inheriting is my recommendation — comparability beats representativeness for a byte-equality tripwire. |
+This item was raised in error and is withdrawn rather than deleted, so the record shows why.
+
+It claimed Tier 1 should carry the golden-fixture scope "mirroring `P11_GOLDEN_IMSIZE` /
+`P11_GOLDEN_KEYS` in `p11_consts.jl`". **That citation was false.** `grep -c GOLDEN
+spike/validation/p11_consts.jl` returns **0**; the analog defines both constants LOCALLY in
+`spike/test/capture_p11_golden.jl:51-52` as `(256, 256)` and `1:4`. 12-08 had already followed that
+precedent correctly, defining the Phase-12 equivalents locally in `capture_p12_golden.jl`.
+
+Putting them in Tier 1 would also have broken the capture: `capture_p12_golden.jl` guard-includes
+`p12_consts.jl` for `P12_FIXTURE_COUNTER`, so a Tier-1 value differing from the local one is an
+invalid-redefinition-of-constant error — and since the capture must precede the `forward.jl` edit, that
+would have stalled wave 4. Removed from 12-01; 12-08 owns them.
 
 ## 3. `n_low` — the identified/vacuous boundary in 12-18's SBC row classes
 
@@ -90,9 +94,23 @@ others.
 12-09, 12-12, 12-16, 12-18 and 12-19.
 
 **One finding from the corpus audit belongs on the user's desk even though it is not a constant.** The
-Phase-8 external corpus supplies **zero** images today — `corpus/data/` is empty, all 32 manifest rows are
-`PENDING-FETCH` / `bytes = 0` — its only two real rows are sealed for Phase 16, and its remaining 30 are
-computer-generated. Combined with the Δρ decision this means the real-image arm has **n = 1** for the
-primary Δρ deliverable (the one legitimate `(sample, control)` pairing available is `positive/` against
-`negative/`). That is not a threshold to set; it is a limit to accept or to fix by fetching corpus data,
-and it is why the real arm stays reported rather than gated.
+Phase-8 external corpus supplies **zero** images today: `corpus/data/` is empty; all 32 rows have
+`bytes = 0`; the two `physical-primary` rows carry `sha256 = PENDING-FETCH` and `split = sealed_holdout`
+(reserved for Phase 16); the 30 `simulated-secondary` rows carry an empty `sha256` and cannot support a
+real-image claim at any n.
+
+So the real-image evidence base is the six committed TIFFs = **two specimens**, and two consequences follow
+that the user should see:
+
+- **SC3 is unaffected and runs at n = 2.** D-09's leave-region-out construction is single-stack end to end
+  (it masks one region of ONE image and scores that image's own observed entry), so predictive coverage
+  needs no control and runs on both specimens.
+- **Δρ is NOT scored on real data**, and this supersedes an earlier note here that called
+  `positive/`-against-`negative/` a legitimate pairing at n = 1. It is not legitimate: the simulated Δρ is
+  a difference of two **exchangeable** draws from one prior, whereas the two specimens are deliberately
+  non-exchangeable (`truth = coloc` against `truth = segregated`, different specimen types), so their
+  contrast is between-population where the calibrated quantity is within-population. 12-19 records
+  `real_delta_rho_computed = false`; the phase carries it as a named limit.
+
+Neither is a threshold to set. The open question for the user is whether to fetch the corpus at all — and
+note it would not create a matched pair, since the sealed anchors are single specimens too.

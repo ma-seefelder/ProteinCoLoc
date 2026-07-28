@@ -187,6 +187,11 @@ Every behaviour row above is owned by a plan: Wave-1 rows by 12-06/12-11/12-13, 
 12-18, 12-16, 12-19 and 12-20 respectively — the seven plans that did not exist when this document was
 written.
 
-**Approval:** signed off with one execution blocker outstanding — the Δρ semantics question recorded in
-`12-02-PLAN.md` and `.planning/STATE.md`. That is a scope decision for the user, not a validation gap;
-no wave may execute until it is answered, because 12-02 (Wave 1) freezes the amendment write-once.
+**Approval:** signed off. The Δρ semantics question that previously blocked all execution was **resolved
+2026-07-28** (ship all three maps, Δρ primary) and propagated in commits `c38b88c` and `c41513d`; 12-02
+carries it as the §5 the frozen amendment must encode. Per this section's own standing rule, that
+resolution was verified on disk before this line was changed.
+
+What remains is **not** a validation gap and does not block a wave: five Tier-1 constants await user
+confirmation in `12-CONSTANTS-FOR-CONFIRMATION.md`. 12-01 cannot execute until they are answered, because
+Tier 1 is append-only once written.
