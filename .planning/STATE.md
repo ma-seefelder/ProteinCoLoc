@@ -32,7 +32,28 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 ## Current Position
 
-Two phases are active concurrently. Both lines are authoritative — do not overwrite one with the other.
+Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
+
+Phase: 12 (spatial-colocalization-map) — PLANNED, NOT STARTED
+Plans: 20 of 20 written and committed (`927cf7a`); plan-checker gate run 2026-07-28 (first run).
+**STATUS: Planning complete, execution BLOCKED on one user decision.**
+The gate found 7 blockers; 5 are fixed in the plans. Two are decisions, not defects:
+  1. **BLOCKS WAVE 1 — Δρ semantics.** In this milestone `Δρ` means sample minus control
+     (`src/amortized/infer.jl:107`; `local_map.jl:48` "no evidence of a sample-vs-control difference";
+     `:30` names `SpatialColocResult`/`delta_rho_map` as that map's calibrated successor). No Phase-12
+     plan builds a contrast: θ is `c₀` + 63 DCT deviations + 7 nuisances + `r₁`, one `rho_field` per
+     dataset, and `p12_coloc_map` reads ρ units — so `region_delta_rho` would hold per-region **ρ**.
+     12-12's `[-2,2]` range guard admits ρ silently, so nothing catches it. Resolve as **(a)** deliver
+     true Δρ via a paired control draw (recommended; costs a task in 12-09 plus changes in 12-16/12-18
+     and doubles 12-19's passes) or **(b)** redefine Δρ for this phase as the deviation from the global
+     term (cheap, but leaves two senses of one word in the package). 12-02 is Wave 1 and freezes the
+     amendment write-once, so this must be answered first. Detail: the BLOCKER block in `12-02-PLAN.md`.
+  2. **FIXED PENDING CONFIRMATION — the real-image SC3 arm is now REPORTED, not gated.**
+     `P12_STAGE2_N_MIN = 271` is Wilson-derived for 271 independent trials and 12-01 fixes the
+     independent unit as the dataset; D-11 supplies 2 images, so a ±0.03 tolerance there would be
+     decided by noise. The Stage-2 gate now rests on 12-16's simulated arm. Recorded as clause (h) of
+     the frozen amendment. Overrule if the real arm should gate.
+No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
 Plan: 1 of 16
