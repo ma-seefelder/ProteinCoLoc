@@ -54,6 +54,7 @@ them in advance would be the data-snooping the two-tier structure exists to prev
 | **Too high** | Rows that are genuinely vacuous get a point null and fail loudly for a reason that is not a calibration defect — exactly the Phase-7 outcome. |
 | **Too low** | Rows that *are* identified get only an equivalence test, so a real calibration miss in a mode the map depends on could pass unnoticed. This is the more dangerous direction. |
 | **Confirm** | Either (i) a Tier-1 value now, with the reasoning, or (ii) an explicit ruling that `n_low` is a **Tier-2 append** derived from 12-15's truncation curve — in which case 12-18 must record `n_low_source = :tier2_from_minispike` and 12-01's Tier-2 sentinel list needs a third entry. **(ii) is my recommendation**, because it makes the boundary a measurement rather than a guess, and because the plans already have the machinery for a provenanced append. It does mean 12-18 cannot run before 12-15, which the wave order already enforces. |
+| **Interaction with the Δρ decision** | Now settled and no longer open: the 2026-07-28 ruling carries a Δρ row, so `targets` = `c₀` **plus Δρ**. That widens the target class by one and leaves the `dev_low` / `dev_high` split unchanged, so it does not move `n_low` — but it does mean the Δρ arm needs randomized ranks in ρ space, because a difference of two `ghat`-clamped fields inherits atoms from BOTH sides and its atom rate is therefore HIGHER than the 6.79 % measured for a single map. 12-18 now requires that rate to be measured and reported rather than assumed. |
 
 ## 4. Guard-4 pass fraction — 12-20's radial-orthogonalization reading
 
@@ -84,5 +85,14 @@ append-only afterwards and adding a constant later is itself a pre-registration 
 needed before 12-20 runs (Wave 12), so it has slack — but it is cheapest to answer now, alongside the
 others.
 
-Separately and more urgently: the **Δρ semantics blocker** in `12-02-PLAN.md` is not a constant and is not
-listed here. It blocks Wave 1 outright and is recorded in that plan and in `.planning/STATE.md`.
+**The Δρ semantics question is RESOLVED (2026-07-28)** and no longer blocks Wave 1: ship all three maps,
+Δρ primary. It is recorded in `12-02-PLAN.md` as the §5 the frozen amendment must carry, and propagated to
+12-09, 12-12, 12-16, 12-18 and 12-19.
+
+**One finding from the corpus audit belongs on the user's desk even though it is not a constant.** The
+Phase-8 external corpus supplies **zero** images today — `corpus/data/` is empty, all 32 manifest rows are
+`PENDING-FETCH` / `bytes = 0` — its only two real rows are sealed for Phase 16, and its remaining 30 are
+computer-generated. Combined with the Δρ decision this means the real-image arm has **n = 1** for the
+primary Δρ deliverable (the one legitimate `(sample, control)` pairing available is `positive/` against
+`negative/`). That is not a threshold to set; it is a limit to accept or to fix by fetching corpus data,
+and it is why the real arm stays reported rather than gated.

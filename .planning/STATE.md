@@ -36,23 +36,28 @@ Three phases are active concurrently. All lines are authoritative — do not ove
 
 Phase: 12 (spatial-colocalization-map) — PLANNED, NOT STARTED
 Plans: 20 of 20 written and committed (`927cf7a`); plan-checker gate run 2026-07-28 (first run).
-**STATUS: Planning complete, execution BLOCKED on one user decision.**
-The gate found 7 blockers; 5 are fixed in the plans. Two are decisions, not defects:
-  1. **BLOCKS WAVE 1 — Δρ semantics.** In this milestone `Δρ` means sample minus control
-     (`src/amortized/infer.jl:107`; `local_map.jl:48` "no evidence of a sample-vs-control difference";
-     `:30` names `SpatialColocResult`/`delta_rho_map` as that map's calibrated successor). No Phase-12
-     plan builds a contrast: θ is `c₀` + 63 DCT deviations + 7 nuisances + `r₁`, one `rho_field` per
-     dataset, and `p12_coloc_map` reads ρ units — so `region_delta_rho` would hold per-region **ρ**.
-     12-12's `[-2,2]` range guard admits ρ silently, so nothing catches it. Resolve as **(a)** deliver
-     true Δρ via a paired control draw (recommended; costs a task in 12-09 plus changes in 12-16/12-18
-     and doubles 12-19's passes) or **(b)** redefine Δρ for this phase as the deviation from the global
-     term (cheap, but leaves two senses of one word in the package). 12-02 is Wave 1 and freezes the
-     amendment write-once, so this must be answered first. Detail: the BLOCKER block in `12-02-PLAN.md`.
-  2. **FIXED PENDING CONFIRMATION — the real-image SC3 arm is now REPORTED, not gated.**
-     `P12_STAGE2_N_MIN = 271` is Wilson-derived for 271 independent trials and 12-01 fixes the
-     independent unit as the dataset; D-11 supplies 2 images, so a ±0.03 tolerance there would be
-     decided by noise. The Stage-2 gate now rests on 12-16's simulated arm. Recorded as clause (h) of
-     the frozen amendment. Overrule if the real arm should gate.
+**STATUS: Planning complete. Both user decisions received 2026-07-28 and propagated. Execution may
+begin; five Tier-1 constants still need confirmation (see 12-CONSTANTS-FOR-CONFIRMATION.md).**
+The gate found 7 blockers; 5 were defects and are fixed. The two decisions are now answered:
+  1. **Δρ semantics — RESOLVED: ship all three maps.** `region_delta_rho` stays the primary named
+     deliverable per `src/results.jl:181`, computed as the per-region MC difference mirroring
+     `infer.jl:108`; `region_rho_sample` and `region_rho_control` are additionally exposed so a reader
+     can see WHERE a difference comes from. Costs zero extra forward passes — both single-stack reads
+     already exist inside a paired Δρ. 12-12's `[-2,2]` range guard is REPLACED (not tightened) by a
+     structural identity `delta ≈ sample − control`, because with a true Δρ the range genuinely IS
+     [-2,2] and a range can never distinguish the two quantities. Propagated to 12-02 §5, 12-09
+     (paired control draw), 12-12, 12-16, 12-18, 12-19.
+  2. **Real-image SC3 arm — REPORTED, not gated, confirmed by a counted corpus audit.**
+     `corpus/data/` is EMPTY: all 32 manifest rows are `sha256 = PENDING-FETCH`, `bytes = 0`, so the
+     Phase-8 corpus supplies ZERO images today; its two `physical-primary` rows are sealed for Phase 16
+     and its 30 CBS rows are `simulated-secondary`. The corpus `role` column is positive/negative/
+     benchmark — experimental controls, i.e. DIFFERENT SPECIMENS, not sample/control pairs. So the real
+     data stays the six committed TIFFs = 2 specimens = **1 legitimate (sample, control) pair**, and the
+     primary Δρ deliverable has **n = 1** there, not 2. A ±0.03 tolerance at n=1 is noise, so the
+     Stage-2 gate rests on 12-16's simulated arm (N ≥ 271) and the real arm reports all three maps with
+     a per-map n. Recorded as clause (h) of the frozen amendment.
+  **OPEN FOR THE USER:** whether to fetch the corpus. Doing so would not change the Δρ n unless the
+  fetched data includes genuine sample/control pairs — the sealed rows are single specimens too.
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
