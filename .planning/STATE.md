@@ -35,7 +35,7 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
 Phase: 12 (spatial-colocalization-map) — PLANNED, NOT STARTED
-Plans: 20 of 20 written and committed (`927cf7a`); plan-checker gate run 2026-07-28 (first run).
+Plans: 20 of 20 written and committed (`927cf7a`); FOUR plan-checker gates run 2026-07-28/29.
 **STATUS: Planning complete. Both user decisions received 2026-07-28 and propagated. Execution may
 begin; five Tier-1 constants still need confirmation (see 12-CONSTANTS-FOR-CONFIRMATION.md).**
 The gate found 7 blockers; 5 were defects and are fixed. The two decisions are now answered:
@@ -45,22 +45,34 @@ The gate found 7 blockers; 5 were defects and are fixed. The two decisions are n
      can see WHERE a difference comes from. Costs zero extra forward passes — both single-stack reads
      already exist inside a paired Δρ. 12-12's `[-2,2]` range guard is REPLACED (not tightened) by a
      structural identity `delta ≈ sample − control`, because with a true Δρ the range genuinely IS
-     [-2,2] and a range can never distinguish the two quantities. Propagated to 12-02 §5, 12-09
-     (paired control draw), 12-12, 12-16, 12-18, 12-19.
+     [-2,2] and a range can never distinguish the two quantities. Propagated to 12-02 §5, 12-12,
+     12-16, 12-18, 12-19. **The pool stays SINGLE-STACK** — an earlier version of this line said
+     "12-09 (paired control draw)" and that was wrong: the Δρ\* truth is built at SCORING time from two
+     independent prior draws (`harness.jl:124-136`), and a paired pool would have pushed datagen from a
+     measured 65-80 min/50k to ~130-160 min against an append-only ceiling of 150.
   2. **Real-image SC3 arm — REPORTED, not gated, confirmed by a counted corpus audit.**
-     `corpus/data/` is EMPTY: all 32 manifest rows are `sha256 = PENDING-FETCH`, `bytes = 0`, so the
-     Phase-8 corpus supplies ZERO images today; its two `physical-primary` rows are sealed for Phase 16
-     and its 30 CBS rows are `simulated-secondary`. The corpus `role` column is positive/negative/
-     benchmark — experimental controls, i.e. DIFFERENT SPECIMENS, not sample/control pairs. So the real
-     data stays the six committed TIFFs = 2 specimens = **1 legitimate (sample, control) pair**, and the
-     SC3 criterion is SINGLE-STACK (D-09 masks one region of ONE image and scores that image's own
-     observed entry), so predictive coverage IS computable on both specimens: n = 2, ~64 regions each.
-     But Δρ needs a MATCHED pair, and the two anchors are role=positive/coloc and role=negative/segregated
-     -- a labelled test pair, not a matched control pair. 12-09's simulated pair shares all seven
-     nuisances by construction; two specimens share none, so their difference absorbs every specimen
-     difference. So **Δρ is NOT computed on real data** and that is a named limit, not an omission.
+     `corpus/data/` is EMPTY: all 32 manifest rows have `bytes = 0`; the two `physical-primary` rows
+     carry `sha256 = PENDING-FETCH` and are sealed for Phase 16, while the 30 CBS `simulated-secondary`
+     rows carry an EMPTY `sha256`. (An earlier version of this line said all 32 were `PENDING-FETCH`;
+     only the 2 physical rows are.) So the Phase-8 corpus supplies ZERO images today. The corpus `role`
+     column is positive/negative/benchmark — experimental controls, i.e. DIFFERENT SPECIMENS, not
+     sample/control pairs. The real data stays six FILES = **2 specimens**, and they are **not** a
+     legitimate (sample, control) pair — an earlier version of this line called them one, and
+     12-CONSTANTS-FOR-CONFIRMATION.md now says plainly that it is not legitimate. The SC3 criterion is
+     SINGLE-STACK (D-09 masks one region of ONE image and scores that image's own observed entry), so
+     predictive coverage IS computable on both specimens: n = 2, ~64 regions each.
+     Δρ is NOT computed on real data, and the reason is **EXCHANGEABILITY, not shared nuisances.** An
+     earlier version of this line claimed "12-09's simulated pair shares all seven nuisances by
+     construction"; that is FALSE — `harness.jl:124-136` draws two independent priors, so nuisances
+     differ between sample and control in the simulated Δρ too. The correct argument: the simulated pair
+     is two *exchangeable* draws from one prior, so Δρ\* is a WITHIN-population difference, which is what
+     the net is calibrated against; the two anchors are deliberately non-exchangeable (truth=coloc vs
+     truth=segregated, different specimen types), so their contrast is BETWEEN-population. Scoring a
+     between-population contrast against a within-population gate would be two arms measuring different
+     quantities under one gate. That makes it a named limit, not an omission.
      A ±0.03 tolerance at n=2 is still noise, so the Stage-2 gate rests on 12-16's simulated arm
      (N ≥ 271). Recorded as clause (h) plus §5 of the frozen amendment.
+     The effective independent n is **2**, not 128: the 128 region-draws are pseudo-replicates.
   **OPEN FOR THE USER:** whether to fetch the corpus. Doing so would not change the Δρ n unless the
   fetched data includes genuine sample/control pairs — the sealed rows are single specimens too.
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
