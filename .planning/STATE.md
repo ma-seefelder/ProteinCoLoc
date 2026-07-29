@@ -5,7 +5,7 @@ milestone_name: milestone
 status: in-progress
 stopped_at: Phase 12 context gathered
 last_updated: "2026-07-27T14:06:54.610Z"
-last_activity: 2026-07-29 -- Phase 13 plan 13-16 complete (REPORTED real-image arm RAN; RANDOM on both pairs, both OOD-flagged)
+last_activity: 2026-07-29 -- Phase 13 COMPLETE, all 16 plans (13-14 report written; gate passed 6/6 on simulated ground truth, both real fixtures OOD-flagged, allowance UNSPENT)
 progress:
   total_phases: 16
   completed_phases: 10
@@ -113,12 +113,71 @@ answered:
   boundary moved after a measurement.
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
-Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
-Plan: 15 of 16 complete (13-01…13-13 + 13-15 + 13-16); remaining 13-14 (the phase report)
-**STATUS: Executing — waves 1-8 done (the gate arm, the α-series arm and the real-image arm). τ
-MEASURED (0.15), Phase-11 basis BOUND, the three-way evidence net is TRAINED (13-11), THE AMENDED
-GATE HAS RUN AND PASSED (13-12, one run), the REPORTED α-ladder has run (13-13), and the REPORTED
-real-image arm has run (13-16). D-04 allowance still UNSPENT.**
+Phase: 13 (three-hypothesis-amortized-bayes-factor) — **ALL 16 PLANS COMPLETE**
+Plan: 16 of 16 complete (13-01…13-16); the phase report 13-14 is written
+**STATUS: Complete — waves 1-9 done (the gate arm, the α-series arm, the real-image arm and the
+report). τ MEASURED (0.15), Phase-11 basis BOUND, the three-way evidence net is TRAINED (13-11), THE
+AMENDED GATE HAS RUN AND PASSED (13-12, one run), the REPORTED α-ladder has run (13-13), the REPORTED
+real-image arm has run (13-16), and `13-REPORT.md` is written (13-14). D-04 allowance still UNSPENT.**
+
+- **2026-07-29 — 13-14 COMPLETE (`0c1a0bd` report + `48fb808` ROADMAP tick-off). THE PHASE IS
+  CLOSED.** `.planning/phases/13-three-hypothesis-amortized-bayes-factor/13-REPORT.md` (1,086 lines):
+  what was CLAIMED, what was MEASURED, what was DECLINED, what is OWED.
+  **THE TWO-SENTENCE VERDICT, both halves up front and neither buried:** the three-way amortized
+  Bayes factor **works on simulated data** — the amended gate cleared all six pre-registered criteria
+  on ONE run, on thresholds frozen before the net existed, without spending the iteration allowance —
+  and it is **not shown to work on real microscopy**, because both real fixtures are flagged
+  out-of-distribution at ~2.5× their own ID thresholds and the registration-aware basis did not fix
+  that. The real arm demonstrates COHERENCE, not CORRECTNESS, on n = 2.
+  **The `## Scope of evidence` block is a HEADER element**, positionally asserted to precede section 1,
+  carrying the three-arm standing table (exactly ONE gating arm) and the greppable sentence *No
+  pass/fail threshold is defined for any real-image quantity.*
+  **FOUR NAMED LIMITS**, in the liftable `docs/amortized.md` shape (`docs/` NOT edited): **A** the
+  physical segregation anchor is n = 0 in practice (sealed for Phase 16); **B** exclusion is negative
+  intensity correlation, not disjoint localization, and α is a CONSTRUCTION parameter so α\*
+  CALIBRATES the gap rather than MEASURING it; **C** research-lane, inherits no gate lineage, and the
+  shipped artifact is an **epoch-4 checkpoint of an untuned early-overfitting run**; **D** the
+  exclusion hypothesis has no labelled real-data validation. A conditional FIFTH entry (the ~2.5 : 1
+  prior-atom asymmetry) was **evaluated and NOT added** — its condition was exclusion-end degradation
+  and the gate showed the opposite (deep-tail AUC 0.997257 vs 0.979025 nearest τ).
+  **WHAT WAS DECLINED is written as first-class content** (ten items): the KDE+quadgk reference,
+  continuity as a criterion, MCE as the gate statistic, the confusion matrix as a decision rule, any
+  real-data confusion matrix, the unspent iteration, **a third amendment**, the `src/` rename, the
+  corpus anchor and CBS, and a third channel pair.
+  **EVERY NUMBER WAS RE-READ FROM ITS ARTIFACT AT REPORT TIME**, and that caught things a copy would
+  not have. §14 records five discrepancies: (1) **`13-12-SUMMARY.md` §5 is wrong** that the deep-tail
+  band is "the best of the four" — measured `band_auc` is `[0.979025, 0.995709, **0.998144**,
+  0.997257]`, so the deep tail is the SECOND best; nothing substantive moves and the trigger still did
+  not fire; (2) `consts.jl` has two stable fingerprints and they are NOT in conflict — `70fe66df…` is
+  the git blob (git normalizes CRLF→LF before hashing) and `5a4ea222…` is `git hash-object
+  --no-filters`, the raw working-tree bytes the runners record, both describing one file whose sha256
+  is `100e97a3…`; (3) `deferred-items.md`'s `runtests.jl:169` has drifted to **line 189** because the
+  concurrent Phase-12 agent wired its aggregator in first — the abort (`test_npe.jl:230`,
+  `SPEEDUP_GATE`) is unchanged; (4) the advisory `consts.jl` COMMENT claiming a summary-level crossing
+  at α ≈ 0.49 on the positive fixture does not reproduce (measured ≈ 0.674; the negative 0.46 does) —
+  a comment, not a bar, and `consts.jl` was NOT edited; (5) `13-06-SUMMARY.md` and `13-07-SUMMARY.md`
+  carry **no `status:` frontmatter field**.
+  **OWED, with owners:** the `log_bf_simplex` → `log_bf_vs_random` rename at `src/results.jl:172,178`
+  (comment-only, zero provenance cost, deliberately NOT done — D-01 forbids a `src/` edit, and until
+  it lands the sketch must not be quoted as authoritative); the physical anchor → Phase 16; reshipping
+  the net → a productionization phase; corpus extension with real graded segregation anchors → a
+  roadmap change; the **F5 confident-tail precision shortfall → Phase 14**, whose abstention layer
+  consumes exactly those magnitudes; and the **Phase-4 `SPEEDUP_GATE`** red (measured 68.35 vs bar
+  100.0, drifting 92.50 → 83.97 → 68.35, with a 50.402 reading recorded by 13-08) → a **user
+  decision**, still logged as `deferred-items.md` D-13-A.
+  **ALL EIGHT `13-RESEARCH` OPEN QUESTIONS ARE CLOSED** in §12.
+  **INTEGRITY:** `spike/p13/consts.jl` byte-unchanged with only TWO commits in its whole history
+  (`c42cc8e` Tier-1, `bfba6ac` Tier-2 τ) — **no commit that produced a Phase-13 result touched it**;
+  `git diff --quiet HEAD -- src/ spike/Project.toml spike/Manifest.toml` exit 0; `test/`, `docs/`,
+  `corpus/` byte-unchanged; root `Pkg.test()` re-run at report time and **green** (exit 0,
+  `Testing ProteinCoLoc tests passed`); the seal stays SHUT; `P13_ITERATION_ALLOWANCE` **1 of 1,
+  UNSPENT**. The full spike suite was NOT re-run — it aborts at the pre-existing Phase-4 gate, so the
+  plan's own "runtests.jl exits 0" verification is unsatisfiable for reasons predating the plan.
+  **STATE.md was written ADDITIVELY BY HAND and no mutating state handler was run**, because
+  `## Current Position` carries three concurrent phases and `state.advance-plan` /
+  `state.update-progress` would have flattened the Phase-11 and Phase-12 lines while a Phase-12 agent
+  is live on this branch. Both commits used explicit paths; the ROADMAP was re-read immediately before
+  editing and no race occurred.
 
 - **2026-07-29 — 13-16 COMPLETE (`2112bed` runner + reported artifact).** The amended D-15
   QUALITATIVE real-image arm ran ONCE on the six committed `test/test_images/` TIFFs, on the MAIN
