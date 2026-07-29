@@ -208,19 +208,71 @@ include(joinpath(@__DIR__, "test_comparator.jl"))
 # the guarded-include idiom makes that ordering an optimisation rather than a requirement, but
 # stating it documents the dependency.
 #
-# THE CORRECTION ARM IS LAST, AND DELIBERATELY SO. Its two pre-registered
-# `max |Delta log BF| <= P13_F5_MAXABS_TOL` assertions are MEASURED MISSES (0.5498 and 0.3783
-# against a ceiling of 0.25), committed as-is by plan 13-07 rather than tuned away, so its outer
-# `@testset` throws at the end of the file. A thrown testset aborts the remaining includes, so any
-# sibling placed after it would silently never run. Putting it last keeps every other Phase-13
-# testset executing and reporting while the honest failure still surfaces and still turns the
-# suite red. Resolving that shortfall is a phase-level scientific decision (accept it as a named
-# limit, amend the F5 statistic, or carry it into Phase 14's abstention layer) and is NOT resolved
-# by this wiring.
+# TWO PHASE-13 FILES ARE NOW DELIBERATELY RED, AND "PUT THE THROWING FILE LAST" NO LONGER WORKS.
+#
+#   * `test_p13_correction.jl` -- two pre-registered `max |Delta log BF| <= P13_F5_MAXABS_TOL`
+#     MEASURED MISSES (0.5498 and 0.3783 against a ceiling of 0.25), committed as-is by plan
+#     13-07 rather than tuned away.
+#   * `test_p13_real.jl` -- three more, left failing by the user's ruling of 2026-07-29 on plan
+#     13-17. On the amended c2/c3 channel pair the D-16 alpha ladder no longer reaches negative
+#     m-bar, so the claim that negative induced mu is CONSTRUCTIBLE from real microscopy pixels is
+#     RETRACTED. The assertions that encode it stay RED because this phase's own verdict says the
+#     three-way Bayes factor works on SIMULATED data and is NOT SHOWN to work on real microscopy:
+#     an assertion that states the real-substrate expectation and fails is telling the truth, and
+#     a test that passes while the science says otherwise is worse than a red one.
+#
+# THE ORIGINAL WIRING PUT THE SINGLE THROWING FILE LAST, AND THAT PATTERN SUPPORTS EXACTLY ONE.
+# A thrown `@testset` aborts every remaining include, so with two of them whichever runs first
+# masks the other -- measured on 2026-07-29: the suite aborted at this file's `test_p13_real.jl`
+# line and SEVEN Phase-13 files after it never ran. REORDERING CANNOT FIX THAT. It only chooses
+# which red is hidden, and it would be contingent on knowing which file throws today -- the same
+# contingency that already failed once above (`test_p12_suite.jl`).
+#
+# THE FIX IS STRUCTURAL, in the spirit of the first-position rule that made Phase 12 immune, and
+# it has four required properties, each verified by running the suite rather than reasoned about:
+#
+#   1. EVERY Phase-13 sibling RUNS AND REPORTS, whichever known-red file throws. Each known-red
+#      include is wrapped, so its throw stops nothing after it.
+#   2. THE NAMED-LIMIT FAILURES STILL SURFACE, neither swallowed nor downgraded. `Test` prints
+#      every `Test Failed at ...` line and the testset summary table BEFORE the outer testset
+#      throws, so catching the throw hides nothing that was already printed. They are NOT
+#      `@test_skip`-ed and NOT `@test_broken`-ed; the assertion expressions are byte-unchanged.
+#   3. THE SUITE STILL EXITS NON-ZERO. The first recorded exception is RE-RAISED after the last
+#      include. A green suite here would be the exact failure the ruling exists to prevent.
+#   4. A KNOWN-RED FILE THAT EVER STARTS PASSING FAILS LOUDLY. The observed red set is asserted
+#      EQUAL to the expected set below, so an unexpected pass is a test failure that names the
+#      file -- a silently-green named limit is how a retracted claim creeps back in.
+#
+# And one safety property that is not negotiable: anything that is NOT a `Test.TestSetException`
+# -- a genuine error, an `UndefVarError`, a load failure -- is RETHROWN IMMEDIATELY and is never
+# recorded as an expected red. `include` wraps the throw in a `LoadError` (verified on Julia
+# 1.12.6), so the wrapper is unwrapped before the type is tested.
+#
+# `P13_KNOWN_RED` is declared HERE, after the `test_p12_suite.jl` include, and that position is
+# load-bearing: `test_p12_consts.jl` testset 9 locates `test_p13_correction.jl` by FIRST
+# occurrence in this file's comment-stripped source and asserts the Phase-12 aggregator precedes
+# it. Declaring the list above that include would break an assertion in another phase's file.
+const P13_KNOWN_RED      = ["test_p13_real.jl", "test_p13_correction.jl"]
+const P13_RED_OBSERVED   = String[]
+const P13_RED_EXCEPTIONS = Any[]
+
+function _record_known_red(name::AbstractString, e)
+    inner = e isa LoadError ? e.error : e
+    inner isa Test.TestSetException || rethrow(e)
+    push!(P13_RED_OBSERVED, name)
+    push!(P13_RED_EXCEPTIONS, inner)
+    return nothing
+end
+
 include(joinpath(@__DIR__, "test_p13_consts.jl"))
 include(joinpath(@__DIR__, "test_p13_labels.jl"))
 include(joinpath(@__DIR__, "test_p13_alpha.jl"))
-include(joinpath(@__DIR__, "test_p13_real.jl"))
+# KNOWN RED (3 named-limit failures: :226 once, :292 twice). Wrapped, never skipped.
+try
+    include(joinpath(@__DIR__, "test_p13_real.jl"))
+catch e
+    _record_known_red("test_p13_real.jl", e)
+end
 include(joinpath(@__DIR__, "test_p13_tau.jl"))
 include(joinpath(@__DIR__, "test_p13_net.jl"))
 include(joinpath(@__DIR__, "test_p13_result.jl"))
@@ -236,4 +288,35 @@ include(joinpath(@__DIR__, "test_p13_preconditions.jl"))
 # basis, no re-fit standardizer, no inlined recipe value, no CUDA -- run in any state of the
 # repository. Placed before the correction arm because that arm throws (see above).
 include(joinpath(@__DIR__, "test_p13_datagen.jl"))
-include(joinpath(@__DIR__, "test_p13_correction.jl"))
+# KNOWN RED (2 pre-registered F5 measured misses at :245 and :246). Wrapped, never skipped.
+# It stays LAST only because that is its dependency-order position; nothing depends on it being
+# last any more, which is the whole point of the ledger below.
+try
+    include(joinpath(@__DIR__, "test_p13_correction.jl"))
+catch e
+    _record_known_red("test_p13_correction.jl", e)
+end
+
+# THE LEDGER. Runs after every Phase-13 include, and is the property-4 guard: if a known-red file
+# ever goes green, the set equality fails and NAMES it. Written as pairs (the house idiom from
+# `test_p12_consts.jl`) so the failure output identifies which file changed colour rather than
+# printing two anonymous sets.
+@testset "Phase-13 known-red ledger -- a named limit cannot go silently green" begin
+    for name in P13_KNOWN_RED
+        @test (name => name in P13_RED_OBSERVED) == (name => true)
+    end
+    @test Set(P13_RED_OBSERVED) == Set(P13_KNOWN_RED)
+end
+
+# PROPERTY 3. The red must survive to the exit code. Re-raise rather than `exit(1)` so the log
+# ends with the real exception rather than a bare status.
+if !isempty(P13_RED_EXCEPTIONS)
+    println()
+    println("PHASE-13 NAMED LIMITS -- THIS SUITE IS RED BY DESIGN. Red files: ",
+            join(P13_RED_OBSERVED, ", "))
+    println("Five failing assertions: test_p13_real.jl:226 (x1), :292 (x2) -- the RETRACTED ",
+            "negative-mu construction claim; test_p13_correction.jl:245, :246 -- the two ",
+            "pre-registered F5 misses. See 13-REPORT.md sections 9 (Limit E) and 9a.")
+    println("DO NOT clear these to green. The red IS the finding.")
+    throw(first(P13_RED_EXCEPTIONS))
+end
