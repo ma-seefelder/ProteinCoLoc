@@ -337,7 +337,7 @@ executor).
 
 ## Self-Check: PASSED
 
-- `spike/validation/run_p12_sim02.jl` — **FOUND** (356 lines).
+- `spike/validation/run_p12_sim02.jl` — **FOUND** (351 lines).
 - `spike/validation/p12_sim02_report.jld2` — **FOUND**, tracked, SHA-256
   `d41d5da6fbd7744c58850759132560903cf16bca39b6d306919088adfbff8819`.
 - `spike/test/test_p12_prior.jl` — **FOUND** (684 lines), 17 testsets / 146 assertions green.
