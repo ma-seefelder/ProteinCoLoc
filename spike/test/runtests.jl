@@ -216,4 +216,12 @@ include(joinpath(@__DIR__, "test_p13_preconditions.jl"))
 # basis, no re-fit standardizer, no inlined recipe value, no CUDA -- run in any state of the
 # repository. Placed before the correction arm because that arm throws (see above).
 include(joinpath(@__DIR__, "test_p13_datagen.jl"))
+# Phase-12 spatial colocalization map: EVERY Phase-12 testset is aggregated behind the single
+# include below, so adding one means adding a line to `test_p12_suite.jl` rather than to this
+# file. It MUST sit before the throwing Phase-13 correction arm (see above): a thrown testset
+# aborts the remaining includes, so a Phase-12 aggregator placed after it would report green by
+# never running. The aggregator prints one `P12-SUITE-RAN: <file>` marker per include, because
+# `Test` prints testset NAMES and none of the Phase-12 names contains its filename -- so only a
+# printed marker distinguishes "the include ran" from "the include was skipped".
+include(joinpath(@__DIR__, "test_p12_suite.jl"))
 include(joinpath(@__DIR__, "test_p13_correction.jl"))
