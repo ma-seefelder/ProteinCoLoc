@@ -389,7 +389,9 @@ end
 # separate upsample to fail in. Testset 16 asserts the four-way agreement AND this one divergence
 # explicitly, so a future edit that silently changes either side is caught.
 #
-# CPU-only. Two `simulate_pair` calls at 128^2 x 6 keys plus four at 256^2 (testset 15).
+# CPU-only. Fifteen `simulate_pair` calls at 128^2 (six per six-key loop in testsets 13 and 14,
+# two more in 14, one in 16) and four at 256^2 (testset 15), plus five calls that throw in the
+# entry guard before any pixel work. Measured cost of this section: ~3 s of the file's ~21 s.
 
 using JLD2
 
