@@ -34,8 +34,20 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
-Phase: 12 (spatial-colocalization-map) — PLANNED, NOT STARTED
+Phase: 12 (spatial-colocalization-map) — EXECUTING (started 2026-07-29, from plan HEAD `79c66d0`)
 Plans: 20 of 20 written and committed (`927cf7a`); FOUR plan-checker gates run 2026-07-28/29.
+**EXECUTION MODE — NO WORKTREES, sequential on the MAIN working tree, deliberately.** Same ruling as
+13-11 and for the same reason, plus one Phase-12-specific reason that is stronger: (a) 12-09's pool
+lands in gitignored `spike/data/cache/p12/` under a 150-min append-only ceiling and is consumed by
+12-11/13/14/17 in *later waves*, so a worktree cleanup between waves would destroy it exactly as it
+destroyed Phase 11's 54 MB pool; (b) `spike/data/cache/p11` — the 54 MB READ-ONLY Phase-11 pool that
+12-15 and 12-17 depend on — is gitignored and therefore **does not exist inside a fresh worktree at
+all**, so those plans could not read it there. Executors are told not to write STATE.md/ROADMAP.md;
+the orchestrator owns those writes, additively, because a phase-13 executor is live on this branch.
+Wave order follows the plans' DECLARED `wave:` frontmatter (12 waves), not the SDK's DAG-derived
+regrouping: the declared order deliberately staggers 12-15 (wave 8) and 12-16 (wave 10) so their two
+Tier-2 appends to `p12_consts.jl` serialize; the DAG collapse would have put both in wave 8 and raced
+them on the same append-only file.
 **STATUS: Planning complete and UNBLOCKED. All user decisions received and propagated: the two of
 2026-07-28, and all four remaining constants CONFIRMED 2026-07-29 (12-CONSTANTS-FOR-CONFIRMATION.md is
 now CLOSED). No Tier-1 constant awaits confirmation. Wave 1 has no remaining blocker.**
