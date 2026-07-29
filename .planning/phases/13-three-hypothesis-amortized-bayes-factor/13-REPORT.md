@@ -44,6 +44,21 @@ the artifact wins and the discrepancy is recorded in §14.
 
 *No pass/fail threshold is defined for any real-image quantity.*
 
+> **AMENDED AFTER THIS REPORT WAS FIRST WRITTEN — `13-D15-AMENDMENT.md` (2026-07-29), executed by
+> plan 13-17.** The real-image arm's channel pair was **mis-designated**: `c1` is the DAPI/Hoechst
+> nuclear counterstain, so both originally pre-registered pairs measured counterstain-versus-protein
+> overlap rather than colocalization. The operative pair is now **`(2, 3)` = green/red**, the anchors
+> are the unmasked **0.4603 / 0.3815**, and the redundancy arm is **dropped** — with `c1` excluded
+> there is no second pair. The arm was **re-run once** on the corrected substrate.
+> **The conclusion is unchanged**; §8c answers that question in words and prints every amended number
+> beside its superseded counterpart. **No gating threshold moved**, no seed changed, no net was
+> retrained, `P13_ITERATION_ALLOWANCE` is still **1 of 1 UNSPENT**, and **the phase's only gating arm
+> (13-12, simulator ground truth) does not read the channel pair at all**, so §6a–§6d are untouched
+> by this amendment. A **second, separately justified** change rode in the same edit — the
+> `consts.jl` include-guard sentinel, which changed **no value** — and it is disclosed on its own in
+> §13 and §14.7, not folded into the first. The figures quoted in the tables of §8b and §8c below are
+> the **superseded** run and are retained as the record of what the counterstain pair produced.
+
 This block is stated here, before every result, because the arm that will attract the most reader
 attention (real microscopy) is the weakest one. Sections 8b, 8c and named limit D refer back to it;
 they do not restate it as if it were a local caveat.
@@ -585,14 +600,87 @@ arm.
 
 ---
 
-## 8c. The real-image qualitative check (D-15 AMENDED) — reported, never gated
+## 8c. The real-image qualitative check (D-15 AMENDED TWICE) — reported, never gated
 
 **Read the `## Scope of evidence` block in this report's header before reading this section.** It is
 not restated here, deliberately, so its framing cannot be mistaken for a local caveat of this section.
 
+### DOES THE CONCLUSION CHANGE? — the corrected channel pair, answered in words, first
+
+**The channel pair was wrong, it has been corrected under an authorised amendment, the arm was
+re-run once — and the conclusion is unchanged.** The numbers moved, one verdict moved, and the
+overall reading did not: this arm is still **qualitative, n = 2 specimens, no ground-truth label,
+OOD-bound, weak evidence — coherence and never correctness.**
+
+That the limitation **survived its own correction is the point of reporting it.** It tells a reader
+the weakness is **structural** — a property of two unlabelled specimens sitting outside the
+simulator's training distribution — rather than an artefact of having read the counterstain
+channel. A limitation that was never tested is a weaker statement than one that was.
+
+**This correction is not a rescue, and three measured facts say so rather than a promise.**
+
+1. **The binding OOD limit got WORSE, not better.** 703.2995 against a 167.5446 threshold —
+   **4.198×** over, where the superseded pair read 2.491×. The shipped detector agrees and also
+   worsens: 5.297× against 2.421×. The real fixtures now sit *further* outside the training
+   distribution, not closer to it.
+2. **The amendment adopted the narrower separation.** Unmasked, the corrected fixtures separate by
+   **0.0788**, against **0.0811** for the superseded pair — and against the **0.8576** the masked
+   read of the *same corrected pair* would have given, which is permitted by every prior source and
+   was refused anyway (§14.6).
+3. **The phase now reports one arm where it reported two.** The redundancy arm is **dropped, not
+   deferred**: with `c1` excluded and three channels present there is no second pair.
+
+**What DID change, stated as a change and not restated from the old run.** At the headline
+`lambda = 3.0`, reading the **positive** fixture as sample, `log BF(C:R)` moved from **−0.4658**
+(superseded pair `(1, 2)`) to **+5.70311** (amended pair `(2, 3)`), so the descriptive argmax moved
+from **RANDOM to COLOC** in that direction. Reading the **negative** fixture as sample it stays
+**RANDOM** (−8.65723 amended, against −3.9432 superseded). The headline OOD figure moved from
+417.2974 / 167.5446 / 2.491× to **703.2995 / 167.5446 / 4.198×**. That figure was already known to
+be strongly pair-dependent — the dropped redundancy pair `(1, 3)` had landed at 607.5728 (3.63×), a
+46% move — so it is reported here **as a change**, never as a restatement.
+
+**And two things this report previously claimed do NOT survive the correction** (§14.8). The
+α-ladder **no longer crosses zero** on either fixture, so `alpha_star_real` is `nothing / nothing`
+where it was 0.875 / 0.625; and the D-05 contrast of **0.09819** sits inside `tau = 0.15`, so the
+phase's own label rule says RANDOM while the net says COLOC — the coherence check that previously
+*passed* now *disagrees*. **Neither is repaired, retuned or argued away.**
+
+### Every quantity that moved, each labelled with the pair it was measured on
+
+| Quantity | SUPERSEDED — pair `(1, 2)` | **AMENDED — pair `(2, 3)`** |
+|---|---|---|
+| `m-bar` positive / negative | +0.32916 / +0.24805 | **+0.46027 / +0.38147** |
+| headline `log BF(C:R)`, positive as sample | −0.4658 | **+5.70311** |
+| headline `log BF(E:R)`, positive as sample | −10.2727 | **−12.9744** |
+| headline `log BF(C:R)`, negative as sample | −3.9432 | **−8.65723** |
+| headline `log BF(E:R)`, negative as sample | −9.0534 | **−12.8627** |
+| descriptive argmax, positive as sample | RANDOM | **COLOC** |
+| descriptive argmax, negative as sample | RANDOM | **RANDOM** |
+| Phase-13 OOD density / threshold / ratio | 417.2974 / 167.5446 / 2.491× | **703.2995 / 167.5446 / 4.198×** |
+| per-acquisition densities (positive / negative) | 417.2974 / 321.1505 | **703.2995 / 398.7601** |
+| shipped OOD density / threshold / ratio | 433.6884 / 179.1368 / 2.421× | **948.9745 / 179.1368 / 5.297×** |
+| A12 outcome | `agreement` | **`agreement`** |
+| `alpha_star_real` positive / negative | 0.875 / 0.625 | **`nothing` / `nothing`** — never crosses zero |
+| ladder `m-bar` span, positive | +0.32916 → **−0.16787** | **+0.46027 → +0.13806** (stays positive) |
+| ladder `m-bar` span, negative | +0.24805 → **−0.25198** | **+0.38147 → +0.20414** (stays positive) |
+| realized mask fraction positive / negative | 0.134933 / 0.229189 (**on c1**) | **0.051150 / 0.032858** (**on c2**) |
+| eight α invariants | all hold, worst residual 2.86e-16 | **all hold, worst residual 1.80e-16** |
+| ρ through the frozen `ghat`, positive / negative | +0.33042 / +0.21480 | **+0.48253 / +0.38434** |
+| D-05 contrast vs `tau = 0.15` | 0.11562 — inside | **0.09819 — inside** |
+| redundancy arm | reported at 607.5728 (3.63×) | **DROPPED — no second pair exists** |
+
+**The mask fraction stayed inside its pre-registered band** (`P13_ALPHA_MASK_FRACTION_BOUNDS =
+(0.01, 0.40)`) on the c2 mask, so the runner did **not** take its `INVARIANT VIOLATION` branch and
+the ladder curves are readable. The band was **not** widened and was never at risk of being.
+
 ### The sweep, with every log-BF pair on the same row as its OOD verdict
 
-Primary arm, `P13_REAL_CHANNEL_PAIR = (1, 2)`. The read rule is
+The tables below are the **superseded** run, retained as the record of what the counterstain pair
+produced. The amended readings are in the delta table above and in
+`spike/p13/realimage_report.jld2`, which additionally persists `superseded_*` fields so the
+artifact alone reconstructs the change.
+
+Primary arm, **superseded** `P13_REAL_CHANNEL_PAIR = (1, 2)`. The read rule is
 `P13_REAL_LAMBDA_READS_RULE = :full_phase11_ladder`, realized as Phase 11's
 `SC2_RUNGS = (0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0)`; the headline rule is
 `P13_REAL_LAMBDA_HEADLINE_RULE = :widest_rung`, realized at **3.0** and asserted equal to both
@@ -637,10 +725,22 @@ segregation — precisely the counter-example of §3a. **This is a consistency c
 correctness check**: what was checked is that the net agrees with a rule derived from the same summary
 it reads.
 
-A redundancy arm through the second pre-registered channel pair `(1, 3)` re-reads the **same two
-specimens** and reaches the same qualitative outcome (both log Bayes factors negative at every rung,
-verdict RANDOM) at a *higher* density, 607.5728 — 3.63× over threshold. It corroborates and adds
-nothing independent.
+**SUPERSEDED BY THE AMENDED READING, AND THE COHERENCE ARGUMENT DOES NOT SURVIVE.** On the amended
+pair `(2, 3)` the contrast is **0.09819** — still inside `tau = 0.15`, so the D-05 label rule still
+assigns RANDOM — but the net's descriptive argmax is **COLOC** on the positive direction
+(`log BF(C:R) = +5.70311`). **What was a consistency check that passed is, on the corrected pair, a
+consistency check that disagrees.** It is recorded as a finding (§14.8) and is not repaired: the
+net is not retrained, `tau` is not moved, and the label rule is not re-derived.
+
+A redundancy arm through the second pre-registered channel pair `(1, 3)` re-read the **same two
+specimens** and reached the same qualitative outcome (both log Bayes factors negative at every rung,
+verdict RANDOM) at a *higher* density, 607.5728 — 3.63× over threshold. **THAT ARM NO LONGER
+EXISTS.** `13-D15-AMENDMENT.md` CHANGE A **dropped** it — not deferred, not repointed — because
+`(1, 3)` was DAPI-versus-red and, with `c1` excluded and the fixtures carrying exactly three
+channels, **there is no second pair to re-read**. It measured −0.0925 masked on the *positive*
+fixture, which is noise rather than corroboration, and a redundancy arm that corroborates nothing is
+worse than none because it gets quoted as a second observation. **This phase now reports one arm
+where it reported two.**
 
 ### The OOD finding — this arm's binding limit
 
@@ -690,15 +790,33 @@ the runner's banner before any code runs and is persisted verbatim into the arti
 
 **Stated explicitly: this phase therefore holds NO real exclusion example at all.**
 
-**A second naming trap, and it was named rather than repaired.** Both pre-registered channel pairs —
-`(1, 2)` and `(1, 3)` — include channel 1, which `test/runtests.jl:105` records as the DAPI/Hoechst
-**nuclear counterstain**, not a target protein; `spike/simulator/ghat.jl` records the c1/c2 figures as
-SUPERSEDED for colocalization purposes by the c2/c3 green/red pair. No c2/c3 arm was added, because
-choosing a new channel pair *after* the fixtures had been measured is exactly the move the D-04
-anti-snooping contract forbids. The frozen c1/c2 anchor regression is therefore a **read-chain
-identity check** — it proves this ingestion is bit-for-bit the load path the frozen calibration used —
-and it is **not** evidence that the c1/c2 pair measures colocalization. This limit belongs in the
-manuscript beside the folder-name correction.
+**A second naming trap — NAMED first, then CORRECTED under an authorised amendment.** Both originally
+pre-registered channel pairs — `(1, 2)` and `(1, 3)` — include channel 1, which `test/runtests.jl:105`
+records as the DAPI/Hoechst **nuclear counterstain**, not a target protein. Plans 13-15 and 13-16 both
+detected this and both **declined to fix it**, naming the limit instead — **which was the right call
+under the pre-registration as it then stood**, and is precisely why the correction required a dated,
+argued amendment rather than a patch.
+
+`13-D15-AMENDMENT.md` (2026-07-29) then made that correction: the operative pair is **`(2, 3)` =
+green/red, the two target proteins**, the anchors are the unmasked **0.4603 / 0.3815**, and the
+redundancy arm is dropped. **This is not an un-pre-registered third pair.** It is the pair
+`spike/simulator/ghat.jl:59` — this project's own frozen calibration source — had **already** adopted
+on 2026-07-25, 39 h before `consts.jl` was written; Phase 13 had drifted from its own upstream and the
+amendment closes that drift. The full timeline, including the 41 minutes between the 13-16 run and the
+user's disposition, is in §14.6 and is not softened.
+
+The frozen c1/c2 anchor regression **survives, unchanged in meaning**, as a **read-chain identity
+check** — it proves this ingestion is bit-for-bit the load path the frozen calibration used — and it
+is **not** evidence that the c1/c2 pair measures colocalization. `spike/test/test_p13_real.jl` now
+pins **both sides** of that check to `channels = (1, 2)` and to the literals 0.3292 / 0.2481, because
+otherwise both sides would have moved together under the amendment, the assertion would still have
+passed, and the identity proof would have been silently destroyed while its own comment went on
+claiming to test it.
+
+**The naming correction is SHARPENED, not retired, by the amendment.** On the operative pair the
+"negative" biological control measures **+0.3815** — *more* positively correlated than the +0.2481
+previously quoted, not less. **Both fixtures moved further into positive correlation.** This limit
+belongs in the manuscript beside the folder-name correction.
 
 ### The qualitative-only statement
 
@@ -726,13 +844,37 @@ observed, and every unmodified real image measured in this phase confirms it (`m
 +0.24805, both positive). **The exclusion hypothesis, which Phase 13 promotes to first class,
 therefore has no observed real-data instance anywhere in this project.**
 
-The D-16 construction **sharpens** that verdict rather than refuting it: at `alpha = 1` it produces
-`m-bar` = −0.16787 / −0.25198 (`rho` ≈ −0.347 / −0.442) **from real microscopy pixels** — the first
-negative induced μ this project has obtained from real data. The sentence intended for the manuscript,
-verbatim:
+On the **superseded** pair the D-16 construction appeared to **sharpen** that verdict rather than
+refute it: at `alpha = 1` it produced `m-bar` = −0.16787 / −0.25198 (`rho` ≈ −0.347 / −0.442) **from
+real microscopy pixels**, which was reported as the first negative induced μ this project had obtained
+from real data. The sentence was intended for the manuscript, verbatim:
 
 > **Negative induced μ is CONSTRUCTIBLE from real microscopy pixels via the D-16 mask-based
 > reassignment, but it has NOT been observed to occur naturally in the images this project holds.**
+
+> **⚠ THAT SENTENCE IS RETRACTED. It was measured on the counterstain pair and DOES NOT HOLD on the
+> operative one.** On the amended pair `(2, 3)` the α-ladder **never reaches negative `m-bar` at
+> all**: +0.46027 → **+0.13806** (positive fixture) and +0.38147 → **+0.20414** (negative fixture),
+> with `alpha_star_real` = `nothing` on both. Strict monotone decrease still holds; only the reach
+> into negative correlation is gone.
+>
+> **Why, and it is not mysterious.** The α transform's mask is the Otsu mask of the pair's **first**
+> channel. That was `c1`, the **nuclear counterstain**, and is now `c2`, the **green target**.
+> Moving green intensity out of *nuclei* — two largely disjoint compartments — drives the
+> correlation negative; moving red out of *green objects*, when green and red co-occur and share a
+> bright background, does not. The measured c2 mask fractions are also much smaller (0.0511 /
+> 0.0329 against 0.1349 / 0.2292 on c1), so far less mass is redistributed.
+>
+> **The corrected replacement claim, stated no more strongly than the data supports:**
+>
+> > **On the two committed specimens, the D-16 mask-based reassignment does NOT construct negative
+> > induced μ from the green/red target pair, and negative induced μ has still never been observed
+> > to occur naturally in the images this project holds. Whether it is constructible from real
+> > pixels at all therefore remains OPEN on n = 2 unlabelled specimens — the earlier affirmative
+> > was an artefact of segregating a target channel against a nuclear counterstain.**
+>
+> The `spike/test/test_p13_real.jl` assertion encoding the old claim is **left failing** rather than
+> rewritten (§14.8). **This is a reduction in what the phase claims.**
 
 ### Read-only and seal evidence
 
@@ -784,7 +926,17 @@ omissions.
 9. **The corpus physical anchor and the CBS rows were declined**: the physical anchor is sealed for
    Phase 16, and CBS was dropped from scope entirely (its `0.0` end is *random*, not exclusion) rather
    than deferred, because the amended D-15 supplies a real substrate needing no fetch and no hash gate.
-10. **A third channel pair was declined** after the fixtures had been measured (§8c).
+10. **A third channel pair was declined** after the fixtures had been measured (§8c), and that
+    decline **still stands** — but it must be read precisely, because `13-D15-AMENDMENT.md` did
+    subsequently change the pair. **The amendment does NOT add an un-pre-registered third pair.** It
+    **corrects** the *first* pair to `(2, 3)` — the pair this project's own frozen calibration source
+    `spike/simulator/ghat.jl:59` had **already** adopted on 2026-07-25, before `spike/p13/consts.jl`
+    existed — and it **removes** the second pair rather than adding one, leaving the phase with
+    **one** channel pair where it previously had two. What was declined during execution was
+    *choosing a new pair on the executor's own initiative after seeing the numbers*; what happened
+    instead was a dated, argued, separately-disclosed amendment that closes a drift from an upstream
+    correction. §14.6 states the full timeline, including the 41 minutes between the 13-16 run and
+    the user's disposition, without softening it.
 
 ---
 
@@ -848,15 +1000,23 @@ productionizes; while it stays research-lane, the amendment plus this report suf
 > label**; it is a qualitative behaviour check, not a correctness check, and it is **explicitly not a
 > gate** — no pass/fail threshold is defined for any quantity in it. It covers **two specimens**, so it
 > can support no rate and no coverage claim. Both specimens are additionally flagged
-> **out-of-distribution** by both amortized detectors, in both read directions and on both
-> pre-registered channel pairs: the Phase-13 net scores density **417.30 against its own
-> in-distribution threshold 167.54 (2.49×)** and the shipped 8×8 bundle **433.69 against 179.14
-> (2.42×)** — agreement, not divergence, so the registration-aware basis did **not** move real
-> microscopy back inside the training distribution. The folder names `positive`/`negative` are
-> **biological** conditions, not colocalization labels, and the "negative" pair measures `m-bar`
-> **+0.2481**, so this phase holds **no real exclusion example at all**. Both pre-registered channel
-> pairs include the nuclear counterstain, a further limit of the frozen pre-registration that was named
-> rather than repaired. The provenance manifest holds exactly **one** physically-segregated anchor; it
+> **out-of-distribution** by both amortized detectors, in both read directions and on every channel
+> pair ever read: on the **amended** pair `(2, 3)` the Phase-13 net scores density **703.30 against
+> its own in-distribution threshold 167.54 (4.198×)** and the shipped 8×8 bundle **948.97 against
+> 179.14 (5.297×)** — **worse than the superseded pair's 417.30 / 167.54 (2.49×) and 433.69 / 179.14
+> (2.42×)**, and still agreement rather than divergence, so the registration-aware basis did **not**
+> move real microscopy back inside the training distribution. The folder names `positive`/`negative`
+> are **biological** conditions, not colocalization labels, and on the operative pair the "negative"
+> pair measures `m-bar` **+0.3815** (**+0.2481** on the superseded pair) — *more* positively
+> correlated, not less — so this phase holds **no real exclusion example at all**.
+> **The channel pair was MIS-DESIGNATED in the pre-registration and has been CORRECTED, not merely
+> named.** Both originally frozen pairs contained `c1`, the nuclear counterstain;
+> `13-D15-AMENDMENT.md` (2026-07-29) amends the operative pair to `(2, 3)` and **drops the redundancy
+> arm because no second pair exists**, and the arm was re-run once. **The corrected arm separates the
+> two fixtures marginally *less* well (0.0788 against 0.0811), and its OOD limit is worse** — the
+> correction bought no evidence. On the corrected pair the D-16 α-ladder **no longer reaches negative
+> induced μ at all**, so the claim that negative μ is constructible from real pixels is **retracted**
+> (§8c). The provenance manifest holds exactly **one** physically-segregated anchor; it
 > is `split = sealed_holdout`, `sha256 = "PENDING-FETCH"`, `bytes = 0`, and reserved for the
 > **Phase-16** blind evaluation, so it was deliberately **not** consumed here. **Labelled real
 > segregation validation is deferred to Phase 16.**
@@ -996,26 +1156,90 @@ All eight of `13-RESEARCH.md`'s open questions are closed.
 
 ## 13. Decoupling evidence
 
-Commands run at report time on the main working tree, with their observed results.
+> **THIS SECTION EXISTS TO PROVE THAT NOTHING WAS TAMPERED WITH — AND THIS PHASE THEN AMENDED THE
+> FILE IT WAS PROVING.** `13-D15-AMENDMENT.md` (2026-07-29), executed by plan 13-17, edited
+> `spike/p13/consts.jl`. Three claims this section used to make therefore became **verifiably
+> false**: that `consts.jl` had only two commits, that its blob sha was `5a4ea222…`, and that its
+> sha256 `100e97a3…` "matches `consts_sha` and `net_consts_sha` in every artifact". Rather than
+> quietly overwrite them, the section is **corrected here with the pre-amendment values kept beside
+> the post-amendment ones**, and the deliberate sha divergence is disclosed as the designed
+> property it is. A decoupling section that silently re-baselined itself after an amendment would
+> be worth nothing.
 
-| Command | Observed |
-|---|---|
-| `git diff --quiet HEAD -- src/ spike/Project.toml spike/Manifest.toml` | **exit 0 — byte-unchanged** |
-| `git diff --quiet HEAD -- test/ docs/ corpus/` | **exit 0 — byte-unchanged** (`docs/amortized.md` was not edited in this phase) |
-| `git status --porcelain test/test_images/` | empty |
-| `git log --oneline -- spike/p13/consts.jl` | two commits only: `c42cc8e` (13-01, Tier-1) and `bfba6ac` (13-10, the Tier-2 tau append). **No commit that produced a Phase-13 result touched it.** |
-| `git rev-parse HEAD:spike/p13/consts.jl` | `70fe66df33832af2e648ed3f81cc3ad356ce4cd8` — the tracked git blob |
-| `git hash-object --no-filters spike/p13/consts.jl` | `5a4ea2223ce11bcae2f974c643ec1e523458e8ac` — the raw working-tree bytes; this is the value every runner recorded as `consts_git_blob_sha` |
-| `sha256(read("spike/p13/consts.jl"))` | `100e97a37bb470bb7cb4fbdbd8e33f219d83adcf61fe398a90cf3ad3391f3fa6` — matches `consts_sha` and `net_consts_sha` in every artifact |
-| `spike/p13/three_way_gate_report.jld2` | 425,996 bytes, present, no `.tmp` sibling |
-| `spike/p13/alpha_report.jld2` | 53,391 bytes, 65 keys |
-| `spike/p13/realimage_report.jld2` | 81,649 bytes, 57 keys |
-| `spike/p13/tau_probe_report.jld2` | 15,343 bytes |
-| `spike/p13/three_way_net.jld2` | 953,027 bytes |
+Commands **re-run at 13-17 time** on the main working tree. Nothing below is copied from the
+previous version of this table; every value was re-derived from live output.
+
+| Command | Pre-amendment (as this section read before 13-17) | Observed now (post-amendment) |
+|---|---|---|
+| `git diff --quiet HEAD -- src/ spike/Project.toml spike/Manifest.toml` | exit 0 | **exit 0 — byte-unchanged** |
+| `git diff --quiet HEAD -- test/ docs/ corpus/` | exit 0 | **exit 0 — byte-unchanged** |
+| `git status --porcelain test/test_images/` | empty | **empty** |
+| `git log --oneline -- spike/p13/consts.jl` | two commits: `c42cc8e` (13-01, Tier-1), `bfba6ac` (13-10, Tier-2 tau append) | **THREE commits.** A third now exists: **`9fe9b02`** (13-17) — *"amend consts.jl — TWO separately justified changes in one edit"*. **It postdates 13-16, and that is disclosed rather than hidden:** `13-D15-AMENDMENT.md` §0 opens on exactly this ordering. See §14.6 and §14.7. |
+| `git rev-parse HEAD:spike/p13/consts.jl` | `70fe66df33832af2e648ed3f81cc3ad356ce4cd8` | **`d82caea64e19e8509f3abc1c09140cc7c2e2d497`** |
+| `git hash-object --no-filters spike/p13/consts.jl` | `5a4ea2223ce11bcae2f974c643ec1e523458e8ac` | **`ef117e6ebc42095b777320ae0ceb680c13d7c6b9`** |
+| `sha256(read("spike/p13/consts.jl"))` | `100e97a37bb470bb7cb4fbdbd8e33f219d83adcf61fe398a90cf3ad3391f3fa6` | **`d6a6e63bf19bb13ad5c61eeaaf9fc18fab27c5aa7ba879bad5c493a5c71ae247`** |
+| CHANGE B — the include-guard sentinel | `spike/p13/consts.jl:100` guarded the whole Tier-1 body on `:P13_DEV_SEED` | **guards on `:P13_DECLARED_DEVIATIONS`**, at the body wrapper and all eight callers. `spike/validation/p12_consts.jl` is **byte-unchanged** and its `P13_DEV_SEED` mirror — which is **correct**, since asserting seed disjointness requires naming the seeds — is intact. `P13_DEV_SEED` itself is byte-unchanged. |
+| `spike/p13/three_way_gate_report.jld2` | 425,996 bytes | **byte-unchanged — the gate was not re-run** |
+| `spike/p13/alpha_report.jld2` | 53,391 bytes, 65 keys | **byte-unchanged — not re-run** |
+| `spike/p13/realimage_report.jld2` | 81,649 bytes, 57 keys | **re-run by 13-17 on the amended pair; 65 keys** |
+| `spike/p13/tau_probe_report.jld2` | 15,343 bytes | unchanged |
+| `spike/p13/three_way_net.jld2` | 953,027 bytes | **unchanged — no net was retrained** |
+
+### `consts_sha` and `net_consts_sha` now DIFFER, by design — the amendment's most load-bearing disclosure
+
+The retired claim was that `100e97a3…` "matches `consts_sha` and `net_consts_sha` in every
+artifact". After the amendment that is **false, deliberately**, and the four values are:
+
+| Artifact | `net_consts_sha` (recorded at TRAIN time) | `consts_sha` (recomputed at RUN time) |
+|---|---|---|
+| `realimage_report.jld2` (re-run by 13-17) | `100e97a3…` — **pre-amendment** | `d6a6e63b…` — **post-amendment** |
+| `gate_report.jld2` / `alpha_report.jld2` (not re-run) | `100e97a3…` | `100e97a3…` — both pre-amendment, because neither was re-run |
+
+**Why this is legitimate:** training reads **no** `P13_REAL_*` constant (grep-verified,
+`13-D15-AMENDMENT.md` §3), so the amended values are ones the trained net never consumed. No net
+was retrained and no weight changed.
+
+**The guard was re-derived to mean MORE, not less** (`13-D15-AMENDMENT.md` §7.3). The old
+assertion `h.consts_sha == p13_consts_sha()` only required the two sides to **agree with each
+other** — a retrain plus an undisclosed edit would have satisfied it silently. It is replaced, at
+all three runner sites, by two assertions against a named, dated literal pair `P13_CONSTS_SHA`
+(`spike/p13/net.jl`): the artifact side must equal `pre_amendment` and the file side must equal
+`post_amendment`. A **third** sha256 on `consts.jl` — including a future undisclosed edit — now
+fails, which the original form would have accepted. The widened
+`… || h.consts_sha == PRE_AMENDMENT_SHA` disjunction was **rejected in a code comment**, because
+once it exists the artifact side alone satisfies the first branch and any future drift passes
+silently. **No guard was deleted or blanket-disabled.**
+
+### The full-suite signature, BEFORE and AFTER CHANGE B
+
+| | BEFORE (pre-13-17) | AFTER (post-13-17) |
+|---|---|---|
+| where `runtests.jl` aborts | **`runtests.jl:174`** → `test_p12_suite.jl:86` → `test_p12_decoupling.jl:150` | **`runtests.jl:223`** → `test_p13_real.jl` |
+| `test_p13_consts.jl` | **never reached at all** | **137 pass / 137 total, 0 errors** |
+| `test_p13_labels.jl` / `test_p13_alpha.jl` | never reached | **164/164** and **129/129** — executing and reporting |
+| suite exit code | 1 | 1 |
+
+**Two honest qualifications, because the raw comparison overstates what CHANGE B did.**
+
+1. **The BEFORE run did not abort where the amendment predicted.** It aborted in the **Phase-12**
+   block, before Phase 13 was reached, on `test_p12_decoupling.jl`'s *"the Phase-11 pool is
+   read-only to Phase 12"* (25 pass / 1 fail). A **concurrently executing Phase-12 agent** fixed
+   that between the two runs (`8880c29`), which is what let the AFTER run reach Phase 13 at all.
+   **That movement is Phase 12's, not CHANGE B's**, and attributing it here would be false.
+2. **The clean evidence for CHANGE B is a targeted reproduction, not the suite.** Loading
+   `spike/validation/p12_consts.jl` (which defines the mirrored `P13_DEV_SEED`) and then
+   `spike/test/test_p13_consts.jl`, in one process — exactly the suite's condition —
+   produced **22 pass / 1 fail / 114 error, every error an `UndefVarError`** before the fix and
+   **137 pass / 0 error** after it. `P13_DECLARED_DEVIATIONS` was confirmed **not** defined by the
+   Phase-12 mirror, which is what makes it a sound sentinel.
+
+**CHANGE B un-masks test files; it silences nothing.** The suite still exits 1, and it now exits 1
+*later*, on real assertions rather than on 114 undefined constants.
 
 **Run-time assertions, not just after-the-fact greps.** Every reported runner asserts the `src/` and
-manifest decoupling at step 0, before it does any work, and asserts `net_consts_sha == p13_consts_sha()`
-(`100e97a3…` on both sides) so a net trained under a different pre-registration cannot be read.
+manifest decoupling at step 0, before it does any work, and asserts the `P13_CONSTS_SHA` pair on
+both sides, so a net trained under a different pre-registration cannot be read **and** `consts.jl`
+at any unauthorised sha fails.
 
 **Resolve-risk clause (j)** in `spike/test/runtests.jl` asserts `ROCAnalysis`, `MLJ`,
 `NormalizingFlows`, `InvertibleNetworks`, `Turing`, `ImageSegmentation`, `ImageMorphology`, `QuadGK`
@@ -1032,15 +1256,25 @@ and `KernelDensity` are absent as direct dependencies, and re-asserts NeuralEsti
   `amended gate machinery (07-GATE-AMENDMENT required code changes)`, reads 254/254). That is the
   executable proof that the read-only include of `src/results.jl` changed nothing in the shipped
   package. Plan 13-11 observed the same result independently.
-- The **full spike suite** `julia --project=spike spike/test/runtests.jl` **exits 1**, on the Phase-4
-  `SPEEDUP_GATE` (`test_npe.jl:230`, measured median speedup 68.35 against the pre-registered bar
-  100.0). Because a thrown testset aborts `include`, this masks the **entire** Phase-13 include block,
-  so per-file runs are the available signal for this phase. This is **pre-existing**, predates Phase 13,
-  and is logged as `deferred-items.md` D-13-A (§11.6). It was **not re-run by this plan**.
-- Per-file runs observed by the plans that owned them: `test_p13_datagen.jl` 706/706 exit 0 (13-11);
-  `test_p13_alpha.jl`, `test_p13_real.jl` (34 pass / 0 broken, the 13-15 `@test_skip` now live) and
-  `test_p13_calibration.jl` all exit 0 (13-16); `test_p13_correction.jl` exits **1** with 88 pass and
-  **2 deliberate failures** — the two pre-registered F5 `maxabs` bars of §5, committed as-is.
+- **UPDATED BY 13-17.** The **full spike suite** `julia --project=spike spike/test/runtests.jl` still
+  **exits 1**, and that is the correct state: the Phase-4 `SPEEDUP_GATE` is `@test_skip`-**paused**
+  (`a494247`, `DEFERRED-NPE-03-WALLCLOCK`, bar byte-unchanged) and `test_p13_correction.jl` carries two
+  deliberate, committed, pre-registered MEASURED MISSES. What **changed** is that the Phase-13 block now
+  **executes instead of being masked**: `test_p13_consts.jl` reports **137 pass / 0 error** where it
+  previously reported 22 pass / 1 fail / **114 `UndefVarError`**, and `test_p13_labels.jl` (164/164) and
+  `test_p13_alpha.jl` (129/129) run and report. That is the signal — **not the exit code**.
+- **The suite now aborts at `runtests.jl:223`, on `test_p13_real.jl`, and 13-17 caused that.** Three
+  assertions there are **MEASURED MISSES of the corrected channel pair**, left failing deliberately
+  rather than rewritten (§8b, §14.8). Because a thrown testset aborts `include`, this masks the **seven**
+  Phase-13 files after it. **All seven were therefore run individually and are recorded here:**
+  `test_p13_tau.jl` 99/99 exit 0; `test_p13_net.jl` 93/93 exit 0; `test_p13_result.jl` 43/43 exit 0;
+  `test_p13_calibration.jl` 95/95 exit 0; `test_p13_preconditions.jl` 74/74 exit 0;
+  `test_p13_datagen.jl` 706/706 exit 0; `test_p13_correction.jl` **exit 1** with 88 pass and its **2
+  deliberate** F5 `maxabs` failures. **Whether to accept the three new misses as named limits, to
+  amend the D-16 real-substrate expectation, or to re-order the harness so the misses stop masking
+  siblings, is a pre-registration decision that 13-17 escalated rather than resolved.**
+- `test_p13_real.jl` reports **273 pass / 3 fail** (it read 34 pass / 0 broken before 13-17; the file
+  gained the operative-pair regression and the pinned c1/c2 lineage check).
 
 ---
 
@@ -1079,6 +1313,78 @@ Recorded because "the artifact wins" is only meaningful if the disagreements are
    `13-07-SUMMARY.md`). Both plans completed; 13-07's own verdict line records PARTIAL (one bar
    cleared, one missed, both controls fired). Recorded here because the plan index counts a plan
    complete on a file's mere existence, and a missing `status:` has cost this project before.
+
+---
+
+**Discrepancies 6–8 were added by plan 13-17 (2026-07-29), which amended the pre-registration.
+They are numbered separately, and CHANGE A and CHANGE B are given SEPARATE entries on purpose:
+"we opened the file for X and also did Y" belongs on the page, not inferable from a diff.**
+
+6. **CHANGE A — THE REAL-IMAGE CHANNEL PAIR NAMED THE WRONG PHYSICAL OBJECT, AND THE CORRECTION
+   POSTDATES THE RUN IT AFFECTS.** `spike/p13/consts.jl` froze
+   `P13_REAL_CHANNEL_PAIR = (1, 2)` and `P13_REAL_REDUNDANCY_PAIR = (1, 3)`, and
+   `test/runtests.jl:105` records the fixture channels as `["blue", "green", "red"]` — so `c1` is
+   the DAPI/Hoechst **nuclear counterstain**, not a target protein. Both pre-registered pairs
+   contained it, so the arm as executed measured counterstain-versus-protein overlap, which is not
+   colocalization. `13-D15-AMENDMENT.md` (2026-07-29) amends the pair to `(2, 3)`, **drops** the
+   redundancy arm with no replacement, and amends the anchors to the unmasked `0.4603 / 0.3815`.
+
+   **The timeline, stated without softening and without overstatement.** The factual correction was
+   on the record **before Phase 13 executed**: `spike/simulator/ghat.jl` was corrected to the c2/c3
+   pair at **2026-07-25 23:28** (`78dc37f`), and a STATE.md blocker naming Phase 13 specifically —
+   *"MUST be corrected before Phase 13 executes"* — landed at **2026-07-25 23:56:54** (`ea4a7d3`),
+   which also fixed `11-10-PLAN.md`. `consts.jl` was nevertheless locked at **2026-07-27 14:43:12**
+   (`c42cc8e`) still quoting the superseded figures — **38 h 46 min 18 s after the blocker**.
+   13-16 then ran at **2026-07-29 17:07** (`2112bed`) on the wrong pair, and the user's specific
+   disposition (pair `(2,3)`, redundancy dropped, unmasked values, handle as an amendment) arrived
+   at **17:48**, **41 minutes after that run finished** (`f411ee7`). **Neither half of that is
+   obscured here.** What was settled before any Phase-13 result existed is *which channels are the
+   target proteins*; what was ruled 41 minutes after the run is *how to dispose of an
+   already-known defect*.
+
+   **No gating threshold moved**, the phase's only gating arm (13-12, simulator ground truth) does
+   not read `P13_REAL_CHANNEL_PAIR` at all, and `P13_ITERATION_ALLOWANCE` remains **1 of 1
+   UNSPENT**. The amendment also **took the worse number**: unmasked separation 0.0788 against the
+   superseded pair's 0.0811, and against the **0.8576** the masked read of the same corrected pair
+   would have given — a figure `ghat.jl:69-71` itself calls the sharper separator and which no
+   prior source forbids. It is refused on a code property (`patch_summary` applies no Otsu mask, so
+   the net was trained on unmasked summaries), and the masked figures appear nowhere in this arm.
+
+7. **CHANGE B — A LATENT LOADING DEFECT WAS FIXED IN THE SAME EDIT, AND IT IS A SEPARATE ACT WITH A
+   SEPARATE JUSTIFICATION.** `spike/p13/consts.jl:100` guarded its **entire Tier-1 body** on
+   `:P13_DEV_SEED`, and `spike/validation/p12_consts.jl:109` **legitimately mirrors** that name in
+   order to assert seed disjointness. In a full-suite run the wrapper saw the mirror, skipped its
+   own body, and ~104 Tier-1 constants were never defined — `test_p13_consts.jl` reporting 22 pass
+   / 1 fail / **114 `UndefVarError`** and aborting eight sibling files. **Per-file runs passed,
+   which is exactly why it stayed invisible.** The body wrapper and all eight callers now guard on
+   `:P13_DECLARED_DEVIATIONS` — a name `consts.jl` alone declares, that is not a seed and not a
+   prior bound. **`spike/validation/p12_consts.jl` was NOT touched: its mirror is correct, and the
+   defect is on the guard side, every time.**
+
+   **CHANGE B changes no value at all** — only which symbol an `if` tests — and it makes the suite
+   report **more** failures, not fewer. **Why it rode in this amendment rather than a later one:**
+   `consts.jl`'s sha256 changes for CHANGE A regardless, and the train-time `consts_sha` guard has
+   to be re-derived in all three runners regardless, so CHANGE B cost **zero additional
+   pre-registration integrity**; holding it back would have meant opening the byte-locked file a
+   second time under a second amendment. This closes **DEF-12-03** (recorded in
+   `.planning/phases/12-spatial-colocalization-map/deferred-items.md`), closed **by reference**
+   here because a live Phase-12 executor owns that file. It is **1 of 29** poisoned guards a
+   mechanical sweep found; **the other 28 are documented with a remedy each in
+   `.planning/CONVENTIONS.md` C-01 and were deliberately NOT fixed.**
+
+8. **THE CORRECTED PAIR RETRACTS TWO CLAIMS THIS REPORT PREVIOUSLY MADE, AND THE ASSERTIONS THAT
+   ENCODE THEM ARE LEFT FAILING RATHER THAN REWRITTEN.** On the amended pair the D-16 α-ladder
+   **never crosses zero** (`alpha_star_real` is `nothing` on both conditions, where it was
+   0.875 / 0.625), so the sentence *"negative induced μ is CONSTRUCTIBLE from real microscopy
+   pixels via the D-16 mask-based reassignment"* — offered in §8c for the manuscript — **does not
+   hold on the operative pair**; it was measured on the counterstain pair. And the D-05 contrast is
+   **0.09819**, inside `tau = 0.15`, so the phase's own label rule assigns RANDOM while the net's
+   descriptive argmax says **COLOC** on the positive direction — so the *"consistency check that
+   passed"* is, on the corrected pair, a consistency check that **disagrees**.
+   `spike/test/test_p13_real.jl`'s three affected assertions were **NOT** rewritten to the
+   newly-measured values: rewriting a substrate expectation to match what was measured *after* the
+   measurement is the act the amendment exists not to be. They are reported, not adjusted, and the
+   disposition is escalated.
 
 ---
 

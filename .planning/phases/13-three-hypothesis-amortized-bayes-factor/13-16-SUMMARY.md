@@ -45,6 +45,42 @@ metrics:
 
 # Phase 13 Plan 16: Real-Image Arm (D-15 AMENDED) Summary
 
+> ## ⚠ SUPERSEDED BY PLAN 13-17 — EVERY NUMBER BELOW WAS MEASURED ON THE WRONG CHANNEL PAIR
+>
+> **This summary is RETAINED IN FULL as the record of what the superseded pair produced. Nothing in
+> it is rewritten.** But every measured figure below was read on
+> `P13_REAL_CHANNEL_PAIR = (1, 2)` and `P13_REAL_REDUNDANCY_PAIR = (1, 3)`, and **both contain `c1`,
+> the DAPI/Hoechst nuclear counterstain** — so both measured counterstain-versus-protein overlap,
+> which is not colocalization.
+>
+> **This summary itself named that limit and correctly declined to repair it** (§8-§10 below), which
+> was the right call under the pre-registration as it then stood. `13-D15-AMENDMENT.md` (2026-07-29)
+> then corrected it under authorisation, and **plan 13-17 re-ran the arm once**.
+>
+> **What the re-run found (`spike/p13/realimage_report.jld2`, amended pair `(2, 3)`):**
+>
+> | Quantity | this summary — pair `(1, 2)` | 13-17 re-run — pair `(2, 3)` |
+> |---|---|---|
+> | `m-bar` positive / negative | +0.32916 / +0.24805 | **+0.46027 / +0.38147** |
+> | headline `log BF(C:R)`, positive as sample | −0.4658 | **+5.70311** |
+> | headline `log BF(C:R)`, negative as sample | −3.9432 | **−8.65723** |
+> | descriptive argmax | RANDOM / RANDOM | **COLOC / RANDOM** |
+> | Phase-13 OOD density / threshold / ratio | 417.2974 / 167.5446 / 2.491× | **703.2995 / 167.5446 / 4.198×** |
+> | shipped OOD | 433.6884 / 179.1368 / 2.421× | **948.9745 / 179.1368 / 5.297×** |
+> | `alpha_star_real` positive / negative | 0.875 / 0.625 | **`nothing` / `nothing`** |
+> | redundancy arm | reported, 607.5728 (3.63×) | **DROPPED — no second pair exists** |
+>
+> **THE CONCLUSION IS UNCHANGED.** The arm is still qualitative, n = 2, unlabelled, OOD-bound, weak
+> evidence — and its binding OOD limit got **worse**, not better. The correction bought no evidence:
+> the amended separation is 0.0788 against 0.0811.
+>
+> **§8–§10's named limits are KEPT, with two changes.** The counterstain limit is no longer "named
+> rather than repaired" — it **was** repaired, under a dated amendment. And **the claim that negative
+> induced μ is constructible from real pixels via the D-16 reassignment is RETRACTED**: on the
+> operative pair the ladder never reaches negative `m-bar` at all.
+>
+> See `13-REPORT.md` §8c, §13 and §14.6–§14.8, and `13-17-SUMMARY.md`.
+
 **On both unmodified real pairs, at every pre-registered lambda rung, in both read directions, the
 three-way net's descriptive verdict is RANDOM -- and every one of those reads is OOD-flagged.** Both
 log Bayes factors are negative everywhere: `log BF(C:R)` runs -0.73 to -0.47 (positive as sample) and

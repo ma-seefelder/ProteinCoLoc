@@ -44,6 +44,30 @@ metrics:
 
 # Phase 13 Plan 15: Real-Image Arm (Ingestion + Ladder) Summary
 
+> ## ⚠ SUPERSEDING NOTE — PLAN 13-17 AMENDED THE CHANNEL PAIR; THIS DELIVERABLE NEEDED NO RE-AUTHORING
+>
+> **The measured tables below are RETAINED IN FULL and nothing in them is rewritten.** The measured
+> `0.329163 / 0.248052` are a **READ-CHAIN IDENTITY CHECK ON A SUPERSEDED PAIR**: they prove this
+> ingestion is bit-for-bit the same load path the frozen `ghat` calibration used. **That claim is
+> unaffected by the amendment** — the identity holds on whichever pair it is exercised on. What is
+> superseded is only their status as *the colocalization reference*, because `c1` is the DAPI/Hoechst
+> nuclear counterstain rather than a target protein.
+>
+> **This deliverable was pair-agnostic by construction and needed no re-authoring.** Every entry point
+> takes `channels` as a keyword, so `13-D15-AMENDMENT.md` (2026-07-29) was a re-point rather than a
+> rewrite: plan 13-17 changed **not one executable line** in `spike/p13/real_images.jl`, and the five
+> `channels = P13_REAL_CHANNEL_PAIR` keyword defaults are byte-identical. Only the header prose blocks
+> (b2), (e) and the `real_mbar` docstring were updated, to state what is **operative** rather than what
+> is **frozen**.
+>
+> **The amended colocalization anchors were re-measured through this same code path by 13-17** and
+> reproduce `P13_REAL_ANCHOR_MBAR = (positive = 0.4603, negative = 0.3815)` on the operative `(2, 3)`
+> pair within `P13_REAL_ANCHOR_TOL = 1e-3`. `spike/test/test_p13_real.jl` now exercises **both**: the
+> c1/c2 identity check with the pair **and** the expected values pinned to literals on both sides — so
+> it cannot follow the constants and quietly change meaning — and the operative c2/c3 regression.
+>
+> See `13-D15-AMENDMENT.md` §5, `13-REPORT.md` §8c, and `13-17-SUMMARY.md`.
+
 The six committed microscopy TIFFs now load into the amortized summary path through the frozen
 `MultiChannelImage(name, paths, channels)` constructor from a `spike/p13/` depth without touching
 the process CWD, reproduce the frozen `ghat` lineage anchors to 5e-5, feed the fixed 8x8 grid with
