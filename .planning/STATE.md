@@ -5,7 +5,7 @@ milestone_name: milestone
 status: in-progress
 stopped_at: Phase 12 context gathered
 last_updated: "2026-07-27T14:06:54.610Z"
-last_activity: 2026-07-29 -- Phase 13 plan 13-11 complete (three-way evidence net trained)
+last_activity: 2026-07-29 -- Phase 13 plan 13-12 complete (amended three-way gate RAN and PASSED)
 progress:
   total_phases: 16
   completed_phases: 10
@@ -114,9 +114,64 @@ answered:
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
-Plan: 12 of 16 complete (13-01…13-11 + 13-15); remaining 13-12, 13-13, 13-14, 13-16
-**STATUS: Executing — waves 1-7 done. τ MEASURED (0.15), Phase-11 basis BOUND, and the three-way
-evidence net is TRAINED (13-11, one run, recipe unchanged, D-04 allowance UNSPENT).**
+Plan: 13 of 16 complete (13-01…13-12 + 13-15); remaining 13-13, 13-14, 13-16
+**STATUS: Executing — waves 1-8 (gate arm) done. τ MEASURED (0.15), Phase-11 basis BOUND, the
+three-way evidence net is TRAINED (13-11), and THE AMENDED GATE HAS RUN AND PASSED (13-12, one run,
+D-04 allowance still UNSPENT).**
+
+- **2026-07-29 — 13-12 COMPLETE (`e5f9569` runner + reported artifact).** The amended D-12/D-13
+  gate ran ONCE on a FRESH 4,000-pair evaluation set at `P13_GATE_COUNTER = 3`, disjoint from the
+  training pool's counter 2, and **PASSED all six pre-registered assertions** (exit 0, 6/6).
+  Executed on the MAIN working tree, no worktree, same ruling as 13-11.
+  **MEASURED, against thresholds byte-locked before the net existed:**
+  per-class one-vs-random AUC **0.990169** (coloc) and **0.988262** (exclusion) vs floor **0.9**;
+  per-head ECE **0.0119808** and **0.012886** vs green band **0.05**, both `:green`, **0 of 10
+  empty bins on both heads**, MCE 0.0816278 / 0.116682 (reported, never gated); **neither head
+  vacuous** (both AUCs far above `P13_VACUOUS_AUC_FLOOR = 0.6`). Realized classes E 1334 / R 1333 /
+  C 1333 from 6,322 draws (overhead 1.58×); restricted per-head sets 2,666 / 2,667, both far above
+  `P13_MIN_EVAL_PER_HEAD = 1000`. Generation 10.86 min.
+  **The DESCRIPTIVE argmax confusion matrix** (rows true, cols predicted, order E/R/C):
+  `[1265 69 0; 101 1148 84; 0 66 1267]` — ZERO exclusion-called-coloc and ZERO coloc-called-
+  exclusion; every error is an adjacent confusion with the shared `random` reference. It carries
+  no assertion: decisions and abstention are Phase 14's.
+  **D-04 ITERATION TRIGGER: DID NOT FIRE, evaluated mechanically.** The exclusion AUC restricted to
+  the deep tail |ρ| > 0.9 is **0.997257** (n = 239) — not below its floor, and in fact the BEST of
+  the four |ρ| bands (0.979025 / 0.995709 / 0.998144 / 0.997257 over (0.15,0.5] / (0.5,0.75] /
+  (0.75,0.9] / (0.9,1.0]). Discrimination IMPROVES toward the −0.99 atom, which is the opposite of
+  the failure the allowance was reserved for. **`P13_ITERATION_ALLOWANCE` remains 1 of 1 UNSPENT
+  and no retraining is authorised.** `consts.jl` byte-unchanged (git blob `5a4ea222…`, identical to
+  13-11's record); `src/` and both spike manifests byte-unchanged, asserted at RUN TIME by step 0.
+  **λ RESPONSE (D-03, reported not gated) — FLAT *AND* PERFECTLY MONOTONE, and the distinction
+  matters.** Across Phase 11's own frozen `SC2_RUNGS` ladder (0.25→3.0), `mean|logBF|` moves
+  7.36726→7.38413 (coloc head) and 8.26806→8.33566 (exclusion head): spans of **0.017** and
+  **0.068 nats**, i.e. **0.2% and 0.8%**, with **Spearman 1.0 on both heads** (all seven rungs in
+  order, in opposite directions). So "the λ input has no effect" would be FALSE — it is wired, read,
+  and monotone; the 8×8 summary simply does not carry enough registration information for it to
+  move the evidence materially. This is Phase 11's own negative result one level up, pre-authorised
+  as a reportable finding, and a future summary redesign has something to move rather than a dead
+  input.
+  **BINARY-NRE CONTINUITY (reported, NEVER gated, `P13_CONTINUITY_GATED = false`):** over the 2,666
+  coloc/random pairs at the reference λ = 3.0, corr **0.62216**, max|Δ| **22.02**, mean Δ **−4.21**.
+  Read against the SPIKE-LANE frozen binary NRE (`spike/validation/trained_ratio.jld2`), not
+  `src/amortized/bf.jl` (which imports KernelDensity/QuadGK, absent from the lean spike env) and not
+  `artifacts/grid_8/` (reserved by `consts.jl` §I2 for the OOD comparison only). The summaries were
+  round-tripped EXACTLY between the two frozen z-score bases, so both nets saw the same
+  acquisitions; the offset is what D-02 and the two-different-logits argument predict.
+  **13-11's OPEN QUESTION IS ANSWERED FOR THESE TWO CRITERIA:** the persisted epoch-4
+  best-validation checkpoint of an early-overfitting run IS sufficient for D-12 discrimination and
+  D-13 calibration — comfortably, not marginally. It remains open for 13-13 and 13-16.
+  **DISCLOSED so the ordering is checkable:** a load smoke at `m = 90, min_per_head = 30` was run on
+  the gate stream before the reported run to prove the runner executes. It writes to a `*_smoke`
+  path, prints `SMOKE MODE -- NOT A REPORTED RUN` and does NOT run the gate assertions; both smoke
+  outputs were deleted. **Not one byte of the runner changed afterwards.** Its ECE read yellow
+  (0.0738 / 0.0789 at 60 items/head vs 0.0120 / 0.0129 at 2,666) — recorded as evidence that
+  `P13_MIN_EVAL_PER_HEAD` is load-bearing, with the caveat that the observed direction is the
+  OPPOSITE of the downward small-n bias the pre-registration warns about (per-bin noise dominates
+  when ten bins share sixty samples).
+  **WHAT THE PASS DOES NOT ESTABLISH:** simulator ground truth only; well-specified regime
+  (train-joint == eval-joint by F5); not a decision rule; and the exclusion hypothesis still has NO
+  observed real-data instance anywhere in this project. SC3's other two arms (13-13 α-ladder,
+  13-16 real images) are explicitly not gates.
 
 - **2026-07-29 — 13-11 COMPLETE (`133558d` tests → `41a24f4` trainer + artifact; Task 1 was
   pre-committed at `4839c66` by a predecessor that died on a session limit).** Executed on the
