@@ -645,6 +645,72 @@ where it was 0.875 / 0.625; and the D-05 contrast of **0.09819** sits inside `ta
 phase's own label rule says RANDOM while the net says COLOC — the coherence check that previously
 *passed* now *disagrees*. **Neither is repaired, retuned or argued away.**
 
+### RETRACTION — the negative-μ construction claim is WITHDRAWN
+
+**The manuscript-bound sentence *"negative induced μ is CONSTRUCTIBLE from real microscopy pixels
+via the D-16 mask-based reassignment"* is RETRACTED.**
+
+**It was an artefact of segregating a target channel against a nuclear counterstain.** The α mask is
+the Otsu mask of the pair's FIRST channel. On the superseded pair that channel was `c1`, the
+DAPI/Hoechst counterstain, and redistributing green out of nuclei drove the per-patch correlation
+below zero. On the operative pair it is `c2`, the green target, and redistributing red out of green
+objects — two channels that co-occur on a shared bright background — does not reach negative
+correlation at all.
+
+**The evidence, read at source from `spike/p13/realimage_report.jld2`:**
+
+- `alpha_star_real` = `(positive = nothing, negative = nothing)`, against
+  `superseded_alpha_star_real` = `(positive = 0.875, negative = 0.625)`.
+- the ladder `m-bar` runs **+0.4602658 → +0.1380565** (positive) and **+0.3814746 → +0.2041410**
+  (negative) — **positive at every one of the nine rungs, on both fixtures.**
+- strict monotone decrease still holds, and the eight α invariants still hold; **only the reach into
+  negative `m-bar` is gone.**
+
+**The correction COST the claim rather than revealing a new one.** This is the same register as
+`13-D15-AMENDMENT.md` §2.1, where the amendment took the worse number at the one point a better and
+permitted one was available: the correction subtracted. It removed a claim and put nothing in its
+place. Phase 13 does **not** now assert the converse either — that negative induced μ is
+*unreachable* from real pixels — because two fixtures cannot settle that. **It claims strictly less
+than it did.**
+
+**THE CORROBORATION — two independent routes had already reached the same direction, and that
+agreement is what makes this robust rather than one surprising measurement.** Neither route was
+looking at the α-ladder; both were reading the frozen anchor diagnostic, and both are recorded in
+`.planning/STATE.md`'s *Quick Tasks Completed* table:
+
+| Quick task | Date | Commit | What it established |
+|---|---|---|---|
+| **260725-vl8** | 2026-07-25 | `151ad79` | The unqualified *"negative tail not physically reachable / PRIOR-ONLY"* claim in `spike/simulator/ghat.jl` is **WITHDRAWN — not inverted.** The withdrawal left the question open in both directions rather than replacing one confident reading with another. |
+| **260725-wb7** | 2026-07-25 | `78dc37f` | On the corrected c2/c3 pair `neg_reachable` flips to `true` on a masked negative-fixture reading of **−0.0338 — a value ≈ 0.** That flip is a **PREDICATE ARTEFACT, not evidence**, and the vl8 withdrawal **STANDS**. |
+
+Both are still carried in the frozen calibration header today (`spike/simulator/ghat.jl:84-91`,
+verified at HEAD): *"STILL NOT ESTABLISHED either way … the former unqualified 'physically reachable
+= false ⇒ PRIOR-ONLY' reading stays WITHDRAWN and is NOT reinstated; equally, the clean +0.82 /
+−0.03 control separation is NOT evidence for the opposite claim."*
+
+**Stated precisely, so the corroboration is not overclaimed.** vl8 and wb7 do not establish that the
+negative regime is unreachable; they establish that **this substrate carries no evidence that it is
+reachable**, and that the one number that looked like such evidence was a predicate artefact on a
+value indistinguishable from zero. The α-ladder is the third route and it points the same way: the
+construction that was supposed to *manufacture* the negative regime from these pixels does not reach
+it. **Three routes, one direction — the negative regime is NOT DEMONSTRABLE on this substrate.**
+
+### The D-05 coherence disagreement stays RED, and it is an INFORMATIVE red
+
+On the amended pair the D-05 contrast is **0.09819**, inside `tau = 0.15`, so the phase's own label
+rule assigns **RANDOM** — while the net's descriptive argmax says **COLOC** on the positive
+direction. It is left standing as a disagreement: the net is not retrained, `tau` is not moved, and
+the label rule is not re-derived.
+
+**And a disagreement on a fixture flagged OOD at 4.198× its own threshold is close to what one
+should EXPECT.** Both fixtures score above the maximum density of all 96,000 simulated acquisitions
+the null was fit on. A net reading an input that far outside its training distribution, and still
+agreeing with a rule derived from the same summary, would have been the *surprising* outcome. That
+is what makes this an informative red rather than an anomalous one: **it is the OOD flag surfacing a
+second time, in an independent place, and the two readings corroborate each other.** Had the
+coherence check kept passing at 4.198× over threshold, that agreement would have been the thing
+needing explanation.
+
 ### Every quantity that moved, each labelled with the pair it was measured on
 
 | Quantity | SUPERSEDED — pair `(1, 2)` | **AMENDED — pair `(2, 3)`** |
@@ -1021,7 +1087,32 @@ productionizes; while it stays research-lane, the amendment plus this report suf
 > **Phase-16** blind evaluation, so it was deliberately **not** consumed here. **Labelled real
 > segregation validation is deferred to Phase 16.**
 
-**A fifth entry was considered and NOT added, and the reason is a measurement.** The pre-registration
+**Limit E — the negative-μ regime is NOT DEMONSTRABLE on this substrate, and the claim that it is
+constructible from real pixels is RETRACTED.**
+> The D-16 α-ladder was offered as evidence that **negative induced μ is constructible from real
+> microscopy pixels** via mask-based reassignment. On the operative `c2`/`c3` pair it is not.
+> `alpha_star_real` is `nothing` on **both** fixtures (it was 0.875 / 0.625 on the superseded pair),
+> and `m-bar` stays **positive at every rung** — +0.4603 → +0.1381 and +0.3815 → +0.2041. The
+> superseded crossing was an **artefact of segregating a target channel against the DAPI/Hoechst
+> nuclear counterstain**: the α mask is the Otsu mask of the pair's first channel, and moving green
+> out of nuclei reaches negative correlation where moving red out of green — two channels sharing a
+> bright background — does not. **The claim is retracted, and the correction COST it rather than
+> revealing anything in its place.** The converse is **not** asserted either: `n = 2` fixtures
+> cannot establish that the negative regime is physically unreachable, only that it is not
+> demonstrable here. **Two independent earlier routes agree**: quick task `260725-vl8` (`151ad79`)
+> WITHDREW — did not invert — the unqualified *"negative tail not physically reachable / PRIOR-ONLY"*
+> reading in `spike/simulator/ghat.jl`, and quick task `260725-wb7` (`78dc37f`) found that
+> `neg_reachable` flipping to `true` on a masked reading of **−0.0338 ≈ 0** is a **predicate artefact
+> rather than evidence**. **The three `spike/test/test_p13_real.jl` assertions that encode the
+> retracted expectation are LEFT FAILING and are NOT amended** (§9a): the phase's own verdict says
+> the three-way Bayes factor works on simulated data and is **not shown** to work on real microscopy,
+> so an assertion that states the real-substrate expectation and fails is **telling the truth**.
+> Coupled to this, the **D-05 coherence check now DISAGREES** — contrast **0.09819** inside
+> `tau = 0.15` assigns RANDOM by the phase's own label rule while the net's argmax says COLOC — on
+> fixtures flagged OOD at **4.198×** their own threshold, which is close to what one should expect
+> and makes it an informative reading rather than an anomalous one.
+
+**A further named-limit entry was considered and NOT added, and the reason is a measurement.** The pre-registration
 anticipated a prior-atom limit — about 4.9% of prior mass at the `rho = −0.99` clamp against about
 1.9% at the positive one, roughly 2.5 : 1 against the exclusion end — to be written as a named limit
 **if the gate showed exclusion-end degradation**. The gate showed the opposite: exclusion AUC
@@ -1029,6 +1120,104 @@ anticipated a prior-atom limit — about 4.9% of prior mass at the `rho = −0.9
 condition for the fifth entry was evaluated and did not hold, so it is recorded here as an evaluated
 non-finding rather than silently dropped. The atom asymmetry remains a documented property of the
 frozen prior and is the reason both alpha ladders' scope limits are stated in §8.
+
+---
+
+## 9a. The named limits carried as RED TESTS, and the harness defect that hid them
+
+**The ruling (user, 2026-07-29): the failing assertions stay RED, and the D-16 real-substrate
+expectation is NOT amended.** The reasoning is recorded verbatim in §14.9. In one line: this phase's
+own two-sentence verdict says the three-way Bayes factor **works on simulated data and is not shown
+to work on real microscopy**, so a test that asserts the real-substrate expectation and fails is
+*telling the truth*, and a green test standing beside a "not shown" conclusion would be worse than a
+red one. **The red is not a defect to be cleared; it is the finding, encoded where a future reader
+will trip over it.**
+
+### The five failing assertions — four source lines, five observed failures
+
+Every row measured by running the file, not read off the source.
+
+| # | Site | Assertion | Observed | What it encodes |
+|---|---|---|---|---|
+| 1 | `spike/test/test_p13_real.jl:226` | `@test REAL_ZEROS[c] > 0` | `0 > 0` on the **negative** condition only | A **non-degeneracy guard**: that the zero-count-preserved check is being exercised against a non-trivial reference. `c3` carries no exact-zero pixels on that condition. **The invariant it guards still PASSES on both conditions** — what fails is the guard on the guard. |
+| 2–3 | `spike/test/test_p13_real.jl:292` (**twice — once per condition**) | `@test first(mbars) > 0.0 > last(mbars)` | +0.4602658 → +0.1380565 and +0.3814746 → +0.2041410; never negative | The **RETRACTED** claim that negative induced μ is constructible from real pixels (Limit E, §8c). This is the substantive one. |
+| 4 | `spike/test/test_p13_correction.jl:245` | `@test cC.coloc.maxabs <= P13_F5_MAXABS_TOL` | `0.5498217821206905 <= 0.25` | Pre-registered **F5 measured miss**, committed as-is by plan 13-07 rather than tuned away. Pre-existing; untouched by this ruling. |
+| 5 | `spike/test/test_p13_correction.jl:246` | `@test cE.exclusion.maxabs <= P13_F5_MAXABS_TOL` | `0.3783126793681086 <= 0.25` | The second F5 measured miss. Pre-existing; untouched. |
+
+Per-file, observed: `test_p13_real.jl` **273 pass / 3 fail**, exit 1; `test_p13_correction.jl`
+**88 pass / 2 fail**, exit 1.
+
+**No assertion expression was changed.** None is `@test_skip`-ed, none is `@test_broken`-ed, none was
+rewritten to the newly-measured value, no threshold moved, and `P13_ITERATION_ALLOWANCE` is still
+**1 of 1 UNSPENT**. `spike/p13/consts.jl` is byte-unchanged at git blob `d82caea6`.
+
+### The harness defect: two deliberately-red files masked each other
+
+The house pattern was documented at `spike/test/runtests.jl` and was explicit about its own scope:
+
+> *"THE CORRECTION ARM IS LAST, AND DELIBERATELY SO … A thrown testset aborts the remaining
+> includes, so any sibling placed after it would silently never run. Putting it last keeps every
+> other Phase-13 testset executing and reporting while the honest failure still surfaces and still
+> turns the suite red."*
+
+**That pattern supports exactly ONE throwing file.** Once `test_p13_real.jl` also became
+deliberately red there were two, and the suite aborted at `runtests.jl:223` on the *first* of them —
+**masking seven Phase-13 files** (`tau`, `net`, `result`, `calibration`, `preconditions`, `datagen`,
+`correction`). **Re-ordering cannot fix this**; it only chooses which red is hidden, and it would
+re-create exactly the contingency — *"before the file that throws today"* — that already failed once
+in this same harness when `test_npe.jl` threw ahead of the file the wiring had been reasoned
+against.
+
+### The structural fix, and its four required properties
+
+Each known-red include is wrapped; after the last Phase-13 include a **ledger testset** asserts the
+observed red set equals the expected one, and the recorded exception is then re-raised.
+
+| Property | Mechanism | How it was verified |
+|---|---|---|
+| 1. Every Phase-13 sibling **runs and reports**, whichever known-red file throws | the throw is caught, so nothing after it is aborted | full-suite run: **11 Phase-13 file-level testsets report, against 4 before** (table below) |
+| 2. The named-limit failures **still surface**, not swallowed, not downgraded | `Test` prints each `Test Failed at …` line and the testset summary table **before** the outer testset throws | the full-suite log carries **exactly 5 `Test Failed at` lines** — the three `test_p13_real.jl` blocks and the two `test_p13_correction.jl` ones — with their `Evaluated:` values unchanged |
+| 3. The suite **still exits non-zero** | the first recorded exception is **re-raised** after the last include | full-suite **exit 1**, ending on `ERROR: LoadError: Some tests did not pass: 273 passed, 3 failed` |
+| 4. A known-red file that ever **starts passing fails loudly** | `Set(observed) == Set(expected)`, written as pairs so the failure **names the file** | exercised on a mock where one known-red file was replaced by a green one: the ledger failed with `"second.jl" => false == "second.jl" => true` and the process exited 1 |
+
+Plus one non-negotiable safety property: **anything that is not a `Test.TestSetException` is
+rethrown immediately and never recorded as an expected red.** `include` wraps the throw in a
+`LoadError` (verified empirically on Julia 1.12.6), so the wrapper is unwrapped before the type is
+tested. Exercised on a mock that raised a genuine `error(...)`: it propagated, was not recorded, and
+aborted the run — which is the correct behaviour for a real defect.
+
+**`test_p12_suite.jl` keeps FIRST position** and `test_p12_consts.jl` testset 9 — which asserts that
+ordering at source level — still passes (**44 / 44**, observed after the change). The ledger's
+`P13_KNOWN_RED` list is deliberately declared *after* that include, because testset 9 locates
+`test_p13_correction.jl` by first occurrence in the comment-stripped source of `runtests.jl`.
+
+### Measured, one full-suite run each side
+
+Both runs `julia --project=spike spike/test/runtests.jl`, on the main working tree, 2026-07-29.
+
+| | BEFORE | AFTER |
+|---|---|---|
+| Phase-13 file-level testsets that **report** | **4** (`consts`, `labels`, `alpha`, `real`) | **11** — all of them, plus the ledger |
+| Phase-13 assertions reported | 703 pass / 3 fail | **1,901 pass / 5 fail**, plus the ledger's 3 pass |
+| Phase-13 files **masked** | **7** (`tau`, `net`, `result`, `calibration`, `preconditions`, `datagen`, `correction`) | **0** |
+| aborts at | `runtests.jl:223` → `test_p13_real.jl` | runs to completion; re-raises after the ledger |
+| `Test Failed at` lines in the whole log | 3 | **5** — the named limits, all of them, none hidden |
+| non-Phase-13 failures | 0 | 0 |
+| suite exit | **1** | **1** |
+
+Per-file observations, run standalone, agree with the in-suite numbers exactly:
+`test_p13_real.jl` 273 / 3 and `test_p13_correction.jl` 88 / 2.
+
+**The concurrency is disclosed rather than assumed away.** A Phase-12 executor was live on this
+branch and landed five commits between the two runs (`986d518` … `406015e`). **None of them touched
+any file under `spike/test/` or `spike/p13/`** — they touched `.planning/` documents,
+`spike/validation/run_p12_stage1_ridge.jl` and `spike/validation/p12_stage1_report.jld2` — and both
+runs report **zero** Phase-12 failures with identical Phase-13 per-file numbers. The measured delta
+is attributable to `spike/test/runtests.jl`, which is the only file this change edited.
+
+**A full-suite green was neither achieved nor claimed, and must not be.** The correct statement is:
+*the suite runs to completion, every Phase-13 file executes and reports, and the suite still exits
+non-zero on exactly the five named-limit assertions.*
 
 ---
 
@@ -1385,6 +1574,24 @@ They are numbered separately, and CHANGE A and CHANGE B are given SEPARATE entri
    newly-measured values: rewriting a substrate expectation to match what was measured *after* the
    measurement is the act the amendment exists not to be. They are reported, not adjusted, and the
    disposition is escalated.
+
+9. **THE ESCALATION OF ITEM 8 WAS RULED ON, AND THE RULING IS THAT THE RED STAYS.** The user ruled
+   on **2026-07-29**: accept the misses as **NAMED LIMITS**, leave them **RED**, and **do NOT amend
+   the D-16 real-substrate expectation**. Recorded verbatim, because the reasoning is the point:
+
+   > *Phase 13's own two-sentence verdict already says the three-way Bayes factor works on simulated
+   > data and is NOT SHOWN to work on real microscopy. A test that asserts the real-substrate
+   > expectation and FAILS is therefore TELLING THE TRUTH. Amending it to expect the new measurement
+   > would produce a GREEN TEST STANDING NEXT TO A CONCLUSION THAT SAYS "NOT SHOWN" — a test that
+   > passes while the science says otherwise is worse than a red one, and this project's credibility
+   > rests on exactly that not happening. **The red is not a defect to be cleared; it is the finding,
+   > encoded where a future reader will trip over it.***
+
+   The retraction is written in §8c, the limit is **Limit E** in §9, and the assertions themselves
+   are inventoried in **§9a**. **No assertion expression was rewritten, `@test_skip`-ed or
+   `@test_broken`-ed**, no threshold moved, and `P13_ITERATION_ALLOWANCE` remains **1 of 1 UNSPENT**.
+   What the same ruling DID require fixing is the harness: two deliberately-red Phase-13 files were
+   masking each other (§9a).
 
 ---
 
