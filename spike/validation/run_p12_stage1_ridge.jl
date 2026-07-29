@@ -244,6 +244,48 @@ literal in this file, which carries no bar of its own beyond the three Tier-1 ga
 """
 _p12s1_mean_within_image_sd(M::AbstractMatrix) = mean(vec(std(M; dims = 1)))
 
+# =============================================================================================
+# THE LIVENESS DIAGNOSTIC -- ADDED AFTER THE FIRST RUN, REPORTED, AND IT DECIDES NOTHING
+# =============================================================================================
+#
+# WHEN AND WHY IT WAS ADDED, RECORDED HERE BECAUSE THE TIMING IS THE POINT. The first run of this
+# runner produced `control_live = false`: the positive control cleared the ratio ceiling at every
+# rung but did not clear `P12_STAGE1_CONTROL_CEILING` at the three SHORTEST correlation lengths.
+# The frozen interpretation rule says a failed control makes the run UNINFORMATIVE and names three
+# likely causes -- a broken standardizer, a target/predictor misalignment, a pool with the wrong r1
+# -- and directs the phase's single iteration allowance at FIXING THE HARNESS. That instruction
+# rests on a premise, and the premise is checkable. These three quantities check it.
+#
+# THEY CHANGE NO THRESHOLD, DECIDE NOTHING, AND DO NOT ENTER `stage1_pass`, `borrowing_ok` OR
+# `control_live`. The gate is evaluated from exactly the constants and the arms it was evaluated
+# from before they existed, and the gate values are bit-identical across the two runs. Adding a
+# REPORTED diagnostic after a result is legitimate; moving a bar after a result is not, and nothing
+# below moves one.
+#
+#   `_p12s1_own_row_bound`  -- sqrt(1 - corr(row_r, z_r)^2), the RMSE ratio of the best possible
+#       LINEAR predictor of z_field[r] from region r's OWN summary row. It is an information limit
+#       of the DATA, computed with no ridge, no split and no standardizer, so it cannot be produced
+#       by any defect in the estimator it is used to judge. If the measured control sits AT this
+#       bound, the control is optimal and the harness is live; a broken harness lands ABOVE it.
+#   `ownrow_ratio`          -- the same ridge machinery restricted to region r's own two rows. Its
+#       agreement with the bound is the executable form of the same argument.
+#   `global_control_ratio`  -- the full 128-row ridge predicting the GLOBAL field level, which is
+#       the Phase-11 benchmark 12-CONTEXT S-2 names (global rho_true recovered at ratio 0.157, an
+#       84 % error reduction). It is the one number in this phase directly comparable to a
+#       measurement made on a harness already known to work.
+
+"""
+    _p12s1_own_row_bound(srow, y) -> Float64
+
+`sqrt(1 - corr(srow, y)^2)`: the RMSE-over-prior-sd ratio of the BEST LINEAR predictor of `y` from
+the single predictor `srow`. No ridge, no penalty, no split, no standardizer -- a property of the
+DATA, so it is independent of every mechanism it is used to audit.
+"""
+function _p12s1_own_row_bound(srow::AbstractVector, y::AbstractVector)
+    c = cor(collect(float.(srow)), collect(float.(y)))
+    return isfinite(c) ? sqrt(max(0.0, 1 - c^2)) : NaN
+end
+
 function main()
     println("="^78)
     println("D-12 STAGE-1 GATE -- leave-region-out ridge across the r1 ladder")
@@ -289,6 +331,11 @@ function main()
     within_image_sd_rho      = Vector{Float64}(undef, n_rungs)
     within_image_sd_zfield   = Vector{Float64}(undef, n_rungs)
     baseline_rmse_mean       = Vector{Float64}(undef, n_rungs)
+    ownrow_ratio_mean        = Vector{Float64}(undef, n_rungs)   # REPORTED liveness diagnostic
+    own_row_bound_mean       = Vector{Float64}(undef, n_rungs)   # REPORTED liveness diagnostic
+    global_control_ratio     = Vector{Float64}(undef, n_rungs)   # REPORTED liveness diagnostic
+    ownrow_ratio_per_region  = Matrix{Float64}(undef, nreg, n_rungs)
+    own_row_bound_per_region = Matrix{Float64}(undef, nreg, n_rungs)
     ratio_per_region         = Matrix{Float64}(undef, nreg, n_rungs)
     control_ratio_per_region = Matrix{Float64}(undef, nreg, n_rungs)
     rho_ratio_per_region     = Matrix{Float64}(undef, nreg, n_rungs)
@@ -366,6 +413,8 @@ function main()
         basev   = Vector{Float64}(undef, nreg)
         pens    = Vector{Float64}(undef, nreg)
         pensC   = Vector{Float64}(undef, nreg)
+        rown    = Vector{Float64}(undef, nreg)   # REPORTED: own-two-rows ridge
+        rbound  = Vector{Float64}(undef, nreg)   # REPORTED: own-row information limit
 
         for r in 1:nreg
             # THE EXCLUSION. Both of region r's rows -- continuous and mask -- are zeroed, in the
@@ -398,6 +447,16 @@ function main()
             rrho[r]  = _p12s1_rmse(predρ, ytstρ) / baseρ
             cpredρ, _ = _p12s1_select_and_fit(AC, XfitC, yfitρ, XvalC, yvalρ, XtstC)
             rrhoc[r]  = _p12s1_rmse(cpredρ, ytstρ) / baseρ
+
+            # --- REPORTED liveness diagnostic. Gates nothing; see the block above. -------------
+            own_rows = [r, nreg + r]
+            muO, sdO = _p12s1_fit_standardizer(view(S, own_rows, fit_i))
+            XfitO = _p12s1_apply_standardizer(view(S, own_rows, fit_i), muO, sdO)
+            XvalO = _p12s1_apply_standardizer(view(S, own_rows, val_i), muO, sdO)
+            XtstO = _p12s1_apply_standardizer(view(S, own_rows, test_i), muO, sdO)
+            opred, _ = _p12s1_select_and_fit(_p12s1_gram(XfitO), XfitO, yfit, XvalO, yval, XtstO)
+            rown[r]   = _p12s1_rmse(opred, ytst) / base
+            rbound[r] = _p12s1_own_row_bound(view(S, r, test_i), ytst)
         end
 
         ratio_per_region[:, k]         = rr
@@ -416,6 +475,18 @@ function main()
         rho_control_mean[k]   = mean(rrhoc)
         radial_r2[k]          = _p12s1_radial_r2(rr)
         baseline_rmse_mean[k] = mean(basev)
+
+        ownrow_ratio_per_region[:, k]  = rown
+        own_row_bound_per_region[:, k] = rbound
+        ownrow_ratio_mean[k]  = mean(rown)
+        own_row_bound_mean[k] = mean(rbound)
+
+        # The GLOBAL field level through the same full-128 design: the Phase-11-comparable control
+        # (12-CONTEXT S-2 records global rho_true recovered at ratio 0.157). REPORTED, not gated.
+        gtar  = vec(mean(ZF; dims = 1))
+        gpred, _ = _p12s1_select_and_fit(AC, XfitC, gtar[fit_i], XvalC, gtar[val_i], XtstC)
+        global_control_ratio[k] =
+            _p12s1_rmse(gpred, gtar[test_i]) / sqrt(mean(abs2, gtar[test_i] .- mean(gtar[fit_i])))
 
         # Measured contrasts, for the noise-floor reading. No bar is applied to them here.
         within_image_sd_rows[k]   = _p12s1_mean_within_image_sd(view(S, 1:nreg, test_i))
@@ -436,6 +507,10 @@ function main()
                 "z field = $(round(within_image_sd_zfield[k]; digits = 5))")
         println("  per-rung PASS against the ceiling: " *
                 "$(ratio_mean[k] <= P12_STAGE1_RATIO_CEILING)")
+        println("  liveness (REPORTED, decides nothing): own-row ridge = " *
+                "$(round(ownrow_ratio_mean[k]; digits = 5))  vs its information limit " *
+                "$(round(own_row_bound_mean[k]; digits = 5))   " *
+                "global-level control = $(round(global_control_ratio[k]; digits = 5))")
     end
 
     # =============================================================================================
@@ -447,9 +522,16 @@ function main()
     stage1_pass  = borrowing_ok && control_live
     rungs_passing = [rungs[k] for k in 1:n_rungs if ratio_mean[k] <= P12_STAGE1_RATIO_CEILING]
 
+    # THE BANNER HAS THREE STATES, NOT TWO, AND THE THIRD IS NOT A HEDGE. `stage1_pass` is an AND
+    # over two components, so `false` alone does not say WHICH half decided -- and the frozen
+    # interpretation rule is explicit that a failed CONTROL makes the run UNINFORMATIVE, with
+    # NEITHER a PROCEED nor a DESCOPE recordable from it. A two-state banner would therefore print
+    # "DESCOPE" for a run from which a descope may not be read, and the banner is what a human sees.
+    banner = !control_live ? "NO VERDICT — the positive control did not clear its ceiling" :
+             stage1_pass   ? "PASS (PROCEED)" : "DESCOPE"
     println()
     println("="^78)
-    println("D-12 STAGE-1 GATE — ", stage1_pass ? "PASS (PROCEED)" : "DESCOPE")
+    println("D-12 STAGE-1 GATE — ", banner)
     println("="^78)
     println("  borrowing_ok = $borrowing_ok   ($(length(rungs_passing)) of $n_rungs rungs at or " *
             "below $(P12_STAGE1_RATIO_CEILING); $(P12_STAGE1_MIN_RUNGS) required; " *
@@ -458,8 +540,15 @@ function main()
             "$(round(maximum(control_ratio_mean); digits = 5)) against a ceiling of " *
             "$(P12_STAGE1_CONTROL_CEILING))")
     if !control_live
-        println("  !! THE HARNESS IS NOT LIVE. Neither a PROCEED nor a DESCOPE may be recorded " *
-                "from this run; it is UNINFORMATIVE.")
+        println("  !! Neither a PROCEED nor a DESCOPE may be recorded from this run under the " *
+                "frozen interpretation rule. Read the liveness diagnostic below BEFORE concluding " *
+                "the harness is broken: if the control sits at its own-row information limit, the " *
+                "ceiling is unreachable rather than the harness wrong, and which of those it is " *
+                "is a pre-registration question, not a runtime one.")
+        println("  own-row ridge  = $(round.(ownrow_ratio_mean; digits = 5))")
+        println("  its info limit = $(round.(own_row_bound_mean; digits = 5))")
+        println("  global control = $(round.(global_control_ratio; digits = 5))   " *
+                "(Phase 11 measured 0.157 for global rho_true)")
     end
     println("  ratio_mean  = $ratio_mean")
     println("  control     = $control_ratio_mean")
@@ -506,6 +595,20 @@ function main()
         within_image_sd_rho      = within_image_sd_rho,
         within_image_sd_zfield   = within_image_sd_zfield,
         radial_r2                = radial_r2,
+        ownrow_ratio_mean        = ownrow_ratio_mean,
+        ownrow_ratio_per_region  = ownrow_ratio_per_region,
+        own_row_bound_mean       = own_row_bound_mean,
+        own_row_bound_per_region = own_row_bound_per_region,
+        global_control_ratio     = global_control_ratio,
+        liveness_diagnostic_note = "REPORTED, decides nothing, added after the first run when the " *
+                                   "positive control missed P12_STAGE1_CONTROL_CEILING. " *
+                                   "own_row_bound = sqrt(1 - corr(row_r, z_r)^2) is an information " *
+                                   "limit of the DATA (no ridge, no split, no standardizer), so a " *
+                                   "control sitting AT it is optimal rather than broken. " *
+                                   "global_control_ratio is the Phase-11-comparable benchmark " *
+                                   "(12-CONTEXT S-2: global rho_true recovered at 0.157). Neither " *
+                                   "enters stage1_pass, borrowing_ok or control_live, and the gate " *
+                                   "values are bit-identical to the run that preceded them.",
         pool_dirs                = realized_dirs,
         ratio_ceiling            = P12_STAGE1_RATIO_CEILING,
         control_ceiling          = P12_STAGE1_CONTROL_CEILING,
