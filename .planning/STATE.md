@@ -120,6 +120,81 @@ report). τ MEASURED (0.15), Phase-11 basis BOUND, the three-way evidence net is
 AMENDED GATE HAS RUN AND PASSED (13-12, one run), the REPORTED α-ladder has run (13-13), the REPORTED
 real-image arm has run (13-16), and `13-REPORT.md` is written (13-14). D-04 allowance still UNSPENT.**
 
+**APPENDED 2026-07-29 by plan 13-17 (ADDITIVE — nothing above this block was altered).
+PHASE 13 IS NOW 17 OF 17 PLANS. THE PRE-REGISTRATION WAS AMENDED AND THE REAL ARM RE-RUN.**
+
+`13-D15-AMENDMENT.md` was applied to `spike/p13/consts.jl` in **ONE edit carrying TWO separately
+justified changes**, per the user's ruling of 2026-07-29:
+
+> **M1 — fix at the source, inside the same authorised amendment. M2 (the isolated-module read) is
+> the tool for files that CANNOT be edited because no amendment authorises opening them.**
+
+The reasoning, recorded because a mechanism chosen for a reason is auditable and one chosen by
+default is not: *the byte-lock breaks either way, and `h.consts_sha == p13_consts_sha()` has to be
+re-derived in the gate, alpha and realimage runners regardless — so the include-guard fix rides
+along at ZERO additional pre-registration cost. That coupling is precisely why the answer is M1 and
+not M2.*
+
+- **CHANGE A — the channel pair.** The constant named the **wrong physical object**: `c1` is the
+  DAPI/Hoechst nuclear counterstain (`test/runtests.jl:105`), so both pre-registered pairs measured
+  counterstain-versus-protein overlap. `P13_REAL_CHANNEL_PAIR` `(1,2)` → **`(2,3)`**;
+  `P13_REAL_REDUNDANCY_PAIR` **DROPPED** with no replacement; `P13_REAL_ANCHOR_MBAR` →
+  **`0.4603 / 0.3815`, UNMASKED**. The masked `+0.8238 / −0.0338` are **forbidden** and appear
+  nowhere in the arm, though they separate ten times better and no prior source forbids them.
+- **CHANGE B — the include-guard sentinel (DEF-12-03).** `consts.jl:100` guarded the whole Tier-1
+  body on `:P13_DEV_SEED`, a name `spike/validation/p12_consts.jl:109` **must legitimately mirror**
+  to assert seed disjointness. Re-pointed to **`:P13_DECLARED_DEVIATIONS`** at the body wrapper and
+  **all eight callers** — a caller-only fix would have been provably useless. **CHANGE B changed no
+  value.** `spike/validation/p12_consts.jl` is **BYTE-UNCHANGED** and `P13_DEV_SEED` is
+  byte-unchanged. **The 28 OTHER poisoned guards found by the same sweep are DOCUMENTED with a
+  remedy each in `.planning/CONVENTIONS.md` C-01 and were deliberately NOT FIXED.**
+
+**The `consts_sha` guard was re-derived, not weakened.** `spike/p13/net.jl` now defines the named,
+dated `P13_CONSTS_SHA = (pre_amendment = "100e97a3…", post_amendment = "d6a6e63b…")`, asserted on
+**BOTH sides at all three runner sites**. Strictly stronger than the single equality it replaces,
+which only required the two sides to agree with each other. The widened `||` form is rejected in a
+code comment. No guard deleted; `gate_report.jld2` / `alpha_report.jld2` byte-unchanged; no net
+retrained; `P13_ITERATION_ALLOWANCE` **1 of 1, UNSPENT**.
+
+**Suite signatures.** BEFORE: aborted at `runtests.jl:174` in the **Phase-12** block — *not* where
+the amendment predicted — so Phase 13 was never reached; a concurrent Phase-12 fix (`8880c29`)
+changed that between runs, so **the raw before/after comparison is confounded and is not claimed**.
+The clean evidence for CHANGE B is a **targeted reproduction**: mirror loaded, then
+`test_p13_consts.jl` — **22 pass / 1 fail / 114 `UndefVarError` before, 137 pass / 0 error after**.
+AFTER: the Phase-13 block **executes** (`consts` 137/137, `labels` 164/164, `alpha` 129/129). The
+§5B.5 `UInt32`/`UInt64` redefinition knock-on was exercised and is a **non-event**; **no seed was
+edited** and the STOP RULE did not trigger.
+
+**The re-run (one run, no RNG stream, no counter collision).** **The conclusion is UNCHANGED** —
+qualitative, n = 2, unlabelled, OOD-bound. The verdict moved **RANDOM → COLOC** reading the positive
+fixture as sample (`log BF(C:R)` −0.4658 → **+5.70311**); the OOD headline moved **417.2974 /
+167.5446 / 2.491× → 703.2995 / 167.5446 / 4.198×**, i.e. the binding limit got **WORSE**. Reported
+as a correction, never as a rescue.
+
+**BLOCKERS CLOSED by this plan:** the two channel-pair blockers of 2026-07-25 (`ea4a7d3`), and the
+`P13_DEV_SEED` include-guard blocker / **DEF-12-03** — closed **by reference**, without editing
+Phase 12's `deferred-items.md`, because a live Phase-12 executor owns that file.
+
+**⚠ NEW BLOCKER OPENED — A PRE-REGISTRATION RULING IS NEEDED, AND 13-17 DID NOT RESOLVE IT.**
+On the corrected pair **two claims this phase made do not survive**, and the three
+`spike/test/test_p13_real.jl` assertions encoding them were **left FAILING rather than rewritten**,
+because rewriting a substrate expectation to match what was measured *after* the measurement is the
+act the amendment exists not to be:
+1. **The D-16 α-ladder no longer crosses zero** (`alpha_star_real` `nothing` / `nothing`, was
+   0.875 / 0.625; `m-bar` stays positive on both fixtures). So *"negative induced μ is
+   CONSTRUCTIBLE from real microscopy pixels via the D-16 mask-based reassignment"* — a sentence
+   written for the manuscript — **is RETRACTED**; it was an artefact of segregating a target
+   channel against a nuclear counterstain.
+2. **The D-05 coherence check that previously PASSED now DISAGREES**: contrast **0.09819** is inside
+   `tau = 0.15` so the label rule assigns RANDOM, while the net's argmax says COLOC.
+3. **Consequence:** the abort moved to `runtests.jl:223`, masking **seven** Phase-13 files. All
+   seven were run individually and pass (`test_p13_correction.jl` retains its 2 known deliberate
+   misses).
+**DECISION NEEDED:** accept the three misses as named limits, amend the D-16 real-substrate
+expectation, or re-order the harness so they stop masking siblings. **No seed, bar, floor, band or
+allowance may be moved to resolve this**, and `P13_ITERATION_ALLOWANCE` cannot be spent on a
+real-image observation (`13-SC2-AMENDMENT.md` §7).
+
 - **2026-07-29 — 13-14 COMPLETE (`0c1a0bd` report + `48fb808` ROADMAP tick-off). THE PHASE IS
   CLOSED.** `.planning/phases/13-three-hypothesis-amortized-bayes-factor/13-REPORT.md` (1,086 lines):
   what was CLAIMED, what was MEASURED, what was DECLINED, what is OWED.
