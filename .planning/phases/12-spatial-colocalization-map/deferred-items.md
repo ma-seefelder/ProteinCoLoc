@@ -67,3 +67,51 @@ surfaced. The defect has been present since 12-01 wired the aggregator first.
 
 **Suggested owner:** 12-05 (`test_p12_decoupling.jl`) already owns the suite-integrity surface,
 or a standalone `/gsd-quick`.
+
+### RESOLVED 2026-07-29 by the orchestrator — commit `fb76b84`
+
+The preferred fix was taken, and widened: **three** callers guarded on `:VAL_MASTER_SEED`, not one
+— `spike/demo.jl:62`, `spike/validation/harness.jl:51`, `spike/validation/train_ratio.jl:72`. All
+three now guard on `:SBC_M`, the name `validation/consts.jl` uniquely owns and already guards its
+own block on (`consts.jl:38-42`, which documents that sentinel in prose).
+
+Not a Phase-12 defect. FOUR files declare `VAL_MASTER_SEED`, all to the same value: the owner
+`validation/consts.jl:76` plus `p11_consts.jl:87`, `p12_consts.jl:103` and `p13/consts.jl:109` —
+each of the latter three *must* name it, because each lists it as a forbidden seed. Phase 11 and
+Phase 13 planted the same landmine; Phase 12 only stepped on it first.
+
+No seed, threshold, bar or pre-registered constant changed; no frozen consts file edited. Verified
+empirically in both load orders — p12-first yields `SBC_M = 2000`, `SBC_FIX_M = 50`,
+`load_frozen_model` defined; harness-alone yields the same and double-include is idempotent.
+`VAL_MASTER_SEED` keeps its value (1539375086) and resolves to the owner's `UInt32`.
+Regression confirmed cleared: `test_sbc.jl` runs **28/28** with the Phase-12 aggregator loaded first.
+
+---
+
+## DEF-12-02 — `p12_consts.jl` binds `:P11_DEV_SEED`, the sentinel `p11_consts.jl` guards its Tier-1 block on
+
+**Found during:** 12-06, building the ε-ridge runner against the Phase-11 pool.
+**Status:** WORKED AROUND per-runner, NOT structurally fixed. Live for every later plan.
+
+Same class as DEF-12-01, opposite direction. `p11_consts.jl:79` guards its whole Tier-1 block on
+`:P11_DEV_SEED`; `p12_consts.jl:108` legitimately binds that same name because R-5 requires Phase 12
+to forbid the Phase-11 stream **by name**. So loading p12 first silently no-ops p11's Tier-1 block,
+after which p11's Tier-2 block — guarded on a *different* sentinel, so it still runs — dies on
+`UndefVarError: SC2_SPEARMAN_ATTENUATION`.
+
+**Only `p11`-then-`p12` loads.** 12-06 ran both orders and fixed the order in its own runner header.
+
+**This will bite 12-13, 12-15 and 12-17**, each of which reaches for a Phase-11 file. Any new
+`run_p12_*` runner that includes both pre-registrations MUST include `p11_consts.jl` BEFORE
+`p12_consts.jl`.
+
+Not repaired structurally because both files are FROZEN Tier-1 and append-only, so neither the
+sentinel nor the binding can be changed. The durable repair is the 13-09 precedent — read the
+foreign consts file through a private module (`module _P11C`, cf. `module _GC` in
+`spike/p13/consts.jl:96-98` and `module GateV2P12` in `p12_consts.jl`) — which a later plan may
+adopt if the load-order convention proves too fragile to carry.
+
+**General lesson, now observed three times in this repo** (13-09, DEF-12-01, DEF-12-02):
+*"guarded include ⇒ order-free" is FALSE whenever two frozen consts files reserve the same name* —
+and every Phase-N pre-registration is REQUIRED to reserve the prior phases' seed names, so this
+collision is structural, not accidental. Guard each block on a sentinel the block alone owns.
