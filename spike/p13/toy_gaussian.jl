@@ -76,7 +76,7 @@ using Random                                # AbstractRNG threading + randperm (
 # the label surface (ThreeWayClass, target_matrix, head_log_odds), then the net (the REAL
 # architecture and the REAL masked loss this verification must exercise). Guarded for
 # idempotency, the house guarded-include idiom.
-isdefined(@__MODULE__, :P13_DEV_SEED)       || include(joinpath(@__DIR__, "consts.jl"))
+isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS) || include(joinpath(@__DIR__, "consts.jl"))
 isdefined(@__MODULE__, :three_way_label)    || include(joinpath(@__DIR__, "labels.jl"))
 isdefined(@__MODULE__, :ThreeWayEvidenceNet) || include(joinpath(@__DIR__, "net.jl"))
 

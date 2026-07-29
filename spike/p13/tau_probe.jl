@@ -89,7 +89,7 @@ import Random123: Philox4x   # counter-based per-index keys: the two disjoint un
 # then the prior (sample_prior + the frozen ghat knots), the forward simulator, the read-only
 # src/ summary contract, the 128-row encoding the statistic is read out of, and the seeding
 # primitives whose salt-XOR-into-the-first-key-word idiom the two arms copy.
-isdefined(@__MODULE__, :P13_DEV_SEED) || include(joinpath(@__DIR__, "consts.jl"))
+isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS) || include(joinpath(@__DIR__, "consts.jl"))
 isdefined(@__MODULE__, :sample_prior) || include(joinpath(@__DIR__, "..", "simulator", "prior.jl"))
 isdefined(@__MODULE__, :simulate_pair) || include(joinpath(@__DIR__, "..", "simulator", "forward.jl"))
 isdefined(@__MODULE__, :build_mci)    || include(joinpath(@__DIR__, "..", "contract.jl"))

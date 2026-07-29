@@ -76,9 +76,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # DECOUPLING (hard constraint, CLAUDE.md): spike-local constants; touches no src/,
 # adds no dependency, and reaches test/gate/ only READ-ONLY through an isolated module.
 #
-# Guarded as ONE Tier-1 block keyed on :P13_DEV_SEED so a re-include under a test file
-# or a runner is a silent no-op -- a redefinition to the same value would otherwise
-# warn on a `const`.
+# Guarded as ONE Tier-1 block keyed on :P13_DECLARED_DEVIATIONS -- a name this file alone
+# declares -- so a re-include under a test file or a runner is a silent no-op, while a
+# FOREIGN definition of some other Phase-13 name can never make this body skip. A
+# redefinition to the same value would otherwise warn on a `const`. (Was keyed on
+# :P13_DEV_SEED; 13-D15-AMENDMENT.md section 5B, .planning/CONVENTIONS.md C-01.)
 
 # The frozen AMENDED grid-8 ship-gate pre-registration, loaded into an ISOLATED module
 # purely to READ its derived seed families (PROD_SEED / PROD_SEED_V2) and its F5 image-size
@@ -90,14 +92,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # is not at top level ("syntax: \"module\" expression not at top level"), so it cannot
 # live inside the guard block below. Idempotency is instead provided by the guarded-include
 # idiom every caller uses:
-#     isdefined(@__MODULE__, :P13_DEV_SEED) || include(".../p13/consts.jl")
+#     isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS) || include(".../p13/consts.jl")
 #
 # NOTE THE PATH DEPTH: from spike/p13/ the repo root is TWO levels up, not three.
 module _GC
     include(joinpath(@__DIR__, "..", "..", "test", "gate", "gate_consts_8_v2.jl"))
 end
 
-if !isdefined(@__MODULE__, :P13_DEV_SEED)
+# THE BODY SENTINEL IS `P13_DECLARED_DEVIATIONS` (declared unconditionally at the foot of this
+# block), NOT `P13_DEV_SEED`. A seed is the WORST possible sentinel in this project: R-5 obliges
+# every Phase-N pre-registration to re-declare prior phases' seeds in order to assert stream
+# disjointness, so `spike/validation/p12_consts.jl:109` MUST mirror `P13_DEV_SEED` -- that mirror
+# is CORRECT and that file is not touched. Guarding on the mirrored name made a full-suite run
+# skip this entire body and leave ~104 Tier-1 constants undefined. The defect is on the guard
+# side. See .planning/CONVENTIONS.md C-01 and 13-D15-AMENDMENT.md section 5B (CHANGE B).
+if !isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS)
     import Random123: Philox4x     # counter-based RNG; the fresh disjoint Phase-13 streams
 
     # =====================================================================================
@@ -479,8 +488,10 @@ if !isdefined(@__MODULE__, :P13_DEV_SEED)
     # THE TWO ARMS ARE REPORTED SEPARATELY AND ARE NEVER AVERAGED, because their alpha = 0
     # semantics differ: on simulated substrate the ladder runs random -> exclusion BY
     # CONSTRUCTION, while on real substrate it runs MODERATELY COLOCALIZED -> near-exclusion
-    # (measured mbar = +0.3292 positive / +0.2481 negative at alpha = 0). Both are informative;
-    # they are not the same experiment.
+    # (frozen mbar at alpha = 0 on the OPERATIVE c2/c3 pair = +0.4603 positive / +0.3815
+    # negative; the previously quoted +0.3292 / +0.2481 were the c1/c2 counterstain read and are
+    # SUPERSEDED -- 13-D15-AMENDMENT.md CHANGE A). Both are informative; they are not the same
+    # experiment.
     #
     # EXECUTING RUNNER PER ARM: :simulated is plan 13-13's run_alpha_series.jl; :real is plan
     # 13-16's run_p13_realimage.jl.
@@ -543,14 +554,30 @@ if !isdefined(@__MODULE__, :P13_DEV_SEED)
     const P13_REAL_QUALITATIVE_ONLY  = true
     const P13_REAL_READ_ONLY         = true
 
-    # The pre-registered arms, mirroring 11-10-PLAN.md's shape. The primary channel pair is the
-    # EXACT pair the frozen `ghat` calibration anchor was measured on; the second arm is
-    # labelled REDUNDANCY and is never a separate claim.
+    # THE OPERATIVE CHANNEL PAIR, AMENDED 2026-07-29 (13-D15-AMENDMENT.md CHANGE A, section 5.1).
+    #
+    # WAS: P13_REAL_CHANNEL_PAIR = (1, 2) and P13_REAL_REDUNDANCY_PAIR = (1, 3). Both SUPERSEDED,
+    # and still citable in git at c42cc8e / bfba6ac.
+    #
+    # WHY, in one sentence: the constant named the WRONG PHYSICAL OBJECT. test/runtests.jl:105
+    # records the fixture channels as ["blue", "green", "red"], so c1 is the DAPI/Hoechst NUCLEAR
+    # COUNTERSTAIN and not a target protein at all -- any pair containing it measures
+    # counterstain-versus-protein overlap, which is not colocalization under any definition this
+    # project uses. spike/simulator/ghat.jl:59 had ALREADY been corrected to
+    # ANCHOR_CHANNEL_PAIR = (2, 3) on 2026-07-25 (78dc37f), 39 h before this file was written;
+    # Phase 13 drifted from its own frozen upstream calibration source. This is a factual
+    # correction, not a bar being relaxed: no real-image quantity has ever had a bar at all
+    # (P13_REAL_IS_GATED = false).
+    #
+    # THE REDUNDANCY ARM IS DROPPED, NOT REPOINTED, AND HAS NO REPLACEMENT. With c1 excluded and
+    # the fixtures carrying exactly three channels, THERE IS NO SECOND PAIR. The frozen (1, 3)
+    # was DAPI-versus-red and measured -0.0925 masked on the POSITIVE fixture -- noise, not
+    # corroboration -- and a redundancy arm that corroborates nothing is worse than none, because
+    # it gets quoted as a second observation. Dropping it REDUCES what this phase reports.
     const P13_REAL_CONDITIONS      = ("positive", "negative")
     const P13_REAL_SAMPLE          = "positive"
     const P13_REAL_CONTROL         = "negative"
-    const P13_REAL_CHANNEL_PAIR    = (1, 2)
-    const P13_REAL_REDUNDANCY_PAIR = (1, 3)
+    const P13_REAL_CHANNEL_PAIR    = (2, 3)
 
     # GRID TRUNCATION, STATED EXPLICITLY BECAUSE A READER WHO COMPUTES 1028/8 WILL EXPECT
     # 128.5-px patches. patch() TRUNCATES to the largest exact multiple
@@ -569,11 +596,34 @@ if !isdefined(@__MODULE__, :P13_DEV_SEED)
     const P13_REAL_IMSIZE               = (1028, 1376)
     const P13_REAL_GRID_TRUNCATION_ROWS = 4
 
-    # THE FROZEN LINEAGE ANCHORS, recorded at spike/simulator/ghat.jl:39 and reproduced exactly
+    # THE FROZEN LINEAGE ANCHORS, recorded at spike/simulator/ghat.jl:66 and reproduced exactly
     # during research. The ingestion REGRESSES against these, which is what makes the real
     # substrate a lineage-carrying reference point in this project's own simulator calibration
     # rather than an arbitrary set of TIFFs.
-    const P13_REAL_ANCHOR_MBAR = (positive = 0.3292, negative = 0.2481)
+    #
+    # AMENDED 2026-07-29 (13-D15-AMENDMENT.md CHANGE A, section 5.1) together with the pair
+    # above. WAS (positive = 0.3292, negative = 0.2481) -- the UNMASKED c1/c2 counterstain read,
+    # SUPERSEDED. These are the UNMASKED c2/c3 values, 64/64 patches on both fixtures.
+    #
+    # ===== THE MASKED FIGURES ARE FORBIDDEN IN THIS ARM. THEY ARE THE TRAP. =====
+    # The MASKED read of THIS SAME c2/c3 pair is positive +0.8238 (22/64 patches) and negative
+    # -0.0338 (20/64 patches) -- a separation of 0.8576 against the 0.0788 adopted here, and
+    # spike/simulator/ghat.jl:69-71 calls the masked pair the sharper separator and RETRACTS its
+    # own earlier anti-masked framing as overstated. THEY MUST NOT BE USED HERE, HOWEVER MUCH
+    # BETTER THEY SEPARATE. The reason is a property of the code, not a preference:
+    #   (i)  patch_summary (spike/contract.jl:85, matching src/amortized/summary.jl:54) applies
+    #        NO Otsu mask, so the net was TRAINED on unmasked summaries. Masked summaries would
+    #        be off-distribution input to it, and these fixtures are ALREADY OOD-flagged -- so
+    #        masking would push them further out and the resulting log-BFs would be measuring
+    #        the mask rather than the specimens.
+    #   (ii) the masked estimator carries a RANGE-RESTRICTION caveat: each channel is thresholded
+    #        independently and _exclude_zero then keeps only pixels bright in BOTH, a selection
+    #        on both variables, leaving only ~20-22 of 64 patches above the 15-survivor floor.
+    # THE HONEST CONSEQUENCE, STATED SO IT IS NOT ABSORBED: unmasked, the corrected pair
+    # separates the two fixtures by 0.0788, against 0.0811 for the superseded pair. THE
+    # CORRECTION MAKES THIS ARM HONEST, NOT STRONG. It measures the right physical object and it
+    # buys no evidence; the arm remains qualitative, n = 2, unlabelled and OOD-bound.
+    const P13_REAL_ANCHOR_MBAR = (positive = 0.4603, negative = 0.3815)
     # An ingestion REGRESSION tolerance -- explicitly NOT a Phase-13 pass/fail bar. Documented
     # exemption 1 of 2 in the not-a-gate source assertion.
     const P13_REAL_ANCHOR_TOL  = 1e-3
@@ -614,6 +664,12 @@ if !isdefined(@__MODULE__, :P13_DEV_SEED)
     const P13_REAL_OOD_COMPARISON = true
     # The measured shipped-net numbers, frozen so the comparison has a stable reference. BOTH
     # fixtures are flagged out-of-distribution at 2.4x over threshold in BOTH read directions.
+    # PROVENANCE, AFTER 13-D15-AMENDMENT.md CHANGE A: P13_REAL_OOD_SHIPPED_DENSITY = 433.69 is a
+    # MEASUREMENT ON THE SUPERSEDED c1/c2 PAIR. It is kept, unchanged, as a frozen historical
+    # reference. The corrected run's shipped-detector reading on c2/c3 WILL differ from it, and
+    # that difference is A RESULT, not a discrepancy to reconcile (amendment section 6.5).
+    # P13_REAL_OOD_SHIPPED_THRESHOLD is a property of the BUNDLE, not of the pair, so it is
+    # unaffected and remains the runner's bundle selector.
     # THIS IS NOT A BUG AND NOT A REASON TO SKIP THE CHECK: it is the OOD channel doing its job,
     # it is arguably the most honest single number the real-data arm produces, it must NEVER be
     # suppressed or "fixed" (Pitfall 13), and every real-image result is printed next to its OOD
@@ -626,8 +682,9 @@ if !isdefined(@__MODULE__, :P13_DEV_SEED)
     # 13-RESEARCH Open Question 8 answered YES: carry the honesty note verbatim.
     const P13_REAL_NAMING_CORRECTION = """
     NAMING CORRECTION (must appear in the report). The folder names positive/ and negative/ are
-    the original package's biological test conditions, NOT colocalization labels. The
-    "negative" pair measures mean patch correlation +0.2481 (rho_true ~ +0.215) and is
+    the original package's biological test conditions, NOT colocalization labels. On the
+    operative c2/c3 pair the "negative" pair measures mean patch correlation +0.3815 -- MORE
+    positively correlated, not less, than the +0.2481 the superseded c1/c2 pair read -- and is
     therefore a POSITIVELY CORRELATED pair, not an anti-correlated one. Nothing in this phase
     may treat negative/ as an exclusion example, and a reader who assumes otherwise will
     misread every real-image figure in the phase.
@@ -706,7 +763,7 @@ if !isdefined(@__MODULE__, :P13_DEV_SEED)
     @assert P13_REAL_OOD_COMPARISON == true &&
             P13_REAL_OOD_SHIPPED_DENSITY > P13_REAL_OOD_SHIPPED_THRESHOLD
     @assert occursin("biological", P13_REAL_NAMING_CORRECTION) &&
-            occursin("0.2481", P13_REAL_NAMING_CORRECTION)
+            occursin("0.3815", P13_REAL_NAMING_CORRECTION)
     @assert occursin("Phase 16", P13_REAL_SUBSTITUTION_RECORD)
     # Deferrals and the fixed-length declared-deviation enumeration.
     @assert P13_SRC_UNTOUCHED == true && P13_RESULTS_RENAME_DEFERRED == true
@@ -788,8 +845,11 @@ end
 # measurement exists in git history at a commit that contains no Tier-2 value, so no reader
 # has to take the ordering on trust.
 #
-# Guarded on :P13_TAU, a DIFFERENT sentinel from the Tier-1 block's :P13_DEV_SEED, so this
-# block is independently idempotent under a re-include.
+# Guarded on :P13_TAU, a DIFFERENT sentinel from the Tier-1 block's
+# :P13_DECLARED_DEVIATIONS, so this block is independently idempotent under a re-include.
+# NOTE :P13_TAU is deliberately NOT a candidate for the Tier-1 sentinel: it is Tier-2 and
+# legitimately SOMETIMES ABSENT (line 745 tolerates its absence), and a sometimes-absent
+# sentinel would let the Tier-1 body run twice.
 if !isdefined(@__MODULE__, :P13_TAU)
     const P13_TAU = 0.15                    # first grid delta clearing the bar; A(tau) = 0.916356
     const P13_TAU_MEASURED_AUC = 0.91635625 # the realized A(tau) = max(A_neg, A_pos) at tau

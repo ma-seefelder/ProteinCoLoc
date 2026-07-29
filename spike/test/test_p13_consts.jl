@@ -39,7 +39,7 @@ using Test
 
 # Unit under test: the Tier-1 pre-registration. Guarded so a re-include under the harness
 # is a silent no-op.
-isdefined(@__MODULE__, :P13_DEV_SEED) || include(joinpath(@__DIR__, "..", "p13", "consts.jl"))
+isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS) || include(joinpath(@__DIR__, "..", "p13", "consts.jl"))
 
 # The pre-registration source, read ONCE (the test_bf.jl:67 idiom), for the source-grep
 # assertions below. COMMENT LINES ARE STRIPPED before any count/occursin assertion, so the
@@ -232,14 +232,23 @@ const P13_CONSTS_CODE = join(
         @test P13_REAL_CONDITIONS == ("positive", "negative")
         @test P13_REAL_SAMPLE == "positive"
         @test P13_REAL_CONTROL == "negative"
-        @test P13_REAL_CHANNEL_PAIR == (1, 2)
-        @test P13_REAL_REDUNDANCY_PAIR == (1, 3)
+        # AMENDED 2026-07-29 (13-D15-AMENDMENT.md CHANGE A). The operative pair is c2/c3 --
+        # green/red, the two target proteins. The superseded (1, 2) and the dropped redundancy
+        # pair (1, 3) both contained c1, the DAPI/Hoechst nuclear counterstain, and are citable
+        # in git at c42cc8e / bfba6ac. An assertion that claims to read the pre-registration
+        # must read what the pre-registration SAYS, so these are rewritten, not relabelled.
+        @test P13_REAL_CHANNEL_PAIR == (2, 3)
+        @test !isdefined(@__MODULE__, :P13_REAL_REDUNDANCY_PAIR)
         @test P13_REAL_IMSIZE == (1028, 1376)
         @test P13_REAL_GRID_TRUNCATION_ROWS == 4
 
-        # The frozen ghat lineage anchors the ingestion regresses against.
-        @test P13_REAL_ANCHOR_MBAR.positive == 0.3292
-        @test P13_REAL_ANCHOR_MBAR.negative == 0.2481
+        # The frozen ghat lineage anchors the ingestion regresses against. AMENDED to the
+        # UNMASKED c2/c3 values (ghat.jl:66, 64/64 patches on both fixtures). The MASKED read of
+        # the same pair (+0.8238 / -0.0338) separates the controls far more sharply and is
+        # FORBIDDEN here: patch_summary applies no Otsu mask, so the net was trained on unmasked
+        # summaries -- see consts.jl and 13-D15-AMENDMENT.md section 5.3.
+        @test P13_REAL_ANCHOR_MBAR.positive == 0.4603
+        @test P13_REAL_ANCHOR_MBAR.negative == 0.3815
         @test P13_REAL_ANCHOR_TOL == 1e-3
 
         @test P13_REAL_ALPHA_GRID == P13_ALPHA_LADDER
@@ -254,7 +263,7 @@ const P13_CONSTS_CODE = join(
         @test P13_REAL_NAMING_CORRECTION isa AbstractString
         @test !isempty(strip(P13_REAL_NAMING_CORRECTION))
         @test occursin("biological", P13_REAL_NAMING_CORRECTION)
-        @test occursin("0.2481", P13_REAL_NAMING_CORRECTION)
+        @test occursin("0.3815", P13_REAL_NAMING_CORRECTION)
         @test P13_REAL_SUBSTITUTION_RECORD isa AbstractString
         @test !isempty(strip(P13_REAL_SUBSTITUTION_RECORD))
         @test occursin("Phase 16", P13_REAL_SUBSTITUTION_RECORD)

@@ -70,7 +70,7 @@ using Random        # AbstractRNG (the threaded counter-based stream)
 # ORDER MATTERS: the pre-registration first (p13_tau, P13_CUT_VARIANT, P13_DATAGEN_COUNTER,
 # p13_rng), then the simulator prior (sample_prior). Guarded for idempotency under
 # runtests.jl, the house guarded-include idiom.
-isdefined(@__MODULE__, :P13_DEV_SEED) || include(joinpath(@__DIR__, "consts.jl"))
+isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS) || include(joinpath(@__DIR__, "consts.jl"))
 isdefined(@__MODULE__, :sample_prior) || include(joinpath(@__DIR__, "..", "simulator", "prior.jl"))
 
 # The ordering is exclusion / random / coloc so that `Int` order matches INCREASING rho,

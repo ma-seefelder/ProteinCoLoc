@@ -32,8 +32,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 # THE NAMING CORRECTION APPLIES HERE TOO. positive/ and negative/ are the original package's
 # BIOLOGICAL test conditions, not colocalization labels; the "negative" pair measures mean patch
-# correlation +0.2481 and is a POSITIVELY correlated pair. Nothing below treats negative/ as an
-# exclusion example.
+# correlation +0.3815 on the OPERATIVE c2/c3 pair (+0.2481 on the SUPERSEDED c1/c2 pair;
+# 13-D15-AMENDMENT.md CHANGE A) and is a POSITIVELY correlated pair either way -- MORE so on the
+# corrected pair, not less. Nothing below treats negative/ as an exclusion example.
 #
 # PITFALL 2b, THE ONE THAT WOULD SILENTLY BREAK THIS SUITE. The naive repair of the _exclude_zero
 # trap is to assert that every output pixel is strictly positive. That property is FALSE on this
@@ -88,6 +89,12 @@ _strip_comments(s) = join(filter(l -> !startswith(strip(l), "#"), split(s, '\n')
 const P13_CODE   = Dict(f => _strip_comments(read(joinpath(P13_DIR, f), String)) for f in P13_JL)
 const REAL_CODE  = P13_CODE["real_images.jl"]
 const CONSTS_CODE = P13_CODE["consts.jl"]
+# FUTURE-PROOFING THE NOT-A-GATE SOURCE GATE, and a NO-OP today. Under the M1 mechanism
+# (13-D15-AMENDMENT.md section 7.1) the operative constants stay in consts.jl, so this `get`
+# returns "" and changes nothing. If a LATER amendment ever adds a sibling constants file, the
+# bar-name set equality below would otherwise stop seeing it. The `readdir` discovery at :86-88
+# is NOT touched: a discovered gate must never be swapped for an enumerated one.
+const AMENDED_CODE = get(P13_CODE, "consts_d15_amendment.jl", "")
 
 # THE TWO FORBIDDEN NAMES ARE ASSEMBLED FROM FRAGMENTS AT THE ASSERTION SITE, ON PURPOSE, so this
 # test file does not itself embed the literals it forbids -- otherwise the gate would trip on its
@@ -141,10 +148,29 @@ const SEALED_FN  = "open" * "_sealed" * "_holdout"
         # pair, because c1 is the DAPI/Hoechst nuclear counterstain. That does not weaken the
         # read-chain identity claim asserted here, and it does not license reinterpreting the
         # c1/c2 number as a colocalization measurement.
-        @test isapprox(real_mbar("positive"), P13_REAL_ANCHOR_MBAR.positive;
+        #
+        # BOTH SIDES ARE PINNED TO LITERALS ON PURPOSE, AND THAT IS THE POINT OF THIS BLOCK.
+        # 13-D15-AMENDMENT.md CHANGE A moved P13_REAL_CHANNEL_PAIR to (2, 3) AND
+        # P13_REAL_ANCHOR_MBAR to the c2/c3 values TOGETHER. Had this assertion gone on riding
+        # the default pair and comparing against the constant, both sides would have moved
+        # together, it would STILL HAVE PASSED, and the c1/c2 read-chain identity proof would
+        # have been silently destroyed while this very comment went on claiming to test it. So
+        # the pair is named explicitly and the expected values are literals.
+        #
+        # THIS IS A READ-CHAIN IDENTITY CHECK ON A SUPERSEDED PAIR. It is NEVER a colocalization
+        # measurement and NEVER a pass condition for a colocalization claim.
+        @test isapprox(real_mbar("positive"; channels = (1, 2)), 0.3292;
                        atol = P13_REAL_ANCHOR_TOL)
-        @test isapprox(real_mbar("negative"), P13_REAL_ANCHOR_MBAR.negative;
+        @test isapprox(real_mbar("negative"; channels = (1, 2)), 0.2481;
                        atol = P13_REAL_ANCHOR_TOL)
+
+        # THE OPERATIVE REGRESSION, on the AMENDED pair, against the amended anchors. This one
+        # IS the colocalization read chain: c2/c3 = green/red, the two target proteins.
+        for cond in P13_REAL_CONDITIONS
+            @test isapprox(real_mbar(cond; channels = P13_REAL_CHANNEL_PAIR),
+                           getproperty(P13_REAL_ANCHOR_MBAR, Symbol(cond));
+                           atol = P13_REAL_ANCHOR_TOL)
+        end
 
         # Boundary validation happens BEFORE the filesystem is touched, and the sealed substrate
         # is not reachable by asking for it under another name.
@@ -186,6 +212,17 @@ const SEALED_FN  = "open" * "_sealed" * "_holdout"
             # naive form would fail a CORRECT algorithm and turn this suite red for a reason that
             # has nothing to do with the transform. The correct reference is the count on the
             # UNMODIFIED channel, which is why it is recorded in provenance rather than assumed.
+            #
+            # MEASURED MISS AFTER 13-D15-AMENDMENT.md CHANGE A, LEFT FAILING DELIBERATELY.
+            # The 2-and-3 source zeros quoted above are a property of c2, which was the
+            # TRANSFORMED channel while the pair was c1/c2. On the amended pair c2/c3 the
+            # transformed channel is c3, and c3 carries ZERO exact-zero pixels on one condition,
+            # so this line now reads `0 > 0` and FAILS. The invariant it guards is UNAFFECTED:
+            # the zero-count-preserved checks immediately below still pass on both conditions.
+            # What has failed is a non-degeneracy guard asserting that the check is being
+            # exercised against a non-trivial reference. It is NOT rewritten to the c3 counts,
+            # because rewriting a substrate expectation to match what was measured after the
+            # measurement is the act the amendment exists not to be. Reported, not adjusted.
             @test REAL_ZEROS[c] > 0
             for (k, p) in enumerate(built)
                 @test count(iszero, p[2]) == REAL_ZEROS[c]
@@ -229,6 +266,26 @@ const SEALED_FN  = "open" * "_sealed" * "_holdout"
             # crossing point informative. On this substrate alpha = 0 is a MODERATELY COLOCALIZED
             # pair, not a random one; the real and simulated arms are reported separately and are
             # never averaged, because their alpha = 0 semantics differ.
+            #
+            # MEASURED MISS AFTER 13-D15-AMENDMENT.md CHANGE A, LEFT FAILING DELIBERATELY, AND
+            # THIS ONE IS A SUBSTANTIVE SCIENTIFIC FINDING RATHER THAN A BOOKKEEPING BREAK.
+            # On the SUPERSEDED c1/c2 pair the ladder crossed zero inside the grid and reached
+            # m-bar -0.16787 / -0.25198 at alpha = 1 -- the basis of the claim that negative
+            # induced mu is CONSTRUCTIBLE from real microscopy pixels. On the AMENDED c2/c3
+            # pair it does NOT cross zero at all: measured +0.460266 -> +0.138056 (positive)
+            # and +0.381475 -> +0.204141 (negative). Strict monotone decrease (the line above)
+            # still HOLDS; only the reach into negative m-bar is gone.
+            #
+            # Physically this is unsurprising: the mask is the Otsu mask of the pair's FIRST
+            # channel, which was the nuclear counterstain c1 and is now the green target c2.
+            # Redistributing red away from green objects, when green and red co-occur and share
+            # a bright background, cannot drive the correlation below zero the way
+            # redistributing green away from nuclei could.
+            #
+            # THIS LINE IS NOT REWRITTEN OR RELAXED. It is left failing so the retraction is
+            # visible in the suite rather than only in a document. The disposition of the
+            # superseded "negative induced mu is constructible from real pixels" claim is a
+            # pre-registration decision, escalated by 13-17 rather than resolved in execution.
             mbars = [r.mbar for r in rungs]
             @test all(isfinite, mbars)
             @test all(mbars[i] < mbars[i - 1] for i in 2:length(mbars))
@@ -311,7 +368,7 @@ const SEALED_FN  = "open" * "_sealed" * "_holdout"
         # The two honesty strings are carried verbatim, not paraphrased.
         @test !isempty(strip(P13_REAL_NAMING_CORRECTION))
         @test occursin("biological", P13_REAL_NAMING_CORRECTION)
-        @test occursin("+0.2481", P13_REAL_NAMING_CORRECTION)
+        @test occursin("+0.3815", P13_REAL_NAMING_CORRECTION)
         @test !isempty(strip(P13_REAL_SUBSTITUTION_RECORD))
         @test occursin("Phase 16", P13_REAL_SUBSTITUTION_RECORD)
 
@@ -333,7 +390,8 @@ const SEALED_FN  = "open" * "_sealed" * "_holdout"
         # constant names its role as a whole segment.
         barwords = ("FLOOR", "MIN", "MAX", "THRESHOLD", "TOL", "BOUND", "CUTOFF")
         allowed = Set(["P13_REAL_ANCHOR_TOL", "P13_REAL_OOD_SHIPPED_THRESHOLD"])
-        names = Set(String[m.match for m in eachmatch(r"P13_REAL_[A-Z0-9_]+", CONSTS_CODE)])
+        names = Set(String[m.match for m in eachmatch(r"P13_REAL_[A-Z0-9_]+",
+                                                      CONSTS_CODE * "\n" * AMENDED_CODE)])
         barlike = filter(n -> any(seg -> seg in barwords, split(n, '_')), names)
         @test barlike == allowed
     end

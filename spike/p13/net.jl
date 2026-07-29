@@ -86,7 +86,7 @@ using Dates                                        # UTC-labelled artifact times
 # ORDER MATTERS: the pre-registration first (P13_NUM_SUMMARIES, P13_SUMMARY_WIDTH, the copied
 # recipe, P13_USE_GPU, P13_DEV_SEED), then the label surface (target_matrix, head_log_odds).
 # Guarded for idempotency, the house guarded-include idiom.
-isdefined(@__MODULE__, :P13_DEV_SEED)   || include(joinpath(@__DIR__, "consts.jl"))
+isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS) || include(joinpath(@__DIR__, "consts.jl"))
 isdefined(@__MODULE__, :three_way_label) || include(joinpath(@__DIR__, "labels.jl"))
 
 if !isdefined(@__MODULE__, :ThreeWayEvidenceNet)
@@ -522,6 +522,41 @@ pre-registration forbids EDITING a constant, so a changed sha on a file that sho
 have been APPENDED to is itself the audit signal.
 """
 p13_consts_sha() = bytes2hex(SHA.sha256(read(joinpath(@__DIR__, "consts.jl"))))
+
+"""
+    P13_CONSTS_SHA :: NamedTuple
+
+The TWO sha256 values `spike/p13/consts.jl` has legitimately held. **A third value is drift.**
+
+  * `pre_amendment`  -- `c42cc8e` + `bfba6ac`; the value EVERY 13-10..13-16 artifact recorded at
+    train time, including `spike/p13/three_way_net.jld2`'s `consts_sha`.
+  * `post_amendment` -- after `13-D15-AMENDMENT.md` (CHANGE A: the c2/c3 operative pair, the
+    dropped redundancy arm, the unmasked anchors; CHANGE B: the include-guard sentinel),
+    2026-07-29.
+
+Both literals were copied from live command output
+(`bytes2hex(SHA.sha256(read("spike/p13/consts.jl")))`), never retyped and never copied out of a
+document. **This amendment authorises no further amendment**, so no third value is legitimate.
+
+WHY PINNING BOTH SIDES IS LEGITIMATE, AND WHY IT IS STRICTLY STRONGER THAN WHAT IT REPLACES.
+Training reads NO `P13_REAL_*` constant (grep-verified, `13-D15-AMENDMENT.md` section 3), so the
+amended values are ones the trained net never consumed -- the divergence between the artifact's
+recorded sha and the current file's is by DESIGN, not drift. The assertion it replaces,
+`h.consts_sha == p13_consts_sha()`, only required the two sides to AGREE WITH EACH OTHER: a
+retrain plus an undisclosed edit would have satisfied it silently. Pinning both sides to named,
+dated literals catches that.
+
+REJECTED, and recorded so a later reader knows it was considered: the widened form
+`h.consts_sha == p13_consts_sha() || h.consts_sha == PRE_AMENDMENT_SHA`. Once that disjunction
+exists it accepts ANY future drift silently -- a second, third or undisclosed edit to
+`consts.jl` also passes, because the artifact side alone satisfies the first branch. That would
+convert a real integrity check into decoration, which is the one outcome the amendment must not
+produce.
+"""
+const P13_CONSTS_SHA = (
+    pre_amendment  = "100e97a37bb470bb7cb4fbdbd8e33f219d83adcf61fe398a90cf3ad3391f3fa6",
+    post_amendment = "d6a6e63bf19bb13ad5c61eeaaf9fc18fab27c5aa7ba879bad5c493a5c71ae247",
+)
 
 end  # guard: !isdefined(:ThreeWayEvidenceNet)
 

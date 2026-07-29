@@ -188,7 +188,7 @@ end
 #     summary contract, the encoder and the seeding primitives. Guarded for idempotency.
 isdefined(@__MODULE__, :P11BoundedThetaTransform) ||
     include(joinpath(@__DIR__, "..", "npe", "p11_architecture.jl"))
-isdefined(@__MODULE__, :P13_DEV_SEED)      || include(joinpath(@__DIR__, "consts.jl"))
+isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS) || include(joinpath(@__DIR__, "consts.jl"))
 isdefined(@__MODULE__, :load_npe)          || include(joinpath(@__DIR__, "..", "npe", "train_npe.jl"))
 isdefined(@__MODULE__, :standardize_summary) || include(joinpath(@__DIR__, "..", "npe", "infer.jl"))
 isdefined(@__MODULE__, :ThreeWayEvidenceNet) || include(joinpath(@__DIR__, "net.jl"))

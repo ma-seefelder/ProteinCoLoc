@@ -76,7 +76,7 @@ isdefined(@__MODULE__, :AbstractColocResult) ||
     include(joinpath(@__DIR__, "..", "..", "src", "results.jl"))
 # The Tier-1 pre-registration: P13_ECE_GREEN / P13_ECE_YELLOW / P13_ECE_NBINS /
 # P13_GATE_STATISTIC / P13_VACUOUS_AUC_FLOOR / P13_RESULTS_RENAME_DEFERRED.
-isdefined(@__MODULE__, :P13_DEV_SEED) || include(joinpath(@__DIR__, "consts.jl"))
+isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS) || include(joinpath(@__DIR__, "consts.jl"))
 # The shared, gate-lineage calibration surface: CalibrationResult + _bin_calibration. Guarded on
 # the FUNCTION rather than the struct, because the function is what this file's meta-builder
 # consumes. NEVER hand-modified here -- see the empty-bin note on p13_calibration_meta.

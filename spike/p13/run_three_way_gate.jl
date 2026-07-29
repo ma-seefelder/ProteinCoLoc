@@ -335,7 +335,15 @@ function main(; m::Integer = P13_GATE_M,
         println("NET UNDER TEST:")
         println("  artifact                = $net_path")
         println("  head_log_odds (MEASURED, persisted) = $hlo")
-        println("  consts sha256 at train time         = $(h.consts_sha)")
+        println("  consts sha256 at train time         = $(h.consts_sha)   " *
+                "(P13_CONSTS_SHA.pre_amendment)")
+        println("  consts sha256 of the file NOW        = $(p13_consts_sha())   " *
+                "(P13_CONSTS_SHA.post_amendment)")
+        println("  THE TWO consts_sha VALUES DIFFER BY DESIGN: 13-D15-AMENDMENT.md amended")
+        println("  consts.jl AFTER this net was trained, and training reads no P13_REAL_*")
+        println("  constant, so the amended values are ones this net never consumed. Both")
+        println("  sides are asserted below against the NAMED, DATED P13_CONSTS_SHA pair --")
+        println("  a third consts.jl sha256 is drift, not an amendment.")
         println("  tau at train time                   = $(h.tau)   " *
                 "cut = $(h.cut_variant)")
         println("STREAM (D-01):")
@@ -350,7 +358,16 @@ function main(; m::Integer = P13_GATE_M,
     @assert P13_GATE_COUNTER != P13_DATAGEN_COUNTER "the reported evaluation set must not ride the training pool's counter"
     @assert !(UInt64(P13_DEV_SEED) in _p13_forbidden()) "P13_DEV_SEED is a forbidden (pre-observed) seed"
     @assert UInt64(P13_DEV_SEED) != UInt64(P13_FIX_SEED) "the reported stream must differ from the fixture stream"
-    @assert h.consts_sha == p13_consts_sha() "the frozen pre-registration changed since the net was trained: consts.jl sha256 does not match the artifact's"
+    # THE TRAIN-TIME PROVENANCE GUARD, RE-DERIVED BY 13-D15-AMENDMENT.md section 7.3. The two
+    # sides are now pinned to NAMED, DATED literals instead of merely to each other, which is
+    # STRICTLY STRONGER: the old single equality would have passed silently after a retrain plus
+    # an undisclosed edit. They are EXPECTED to differ here -- the net was trained under the
+    # pre-amendment pre-registration and consts.jl now carries the amendment -- and that
+    # divergence is asserted rather than tolerated. Training reads no P13_REAL_* constant, so the
+    # amended values are ones this net never consumed. The widened `||` form is REJECTED: it
+    # would accept any future drift silently. See P13_CONSTS_SHA in spike/p13/net.jl.
+    @assert h.consts_sha     == P13_CONSTS_SHA.pre_amendment  "the net was NOT trained under the frozen pre-registration: its recorded consts_sha is not the pre-amendment sha256 (spike/p13/net.jl P13_CONSTS_SHA.pre_amendment)"
+    @assert p13_consts_sha() == P13_CONSTS_SHA.post_amendment "spike/p13/consts.jl is at NEITHER sha256 this amendment authorises (13-D15-AMENDMENT.md section 7.3): a third value is drift, not an amendment"
 
     # --- 4. THE FRESH EVALUATION SET --------------------------------------------------------
     verbose && println("[1/6] generating the FRESH evaluation set: $m labelled pairs at " *
