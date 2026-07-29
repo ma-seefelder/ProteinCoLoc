@@ -115,3 +115,77 @@ adopt if the load-order convention proves too fragile to carry.
 *"guarded include ⇒ order-free" is FALSE whenever two frozen consts files reserve the same name* —
 and every Phase-N pre-registration is REQUIRED to reserve the prior phases' seed names, so this
 collision is structural, not accidental. Guard each block on a sentinel the block alone owns.
+
+---
+
+## DEF-12-03 — the SAME collision against Phase 13: `runtests.jl` now dies with 114 `UndefVarError`s in `test_p13_consts.jl`
+
+**Found during:** 12-07, running the plan-level verification `julia --project=spike spike/test/runtests.jl`.
+**Caused by:** NOT 12-07. Neither file this plan touches (`spike/simulator/p12_prior.jl`,
+`spike/test/test_p12_prior.jl`) appears anywhere in the failing chain — proof below.
+
+### The mechanism
+
+Exactly DEF-12-02's class, third direction:
+
+1. `spike/p13/consts.jl:100` guards its **entire** Tier-1 block on `if !isdefined(@__MODULE__, :P13_DEV_SEED)`.
+2. `spike/validation/p12_consts.jl:109` legitimately binds `const P13_DEV_SEED = 0x0000_0000_0B13_DE71`,
+   because R-5 requires Phase 12 to forbid the Phase-13 stream **by name**. (The value is identical
+   to `p13/consts.jl:188`; no seed changed and no pre-registration was breached — the collision is
+   in the NAME, used as a sentinel.)
+3. `runtests.jl:174` loads the Phase-12 aggregator FIRST, so `test_p12_consts.jl` puts
+   `P13_DEV_SEED` into `Main` before anything Phase-13 runs.
+4. `test_p13_consts.jl:42`'s `isdefined(@__MODULE__, :P13_DEV_SEED) || include(".../p13/consts.jl")`
+   therefore SKIPS the include, and `P13_SALT`, `_p13_forbidden`, `P13_DECLARED_DEVIATIONS` and every
+   other Phase-13 constant never comes into existence.
+5. `test_p13_consts.jl` reports **22 passed, 1 failed, 114 errored** and throws, aborting
+   `runtests.jl` (exit 1) at line 220.
+
+Reproduced in one process with **neither 12-07 file loaded** (2026-07-29):
+
+```
+include("spike/test/test_p12_consts.jl")   # 12-01's file, alone
+>>> after p12_consts: P13_DEV_SEED defined? true   P13_SALT defined? false
+```
+
+`P13_DEV_SEED` is defined while `P13_SALT` is not — i.e. the sentinel is set and the block that
+would define the rest was skipped. Same signature as DEF-12-01's proof.
+
+### Why it appeared only now
+
+It was MASKED by the Phase-4 `SPEEDUP_GATE`, which threw at `test_npe.jl` and aborted everything
+after it in the 12-01/12-02/12-03 sessions (measured `median_speedup` 84.44 / 88.60 / 89.77 against
+a bar of 100). Commit `a494247` — *"test(04): PAUSE the NPE-03 wall-clock gate — not retire it, not
+relax it"* — converted that assertion to `@test_broken`, so Phase 4 now reports `149 passed,
+1 broken` instead of throwing, and `runtests.jl` reached the Phase-13 block for the **first time**.
+The defect has been present since 12-01 committed `p12_consts.jl`.
+
+### Why 12-07 does not fix it
+
+- `spike/validation/p12_consts.jl` is **FROZEN Tier-1, append-only**; the offending line is an
+  existing declaration, so editing it is a pre-registration breach by construction.
+- `spike/test/test_p13_consts.jl` and `spike/p13/consts.jl` are Phase-13 files and **a Phase-13
+  executor is live on this same branch**. Editing them from a Phase-12 plan is both out of scope
+  and a concurrent-write hazard.
+- 12-07's `files_modified` is two files, neither of which is in the chain.
+
+### Candidate fixes, for whoever owns it
+
+- Re-guard `test_p13_consts.jl:42` on a sentinel `spike/p13/consts.jl` **alone** owns —
+  `:P13_SALT` is the obvious choice, exactly as DEF-12-01 was resolved by re-guarding three
+  callers on `:SBC_M`. One line, no pre-registration surface touched. **Preferred.**
+- Or have `spike/p13/consts.jl:100` guard on `:P13_SALT` instead of `:P13_DEV_SEED` (same
+  one-line shape, but touches a frozen file's guard line — prefer the caller-side fix).
+- Do NOT "fix" it by editing `p12_consts.jl` or by moving the Phase-12 include; `test_p12_consts.jl`
+  testset 9 asserts the first-position ordering and 12-01 owns that decision.
+
+**Suggested owner:** the Phase-13 executor (it owns those files and is live), or a standalone
+`/gsd-quick` once Phase 13's wave settles.
+
+**Fourth observation of the same class** (13-09, DEF-12-01, DEF-12-02, DEF-12-03). The prediction in
+DEF-12-02's closing paragraph — that every Phase-N pre-registration is *required* to reserve prior
+phases' seed names, so the collision is structural — is now confirmed against every phase
+`p12_consts.jl` reserves a seed name for: Phase 5 (DEF-12-01), Phase 11 (DEF-12-02), Phase 13
+(DEF-12-03). The durable repair is one convention, applied once: **guard each block on a sentinel
+that block alone owns** — a salt or a bar, never a seed name, because seed names are exactly the
+names other phases are obliged to re-declare.
