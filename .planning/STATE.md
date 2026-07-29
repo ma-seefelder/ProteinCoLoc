@@ -38,7 +38,17 @@ Phase: 12 (spatial-colocalization-map) — PLANNED, NOT STARTED
 Plans: 20 of 20 written and committed (`927cf7a`); FOUR plan-checker gates run 2026-07-28/29.
 **STATUS: Planning complete. Both user decisions received 2026-07-28 and propagated. Execution may
 begin; five Tier-1 constants still need confirmation (see 12-CONSTANTS-FOR-CONFIRMATION.md).**
-The gate found 7 blockers; 5 were defects and are fixed. The two decisions are now answered:
+Gate 1 found 7 blockers (5 defects, fixed; 2 escalated as the decisions below). Gate 2 found the
+prose-vs-executable Δρ gap: the three-map ruling had been propagated as PROSE into six plans while the
+executable specs stayed single-map. Gate 3 found 6 blockers and 11 concerns, all closed. Gate 4 (2026-07-29,
+commits 50a83bf a6863c3 b7bfe2b ed92505 + this one) found 8 more, of which the largest was NOT fix-induced
+and had survived all three earlier passes: **the production head was unbuildable** — `train_p12_npe` had no
+width keyword, so a `P12_K_PROD < 63` bundle would have been written at 72 rows and then refused by its own
+loader for every downstream consumer. Gate 4 also found the frozen amendment carrying a two-line
+self-contradiction, six verifies that could not fail, and Δρ — the primary deliverable — getting no SBC
+test, key or verdict. **Gate 4's own fixes were then audited and had introduced 3 blockers and 11 concerns
+of their own, all fixed in the same session; that trend has still not broken.** The two decisions are now
+answered:
   1. **Δρ semantics — RESOLVED: ship all three maps.** `region_delta_rho` stays the primary named
      deliverable per `src/results.jl:181`, computed as the per-region MC difference mirroring
      `infer.jl:108`; `region_rho_sample` and `region_rho_control` are additionally exposed so a reader
@@ -73,8 +83,16 @@ The gate found 7 blockers; 5 were defects and are fixed. The two decisions are n
      A ±0.03 tolerance at n=2 is still noise, so the Stage-2 gate rests on 12-16's simulated arm
      (N ≥ 271). Recorded as clause (h) plus §5 of the frozen amendment.
      The effective independent n is **2**, not 128: the 128 region-draws are pseudo-replicates.
-  **OPEN FOR THE USER:** whether to fetch the corpus. Doing so would not change the Δρ n unless the
+  **OPEN FOR THE USER (1):** whether to fetch the corpus. Doing so would not change the Δρ n unless the
   fetched data includes genuine sample/control pairs — the sealed rows are single specimens too.
+  **OPEN FOR THE USER (2) — NEW, raised by gate 4, and it is a blocker on 12-18 rather than a preference.**
+  `n_low` and `P12_K_PROD` can be mutually inconsistent and NEITHER is chosen yet. `dev_low` is "the first
+  `n_low` deviation coefficients"; if the confirmed `n_low` exceeds the `P12_K_PROD` that 12-15 measures,
+  12-18's `dev_low`/`dev_high` split is ill-defined and its strict row partition cannot be built at all.
+  The plans do NOT resolve this by clamping — that would move a pre-registered test boundary after the
+  measurement. `12-CONSTANTS-FOR-CONFIRMATION.md` §3's option (ii) (`n_low` as a Tier-2 append derived from
+  12-15's own truncation curve) makes the inconsistency impossible by construction, since both numbers then
+  come from one curve. Recorded in 12-18 as a blocker for the user; not decided here.
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
