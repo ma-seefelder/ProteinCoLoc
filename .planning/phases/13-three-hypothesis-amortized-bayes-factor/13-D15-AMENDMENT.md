@@ -1,13 +1,16 @@
-# 13 — PRE-REGISTRATION AMENDMENT to the D-15 real-image arm: the channel pair
+# 13 — PRE-REGISTRATION AMENDMENT: the real-image channel pair (CHANGE A) and the include-guard sentinel (CHANGE B)
 
 **Date:** 2026-07-29
-**Status:** **PROPOSED.** Frozen on approval of §7 (the one open question is *where the amended
-constant lives*, not *what it is*). Every value in §5 is settled by the user's ruling and is not
-reopened by §7.
-**Implements:** the user ruling of 2026-07-29 (`f411ee7`), restating and completing the factual
-correction first recorded 2026-07-25 (`ea4a7d3`)
-**Amends:** `spike/p13/consts.jl` section I2 — `P13_REAL_CHANNEL_PAIR`,
-`P13_REAL_REDUNDANCY_PAIR`, `P13_REAL_ANCHOR_MBAR`, and the two prose constants that quote them
+**Status:** **FROZEN.** §7 is RESOLVED — the user ruled **M1, amend in place**, on 2026-07-29.
+Every value in §5 was already settled by the user's ruling and is not reopened.
+**Implements:** the user ruling of 2026-07-29 (`f411ee7`) on the channel pair, restating and
+completing the factual correction first recorded 2026-07-25 (`ea4a7d3`); and the user ruling of
+2026-07-29 on the include-guard mechanism (M1, §7.1)
+**Amends `spike/p13/consts.jl` in ONE edit, with TWO separately justified changes (§0.4):**
+**CHANGE A** — section I2: `P13_REAL_CHANNEL_PAIR`, `P13_REAL_REDUNDANCY_PAIR`,
+`P13_REAL_ANCHOR_MBAR` and the prose constants that quote them.
+**CHANGE B** — the body wrapper at `:100`: the include-guard sentinel, together with
+`spike/test/test_p13_consts.jl:42` and six sibling callers.
 **Supplements — does NOT replace:** `13-SC2-AMENDMENT.md` §5 (the SC3 three-arm scope) and
 `.planning/ROADMAP.md` Phase-13 SC3
 **Executed by:** plan `13-17-PLAN.md`
@@ -106,6 +109,31 @@ into `consts.jl`.
 
 **Do not file this alongside `07-GATE-AMENDMENT.md` as "the third time they moved a goalpost."** No
 goalpost is in this document. §3 is the greppable form of that claim.
+
+### 0.4 TWO CHANGES, TWO JUSTIFICATIONS, DISCLOSED SEPARATELY — read this before the diff
+
+**This amendment opens `spike/p13/consts.jl` once and makes TWO changes to it. They are different
+acts with different reasons, and neither is a threshold moved after proving inconvenient.** They
+are separated here, on the page, so that a reader who was not present does not have to infer the
+second one from a diff.
+
+| | **CHANGE A — the channel pair** (§5) | **CHANGE B — the include-guard sentinel** (§5B) |
+|---|---|---|
+| What moves | `P13_REAL_CHANNEL_PAIR` `(1,2)` → **`(2,3)`**; `P13_REAL_REDUNDANCY_PAIR` **DROPPED**; `P13_REAL_ANCHOR_MBAR` `0.3292 / 0.2481` → **`0.4603 / 0.3815`** (UNMASKED) | the body wrapper at `:100` guards on **`:P13_DECLARED_DEVIATIONS`** instead of `:P13_DEV_SEED`, and `spike/test/test_p13_consts.jl:42` plus six sibling callers move with it |
+| What is WRONG with the text today | it **names the WRONG PHYSICAL OBJECT.** `test/runtests.jl:105` records the fixture channels as `["blue", "green", "red"]`, so `c1` is the DAPI/Hoechst nuclear counterstain — **not a target protein at all** — and the arm as executed measured counterstain-versus-protein overlap, which is not colocalization | it guards on a name **another phase must LEGITIMATELY MIRROR.** `spike/validation/p12_consts.jl:109` declares `P13_DEV_SEED` in order to assert seed disjointness. **That mirror is CORRECT and `p12_consts.jl` must NOT be touched** (append-only Tier 1). The defect is on the guard side, every time |
+| Kind of error | a factual mis-designation of the object being measured | a latent loading defect: in a full-suite run the wrapper sees the mirror, skips its own body, and ~114 Tier-1 constants are never defined (`runtests.jl:220`, 22 pass / 1 fail / **114 `UndefVarError`**) |
+| Does any bar move? | **NO** — §3 enumerates every untouched threshold by name | **NO** — CHANGE B changes no value at all. `P13_DEV_SEED = 0x0000_0000_0B13_DE71` stays byte-present and byte-unchanged at `:188`; only *which name the `if` tests* moves |
+| Would a blind reviewer have made it? | **Yes, and one did, twice, before Phase 13 existed** (§2, §0.3) | **Yes** — it is the `fb76b84` precedent (*"guard on the name it actually owns"*) applied to the one case where the owner file is the file that needs editing |
+| Why it rides in THIS amendment | — | **ZERO additional pre-registration cost.** `consts.jl`'s sha256 changes for CHANGE A regardless, and `h.consts_sha == p13_consts_sha()` has to be re-derived in the gate, alpha and real-image runners regardless (§7.3). CHANGE B adds no new consequence to that. Holding it back would mean opening the byte-locked file a SECOND time later, under a SECOND amendment — strictly worse |
+
+**Neither change is a threshold moved after proving inconvenient, and both are written so they read
+that way to a hostile reviewer.** No seed, bar, floor, band, ladder, tolerance or allowance changes
+in either. §3 is the greppable form of that claim and it covers both.
+
+**The coupling is the reason §7 resolves to M1 and not M2.** A "leave the frozen file alone"
+mechanism cannot fix CHANGE B at all: the broken end **is** `consts.jl:100`, and a caller-only fix
+is provably useless — the caller would correctly call `include`, and the wrapper would still see
+`P13_DEV_SEED` defined by Phase 12 and skip the entire body.
 
 ---
 
@@ -346,7 +374,10 @@ rescue.
 
 ---
 
-## 5. The amendment, exactly
+## 5. CHANGE A, exactly - the real-image channel pair
+
+*(CHANGE B - the include-guard sentinel - is §5B. The two are disclosed separately on purpose;
+see §0.4.)*
 
 ### 5.1 The constants
 
@@ -429,7 +460,157 @@ absorb:
 
 ---
 
+## 5B. CHANGE B, exactly — the include-guard sentinel
+
+### 5B.1 The defect
+
+`spike/p13/consts.jl:100` wraps the file's **entire Tier-1 body** (lines 100-731, ~104 `const`s) in
+
+```julia
+if !isdefined(@__MODULE__, :P13_DEV_SEED)
+```
+
+and `:188` is where `P13_DEV_SEED` is itself declared. The sentinel is the file's own seed — and
+`spike/validation/p12_consts.jl:109` **also** declares it:
+
+```julia
+const P13_DEV_SEED        = 0x0000_0000_0B13_DE71  # spike/p13/consts.jl:188
+```
+
+**That mirror is CORRECT and `spike/validation/p12_consts.jl` MUST NOT be touched.** It is
+append-only Tier 1, and asserting stream disjointness *requires* naming the streams:
+`spike/test/test_p12_consts.jl:80` asserts `P12_DEV_SEED != P13_DEV_SEED`, which is only possible
+if Phase 12 names Phase 13's seed. **The defect is on the guard side, every time.**
+
+The consequence, traced end to end and reproduced empirically (`.planning/STATE.md`, 2026-07-29):
+`runtests.jl:174` includes `test_p12_suite.jl` FIRST — deliberately, so Phase 12 cannot be masked
+by anyone else's abort — and that chain defines `P13_DEV_SEED` in `Main`. At `runtests.jl:220`,
+`test_p13_consts.jl:42`'s guard sees the mirrored symbol, **skips its `include` entirely**, the
+wrapper at `:100` never runs, and Phase 13 reports **22 pass / 1 fail / 114 error**, every error an
+`UndefVarError` on a Tier-1 constant. The thrown testset then aborts the **eight** remaining
+Phase-13 includes. **Per-file runs pass**, which is exactly why this stayed invisible: in a
+single-file process nothing else has defined the sentinel yet.
+
+### 5B.2 Why this is not a threshold move — and the check that separates them
+
+The check §1 uses applies unchanged: *a relaxation changes how well a measured quantity must score;
+this changes nothing that is measured at all.* CHANGE B alters **which symbol an `if` tests**. It
+changes no value, reads no result, and cannot be reached by any measurement.
+
+Mechanically:
+
+- `P13_DEV_SEED = 0x0000_0000_0B13_DE71` stays **byte-present and byte-unchanged** at `:188`;
+- no constant is added, removed or re-valued by CHANGE B;
+- §3's enumerated untouched-threshold list is unaffected;
+- the change is **outcome-independent in the strongest sense available**: it was diagnosed from a
+  suite abort rather than from any Phase-13 number, and it makes the suite report **more**
+  failures, not fewer — it un-masks eight Phase-13 test files that are currently skipped.
+
+**A change that increases the number of live assertions is not a change that is buying itself a
+result.** After it lands, `test_p13_correction.jl`'s two pre-registered MEASURED MISSES still fail
+and the full suite still exits 1. That is the intended state and it is not repaired here.
+
+### 5B.3 The sentinel, chosen and ARGUED
+
+`spike/p13/consts.jl` exclusively declares **100** constants (each verified by a fresh repo-wide
+`grep -rn "const NAME\b" --include=*.jl .` returning exactly one declaring file). The wrapper is
+re-pointed to:
+
+> **`P13_DECLARED_DEVIATIONS`** — `spike/p13/consts.jl:662`
+
+against the four criteria in `.planning/CONVENTIONS.md` C-01:
+
+1. **Exclusively owned.** Fresh repo-wide grep: `const P13_DECLARED_DEVIATIONS` appears at
+   `spike/p13/consts.jl:662` and **nowhere else**; the only other file that so much as mentions the
+   name is `spike/test/test_p13_consts.jl`. It does **not** appear in
+   `spike/validation/p12_consts.jl`.
+2. **Tier-1 and declared UNCONDITIONALLY inside the guarded body.** `:662` sits inside `100-731` at
+   guard-block indent, with no nested `if` / `begin` between `:100` and it.
+3. **NOT a seed and NOT a prior bound.** That is the whole lesson of the sweep: **23 of the 29
+   poisoned guards guard on a seed or a prior bound**, because those are exactly the names other
+   phases are *required* to mirror in order to prove disjointness.
+4. **About the FILE'S IDENTITY, not a value another phase might quote.** It is the
+   pre-registration's own register of its four declared model deviations — a meta-property of the
+   document. A Phase-14 deviation register would be `P14_DECLARED_DEVIATIONS`; there is no
+   requirement anywhere, and no motive, for another phase to declare Phase 13's.
+
+It is also the name `.planning/STATE.md` had already named as option one when it recorded the
+blocker, so this is not an invention produced at the moment of fixing.
+
+**The candidates weighed and REJECTED, on the page:**
+
+| Candidate | Exclusively owned? | Rejected because |
+|---|---|---|
+| `P13_TAU` (`:794`) | yes | **Tier-2, and legitimately SOMETIMES ABSENT.** `consts.jl:745` explicitly tolerates its absence (`!isdefined(:P13_TAU) \|\| …`) and it lives in a *separately guarded* block outside the Tier-1 body. **A sometimes-absent sentinel is worse than the bug** — it would let the Tier-1 body run twice |
+| `P13_GATE_STATISTIC` (`:442`) | yes | It is a **gate knob** (`:ece`). Making the loading of the whole pre-registration depend on a gate constant is exactly the coupling this project should not create, and a later phase asserting *"we do not use Phase 13's statistic"* is a plausible mirror |
+| `P13_CUT_VARIANT` (`:255`) | yes | **Persisted into the trained-net artifact** (`net.jl`, `h.cut_variant`; asserted at `test_p13_net.jl:373`). Any later phase reading a Phase-13 net has an obvious motive to declare its own expected `P13_CUT_VARIANT` to assert artifact compatibility — the mirror hazard again |
+| `P13_LAMBDA_PLACEMENT` (`:398`) | yes | Referenced from `preconditions.jl`, which is the **cross-phase compatibility surface**. A constant whose job is to be compared against another phase's is the wrong shape for a private sentinel |
+| `P13_INPUT_WIDTH_RULE` (`:402`) | yes | Same class: an architecture rule a Phase-14 net would have to match, so a plausible thing for Phase 14 to re-declare |
+| `P13_STRATIFICATION` (`:334`) | yes | A **design knob** (`:class_frequency`) read by five files; semantically about the data-generation design rather than the file's identity. Not unsafe today, but strictly weaker than a deviations register on criterion (4) |
+
+None of the rejected candidates is *unsafe today*. They are rejected because criterion (4) is what
+makes a sentinel durable, and only `P13_DECLARED_DEVIATIONS` satisfies it outright.
+
+### 5B.4 BOTH ENDS, IN ONE EDIT — and the six sibling callers
+
+**A caller-only fix is provably useless here**, and saying why is the point: the caller would
+correctly call `include`, and the wrapper at `:100` would still see `P13_DEV_SEED` defined by
+Phase 12 and skip the entire body. `fb76b84` (`:SBC_M`) only had to fix callers because
+`validation/consts.jl` already guarded its own body on the name it owns. Here **both ends use the
+poisoned name**, and this project's signature failure is a fix applied at one end of a pair. So
+both ends move together, in one edit:
+
+| # | Site | Today | After |
+|---|---|---|---|
+| 1 | `spike/p13/consts.jl:100` — **the owner-side wrapper** | `if !isdefined(@__MODULE__, :P13_DEV_SEED)` | `if !isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS)` |
+| 2 | `spike/test/test_p13_consts.jl:42` — **the aborting caller** | `isdefined(@__MODULE__, :P13_DEV_SEED) \|\| include(…)` | `isdefined(@__MODULE__, :P13_DECLARED_DEVIATIONS) \|\| include(…)` |
+
+**And the six sibling callers, IDENTIFIED rather than left as a later surprise.** Each guards its
+own `include` of `consts.jl` on the same poisoned name, and each is a Phase-13 file carrying no sha
+guard of its own:
+
+`spike/p13/labels.jl:73`, `spike/p13/net.jl:89`, `spike/p13/preconditions.jl:191`,
+`spike/p13/result.jl:79`, `spike/p13/tau_probe.jl:92`, `spike/p13/toy_gaussian.jl:79`.
+
+They are **harmless today given that `test_p13_consts.jl` loads first and, after this amendment,
+succeeds** — a skipped include is correct once the constants are already present. They are fixed
+anyway, because leaving them makes correctness depend on load ORDER, and order-independence is the
+entire property the guarded-include idiom exists to buy. `spike/p13/consts.jl:93` is a **commented
+illustration** of the idiom, not a live guard; its text is updated to match so the file does not go
+on teaching the bug it just fixed.
+
+**NOT touched:** `spike/validation/p12_consts.jl` (§5B.1), and the 28 other poisoned guards the
+same sweep found (§11).
+
+### 5B.5 The knock-on CHANGE B makes LIVE, and that must be VERIFIED rather than assumed
+
+While the guard was skipping the body, every `const` in that body was never executed in a
+full-suite process. Repairing the guard makes ~104 of them execute into `Main` **for the first
+time**, alongside declarations of the same names made earlier by other files. Ten names collide.
+Seven agree in value **and** type. Three disagree in **type**, because in Julia a hex literal's
+width is its type (`0xC0FFEE` is `UInt32`; `0x0000_0000_00C0_FFEE` is `UInt64`):
+
+| Name | narrow (`UInt32`) | wide (`UInt64`) |
+|---|---|---|
+| `NPE_MASTER_SEED` | `npe/train_npe.jl:65`, `test/test_npe.jl:81`, `baseline/run_advi.jl:74` | `p13/consts.jl:108` and the three pre-registrations |
+| `VAL_MASTER_SEED` | `validation/consts.jl:76` | `p13/consts.jl:109` and the three pre-registrations |
+| `VAL_FIX_SEED` | `validation/consts.jl:79` | `p13/consts.jl:110` and the three pre-registrations |
+
+The **values** agree; only the widths differ, and all three are FORBIDDEN foreign seeds that
+Phase 13 *reserves* rather than uses. Julia 1.12.6 — this project's pinned version — permits
+constant redefinition, so the expectation is that this is a non-event. **But it is an expectation,
+and it has never been executed.** `13-17-PLAN.md` therefore makes it a verified step with a stop
+rule rather than a hope.
+
+**No seed literal may be edited to resolve it.** If a redefinition does fail, the remedy is on the
+loading side (isolated-module read, or load order) and the executor **STOPS and escalates** rather
+than touching a seed. Recorded as a standing rule in `.planning/CONVENTIONS.md` C-02.
+
+---
+
 ## 6. Affected-site inventory (VERIFIED at `d7195cc`)
+
+*(§6.1-§6.6 are CHANGE A's sites. CHANGE B's sites are §5B.4 and §6.7.)*
 
 ### 6.1 Sites that make reproducing the SUPERSEDED numbers a pass condition
 
@@ -570,57 +751,146 @@ applies to it with more force than to anything else listed above, not less.
 **The gate row and the `**Verdict:**` block's gate sentences are NOT touched by either owner.** The
 gate's AUC/ECE figures are simulator-ground-truth results that this amendment cannot reach (§3).
 
+### 6.7 CHANGE B's sites, for inventory completeness
+
+The nine guard sites are enumerated in §5B.4 (one owner-side wrapper, one aborting caller, six
+sibling callers, one commented illustration at `:93`). The three `consts_sha` assertion sites that
+CHANGE A and CHANGE B jointly trip are enumerated in §7.3. Nothing else in the repository reads the
+sentinel as a sentinel — verified by
+`grep -rn "isdefined(.*:P13_DEV_SEED" --include=*.jl .`, which returns exactly those nine lines.
+
 ---
 
-## 7. THE ONE OPEN QUESTION — escalated, not resolved here
+## 7. RESOLVED — M1 (amend in place). The ruling, its reasoning, and the sha re-derivation
 
-**Where the amended constants live is NOT settled by the user's ruling, and this planner does not
-settle it.** It is escalated as a blocking decision at Task 1 of `13-17-PLAN.md`.
+**Status: SETTLED by the user on 2026-07-29. The mechanism is M1 — edit `spike/p13/consts.jl` in
+place — and BOTH changes of §0.4 ride in that ONE edit.** This question is not reopened. The text
+below replaces the escalation that previously stood here; the two options as they were put to the
+user are preserved verbatim in git and in `13-17-PLAN.md`'s history.
 
-### The finding that forces the question
+### 7.1 The ruling, and the reasoning that produced it
 
-`spike/p13/run_p13_realimage.jl:634` asserts:
+> **M1 — fix at the source, inside the same authorised amendment. M2 (the isolated-module read) is
+> the tool for files that CANNOT be edited because no amendment authorises opening them.**
 
-```julia
-@assert h.consts_sha == p13_consts_sha() "the frozen pre-registration changed since the net was trained: consts.jl sha256 does not match the artifact's"
-```
+The reasoning is recorded because a mechanism chosen for a reason is auditable and a mechanism
+chosen by default is not:
 
-`h` is the **trained net artifact from 13-11**, whose `consts_sha` was recorded at train time
-(`spike/p13/net.jl:472, 524`). The identical assertion exists at `run_three_way_gate.jl:353` (the
-**gate** runner) and `run_alpha_series.jl:451`.
+**The byte-lock breaks either way.** CHANGE A on its own changes `consts.jl`'s sha256, and
+`h.consts_sha == p13_consts_sha()` has to be re-derived in the gate, alpha and real-image runners
+regardless of how CHANGE B is handled. **The include-guard fix therefore rides along at ZERO
+additional pre-registration cost.** That coupling is precisely why the answer is M1 and not M2:
 
-**Therefore: editing `spike/p13/consts.jl` in place makes the 13-16 re-run abort at load**, and
-simultaneously makes the gate and α-ladder runners un-reproducible against their own net. Retraining
-is not available (no further training is authorised; retraining would invalidate 13-12's gate).
+- Under M2, `consts.jl` would stay byte-unchanged — but **CHANGE B could not be fixed at all**,
+  because the broken end *is* `consts.jl:100`. A caller-only fix is provably useless (§5B.4). The
+  defect would instead have to be carried by an isolated-module read at every caller, and
+  `spike/test/test_p13_consts.jl` asserts ~114 constants UNQUALIFIED, so that read would need all
+  of them re-bound into the test module — mechanical, but not free, and strictly more machinery
+  than the one-line fix it replaces.
+- Under M2 the phase would also end holding a *second* source of truth for the operative channel
+  pair while still carrying the guard defect: two files to read, one bug outstanding.
+- Under M1, one file is the pre-registration, a reader finds the operative pair where they expect
+  it, and the guard defect closes inside the same authorised, dated, argued edit.
+
+**M2 remains the right tool where it applies** — a frozen file that no amendment opens — and §11
+assigns exactly that remedy to those of the other 28 hits whose owner file cannot be edited. The
+ruling is not "M1 is better than M2"; it is "M1 here, M2 there, and the distinction is whether an
+amendment authorises opening the file."
+
+### 7.2 What M1 costs, stated rather than minimised
+
+M1's price was recorded before the ruling and is not softened now.
+
+1. **It retires a standing claim in `13-REPORT.md` §13.** That section states that `consts.jl` has
+   two commits in its whole history and that *"No commit that produced a Phase-13 result touched
+   it"*, and quotes `git hash-object` → `5a4ea222…` and `sha256` → `100e97a3…` as *"matches
+   `consts_sha` and `net_consts_sha` in every artifact"*. **All three become FALSE the moment the
+   file is edited.** `13-17-PLAN.md` therefore rewrites §13 with pre- and post-amendment values
+   side by side. **The section whose entire function is proving nothing was tampered with must
+   itself be corrected — and that is said plainly here rather than done quietly.**
+2. **It touches an integrity guard in order to produce a result** — the shape this project is most
+   careful about. §7.3 specifies the mechanism so the guard means MORE afterwards, not less.
+3. **It makes `spike/test/test_p13_consts.jl:235-242` assert values that no longer exist**, so
+   those assertions are rewritten to the amended values rather than relabelled. The superseded
+   values stay citable in git at `c42cc8e` / `bfba6ac` (§9).
+4. **It makes a lineage assertion silently change meaning unless it is pinned.**
+   `spike/test/test_p13_real.jl:144-146` calls `real_mbar("positive")` with **no `channels`
+   argument**, riding the default, and compares against `P13_REAL_ANCHOR_MBAR`. Under M1 **both
+   sides move together**: the call becomes a c2/c3 read compared against the c2/c3 anchors, the
+   assertion **still passes**, and the c1/c2 read-chain identity proof is **silently destroyed**
+   while its own comment goes on claiming to test it. `13-17-PLAN.md` pins it to
+   `channels = (1, 2)` against the literals `0.3292` / `0.2481`, so it keeps testing what it says.
+
+### 7.3 The `consts_sha` re-derivation — first-class work, not a side effect
+
+`spike/p13/net.jl:524` defines
+`p13_consts_sha() = bytes2hex(SHA.sha256(read(joinpath(@__DIR__, "consts.jl"))))`, and three
+runners assert it against the **13-11 trained net's** recorded value:
+
+| Site | Runner | Arm |
+|---|---|---|
+| `spike/p13/run_three_way_gate.jl:353` | the gate | **the phase's ONLY gating arm** |
+| `spike/p13/run_alpha_series.jl:451` | the simulated α-ladder | reported, not gated |
+| `spike/p13/run_p13_realimage.jl:634` | the real arm | reported, not gated |
 
 `spike/test/test_p13_net.jl:380` is **not** affected — it round-trips a net saved inside the test,
-so its sha is recomputed at save time. Verified.
+so its sha is recomputed at save time. Verified. `spike/p13/datagen.jl:870` and
+`spike/p13/run_tau_probe.jl:96` *record* a sha but assert nothing against it. **Retraining is NOT
+authorised** and would invalidate 13-12's gate result.
 
-### The two options, both defensible
+**The mechanism chosen, and why the guard still means something afterwards.**
 
-**M1 — amend in place.** Edit `consts.jl` section I2; widen the three train-time guards to accept
-the recorded pre-amendment sha alongside the current one, justified by the fact that **training
-never read any `P13_REAL_*` constant** (grep-verified, §3), so the amended values are ones the net
-did not consume.
-*Cost:* touches an integrity guard in order to produce a result — the shape this project is most
-careful about — and retires the standing claim that `consts.jl` has "two commits in its whole
-history, neither postdating a result" (`13-REPORT.md` §13).
+A widened `h.consts_sha == p13_consts_sha() || h.consts_sha == PRE_AMENDMENT_SHA` is **rejected**.
+Once that disjunction exists it accepts **any future drift silently**: a second, third or
+undisclosed edit to `consts.jl` also passes, because the artifact side alone satisfies the first
+branch. That converts a real integrity check into decoration, which is the one outcome this
+amendment must not produce.
 
-**M2 — amend beside.** Leave `consts.jl` **byte-unchanged**; put the amended values in a new,
-separately named, separately committed `spike/p13/consts_d15_amendment.jl` with its own provenance
-header and its own not-a-gate assertion. The runner reads the amended names and prints the
-superseded frozen values beside them.
-*Cost:* two files must be read to know the operative pair, and the module must carry an explicit
-"this supersedes `consts.jl:552-576`" statement or it is a trap of its own.
-*Benefit:* every sha guard keeps holding untouched; the gating arm's reproducibility is untouched;
-the superseded pre-registration stays byte-present and citable, which is exactly the discipline
-`13-SC2-AMENDMENT.md` §6 requires ("The original is not erased"); and
-`test_p13_consts.jl:235-242` keeps asserting the frozen values **truthfully**, with the new values
-asserted in a new testset.
+Instead the single equality is replaced by **two named, dated, amendment-aware equalities**, both
+pinned to literals copied from command output:
 
-**This planner's reading is that M2 dominates on every stated constraint, and this planner does not
-adopt it.** The choice is a provenance-narrative decision about a frozen pre-registration, and this
-project's credibility is the thing being spent. It is the user's.
+```julia
+# spike/p13/net.jl, beside p13_consts_sha()
+# The TWO sha256 values spike/p13/consts.jl has legitimately held. A third value is drift.
+#   pre_amendment  -- c42cc8e + bfba6ac; the value every 13-10..13-16 artifact recorded
+#   post_amendment -- after 13-D15-AMENDMENT.md (CHANGE A + CHANGE B), 2026-07-29
+const P13_CONSTS_SHA = (pre_amendment = "<copied>", post_amendment = "<copied>")
+```
+
+and, at each of the three sites, in place of the single assertion:
+
+```julia
+@assert h.consts_sha     == P13_CONSTS_SHA.pre_amendment  "the net was not trained under the frozen pre-registration"
+@assert p13_consts_sha() == P13_CONSTS_SHA.post_amendment "consts.jl is not at either sha this amendment authorises"
+```
+
+**This is STRICTLY STRONGER than what it replaces, and that is the point.** The original assertion
+only required the two sides to *agree with each other* — a retrain plus an edit would have passed
+it silently. The replacement pins **both sides to named literals**, so:
+
+- a net trained under any other pre-registration fails (the guard's original purpose, kept intact);
+- `consts.jl` at any sha other than the two this amendment authorises fails — **including a future
+  undisclosed edit**, which the original form would have accepted;
+- the two values *differing* becomes an **asserted, documented fact** instead of a silent
+  tolerance, and `13-REPORT.md` §13 prints both.
+
+The pre-amendment literal is captured **before any byte changes** (`13-17-PLAN.md` Task 1) from
+live command output and cross-checked against `h.consts_sha` as the net itself reports it; the
+post-amendment literal is captured after the edit, from the same command. Neither is retyped and
+neither is copied out of a document — including out of this one.
+
+**Nothing else is authorised.** No net is retrained, no weight changes, no gate is re-run,
+`spike/p13/gate_report.jld2` and `spike/p13/alpha_report.jld2` stay byte-unchanged, and
+`P13_ITERATION_ALLOWANCE` stays 1 of 1, UNSPENT.
+
+### 7.4 Ordering: the guard fix lands BEFORE the 13-16 re-run
+
+**Until the guard is fixed, nobody can use the suite to verify anything — including the corrected
+13-16.** `runtests.jl` aborts at `:220` and eight Phase-13 test files never execute, so a re-run
+verified only by per-file runs would be another per-file-only result. `13-17-PLAN.md` therefore
+orders the guard fix and the sha re-derivation **before** the re-run, and requires the suite to be
+observed reaching and executing the whole Phase-13 block first. That ordering is what makes the
+re-run verifiable rather than merely repeated.
 
 ---
 
@@ -634,6 +904,15 @@ project's credibility is the thing being spent. It is the user's.
 - It does **not** spend `P13_ITERATION_ALLOWANCE`, retrain any net, or change any weight.
 - It does **not** touch `src/`, `spike/Project.toml`, `spike/Manifest.toml`, `test/`, `docs/` or
   `corpus/`.
+- It does **not** touch `spike/validation/p12_consts.jl`. That file's `P13_DEV_SEED` mirror is
+  **CORRECT** — asserting seed disjointness requires naming the seeds — and the file is append-only
+  Tier 1. CHANGE B's defect is on the guard side (§5B.1).
+- It does **not** change any seed, bar, floor, band, ladder, tolerance or allowance. Neither
+  CHANGE A nor CHANGE B moves a value that anything is scored against (§3, §5B.2).
+- It does **not** fix the 28 other poisoned include guards the same sweep found. They are
+  documented with a remedy each and left alone (§11).
+- It does **not** retrain, re-run or re-read the gate, and it does **not** widen the
+  `consts_sha` guard into a disjunction that would accept future drift (§7.3).
 - It does **not** edit `13-SC2-AMENDMENT.md`, `13-RESEARCH.md` or `13-VALIDATION.md`. Those record
   prior measurements that were correct as prior measurements; this document supersedes them by
   reference.
@@ -684,6 +963,58 @@ section: **does the conclusion change?**
 
 ---
 
+## 11. The 28 OTHER poisoned include guards — DOCUMENTED, NOT FIXED
+
+The sweep that found CHANGE B's defect found **29** of them: **220 guards over 118 files** under
+`spike/`, **29** whose sentinel is declared as a `const` by more than one file, in **eight
+families**. This amendment fixes **one** family — the one whose file it already had open, for
+CHANGE A, under this authorisation.
+
+**The other 28 are recorded with a recommended remedy each and are NOT touched.** Editing another
+phase's frozen file on a planner's own initiative is precisely the act this project's amendment
+discipline exists to prevent, and a fix applied without an authorising document has the shape §0
+spends four facts distinguishing this one from. The remedies split cleanly:
+
+- **re-point at the source (M1-style)** where the owner file is editable — not a frozen
+  pre-registration, or already opened by an authorised amendment;
+- **isolated-module read (M2-style)** where the owner file cannot be edited, which is not a
+  departure from the precedent but the only form of it available when the owner is frozen. This
+  repo already uses it three times: `module _P11C` (`spike/p13/preconditions.jl:160`), `module _GC`
+  (`spike/p13/consts.jl:96`) and `module GateV2` (`spike/validation/p11_consts.jl`).
+
+**The full eight-family table, with a remedy per family and the owner-editability finding that
+selects it, lives in `.planning/CONVENTIONS.md` (C-01 appendix).** It is there rather than here
+because it is not a Phase-13 fact.
+
+**The running record of individual observations belongs to Phase 12 and is accumulating in the
+right place:** `.planning/phases/12-spatial-colocalization-map/deferred-items.md` logs this exact
+collision as **DEF-12-03** (`p12_consts.jl:109` → `p13/consts.jl:100`, status OPEN), alongside
+`13-09`, **DEF-12-01** (FIXED by `fb76b84`) and **DEF-12-02** (worked around per-runner).
+**This amendment CLOSES DEF-12-03 rather than starting a parallel ledger**, and `13-17-PLAN.md`
+records the closure by reference.
+
+### 11.1 The standing rule, stated ONCE, for every future phase
+
+> **Never guard an include on a seed or a prior bound, because those are exactly the names other
+> phases are required to mirror.**
+
+**23 of the 29 hits guard on a seed or a prior bound.** Four separate phases independently reached
+for one, because R-5 *obliges* every Phase-N pre-registration to re-declare prior phases' seeds in
+order to assert stream disjointness. The collision is structural, not careless — and that one
+sentence would have prevented all 29.
+
+It is recorded as **`.planning/CONVENTIONS.md` C-01**, a new durable file registered from
+`.planning/PROJECT.md`'s `## Constraints` block. **That home was chosen deliberately:** every GSD
+plan's `<context>` references `@.planning/PROJECT.md`, so a Phase-14 planner reaches it without
+being told to. `STATE.md` was rejected as the home because it is a 900-line running log whose
+blocker entries get closed — a rule buried in it is a record, not a convention; Phase 12's
+`deferred-items.md` was rejected because Phase 14 will not open Phase 12's deferred items; and a
+Phase-13 plan was rejected for the same reason. `CLAUDE.md`'s `## Conventions` section — which is
+auto-loaded into every session and currently reads *"Conventions not yet established"* — is the
+natural second home and is **recommended to the user**, not written by this planner.
+
+---
+
 ## Appendix — provenance of every number quoted above
 
 | Number | Source | Kind |
@@ -702,6 +1033,12 @@ section: **does the conclusion change?**
 | separations `0.0811`, `0.0788`, `0.8576` | subtraction of the paired figures in the rows above | **arithmetic on prior measurements**, not a measurement |
 | `39 h 15 min 06 s` (`78dc37f` → `c42cc8e`), `38 h 46 min 18 s` (`ea4a7d3` → `c42cc8e`), `40 min 49 s` (`2112bed` → `f411ee7`) | differences of the `git log` timestamps in §0.1 | arithmetic on repository history |
 | occurrence counts in §3 | `grep -o '<name>' <file> \| wc -l`, re-verified 2026-07-29 | property of the source tree |
+| `220` guards / `118` files / `29` poisoned / `8` families / `23` on a seed-or-bound | the mechanical sweep of 2026-07-29, recorded in `.planning/STATE.md` | property of the source tree |
+| `100` constants exclusively declared by `spike/p13/consts.jl`; `~104` declared inside the guard body | `grep -rn "const NAME\b" --include=*.jl .` per name, re-verified 2026-07-29 | property of the source tree |
+| `22 pass / 1 fail / 114 error` at `runtests.jl:220` | observed full-suite run, recorded in `.planning/STATE.md` 2026-07-29 | prior observation |
+| `0xC0FFEE` (`UInt32`) vs `0x0000_0000_00C0_FFEE` (`UInt64`) and the two siblings | read from the declaring lines named in §5B.5 | property of the source tree |
+| Julia `1.12.6` | `spike/Manifest.toml:3` `julia_version` | property of the pinned environment |
+| `5a4ea222…`, `100e97a3…`, `70fe66df…` (§7.2) | `13-REPORT.md` §13 as it reads today | prior observation — **superseded by this amendment; re-derived from live output by `13-17-PLAN.md`, never copied from here** |
 
 **No number in this document was measured by this document.** Every Phase-13 figure quoted is a
 prior result, labelled with the pair it was measured on, and the amended anchors are prior
