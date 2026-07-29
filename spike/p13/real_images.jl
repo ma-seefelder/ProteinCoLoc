@@ -36,17 +36,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #     IN THIS PHASE MAY TREAT negative/ AS AN EXCLUSION EXAMPLE, AND A READER WHO ASSUMES
 #     OTHERWISE WILL MISREAD EVERY REAL-IMAGE FIGURE IN THE PHASE.
 #
-# (b2) THE CHANNEL-PAIR CAVEAT, RECORDED HONESTLY BECAUSE IT LANDED AFTER THE PRE-REGISTRATION.
-#     P13_REAL_CHANNEL_PAIR IS FROZEN AT c1/c2. test/runtests.jl:105 records the fixture channels
-#     as ["blue", "green", "red"], so c1 is the DAPI/Hoechst NUCLEAR COUNTERSTAIN, not a target
-#     protein -- and spike/simulator/ghat.jl now records (second hand-patch entry, 2026-07-25)
-#     that the c1/c2 figures are SUPERSEDED for colocalization purposes by the c2/c3 = green/red
-#     pair (unmasked positive mu = 0.4603, negative mu = 0.3815). THE CONSEQUENCE FOR THIS FILE IS
-#     NARROW AND MUST NOT BE OVERSTATED: the c1/c2 anchor regression below is a READ-CHAIN
-#     IDENTITY check -- it proves this ingestion is bit-for-bit the same load path the frozen
-#     ghat calibration used -- and it is NOT a claim that c1/c2 measures colocalization. Every
-#     entry point here takes `channels` as a keyword precisely so the reported run can read the
-#     coloc pair as well; the frozen pre-registration is honoured, not silently reinterpreted.
+# (b2) THE CHANNEL PAIR: A CORRECTION THAT WAS MADE, NOT A CAVEAT THAT WAS DECLINED.
+#     P13_REAL_CHANNEL_PAIR IS AMENDED TO c2/c3 by 13-D15-AMENDMENT.md (2026-07-29, CHANGE A).
+#     IT WAS FROZEN AT c1/c2; THAT VALUE IS SUPERSEDED, NOT DELETED, and stays citable in git at
+#     c42cc8e. The redundancy pair (1, 3) is DROPPED with no replacement.
+#
+#     THE REASON, KEPT VERBATIM BECAUSE IT IS NOW THE JUSTIFICATION FOR THE CORRECTION RATHER
+#     THAN THE STATEMENT OF A LIMIT: test/runtests.jl:105 records the fixture channels as
+#     ["blue", "green", "red"], so c1 is the DAPI/Hoechst NUCLEAR COUNTERSTAIN, not a target
+#     protein -- and spike/simulator/ghat.jl records (second hand-patch entry, 2026-07-25) that
+#     the c1/c2 figures are SUPERSEDED for colocalization purposes by the c2/c3 = green/red pair
+#     (unmasked positive mu = 0.4603, negative mu = 0.3815). Any pair containing c1 measures
+#     counterstain-versus-protein overlap and NOT colocalization.
+#
+#     THE CONSEQUENCE FOR THIS FILE IS NARROW AND MUST NOT BE OVERSTATED: the c1/c2 anchor
+#     regression below is a READ-CHAIN IDENTITY check -- it proves this ingestion is bit-for-bit
+#     the same load path the frozen ghat calibration used -- and it is NOT a claim that c1/c2
+#     measures colocalization. That identity claim is UNAFFECTED by the amendment, because it
+#     holds on whichever pair it is exercised on; only its status as THE COLOCALIZATION
+#     REFERENCE is superseded.
+#
+#     EVERY ENTRY POINT HERE TAKES `channels` AS A KEYWORD, AND THAT DESIGN IS WHAT MADE THE
+#     CORRECTION A RE-POINT RATHER THAN A REWRITE: not one executable line in this file changed.
+#     The five keyword defaults simply follow the amended binding, and the reported runner passes
+#     `channels` EXPLICITLY at every call site so the operative pair is visible at the point of
+#     use rather than inherited from a default.
 #
 # (c) THE TARGET-SUBSTITUTION RECORD (P13_REAL_SUBSTITUTION_RECORD, 11-10-PLAN.md HOUSE SHAPE).
 #     D-15 ORIGINALLY NAMED THE PHYSICAL MITOCHONDRIA ANCHOR OF THE FROZEN PROVENANCE MANIFEST AS
@@ -69,6 +83,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #     negative mu = 0.2481. THIS FILE REPRODUCES THOSE NUMBERS (MEASURED 0.32916 / 0.24805), WHICH
 #     IS WHAT MAKES THE REAL SUBSTRATE A LINEAGE-CARRYING REFERENCE POINT IN THIS PROJECT'S OWN
 #     SIMULATOR CALIBRATION RATHER THAN AN ARBITRARY SET OF FILES.
+#
+#     THE LINEAGE CLAIM ITSELF IS UNAFFECTED BY 13-D15-AMENDMENT.md AND IS KEPT, NOT WITHDRAWN.
+#     What (e) asserts is the IDENTITY OF THE READ CHAIN, and that identity holds on whichever
+#     pair it is exercised on. What IS superseded is the STATUS of the c1/c2 numbers as the
+#     colocalization reference: c1 is the nuclear counterstain, so 0.3292 / 0.2481 are SUPERSEDED
+#     as a colocalization measurement (CHANGE A). The amended colocalization anchors, on the
+#     operative c2/c3 pair, are positive mu = 0.4603, negative mu = 0.3815 (unmasked, 64/64
+#     patches) and are bound in P13_REAL_ANCHOR_MBAR. spike/test/test_p13_real.jl exercises BOTH:
+#     the c1/c2 read-chain identity check with the pair and the expected values pinned to
+#     literals on both sides, and the operative c2/c3 regression against the amended anchors.
 #
 # (f) DECOUPLING (hard constraint, CLAUDE.md): spike-local. src/ is reached ONLY read-only,
 #     transitively through spike/contract.jl's include chain, for the frozen
@@ -281,6 +305,12 @@ proves this ingestion is the same load path the frozen calibration used, not a l
 the header caveat (b2) -- ghat.jl now records the c1/c2 figures as superseded *for
 colocalization purposes* by the c2/c3 green/red pair, which does not weaken the identity claim
 and does not license reinterpreting the c1/c2 number as a colocalization measurement.
+
+AMENDED BY `13-D15-AMENDMENT.md` (2026-07-29, CHANGE A): `P13_REAL_CHANNEL_PAIR` is now the
+OPERATIVE c2/c3 pair and `P13_REAL_ANCHOR_MBAR` is now positive +0.4603 / negative +0.3815
+(unmasked), so calling this function WITHOUT `channels` regresses the colocalization pair against
+the amended anchors. The superseded +0.3292 / +0.2481 remain reproducible by passing
+`channels = (1, 2)` explicitly, which is exactly how the read-chain identity check is written.
 
 `G` is accepted so the grid is stated at the call site rather than assumed by a reader, but the
 frozen summary contract `patch_summary` (`spike/contract.jl:85`) IS the 8x8 D-10 grid and Phase

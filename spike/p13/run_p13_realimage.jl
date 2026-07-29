@@ -41,20 +41,42 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # (b) THE NAMING CORRECTION (P13_REAL_NAMING_CORRECTION -- carried here, not only in the report).
 # =============================================================================================
 # THE FOLDER NAMES positive/ AND negative/ ARE THE ORIGINAL PACKAGE'S *BIOLOGICAL* TEST
-# CONDITIONS, NOT COLOCALIZATION LABELS. The "negative" pair measures mean patch correlation
-# +0.2481 (rho_true ~ +0.215) -- A POSITIVELY CORRELATED PAIR, NOT AN ANTI-CORRELATED ONE.
-# NOTHING HERE TREATS negative/ AS AN EXCLUSION EXAMPLE, and a reader who assumes otherwise will
-# misread every real-image figure in the phase.
+# CONDITIONS, NOT COLOCALIZATION LABELS. On the OPERATIVE c2/c3 pair the "negative" pair measures
+# mean patch correlation +0.3815 -- A POSITIVELY CORRELATED PAIR, NOT AN ANTI-CORRELATED ONE, AND
+# MORE POSITIVELY CORRELATED THAN THE +0.2481 THE SUPERSEDED c1/c2 PAIR READ, NOT LESS. The
+# correction therefore SHARPENS this note rather than retiring it. NOTHING HERE TREATS negative/
+# AS AN EXCLUSION EXAMPLE, and a reader who assumes otherwise will misread every real-image
+# figure in the phase.
 #
-# THE CHANNEL-PAIR CAVEAT, RESTATED BECAUSE IT SHARPENS (b) RATHER THAN SOFTENING IT. The Tier-1
-# pre-registration freezes P13_REAL_CHANNEL_PAIR = (1, 2) and P13_REAL_REDUNDANCY_PAIR = (1, 3),
-# and test/runtests.jl:105 records the fixture channels as ["blue", "green", "red"] -- so channel
-# 1 is the DAPI/Hoechst NUCLEAR COUNTERSTAIN, not a target protein. BOTH pre-registered pairs
-# therefore involve the counterstain. spike/simulator/ghat.jl records (second hand-patch entry,
-# 2026-07-25) that the c1/c2 figures are SUPERSEDED FOR COLOCALIZATION PURPOSES by the c2/c3
-# green/red pair. THIS RUNNER DOES NOT ADD A THIRD, UN-PRE-REGISTERED PAIR: choosing a new
-# channel pair after the fixtures had been measured is exactly the move the D-04 anti-snooping
-# contract forbids. The frozen pairs are read, and the limit is NAMED rather than repaired.
+# THE CHANNEL PAIR HAS NOW BEEN CORRECTED UNDER AN AUTHORISED, DATED AMENDMENT.
+# .planning/phases/13-three-hypothesis-amortized-bayes-factor/13-D15-AMENDMENT.md (2026-07-29,
+# CHANGE A) amends P13_REAL_CHANNEL_PAIR to (2, 3) = green/red -- the two target proteins -- and
+# DROPS P13_REAL_REDUNDANCY_PAIR entirely.
+#
+# WHY. test/runtests.jl:105 records the fixture channels as ["blue", "green", "red"], so channel
+# 1 is the DAPI/Hoechst NUCLEAR COUNTERSTAIN, not a target protein at all. BOTH previously
+# pre-registered pairs contained it, so the arm as executed measured counterstain-versus-protein
+# overlap -- which is not colocalization under any definition this project uses. That is a
+# factual mis-designation of the object being measured, not a bar being relaxed, and
+# spike/simulator/ghat.jl:59 had ALREADY been corrected to (2, 3) on 2026-07-25 -- 39 h before
+# spike/p13/consts.jl was written. Phase 13 had drifted from its own frozen calibration source.
+#
+# THE EARLIER REFUSAL TO REPAIR IT MID-FLIGHT WAS THE RIGHT CALL, AND IS NOT DISOWNED HERE. Under
+# the pre-registration AS IT THEN STOOD, choosing a new channel pair after the fixtures had been
+# measured would have been exactly the move the D-04 anti-snooping contract forbids. Plans 13-15
+# and 13-16 both detected the problem and both declined to edit a frozen constant, naming the
+# limit instead. That refusal is precisely why the correction required a dated, argued amendment
+# rather than a patch.
+#
+# THE REDUNDANCY ARM IS DROPPED, NOT DEFERRED, AND NOT REPOINTED. With c1 excluded and the
+# fixtures carrying exactly three channels, THERE IS NO SECOND PAIR. This run therefore reports
+# STRICTLY LESS than the superseded one did: one arm instead of two.
+#
+# THE AMENDMENT TOOK THE WORSE NUMBER. Unmasked, the corrected pair separates the two fixtures by
+# 0.0788, against 0.0811 for the superseded pair. The MASKED read of the same corrected pair
+# separates them by 0.8576 (+0.8238 / -0.0338) and no prior source forbids it, but masked
+# summaries are off-distribution input to a net trained on unmasked ones (patch_summary applies
+# no Otsu mask), so they are refused. THE CORRECTION MAKES THIS ARM HONEST, NOT STRONG.
 #
 # =============================================================================================
 # (c) THE TARGET-SUBSTITUTION RECORD (P13_REAL_SUBSTITUTION_RECORD, 11-10-PLAN.md house shape).
@@ -584,8 +606,18 @@ function main(; net_path = P13_REALIMAGE_NET_PATH,
         println("  P13_REAL_CONDITIONS     = $P13_REAL_CONDITIONS")
         println("  P13_REAL_SAMPLE         = $P13_REAL_SAMPLE")
         println("  P13_REAL_CONTROL        = $P13_REAL_CONTROL")
-        println("  P13_REAL_CHANNEL_PAIR   = $P13_REAL_CHANNEL_PAIR   (primary arm)")
-        println("  P13_REAL_REDUNDANCY_PAIR= $P13_REAL_REDUNDANCY_PAIR   (REDUNDANCY, not a claim)")
+        println("  P13_REAL_CHANNEL_PAIR   = $P13_REAL_CHANNEL_PAIR   (THE OPERATIVE PAIR: " *
+                "c2/c3 = green/red, the two target proteins)")
+        println("  SUPERSEDED, printed so the correction is visible without opening another file:")
+        println("    the pre-registration froze (1, 2) primary and (1, 3) REDUNDANCY. Both")
+        println("    contained c1, the DAPI/Hoechst NUCLEAR COUNTERSTAIN, so both measured")
+        println("    counterstain-versus-protein overlap and not colocalization. Amended by")
+        println("    13-D15-AMENDMENT.md (2026-07-29, CHANGE A); the redundancy arm is DROPPED,")
+        println("    not deferred -- with c1 excluded there is no second pair.")
+        println("    superseded anchors  m-bar +0.3292 / +0.2481   amended  " *
+                "+$(P13_REAL_ANCHOR_MBAR.positive) / +$(P13_REAL_ANCHOR_MBAR.negative)")
+        println("    separation 0.0811 superseded vs 0.0788 amended -- the correction makes this")
+        println("    arm HONEST, NOT STRONG, and buys it no evidence.")
         println("  P13_REAL_IMSIZE         = $P13_REAL_IMSIZE")
         println("  P13_REAL_ALPHA_GRID     = $P13_REAL_ALPHA_GRID")
         println("  grid                    = $G x $G   n_cond = $n_cond   input width = $expected")
@@ -651,7 +683,7 @@ function main(; net_path = P13_REALIMAGE_NET_PATH,
     @assert p13_consts_sha() == P13_CONSTS_SHA.post_amendment "spike/p13/consts.jl is at NEITHER sha256 this amendment authorises (13-D15-AMENDMENT.md section 7.3): a third value is drift, not an amendment"
 
     # --- 5. THE TWO OOD REFERENCES, BUILT BEFORE ANY VERDICT IS PRINTED --------------------
-    verbose && println("[1/6] building the OOD references (Phase-13 in-distribution pool, and " *
+    verbose && println("[1/5] building the OOD references (Phase-13 in-distribution pool, and " *
                        "the frozen shipped bundle) ...")
     pool_dir = (h.meta isa NamedTuple && haskey(h.meta, :pool_dir)) ? h.meta.pool_dir : nothing
     idref    = p13_real_id_reference(pool_dir)
@@ -736,7 +768,7 @@ function main(; net_path = P13_REALIMAGE_NET_PATH,
     end
 
     # --- 6. SECTION 1 -- THE UNMODIFIED READ, BOTH DIRECTIONS, EVERY RUNG ------------------
-    verbose && println("[2/6] SECTION 1 -- the unmodified read at every pre-registered lambda " *
+    verbose && println("[2/5] SECTION 1 -- the unmodified read at every pre-registered lambda " *
                        "rung, both directions ...")
     prim  = sweep_rows("primary", P13_REAL_CHANNEL_PAIR)
     sweep = prim.rows
@@ -744,7 +776,7 @@ function main(; net_path = P13_REALIMAGE_NET_PATH,
                            "$(P13_REAL_CHANNEL_PAIR)).", sweep)
 
     # --- 7. SECTION 2 -- THE SHIPPED-NET OOD COMPARISON ------------------------------------
-    verbose && println("[3/6] SECTION 2 -- the shipped-net OOD comparison ...")
+    verbose && println("[3/5] SECTION 2 -- the shipped-net OOD comparison ...")
     ship_pos = NaN
     ship_neg = NaN
     if shipped.available
@@ -782,8 +814,27 @@ function main(; net_path = P13_REALIMAGE_NET_PATH,
                 "$(lpad(string(ship_flag), 8))")
         println("  frozen shipped reference (pre-registration): density " *
                 "$P13_REAL_OOD_SHIPPED_DENSITY vs threshold $P13_REAL_OOD_SHIPPED_THRESHOLD")
+        println("    P13_REAL_OOD_SHIPPED_DENSITY = $P13_REAL_OOD_SHIPPED_DENSITY IS A " *
+                "MEASUREMENT ON THE SUPERSEDED c1/c2 PAIR")
+        println("    (13-D15-AMENDMENT.md section 6.5). It is kept unchanged as a frozen")
+        println("    historical reference. The shipped reading above is on the AMENDED c2/c3")
+        println("    pair, so a difference from it is A RESULT, not a discrepancy to reconcile.")
+        println("    P13_REAL_OOD_SHIPPED_THRESHOLD is a property of the BUNDLE, not of the")
+        println("    pair, so it is unaffected and still selects the comparison bundle.")
+        if !shipped.available
+            println("    !! NO SHIPPED BUNDLE WAS READABLE, so the density printed above FELL")
+            println("    !! BACK to P13_REAL_OOD_SHIPPED_DENSITY -- i.e. it is a SUPERSEDED-PAIR")
+            println("    !! NUMBER and must not be read as an amended-pair measurement.")
+        end
         println("  shipped bundle read = $(shipped.bundle)   reproduces the frozen constant = " *
                 "$(shipped.reproduced_frozen)")
+        println("  THE SUPERSEDED PHASE-13 READING, PRINTED SO THE DELTA IS VISIBLE IN THIS LOG:")
+        println("    superseded pair (1, 2): density 417.2974 vs threshold 167.5446 (2.491x);")
+        println("      per-acquisition 417.2974 positive / 321.1505 negative")
+        println("    superseded shipped    : density 433.6884 vs threshold 179.1368 (2.421x)")
+        println("    superseded redundancy pair (1, 3): density 607.5728 (3.63x) -- A DIFFERENT")
+        println("      PAIR ALREADY MOVED THIS NUMBER BY 46%, so it is demonstrably")
+        println("      PAIR-DEPENDENT. The amended figure above is A CHANGE, never a restatement.")
         println("  THE SHIPPED BUNDLE IS USED HERE AS A FROZEN COMPARISON REFERENCE ONLY AND IS")
         println("  NEVER AN EVIDENCE BASIS. D-02 forbids falling back to the shipped grid-8")
         println("  basis for the EVIDENCE read; every log Bayes factor above came from the")
@@ -801,7 +852,7 @@ function main(; net_path = P13_REALIMAGE_NET_PATH,
     end
 
     # --- 8. SECTION 3 -- THE REAL ALPHA LADDER THROUGH THE NET -----------------------------
-    verbose && println("[4/6] SECTION 3 -- the real alpha ladder, invariants FIRST ...")
+    verbose && println("[4/5] SECTION 3 -- the real alpha ladder, invariants FIRST ...")
     ladder_rows = NamedTuple[]
     ladder_figs = NamedTuple[]
     inv_records = NamedTuple[]
@@ -940,25 +991,31 @@ function main(; net_path = P13_REALIMAGE_NET_PATH,
         end
     end
 
-    # --- 10. SECTION 5 -- THE REDUNDANCY ARM -----------------------------------------------
-    verbose && println("[5/6] SECTION 5 -- the REDUNDANCY arm at " *
-                       "P13_REAL_REDUNDANCY_PAIR = $(P13_REAL_REDUNDANCY_PAIR) ...")
-    red = sweep_rows("redundancy", P13_REAL_REDUNDANCY_PAIR)
+    # --- 10. THE REDUNDANCY ARM NO LONGER EXISTS -------------------------------------------
+    # It is DROPPED, NOT DEFERRED, by 13-D15-AMENDMENT.md (2026-07-29, CHANGE A) section 5.2.
+    # It used to re-read the SAME two specimens through P13_REAL_REDUNDANCY_PAIR = (1, 3) and was
+    # printed here as SECTION 5. With c1 -- the DAPI/Hoechst nuclear counterstain -- excluded and
+    # the fixtures carrying exactly three channels, THERE IS NO SECOND PAIR to re-read. The
+    # frozen (1, 3) was DAPI-versus-red and measured -0.0925 masked on the POSITIVE fixture,
+    # which is noise rather than corroboration, and a redundancy arm that corroborates nothing is
+    # worse than no redundancy arm because it gets quoted as a second observation.
+    # THIS IS A REDUCTION IN WHAT THIS PHASE REPORTS AND MUST READ AS ONE: the section, its
+    # table, its persisted artifact fields and its returned field are all gone. What remains is a
+    # single channel pair on two specimens.
     if verbose
-        print_sweep("SECTION 5 -- REDUNDANCY (channels $(P13_REAL_REDUNDANCY_PAIR)). THIS IS " *
-                    "NOT A SEPARATE CLAIM.", red.rows)
-        println("  Labelled REDUNDANCY on purpose: it re-reads the SAME two specimens through a")
-        println("  second pre-registered channel pair, so it can corroborate or contradict the")
-        println("  primary arm but adds no independent specimen and no new evidence about")
-        println("  colocalization. Note that BOTH pre-registered pairs include channel 1, the")
-        println("  nuclear counterstain -- a limit of the frozen pre-registration, named here")
-        println("  rather than repaired by choosing a new pair after the fact.")
+        println("-"^78)
+        println("SECTION 5 (THE REDUNDANCY ARM) IS DROPPED, NOT DEFERRED AND NOT SKIPPED.")
+        println("  13-D15-AMENDMENT.md CHANGE A removed the redundancy pair (1, 3)")
+        println("  entirely. It contained c1, the nuclear counterstain; with c1 excluded and only")
+        println("  three channels present there is no second pair. The superseded run reported it")
+        println("  at OOD density 607.5728 (3.63x over threshold) and reached the same RANDOM")
+        println("  verdict. THIS RUN REPORTS ONE ARM WHERE THE SUPERSEDED RUN REPORTED TWO.")
         println("-"^78)
     end
 
     # --- 11. THE READ-ONLY DIGEST, AFTER ---------------------------------------------------
     digest_after = verify_real_readonly_digest()
-    verbose && println("[6/6] read-only digest AFTER  = $digest_after")
+    verbose && println("[5/5] read-only digest AFTER  = $digest_after")
 
     # --- 12. PERSIST ATOMICALLY, BEFORE THE DIGEST COMPARISON CAN THROW --------------------
     ood_phase13 = (available = idref.available,
@@ -1017,9 +1074,35 @@ function main(; net_path = P13_REALIMAGE_NET_PATH,
         alpha_grid = collect(Float64, P13_REAL_ALPHA_GRID),
         alpha_never_averaged_with = "the :simulated arm of plan 13-13 -- alpha = 0 means a " *
                                     "RANDOM pair there and a MODERATELY COLOCALIZED pair here",
-        # --- Section 5: the redundancy arm, labelled, never a separate claim ---
-        redundancy_sweep = [r for r in red.rows],
-        redundancy_channels = collect(Int, P13_REAL_REDUNDANCY_PAIR),
+        # --- Section 5: the redundancy arm is GONE. A record of its removal replaces it, so the
+        # artifact alone says what happened rather than leaving a reader to notice an absence. ---
+        redundancy_arm = "DROPPED, NOT DEFERRED (13-D15-AMENDMENT.md CHANGE A, section 5.2). " *
+                         "The superseded redundancy pair (1, 3) contained c1, the " *
+                         "DAPI/Hoechst nuclear counterstain. With c1 excluded and the fixtures " *
+                         "carrying exactly three channels there is NO SECOND PAIR, so the arm " *
+                         "has no replacement. The frozen (1, 3) was DAPI-versus-red and measured " *
+                         "-0.0925 masked on the POSITIVE fixture -- noise, not corroboration. " *
+                         "This run therefore reports ONE arm where the superseded run reported " *
+                         "TWO; that is a REDUCTION in what the phase reports.",
+        # --- THE SUPERSEDED COMPARISON, PERSISTED, so this artifact alone is enough to
+        # reconstruct what the amendment changed and by how much. ---
+        amendment = "13-D15-AMENDMENT.md (2026-07-29): CHANGE A amended the operative real-image " *
+                    "channel pair and the colocalization anchors; CHANGE B re-pointed the " *
+                    "consts.jl include-guard sentinel (no value changed). No gating threshold " *
+                    "moved and P13_ITERATION_ALLOWANCE remains 1 of 1 UNSPENT.",
+        superseded_channel_pair = [1, 2],
+        superseded_redundancy_pair = [1, 3],
+        superseded_anchor_mbar = (positive = 0.3292, negative = 0.2481),
+        superseded_ood_phase13 = (density = 417.2974, threshold = 167.5446, ratio = 2.491,
+                                  density_sample = 417.2974, density_control = 321.1505),
+        superseded_ood_shipped = (density = 433.6884, threshold = 179.1368, ratio = 2.421),
+        superseded_ood_redundancy = (density = 607.5728, threshold = 167.5446, ratio = 3.63),
+        superseded_alpha_star_real = (positive = 0.875, negative = 0.625),
+        superseded_note = "EVERY superseded_* field above was measured on the SUPERSEDED c1/c2 " *
+                          "(or c1/c3) pair and is recorded for comparison ONLY. None of them is " *
+                          "a current reading. The masked figures +0.8238 / -0.0338 are FORBIDDEN " *
+                          "in this arm and appear nowhere in it: patch_summary applies no Otsu " *
+                          "mask, so the net was trained on unmasked summaries.",
         # --- the substrate provenance of both fixtures ---
         provenance_sample = real_provenance(P13_REAL_SAMPLE; channels = P13_REAL_CHANNEL_PAIR),
         provenance_control = real_provenance(P13_REAL_CONTROL; channels = P13_REAL_CHANNEL_PAIR),
@@ -1083,7 +1166,7 @@ function main(; net_path = P13_REALIMAGE_NET_PATH,
             lambda_sweep = sweep, lambda_headline = headline,
             ood_phase13 = ood_phase13, ood_shipped = ood_shipped, a12 = a12,
             alpha_ladder_real = ladder_rows, alpha_star_real = alpha_star,
-            invariants_ok = invariants_ok, redundancy_sweep = red.rows,
+            invariants_ok = invariants_ok,
             digest_before = digest_before, digest_after = digest_after,
             report_path = report_path, figure = figout)
 end
