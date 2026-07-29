@@ -210,4 +210,10 @@ include(joinpath(@__DIR__, "test_p13_calibration.jl"))
 # of the repository, while the six-item contract assertions skip explicitly until Phase 11's net
 # is on disk. Placed before the correction arm because that arm throws (see above).
 include(joinpath(@__DIR__, "test_p13_preconditions.jl"))
+# The D-07-i stratification / D-02 frozen-zt / D-03 lambda-placement / D-11 target gate. Like the
+# binding gate above, its Phase-11-dependent testsets skip EXPLICITLY (`@test_skip`, naming
+# Phase 11) until the research NPE is on disk, while the source-level assertions -- no forbidden
+# basis, no re-fit standardizer, no inlined recipe value, no CUDA -- run in any state of the
+# repository. Placed before the correction arm because that arm throws (see above).
+include(joinpath(@__DIR__, "test_p13_datagen.jl"))
 include(joinpath(@__DIR__, "test_p13_correction.jl"))
