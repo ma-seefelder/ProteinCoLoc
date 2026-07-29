@@ -439,6 +439,15 @@ spike/validation/sbc_report.jld2
 spike/validation/bf_report.jld2
 spike/validation/ood_report.jld2
 
+# Phase-13 (13-11) training side effects: NeuralEstimators writes optimiser + train-state
+# BSONs into the run's `savepath` alongside the loss history. The optimiser state is ~9 MB of
+# machine state that is redundant with the persisted net, so it stays out of git…
+spike/p13/three_way_train/*.bson
+# …while the loss history itself is the evidence the run happened as reported, and stays
+# tracked (it is why `savepath` is named explicitly rather than left in `tempdir()`).
+!spike/p13/three_way_train/loss_per_epoch.csv
+!spike/p13/three_way_train/train_time.csv
+
 # Phase-8 external ground-truth corpus (D-04): downloaded image bytes stay OUT of git
 # (large, licensed, regenerable from manifest + seeded fetch script + SHA-256 hashes).
 corpus/data/*
