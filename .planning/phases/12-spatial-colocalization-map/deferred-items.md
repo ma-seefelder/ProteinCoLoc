@@ -189,3 +189,50 @@ phases' seed names, so the collision is structural — is now confirmed against 
 (DEF-12-03). The durable repair is one convention, applied once: **guard each block on a sentinel
 that block alone owns** — a salt or a bar, never a seed name, because seed names are exactly the
 names other phases are obliged to re-declare.
+
+---
+
+## ORCHESTRATOR NOTE on DEF-12-02 / DEF-12-03 — a verified one-block fix exists; NOT applied
+
+Recorded 2026-07-29 by the phase-12 orchestrator so the work is not lost.
+
+**The class, now observed FOUR times** (13-09, DEF-12-01, DEF-12-02, DEF-12-03): every Phase-N
+pre-registration is REQUIRED by R-5 to name prior phases' seeds, and several frozen consts files
+guard their whole Tier-1 block on exactly one of those names. So the collision is structural, not
+accidental, and it will recur in Phase 14 unless the guard convention changes.
+
+| # | Declares the name | Breaks the block guarded on it | Status |
+|---|---|---|---|
+| 13-09 | `p13/consts.jl` -> `P11_DEV_SEED` | `p11_consts.jl` | fixed then, via `module _P11C` |
+| DEF-12-01 | p11/p12/p13 -> `VAL_MASTER_SEED` | `validation/consts.jl` | FIXED `fb76b84` |
+| DEF-12-02 | `p12_consts.jl:108` -> `P11_DEV_SEED` | `p11_consts.jl:79` | worked around per-runner |
+| DEF-12-03 | `p12_consts.jl:109` -> `P13_DEV_SEED` | `p13/consts.jl:100` | OPEN |
+
+**Verified fix (measured, not proposed):** pre-load the foreign Tier-1 blocks before
+`p12_consts.jl`, so each file's own guard fires on a name nobody has shadowed yet. Confirmed to
+work in one process:
+
+```julia
+include("spike/validation/p11_consts.jl")
+include("spike/p13/consts.jl")
+include("spike/validation/p12_consts.jl")
+# -> P11_DEV_SEED 185720433::UInt64, P13_DEV_SEED 185851505::UInt64,
+#    SC2_SPEARMAN_ATTENUATION defined, P12_DEV_SEED 185785969, no warnings
+```
+
+This closes DEF-12-02 and DEF-12-03 together, touches NO frozen consts file, and changes no seed,
+threshold or pre-registered value — the re-declarations that follow are same-value and Julia 1.12
+absorbs them silently (the same behaviour verified for `VAL_MASTER_SEED` under DEF-12-01, which
+even changed type UInt64 -> UInt32 without a warning).
+
+**NOT APPLIED, deliberately.** The natural home is `spike/test/runtests.jl` — shared suite
+infrastructure that a LIVE Phase-13 executor is depending on while it works. Reshaping it mid-flight
+from another phase's orchestrator is the kind of concurrent change that produces a race nobody can
+later attribute. It is also not needed for either phase's actual gate signal: per-file runs are the
+declared signal for both Phase 12 and Phase 13, and `test_p13_consts.jl` passes standalone today.
+
+**What changed the calculus, and why this is now worth someone's decision:** the user's own
+`a494247` (2026-07-29, "PAUSE the NPE-03 wall-clock gate — not retire it, not relax it") removed the
+Phase-4 abort that had been masking all of this. A full-suite green is reachable for the first time
+in this milestone, and DEF-12-03 is now one of the things standing in its way. Owner: whoever holds
+`runtests.jl` after Phase 13 lands.
