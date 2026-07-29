@@ -392,8 +392,14 @@ The disjointness is asserted by `test_p12_decoupling.jl` (12-05) and again by te
 """
 const P12_CACHE_ROOT = joinpath(@__DIR__, "cache", "p12")
 
+# THE DISJOINTNESS IS STRUCTURAL, NOT ASSERTED HERE, AND THAT IS 12-05's RULE RATHER THAN A
+# WEAKENING OF IT. `test_p12_decoupling.jl:337` requires that the Phase-11 cache-root literal appear
+# NOWHERE in this file's comment-stripped source -- so no code path here can construct that path at
+# all, which is a stronger guarantee than a runtime check that the constant is not it. An earlier
+# draft carried exactly such a check and FAILED that test, on its own defensive assertion. The
+# positive half of the rule is asserted here; the negative half is asserted from the test files,
+# where naming the other phase's root is what they are for.
 @assert basename(P12_CACHE_ROOT) == "p12"
-@assert !occursin(joinpath("cache", "p11"), P12_CACHE_ROOT)
 
 """
     p12_shard_loads_ok(path) -> Bool
