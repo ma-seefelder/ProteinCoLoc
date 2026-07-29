@@ -172,7 +172,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 9. Cross-Method Comparator Harness | 6/6 | Complete   | 2026-07-02 |
 | 10. Manuscript Skeleton + Related-Work Positioning | 5/5 | Complete   | 2026-07-02 |
 | 11. Registration + Chromatic Uncertainty as Latent | 6/11 | In Progress|  |
-| 12. Spatial Colocalization Map (GP/CAR) | 6/20 | In Progress|  |
+| 12. Spatial Colocalization Map (GP/CAR) | 8/20 | In Progress|  |
 | 13. Three-Hypothesis Amortized Bayes Factor | 15/17 | In Progress| 13-16: real-image arm REPORTED — **all its figures SUPERSEDED**, measured on the DAPI-counterstain pair (RANDOM on both pairs, both OOD-flagged 2.49x/2.42x, agreement). Corrected to the c2/c3 green/red pair by `13-D15-AMENDMENT.md`; redundancy arm dropped; re-run is plan 13-17. **The gating arm is unaffected and no threshold moved**; D-04 allowance unspent |
 | 14. Decision + Abstention Layer | 0/TBD | Not started | - |
 | 15. Calibration Operating Envelope + CI Gate | 0/TBD | Not started | - |
