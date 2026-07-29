@@ -5,13 +5,13 @@ milestone_name: milestone
 status: in-progress
 stopped_at: Phase 12 context gathered
 last_updated: "2026-07-27T14:06:54.610Z"
-last_activity: 2026-07-27 -- Phase 13 execution started
+last_activity: 2026-07-29 -- Phase 13 plan 13-11 complete (three-way evidence net trained)
 progress:
   total_phases: 16
   completed_phases: 10
   total_plans: 80
-  completed_plans: 65
-  percent: 63
+  completed_plans: 66
+  percent: 64
 ---
 
 # Project State
@@ -102,9 +102,45 @@ answered:
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
-Plan: 11 of 16 complete (13-01…13-10 + 13-15); remaining 13-11, 13-12, 13-13, 13-14, 13-16
-**STATUS: Executing — waves 1-6 done. τ MEASURED (0.15), Phase-11 basis BOUND. Wave 7 (13-11
-datagen + three-way training) is next and is the phase's one large compute spend.**
+Plan: 12 of 16 complete (13-01…13-11 + 13-15); remaining 13-12, 13-13, 13-14, 13-16
+**STATUS: Executing — waves 1-7 done. τ MEASURED (0.15), Phase-11 basis BOUND, and the three-way
+evidence net is TRAINED (13-11, one run, recipe unchanged, D-04 allowance UNSPENT).**
+
+- **2026-07-29 — 13-11 COMPLETE (`133558d` tests → `41a24f4` trainer + artifact; Task 1 was
+  pre-committed at `4839c66` by a predecessor that died on a session limit).** Executed on the
+  MAIN working tree with NO worktree, deliberately: the pool lives in gitignored
+  `spike/data/cache/p13/` and a worktree cleanup is exactly what destroyed Phase 11's 54 MB pool.
+  **MEASURED:** realized class frequencies EXACTLY equal thirds (whole-class accept/reject to an
+  integer quota of 16,000 each; acceptance overhead 1.545×, 48,000 accepted from 74,149 draws).
+  Frozen-zt check **PASS / verdict `inherited`** — max|per-row mean| 0.057353463, max|per-row sd-1|
+  0.035997152 over 96,000 columns × 64 continuous rows, with the gate's re-fit negative control
+  confirming a genuine re-fit lands at machine zero (<1e-8) while the inherited residual is >1e-4.
+  Per-head corrections MEASURED on the training subset only: **coloc +0.0029420, exclusion
+  +0.0023543**, against π-level −0.7765 / −0.4090 (π masses E 0.31272 / R 0.47073 / C 0.21655,
+  matching 13-RESEARCH E1 to ~3 dp) — stratification removes the prior imbalance as designed, and
+  the values are measured rather than assumed because the contiguous split does not divide a
+  stratified pool into exact thirds.
+  **HONEST FINDING, NOT REPAIRED — the run overfits early.** Best validation risk **0.13625 at
+  epoch 4**; validation then rose monotonically to 0.38632 while training risk fell to 0.03655
+  (~10× gap), early stopping at epoch 45 of 300. The persisted artifact IS the epoch-4 best
+  checkpoint (NeuralEstimators `train` returns `trainstate_best` on CPU, `train.jl:643`), so the
+  overfitting cost usable budget, not shipped weights. The verbatim recipe was NOT tuned;
+  `consts.jl` byte-unchanged, `P13_ITERATION_ALLOWANCE` still 1 of 1 **UNSPENT**. Whether a
+  best-at-epoch-4 checkpoint suffices is left to the downstream gates (13-12/13/14/16), because
+  answering it by retraining is what the allowance forbids absent its pre-declared trigger.
+  **ASSUMPTION DRIFT worth carrying:** training took **2.37 min**, pool generation ~120 min — the
+  spend is ~98% datagen, so the marginal cost of a second training run is minutes. The iteration
+  allowance is therefore a matter of pre-registration integrity, NOT compute budget; it is cheap,
+  and that is not the reason it is forbidden.
+  Artifact `spike/p13/three_way_net.jld2` (953,027 bytes) carries head_log_odds, τ + its Tier-2
+  provenance shas, the Phase-11 path + sha256, realized/target class freq, the consts sha256 AND
+  git blob sha, the full recipe, seed/salt/counter and pool dir. Gate
+  `spike/test/test_p13_datagen.jl` 706/706 with ZERO skips; root suite green; `src/` and both spike
+  manifests byte-unchanged.
+  **The 50 MB pool at `spike/data/cache/p13/7c65a1a9…/` is GITIGNORED and unbacked.** Regenerating
+  costs ~2 h CPU but is BYTE-IDENTICAL (counter-based Philox per global index), so a loss is a
+  compute cost, not a re-seed. Resume-by-skip was exercised for real twice (5 predecessor shards
+  skipped; a mid-run process kill at 10 shards lost nothing).
 
 - **2026-07-28 — 13-10 closed out from its committed artifact (`85a75c2`).** The prior executor
   landed all three 13-10 commits (`581602a` artifact → `bfba6ac` constant → `45f5a44` tests) in a
@@ -154,6 +190,17 @@ datagen + three-way training) is next and is the phase's one large compute spend
   abort sits at `runtests.jl:213`, it masks everything after it — a full-suite green is therefore
   NOT available as a gate signal for the rest of Phase 13, and per-file runs must be used instead.
   **Re-deriving that bar is a pre-registration decision and is left for the user.**
+
+- **CORRECTION to the note above, measured 2026-07-29 during 13-11: the suite never REACHES line
+  213.** It aborts EARLIER, at `runtests.jl:169` → `test_npe.jl:230`, on the Phase-4 `SPEEDUP_GATE`
+  (median speedup **68.35** against the pre-registered bar 100.0 — the blocker already recorded
+  below from the Phase-11 wave-3 post-merge gate, where it measured 92.50× and 83.97×, so the
+  number has drifted further down). Consequence: the masked region is the **ENTIRE Phase-13 include
+  block** (all eleven `test_p13_*` files), not merely what follows the correction arm. The
+  conclusion is unchanged and now has two independent causes — per-file runs are the gate signal
+  for Phase 13. NOT fixed by 13-11: `SPEEDUP_GATE` is a pre-registered threshold (user decision)
+  and `test_npe.jl` is Phase-4 code that plan does not own. Detail:
+  `.planning/phases/13-three-hypothesis-amortized-bayes-factor/deferred-items.md`.
 
 Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — CLOSED 2026-07-27
 Plan: 7 of 11 executed; 11-08 through 11-11 SUPERSEDED by the diagnosis (reasoning per plan in
