@@ -34,7 +34,70 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
-Phase: 12 (spatial-colocalization-map) — EXECUTING (started 2026-07-29, from plan HEAD `79c66d0`)
+Phase: 12 (spatial-colocalization-map) — **HALTED AT THE STAGE-1 GATE, AWAITING A USER RULING**
+(started 2026-07-29 from plan HEAD `79c66d0`; 11 of 20 plans complete, waves 1-6 run)
+
+## ⛔ BLOCKER — Phase 12 needs ONE user decision before it can continue
+
+**12-11 measured the Stage-1 gate and deliberately wrote NO verdict.** `12-STAGE1-VERDICT.md` does
+not exist, so `p12_stage1_verdict()` returns `:absent` and `p12_require_proceed` correctly refuses
+12-17, 12-18, 12-19 and 12-20. Full evidence: `12-STAGE1-ADJUDICATION-BLOCKED.md`. Nothing was
+tuned; `p12_consts.jl` is byte-unchanged and `P12_ITERATION_ALLOWANCE` stands at **1, UNSPENT**.
+
+**The question, in one sentence:**
+> Does a positive control that is provably **at the information limit of the data**, but above
+> `P12_STAGE1_CONTROL_CEILING = 0.5` at r₁ ≤ 0.50, mean the harness is not live — or does it mean
+> the ceiling is unreachable in that unit at those rungs?
+
+**Why it cannot be answered by an agent.** The gate has two halves and they disagreed.
+`borrowing_ok = TRUE` at **5 of 5** rungs (`ratio_mean` 0.926 / 0.847 / 0.719 / 0.562 / 0.336, all
+under the 0.95 ceiling) — the half the phase is actually about passed by a margin. But
+`control_live = FALSE` (max `control_ratio_mean` 0.732 vs a ceiling of 0.5). The frozen rule says a
+failed control means the run is uninformative — record NEITHER verdict — and spend the single
+iteration allowance "fixing the harness". That instruction rests on a premise the rule states rather
+than tests, and 12-11 tested it: all three causes the rule names (broken standardizer,
+target/predictor misalignment, wrong-`r1` pool) are ruled out **executably**, and the ridge attains
+the analytic information limit `sqrt(1−corr²)` to within **5·10⁻⁴ at every rung** — a bound computed
+with no ridge, split or standardizer, so no defect in the machinery could produce it. That limit is
+itself **0.766 / 0.712 / 0.637** at r₁ ≤ 0.50, i.e. **above the 0.5 bar**, so at those rungs *no
+estimator of any kind* can clear it. The Phase-11 benchmark also reproduces (global-level control
+0.19687 vs Phase 11's 0.157). So all three contents the plan permits — PROCEED, DESCOPE, "harness
+not live" — are untrue, which is why no verdict was written.
+
+**The two defensible readings** (both are in the record; this is why it is not an agent's call):
+- **A — the rule stands.** The ceiling is Tier 1 and in `P12_GATING_CONSTANTS`; reinterpreting a
+  gate constant after seeing the number it failed is the "amend after the fact" pattern this project
+  has already paid for twice. ⇒ run uninformative, allowance spent on the Stage-1 arm.
+- **B — the ceiling is mis-scaled for the unit.** `P12_STAGE1_RATIO_CEILING` carries a derivation
+  *and* an explicit recorded warning that the unit it is applied to is not the unit it was derived
+  for. **`P12_STAGE1_CONTROL_CEILING` carries no derivation anywhere in the pre-registration** — its
+  only stated rationale is 12-RESEARCH's qualitative "must be far below 1.0", which the measured
+  0.324-0.732 (a 27-68 % error reduction) meets at every rung; and its plausible implicit anchor is
+  Phase 11's *global* 0.157, which 12-CONTEXT S-2 explicitly warns must not be read as a per-region
+  expectation. ⇒ control is live, gate reduces to `borrowing_ok`, TRUE at 5/5.
+
+If the ruling is B, the bar would need expressing per rung or against the measured information
+limit, and that is a **Tier-2 append** naming this artifact — never an edit to append-only Tier 1.
+
+**The finding stands either way, and it is the deliverable Pitfall 2 named in advance.** Neighbours
+DO inform a held-out region, monotonically in r₁. The crossing where the other 63 regions beat a
+region's OWN measurement sits essentially exactly at **r₁ = 0.75** (parity, Δ = 0.0063; at r₁ = 0.95
+neighbours win 0.336 vs 0.472). Carry into 12-20 regardless: `radial_r2 = 0.749` at r₁ = 0.95 is an
+S-4 warning, with a competing benign reading (CAR corner/edge variance geometry, which 12-07
+measured) that this run does not separate.
+
+**Forbidden until the ruling exists:** running 12-17/18/19/20; editing any `p12_consts.jl` constant;
+re-running the ladder on a different seed/size/arm to obtain a nicer control; spending the iteration
+allowance; and reading `stage1_pass = false` as a DESCOPE (it is an AND over one TRUE and one FALSE
+component, and the frozen rule forbids reading the FALSE half as a descope).
+
+**Not blocked by the gate:** 12-13, 12-14, 12-15, 12-16. The orchestrator halted them anyway rather
+than assume the unresolved question has no blast radius on work built from this pool — resuming them
+early is available if the user wants progress while deciding.
+
+---
+
+Phase: 12 (spatial-colocalization-map) — execution record
 Plans: 20 of 20 written and committed (`927cf7a`); FOUR plan-checker gates run 2026-07-28/29.
 **EXECUTION MODE — NO WORKTREES, sequential on the MAIN working tree, deliberately.** Same ruling as
 13-11 and for the same reason, plus one Phase-12-specific reason that is stronger: (a) 12-09's pool
