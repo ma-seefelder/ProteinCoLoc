@@ -48,7 +48,12 @@ using Random123          # Philox4x (counter/key-based AbstractRNG for the VAL s
 # --- ORDER MATTERS: consts first, then the trainer/inference surface (load_npe +
 #     posterior_for + rho_draws), then the simulator halves, contract, encode, and
 #     the seeding primitives whose salt idiom val_rng mirrors. Guarded for idempotency.
-isdefined(@__MODULE__, :VAL_MASTER_SEED) || include(joinpath(@__DIR__, "consts.jl"))
+# SENTINEL IS :SBC_M, NOT :VAL_MASTER_SEED. `consts.jl:38-42` guards its own block on :SBC_M and
+# says so; but :VAL_MASTER_SEED is ALSO declared by p11_consts.jl:87, p12_consts.jl:103 and
+# p13/consts.jl:109, so guarding on that name made this include a silent no-op whenever any Phase
+# 11/12/13 pre-registration loaded first -- and then SBC_M / SBC_FIX_M never existed at all.
+# :SBC_M is owned by consts.jl alone, so the caller guard and the file's internal guard agree.
+isdefined(@__MODULE__, :SBC_M) || include(joinpath(@__DIR__, "consts.jl"))
 isdefined(@__MODULE__, :load_npe)        || include(joinpath(@__DIR__, "..", "npe", "train_npe.jl"))
 isdefined(@__MODULE__, :posterior_for)   || include(joinpath(@__DIR__, "..", "npe", "infer.jl"))
 isdefined(@__MODULE__, :sample_prior)    || include(joinpath(@__DIR__, "..", "simulator", "prior.jl"))

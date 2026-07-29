@@ -69,7 +69,10 @@ using Random             # rand over ranges / randperm on an AbstractRNG
 # --- ORDER MATTERS: consts first, then the shared harness (load_frozen_model +
 #     sample_prior/simulate_pair/build_mci/patch_summary/encode_d01 + standardize_summary
 #     + val_rng). Guarded for idempotency under runtests.jl.
-isdefined(@__MODULE__, :VAL_MASTER_SEED)   || include(joinpath(@__DIR__, "consts.jl"))
+# :SBC_M, not :VAL_MASTER_SEED — the latter is also declared by p11/p12/p13_consts.jl, which made
+# this include a silent no-op (and SBC_M / SBC_FIX_M vanish) if any of them loaded first. See the
+# note at validation/harness.jl:51.
+isdefined(@__MODULE__, :SBC_M)   || include(joinpath(@__DIR__, "consts.jl"))
 isdefined(@__MODULE__, :load_frozen_model) || include(joinpath(@__DIR__, "harness.jl"))
 
 # Persistence schema for trained_ratio.jld2 (bump on any breaking layout change).

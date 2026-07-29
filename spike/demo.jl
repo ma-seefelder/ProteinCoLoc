@@ -59,7 +59,10 @@ using Statistics
 #     transitively pulls load_npe, posterior_for, sample_prior/simulate_pair, build_mci
 #     (contract.jl → read-only src/), encode_d01, sample_rng. @__DIR__ + joinpath
 #     everywhere — never bare relative paths.
-isdefined(@__MODULE__, :VAL_MASTER_SEED)   || include(joinpath(@__DIR__, "validation", "consts.jl"))
+# :SBC_M, not :VAL_MASTER_SEED — the latter is also declared by p11/p12/p13_consts.jl, which made
+# this include a silent no-op (and SBC_M / SBC_FIX_M vanish) if any of them loaded first. See the
+# note at validation/harness.jl:51.
+isdefined(@__MODULE__, :SBC_M)   || include(joinpath(@__DIR__, "validation", "consts.jl"))
 isdefined(@__MODULE__, :draw_simulate_infer) || include(joinpath(@__DIR__, "validation", "harness.jl"))
 # The BF/NRE surface (load_ratio, build_bf_pair, amortized_log_bf; pulls train_ratio.jl)
 # and the OOD surface (fit_ood_nulls, maha_score, ood_roc_over_grid). Each guards its own
