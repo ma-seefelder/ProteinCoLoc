@@ -724,6 +724,24 @@ None yet.
 
 [Issues that affect future work]
 
+- **[SPIKE-WIDE — INCLUDE-GUARD POISONING: MECHANICAL SWEEP DONE, 29 HITS, AND THE FIX IS COUPLED TO THE BLOCKED M1/M2 RULING, 2026-07-29]** Ran the sweep asked for after `fb76b84` (`:SBC_M`) and the `:P13_DEV_SEED` abort: for every `isdefined(..., :NAME) || include(...)` and `if !isdefined(..., :NAME)` under `spike/`, is `:NAME` declared as a `const` by more than one file? **220 guards over 118 files; 29 POISONED, in eight families.** This is a repo-wide latent defect, not a third instance.
+  | Sentinel | Guards | Declared by |
+  |---|---|---|
+  | `:P13_DEV_SEED` | **9** | `p13/consts.jl`, `validation/p12_consts.jl` |
+  | `:LAMBDA_MIN` | **9** | `p13/preconditions.jl`, `validation/p11_consts.jl` |
+  | `:P11_DEV_SEED` | 4 | `p13/consts.jl`, `p11_consts.jl`, `p12_consts.jl` |
+  | `:NPE_MASTER_SEED` | 1 | **SIX** files (`run_advi.jl`, `train_npe.jl`, `p13/consts.jl`, `test_npe.jl`, `p11_consts.jl`, `p12_consts.jl`) |
+  | `:ABL_REL_MARGIN`, `:ABL_FOLD_CONSISTENCY`, `:BENCH_THREADS` | 3 | each also declared in `test_npe.jl` |
+  | `:MU_PRIOR` | 1 | `simulator/calibration.jl`, `simulator/prior.jl` |
+  | `:P11_IMSIZE_SET` | 1 | `p13/preconditions.jl`, `p11_consts.jl` |
+  | `:P13_REPO_ROOT` | 1 | `p13/real_images.jl`, `test/test_p13_result.jl` |
+  **SEEDS DOMINATE, AND THAT IS STRUCTURAL:** 23 of the 29 guard on a seed or a prior bound — precisely the names every other phase MUST mirror to assert stream disjointness. A seed is the worst possible guard sentinel in this project, and four separate phases independently reached for one. (`p13/consts.jl:93` is a false positive of the scan — a commented illustration of the idiom, not a live guard. The live owner-side wrapper is `:100`.)
+  **MECHANISM VERIFIED EMPIRICALLY, BOTH DIRECTIONS:** defining `P13_DEV_SEED` first exactly as `p12_consts.jl:109` does, then running the guarded include, reproduces the abort — guard short-circuits, `P13_GATE_M` never defined. Reading the same frozen file through an isolated module under the SAME poisoning recovers it — `_P13C.P13_GATE_M = 4000`, 100+ constants restored, file untouched.
+  **WHY "GUARD ON THE NAME YOU OWN" (`fb76b84`) CANNOT SIMPLY BE APPLIED HERE, AND WHY THAT COUPLES THIS TO THE CHANNEL-PAIR DECISION.** `fb76b84` only had to fix CALLERS, because `validation/consts.jl` already guarded its own body on `:SBC_M`, the name it owns. Here BOTH ends use the poisoned name, and the owner-side end is `spike/p13/consts.jl:100` — **inside the byte-locked pre-registration**. A caller-only fix is provably useless: the caller would correctly call `include`, and the body wrapper would still see `P13_DEV_SEED` defined by Phase 12 and skip the entire body. So applying the precedent REQUIRES editing `consts.jl`, which changes its sha256 and trips `h.consts_sha == p13_consts_sha()` in `run_three_way_gate.jl:353` (**the gate**), `run_alpha_series.jl:451` and `run_p13_realimage.jl:634` — **the exact M1/M2 question already open above.** The two tasks are therefore one decision, not two.
+  **RECOMMENDATION, NOT APPLIED (the ruling is the user's):** under **M2** (consts.jl stays byte-unchanged) the fix is the ISOLATED-MODULE READ, which is not a departure from the precedent but the only form of it available when the owner file is frozen — and it is already this repo's house pattern for this exact collision, used three times: `module _P11C` (`p13/preconditions.jl:160`, whose comment states *"NO GATE IS RUN AND THE FILE IS NOT MODIFIED -- this is a read"*), `module _GC` (`p13/consts.jl`) and `module GateV2` (`p11_consts.jl`). Under **M1** the wrapper at `:100` is re-pointed to a Tier-1 name `p13/consts.jl` exclusively owns — **100 such constants exist**, e.g. `P13_STRATIFICATION`, `P13_GATE_STATISTIC`, `P13_ITERATION_ALLOWANCE` — in the SAME edit that lands the channel-pair amendment, and the isolated module is then unnecessary.
+  **COST OF THE M2 FORM, STATED SO IT IS NOT A SURPRISE:** `spike/test/test_p13_consts.jl` asserts ~114 constants UNQUALIFIED, so an isolated read needs them re-bound into the test module. That is mechanical but not free, and it is why this was reported rather than hand-applied mid-flight.
+  **NOT FIXED, DELIBERATELY:** `p12_consts.jl` is append-only Tier-1 and its mirror is CORRECT — asserting seed disjointness requires naming the seeds. The defect is on the guard side every time.
+
 - [Phase 1]: NeuralEstimators v0.2.x is pre-1.0 and the Julia ML ecosystem is mid Flux→Lux/Reactant migration — the CPU-only Flux path must be confirmed exercised at the smoke gate; pinned Manifest is the mitigation
 - [Phase 5]: OOD detection power is structurally bounded by the fixed patch-correlation summary — summary-orthogonal misspecifications are provably undetectable and must be named, not hidden
 - [Phase 5]: "Tune until calibrated" is a data-snooping hazard — M and SBC threshold must be pre-registered before Phase 5 planning runs
