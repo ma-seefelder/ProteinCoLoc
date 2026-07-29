@@ -1,0 +1,183 @@
+# Project conventions — standing rules that apply to EVERY phase
+
+Rules recorded here are **not phase-scoped**. They exist because the same defect was found more
+than once, in more than one phase, by more than one author. A rule earns a place here only when it
+has been observed to recur; anything observed once belongs in that phase's `deferred-items.md` or
+in `STATE.md`.
+
+This file is registered from `.planning/PROJECT.md` (`## Constraints`) so that every GSD plan,
+whose `<context>` block references `@.planning/PROJECT.md`, reaches it.
+
+---
+
+## C-01 — NEVER guard an `include` on a seed or a prior bound
+
+> **Never guard an include on a seed or a prior bound, because those are exactly the names other
+> phases are required to mirror.**
+
+That one sentence, applied from the beginning, would have prevented all 29 hits in the sweep
+below.
+
+### The idiom, and how it breaks
+
+The house idiom for making an `include` idempotent is:
+
+```julia
+isdefined(@__MODULE__, :SENTINEL) || include(joinpath(@__DIR__, "target.jl"))   # caller side
+if !isdefined(@__MODULE__, :SENTINEL)                                           # owner side
+    # ... the whole body ...
+end
+```
+
+The idiom is only sound if `:SENTINEL` is a name the target file **exclusively owns**. If any
+other file can define that name first, the guard reads "already loaded" when nothing was loaded,
+the `include` becomes a silent no-op, and the target's constants never exist. The failure surfaces
+far away, as `UndefVarError` on an unrelated name, and — worst of all — **only in the suite**:
+per-file runs pass, because in a single-file process nothing else has defined the sentinel yet.
+
+### Why seeds are the worst possible sentinel *in this project specifically*
+
+Requirement R-5 obliges every Phase-N pre-registration to **re-declare prior phases' seeds** in
+order to assert stream disjointness. A seed name is therefore, by design, a name that several
+files are *required* to declare. Guarding on one is guaranteeing the collision. Prior bounds
+(`LAMBDA_MIN`, `MU_PRIOR`, …) are the same class for the same reason: they are re-declared so a
+later phase can assert it stayed inside an earlier phase's range.
+
+**The empirical shape of the defect: 23 of the 29 poisoned guards guard on a seed or a prior
+bound.** Four separate phases independently reached for one. This is structural, not careless.
+
+### What TO guard on
+
+A name that is:
+
+1. **exclusively owned** — verify with a fresh repo-wide `grep -rn "const NAME\b" --include=*.jl .`
+   and confirm exactly one declaring file. Do not trust a list; re-run the grep;
+2. **declared unconditionally inside the guarded body** — never a Tier-2 / appended / optional
+   constant whose absence the file itself tolerates. A sometimes-absent sentinel is worse than the
+   bug it was meant to fix;
+3. **not a seed and not a prior bound** (rule C-01);
+4. **about the file's IDENTITY, not a value another phase might quote** — a declared-deviations
+   register, a pre-registration id, a schema marker. Not a design knob, not a gate statistic, not
+   an architecture rule: each of those is a value a later phase may legitimately mirror in order to
+   assert compatibility with it.
+
+### The two remedies, and when each applies
+
+| Remedy | Use when | Form |
+|---|---|---|
+| **Re-point at the source** | the owner file **can** be edited — it is not frozen, or an authorised amendment already opens it | change the owner-side wrapper AND every caller-side guard, in ONE edit, to a name satisfying (1)-(4) |
+| **Isolated-module read** | the owner file **cannot** be edited — a frozen pre-registration with no amendment open | `module _XC; include(".../frozen.jl"); end`, then re-bind what is needed from `_XC.NAME`. The file is read, not modified, and no gate is run |
+
+**A caller-only fix is provably useless when both ends use the poisoned name.** The caller would
+correctly call `include`, and the owner-side wrapper would still see the foreign definition and
+skip its entire body. Fix both ends or fix neither. `fb76b84` (`:SBC_M`) was a caller-only fix and
+it was *correct there* only because `validation/consts.jl` already guarded its own body on the
+name it owns.
+
+**Never "fix" this by editing the mirroring file.** The mirror is correct — asserting seed
+disjointness requires naming the seeds. `spike/validation/p12_consts.jl` is append-only Tier 1 and
+must not be touched for this. **The defect is on the guard side, every time.**
+
+### In-repo precedents
+
+- Isolated-module read: `module _P11C` (`spike/p13/preconditions.jl:160`, whose comment states
+  *"NO GATE IS RUN AND THE FILE IS NOT MODIFIED -- this is a read"*), `module _GC`
+  (`spike/p13/consts.jl:96`), `module GateV2` (`spike/validation/p11_consts.jl`).
+- Caller re-point: `fb76b84` — *"guard validation/consts.jl on :SBC_M, the name it actually owns"*.
+- Both-ends re-point: `13-D15-AMENDMENT.md` §5B (`spike/p13/consts.jl:100` +
+  `spike/test/test_p13_consts.jl:42` + six sibling callers), executed by `13-17-PLAN.md`.
+
+---
+
+## C-01 appendix — the mechanical sweep (2026-07-29): 220 guards, 118 files, 29 poisoned
+
+Question asked of every `isdefined(..., :NAME) || include(...)` and `if !isdefined(..., :NAME)`
+under `spike/`: **is `:NAME` declared as a `const` by more than one file?** Recorded in full in
+`.planning/STATE.md` (Blockers/Concerns, 2026-07-29). Reproduced here with a remedy per family,
+because STATE.md is a running log and this is a standing rule.
+
+| # | Sentinel | Guards | Declared by | Owner-side block | Owner editable? | Remedy |
+|---|---|---|---|---|---|---|
+| 1 | `:P13_DEV_SEED` | **9** | `p13/consts.jl:188`, `validation/p12_consts.jl:109` | `p13/consts.jl:100` | **yes** — `13-D15-AMENDMENT.md` opens it | **RE-POINT AT SOURCE → `:P13_DECLARED_DEVIATIONS`. FIXED by `13-17-PLAN.md`.** Both ends plus six sibling callers (`labels.jl:73`, `net.jl:89`, `preconditions.jl:191`, `result.jl:79`, `tau_probe.jl:92`, `toy_gaussian.jl:79`) |
+| 2 | `:LAMBDA_MIN` | **9** | `validation/p11_consts.jl`, `p13/preconditions.jl:171` (a re-bind of Phase 11's value) | `p11_consts.jl:79` (itself guarded on the poisoned `:P11_DEV_SEED`) | **no** — Phase-11 Tier-1, frozen, no amendment open | **ISOLATED-MODULE READ** at each of the 8 callers, or re-point them to a name `p11_consts.jl` alone owns (e.g. `SC2_SPEARMAN_ATTENUATION`). Not fixable at the source until Phase 11 opens an amendment |
+| 3 | `:P11_DEV_SEED` | **4** | `p13/consts.jl:116`, `p11_consts.jl:144`, `p12_consts.jl:108` | `p11_consts.jl:79` | **no** — same as #2 | **ISOLATED-MODULE READ** — already the `_P11C` precedent (`p13/preconditions.jl:160`) and already worked around per-runner as DEF-12-02 |
+| 4 | `:NPE_MASTER_SEED` | 1 | **six** files (`baseline/run_advi.jl`, `npe/train_npe.jl`, `p13/consts.jl`, `test/test_npe.jl`, `p11_consts.jl`, `p12_consts.jl`) | `npe/train_npe.jl:64` | **yes** — not a frozen pre-registration | **RE-POINT AT SOURCE** to a name `train_npe.jl` alone owns. Note the literals differ in TYPE (`0xC0FFEE` is `UInt32`; `0x0000_0000_00C0_FFEE` is `UInt64`) — see C-02 |
+| 5 | `:ABL_REL_MARGIN` | 1 | `npe/ablation.jl`, `test/test_npe.jl` | `npe/ablation.jl:67` | **yes** | **RE-POINT AT SOURCE** |
+| 6 | `:ABL_FOLD_CONSISTENCY` | 1 | `npe/ablation.jl`, `test/test_npe.jl` | `npe/ablation.jl:70` | **yes** | **RE-POINT AT SOURCE** |
+| 7 | `:BENCH_THREADS` | 1 | `npe/run_thread_sweep.jl`, `test/test_npe.jl` | `npe/run_thread_sweep.jl:55` | **yes** | **RE-POINT AT SOURCE** |
+| 8 | `:MU_PRIOR` | 1 | `simulator/calibration.jl`, `simulator/prior.jl` | caller `simulator/p12_prior.jl:68` | **yes**, but see caveat | **RE-POINT AT SOURCE.** CAVEAT: `spike/p13/consts.jl:797` freezes `P13_TAU_SIMULATOR_SHA = 78dc37f…` as `git log -1 -- spike/simulator`; any commit touching `spike/simulator/` moves that pointer, so this one needs its own disclosure |
+| 9 | `:P11_IMSIZE_SET` | 1 | `p13/preconditions.jl:176`, `p11_consts.jl` | `p13/preconditions.jl:176` | **yes** | **RE-POINT AT SOURCE** (Phase-13-owned) |
+| 10 | `:P13_REPO_ROOT` | 1 | `p13/real_images.jl`, `test/test_p13_result.jl` | `test/test_p13_result.jl:64` | **yes** | **RE-POINT AT SOURCE** (Phase-13-owned; deliberately NOT done by `13-17`, whose `real_images.jl` edit is comment-only) |
+
+**Totals:** 9 + 9 + 4 + 1 + 3 + 1 + 1 + 1 = **29**. Family 1 is fixed by `13-17-PLAN.md`. **The
+other 28 are DOCUMENTED and NOT fixed** — fixing another phase's frozen file on a planner's own
+initiative is exactly the act this project's amendment discipline exists to prevent. Each is
+recorded above with the remedy that phase's owner should apply when it next legitimately opens
+the file.
+
+**`p13/consts.jl:93` is a FALSE POSITIVE of the scan** — a commented illustration of the idiom,
+not a live guard. The live owner-side wrapper is `:100`.
+
+**Accumulating record:** the same class is logged as `13-09`, `DEF-12-01` (FIXED, `fb76b84`),
+`DEF-12-02` (worked around per-runner) and `DEF-12-03` (family 1, fixed by `13-17`) in
+`.planning/phases/12-spatial-colocalization-map/deferred-items.md`. That file is the right place
+for new observations; this file is the rule.
+
+---
+
+## C-02 — a hex literal's WIDTH is its type, and a guard fix can make that suddenly matter
+
+Julia sizes an unsigned hex literal by its digit count: `0xC0FFEE` (6 digits) is a `UInt32`;
+`0x0000_0000_00C0_FFEE` (16 digits) is a `UInt64`. `==` compares them equal; `===` does not.
+
+While a poisoned guard is skipping a file's body, that file's `const` re-declarations never
+execute, so any type disagreement with an already-loaded mirror is **invisible**. Repairing the
+guard makes the body run, and every mirrored constant is then re-declared into the shared module
+for the first time.
+
+**So: before repairing an include guard, diff the literal TYPES of every name the newly-running
+body declares against every other declaration of that name that may already be loaded.** Known
+disagreements at the time of writing:
+
+| Name | narrow form | wide form |
+|---|---|---|
+| `NPE_MASTER_SEED` | `0xC0FFEE` (`UInt32`) — `npe/train_npe.jl:65`, `test/test_npe.jl:81`, `baseline/run_advi.jl:74` | `0x0000_0000_00C0_FFEE` (`UInt64`) — `p13/consts.jl:108`, `p11_consts.jl:86`, `p12_consts.jl:102` |
+| `VAL_MASTER_SEED` | `0x5BC0FFEE` (`UInt32`) — `validation/consts.jl:76` | `0x0000_0000_5BC0_FFEE` (`UInt64`) — the three pre-registrations |
+| `VAL_FIX_SEED` | `0xF1F7ED` (`UInt32`) — `validation/consts.jl:79` | `0x0000_0000_00F1_F7ED` (`UInt64`) — the three pre-registrations |
+
+The **values** agree; only the widths differ. This is a hazard to VERIFY, not a licence to change
+a seed: **no seed literal may be edited to resolve it.** If a redefinition does fail, the remedy
+is on the guard/loading side (isolated-module read, or load order), never on the seed.
+
+---
+
+## C-03 — `git diff` context lines are not changes; gate on `-U0` and on `^[+-]`
+
+A negative acceptance criterion of the form
+
+```
+git diff HEAD -- <file> | grep -cE '<forbidden identifiers>'   # must be 0
+```
+
+**fails on correct work.** Default diff context is three lines, so editing line *N* prints lines
+*N−3 … N+3* as context, and a forbidden identifier sitting anywhere in that window is counted even
+though nothing about it changed. A criterion that fails a correct executor trains that executor to
+override the one check that proves nothing forbidden moved — the worst available incentive.
+
+**Correct form:**
+
+```
+git diff -U0 HEAD -- <file> | grep -E '^[+-]' | grep -v '^[+-][+-]' | grep -cE '<forbidden>'
+```
+
+- `-U0` removes context lines;
+- `grep -E '^[+-]'` keeps only added/removed lines (hunk headers start with `@`);
+- `grep -v '^[+-][+-]'` drops the `+++`/`---` file headers.
+
+**And narrow the target further when the identifier can legitimately appear in a changed line for
+an unrelated reason.** Gating on changed **declaration** lines only —
+`… | grep -E '^[+-]\s*const ' | grep -cE '<forbidden>'` — is what distinguishes *"a bar moved"*
+from *"a line that happens to mention a bar was touched"*.
+
+Note also: `grep -c` exits **1** when the count is `0`, so a `… && …` chain around a
+must-be-zero grep will report failure on success. Capture the count and compare it.

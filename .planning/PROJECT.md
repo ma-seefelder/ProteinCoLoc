@@ -97,6 +97,7 @@ detection.
 - **Platform**: Windows-tauglich — Julia-native stack chosen partly to avoid Windows CUDA/Flux friction; GPU use must degrade gracefully to CPU.
 - **Summary dimension**: Fixed (8×8 patch grid) during the spike; user-definable only after productionization.
 - **Priors**: Simulator prior π(θ) must stay consistent with the existing Turing `@model` prior ranges (μ/ν/σ/τ) for ADVI comparability.
+- **Standing conventions**: `.planning/CONVENTIONS.md` carries the project-wide rules that survived being found more than once, in more than one phase. **Every phase is bound by them and every planner must read them.** Currently: **C-01** never guard an `include` on a seed or a prior bound (they are exactly the names other phases are *required* to mirror — 23 of 29 observed failures); **C-02** a hex literal's width is its type, so repairing a guard can make a latent `UInt32`/`UInt64` mirror disagreement suddenly execute; **C-03** `git diff` context lines are not changes — gate on `-U0` and `^[+-]`, or the criterion fails on correct work.
 
 ## Key Decisions
 
