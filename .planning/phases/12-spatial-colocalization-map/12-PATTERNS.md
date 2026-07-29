@@ -968,9 +968,10 @@ consts must come first.
 **Source:** `spike/validation/consts.jl:42` (`if !isdefined(@__MODULE__, :SBC_M)`), with the reason at
 `:38-40`: *"Guarded as ONE block keyed on :SBC_M so re-inclusion under runtests.jl ... is a silent
 no-op -- a redefinition to the same value would otherwise warn on a `const`."*
-**Apply to:** `p12_consts.jl` (**three** blocks, three distinct sentinels: `:P12_CHOSEN_PRIOR` and
-`:P12_N_LOW` opened by 12-15, `:P12_FISHERZ_NEFF` by 12-16 — `:P12_N_LOW` added when the user confirmed
-`n_low` as a Tier-2 measurement on 2026-07-29).
+**Apply to:** `p12_consts.jl` — **four** guard blocks in total: the Tier-1 block keyed on
+`:P12_DEV_SEED`, which 12-01 writes, plus **three** append-only Tier-2 blocks under
+`:P12_CHOSEN_PRIOR` and `:P12_N_LOW` (both opened by 12-15) and `:P12_FISHERZ_NEFF` (opened by 12-16).
+`:P12_N_LOW` was added when the user confirmed `n_low` as a Tier-2 measurement on 2026-07-29.
 
 ### 3.3 CPU-only assertion in every testset
 **Source:** `test_p11_consts.jl:176-178`, `:248-250`; `test_p13_result.jl:215-217`.
