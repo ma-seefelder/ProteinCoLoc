@@ -757,6 +757,74 @@ None yet.
   3. **The real arm's HEADLINE NUMBER CHANGES.** The reported binding limit is the OOD flag at density 417.2974 vs ID threshold 167.5446 (**2.491×**) — measured on `(1,2)`. `13-16-SUMMARY.md:143` already records that a *different* channel pair lands at 607.57 (**3.63×**). So `13-REPORT.md`'s central real-image claim is pair-dependent and would need revision, not just a constant swap.
   **WHAT IS NOT AFFECTED:** 13-12's amended gate (6/6, AUC 0.990169 / 0.988262, ECE 0.0119808 / 0.012886) and 13-13's α-ladder are **SIMULATED** arms that never touch `P13_REAL_CHANNEL_PAIR`. The phase's gating verdict is untouched by this. Only the qualitative real-image arm (13-15, 13-16) and the sections of `13-REPORT.md` that quote it are in scope.
   **CONSTRAINT ON WHOEVER PICKS THIS UP:** STATE.md is explicit that a hand-patch was started and deliberately reverted — the change spans `must_have`s and verify criteria, several of which currently make **reproducing the wrong numbers a pass condition**. It needs a planner revision with the plan-checker, not spot edits. `consts.jl` remains BYTE-UNCHANGED (blob `70fe66df`, two commits in its whole history, `c42cc8e` and `bfba6ac`, neither postdating a result) and `P13_ITERATION_ALLOWANCE` remains 1 of 1 UNSPENT.
+- **[Phase 13 — CHANNEL-PAIR AMENDMENT WRITTEN AND PLANNED; ONE DECISION ESCALATED, 2026-07-29]**
+  The two channel-pair blockers above are now answered by a planning artifact rather than a
+  hand-patch. **Nothing executable was touched: no `.jl` file was edited, nothing was run, and
+  `spike/p13/consts.jl` remains BYTE-UNCHANGED.**
+  **WRITTEN:** `.planning/phases/13-three-hypothesis-amortized-bayes-factor/13-D15-AMENDMENT.md` —
+  the pre-registration amendment, in the `13-SC2-AMENDMENT.md` house shape. It opens by conceding
+  the ordering is against it (results exist; the SC2 amendment could say they did not) and then
+  carries four verified facts: (1) `c1` is the DAPI counterstain (`test/runtests.jl:105`), so the
+  arm measured the wrong physical object; (2) **the strongest fact** — `spike/simulator/ghat.jl:58-68`
+  and `spike/simulator/calibration.jl:351,433` had ALREADY marked `0.3292 / 0.2481` SUPERSEDED and
+  already recorded the unmasked c2/c3 anchors `0.4603 / 0.3815` in `78dc37f` (2026-07-25 23:28),
+  and `consts.jl` was locked in `c42cc8e` (2026-07-27 14:43) **38 h 47 min later** still quoting the
+  superseded figures, so this is drift from an already-corrected upstream, not a result being
+  chased; (3) **no gating threshold moves** — every untouched bar is enumerated by name and the
+  gating arm (13-12) is grep-proven to contain ZERO references to either pair constant; (4) the
+  consequence is **worse-or-equal** — unmasked separation 0.0788 against 0.0811 before, and the
+  better-separating masked `+0.8238 / −0.0338` figures are named as THE TRAP and forbidden, because
+  `patch_summary` applies no Otsu mask so masking would push already-OOD fixtures further out.
+  **THE AUTHORISATION TIMELINE IS RECORDED IN BOTH DIRECTIONS AND NEITHER IS SOFTENED:** the
+  *factual* correction was on the record from 2026-07-25 23:56 (`ea4a7d3`, which fixed
+  `11-10-PLAN.md` in the same commit) — before `consts.jl` existed and 3 d 17 h before 13-16 ran;
+  the *specific disposition* (drop the redundancy arm, use unmasked, handle as an amendment) arrived
+  2026-07-29 17:48 (`f411ee7`), **41 minutes after 13-16 finished at 17:07** (`2112bed`).
+  **REVISED (annotated, never rewritten — the executed record stays byte-auditable):**
+  `13-01-PLAN.md` (6 sites) and `13-15-PLAN.md` (6 sites), including the `13-15` `must_have` and the
+  `13-01`/`13-15` verify criteria that made **reproducing the WRONG numbers a pass condition**.
+  **NEW PLAN:** `13-17-PLAN.md` (wave 10, `autonomous: false`) — amend the constants, correct the
+  runner, DROP the redundancy arm everywhere (code, banner, artifact field, return value, report),
+  re-run 13-16, and revise `13-REPORT.md` plus superseding notes in `13-15-SUMMARY.md` /
+  `13-16-SUMMARY.md`. **The re-run consumes NO RNG stream** (six committed files, deterministic
+  transform, deterministic forward pass), so no reserved counter can collide — τ-probe 1, training
+  pool 2, gate 3, α-series 4, continuity 5 are all untouched, and 13-16 used none of them either.
+  **The plan REQUIRES the report to answer in words: does the CONCLUSION change?** If the corrected
+  pair lands in the same place the report must say *"we corrected it and the conclusion is
+  unchanged"* — a GOOD result, because it shows the limitation is STRUCTURAL rather than an artefact
+  of the wrong channels. Overselling the correction as a rescue is forbidden. The headline OOD number
+  is EXPECTED to move (417.2974 vs 167.5446, 2.491× on `(1,2)`; a different pair already landed at
+  607.57, 3.63×) and must be reported as a CHANGE, never restated.
+  **13-15 does NOT re-execute, and the evidence supports the ruling:** every ingestion entry point in
+  `spike/p13/real_images.jl` takes `channels` as a KEYWORD and `real_tif(cond, i)` builds both path
+  and channel name from the index, so the ingestion is pair-agnostic BY CONSTRUCTION. Only its
+  recorded lineage numbers are superseded, and those are re-measured inside the 13-16 re-run.
+  **NOT AFFECTED, CONFIRMED BY GREP:** `run_three_way_gate.jl`, `train_three_way.jl`,
+  `run_alpha_series.jl`, `labels.jl`, `datagen.jl`, `net.jl` and `alpha_series.jl` contain **zero**
+  occurrences of `P13_REAL_CHANNEL_PAIR` or `P13_REAL_REDUNDANCY_PAIR`. The gate verdict (6/6, AUC
+  0.990169 / 0.988262, ECE 0.0119808 / 0.012886) is untouched, `P13_ITERATION_ALLOWANCE` remains
+  1 of 1 UNSPENT, and the Phase-16 seal stays SHUT.
+  **ONE DECISION IS ESCALATED AND WAS DELIBERATELY NOT RESOLVED BY THE PLANNER — it is Task 1 of
+  13-17, a blocking `checkpoint:decision`: WHERE do the amended constants live?**
+  `run_p13_realimage.jl:634` asserts `h.consts_sha == p13_consts_sha()` where `h` is 13-11's TRAINED
+  NET and `consts_sha` was recorded at train time; the identical assertion sits at
+  `run_three_way_gate.jl:353` (**the gate**) and `run_alpha_series.jl:451`. **So editing `consts.jl`
+  in place makes the 13-16 re-run ABORT AT LOAD and makes the gate and α runners un-reproducible
+  against their own net** — and retraining is not available (not authorised; it would invalidate
+  13-12). (`test_p13_net.jl:380` is NOT affected — it round-trips a net saved inside the test.)
+  Two options, both defensible, both fully specified in the plan and in `13-D15-AMENDMENT.md` §7:
+  **M1** edit `consts.jl` and widen the three sha guards (justified because training reads no
+  `P13_REAL_*` constant — but it touches an integrity guard to produce a result, and retires the
+  "two commits, neither postdating a result" claim); **M2** leave `consts.jl` byte-unchanged and add
+  a separately named `spike/p13/consts_d15_amendment.jl` (every guard keeps holding, the gating arm's
+  reproducibility is untouched, the superseded pre-registration stays byte-present and citable per
+  `13-SC2-AMENDMENT.md` §6, and `test_p13_consts.jl:235-242` keeps asserting the frozen values
+  TRUTHFULLY with the amended ones in a new testset). **The planner's reading is that M2 dominates on
+  every stated constraint, and the planner did not adopt it: this is a provenance-narrative decision
+  about a frozen pre-registration and it is the user's.** Under M2 the new module must be guarded on a
+  symbol no other phase mirrors — see the `P13_DEV_SEED` include-guard blocker below, which is exactly
+  this trap already live in the suite.
+
 - Phase 11 plan 11-07: the SC1g lambda-ablation tripwire FAILED and the prescribed diagnosis came back GREEN. Datagen (50,000 pairs, F5 mixture) took 56.37 min vs P11_DATAGEN_WALLCLOCK_CEILING_MIN = 150 (ceiling NOT exceeded, image-size arm NOT downgraded). Training completed CPU-only in 16.08 min at d_in = 129, D = 8; validation risk 15.6452 -> 6.0490 (best epoch 22), early stopping epoch 63 of 300. spike/test/test_lambda_ablation.jl then failed (exit 1, 9 pass / 8 fail): per-dataset delta-rho posterior-SD ratios 1.109 / 0.987 / 0.936 and 90% HDI ratios 1.122 / 0.984 / 0.940 against the pre-registered P11_LAMBDA_ABLATION_FACTOR = 2.502. The plan's prescribed diagnosis is green on all three legs: (a) on the REALIZED pool 0 of 50,000 samples violate |shift| <= lambda, cor(lambda,|shift|) = 0.604/0.611 vs a > 0.3 bar, cor(lambda,|chromatic_eps|) = -0.007; (b) training inputs were 129 rows with row 129 varying over 39,968 of 40,000 columns; (c) augment_input ran AFTER standardization (row 129 == encode_lambda(lambda) exactly, rows 1:128 == standardized summary exactly). A fourth diagnostic settles the ambiguity: the shift marginals, whose lambda response is analytically known, widen by 4.84/6.99/8.05 (dx) and 3.98/6.52/9.05 (dy) against an ideal prior-SD ratio of 12.0. THE LAMBDA CONDITIONING IS ALIVE AND USED; it is the rho_true width that does not track lambda (1.20 / 1.06 / 0.98). Consequence: wave 7 (plan 11-08, the SC2 ladder) stays GATED and no ladder was run; waves 8 and 9 (11-09, 11-10, 11-11) are gated behind it. Nothing was relaxed: P11_LAMBDA_ABLATION_FACTOR unchanged, LAMBDA_MAX unchanged (the R11 reduce-LAMBDA_MAX remedy was NOT executed - premise falsified, LAMBDA_MAX is Tier-1 pre-registration, and a narrower span makes the bar harder), no capacity raised, no re-seed, no re-run. p11_consts.jl and src/ byte-unchanged. P11_ITERATION_ALLOWANCE remains 1 of 1 UNSPENT. DECISION REQUIRED (user/orchestrator, not an executor call): SC1g's statistic is delta-rho width, the same quantity SC2 measures, so as authored it cannot separate "conditioning dead" from "effect null" - the separation its own header claims. Options: (i) re-scope SC1g onto the shift marginals (diagnostic d) as a corrected liveness tripwire, keeping delta-rho as an SC2 question; (ii) read the flat rho response as the SC2 result and proceed to the ladder to measure it at pre-registered scale; (iii) spend P11_ITERATION_ALLOWANCE. Reusable at zero further compute for any option keeping LAMBDA_MIN/LAMBDA_MAX and the F5 mixture: the 54 MB pool (spike/data/cache/p11/, untracked, content-hash-keyed on lambda_max) and spike/npe/p11_research_npe.jld2 (4,933,362 bytes, committed, generated 2026-07-27T13:49:47.473Z). Full detail: .planning/phases/11-registration-and-chromatic-uncertainty-as-latent/11-07-SUMMARY.md
 
 ### Quick Tasks Completed
