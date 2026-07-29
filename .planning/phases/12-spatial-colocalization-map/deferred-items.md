@@ -236,3 +236,43 @@ declared signal for both Phase 12 and Phase 13, and `test_p13_consts.jl` passes 
 Phase-4 abort that had been masking all of this. A full-suite green is reachable for the first time
 in this milestone, and DEF-12-03 is now one of the things standing in its way. Owner: whoever holds
 `runtests.jl` after Phase 13 lands.
+
+---
+
+## DEF-12-04 — `Z_TWO_SIDED_90` is an unprefixed name bound by two frozen consts files, and it is a FUNCTION DEFAULT
+
+Raised by the 12-01 executor as a flag, sharpened by the team lead into a mechanism, verified here.
+
+`spike/validation/p11_stats.jl:58` declares
+
+```julia
+function wilson_ci(k::Integer, n::Integer; z::Real = Z_TWO_SIDED_90)
+```
+
+A Julia keyword default is resolved **at call time from the enclosing scope**, not captured at
+definition. So the binding in force decides the interval. Two frozen files bind that unprefixed name:
+
+| Site | Value |
+|---|---|
+| `spike/validation/p11_consts.jl:209` | `1.644853627` |
+| `spike/validation/p12_consts.jl:407` | `1.644854` |
+
+Were the two ever co-loaded into one scope, the **later** binding would silently change the default
+`z` of every `wilson_ci` call in `p11_stats.jl` — including `:251`, the coverage-breakdown search
+that returns the smallest rung whose Wilson upper limit falls below `SC2_COVERAGE_NOMINAL`. A
+silently changed default inside a statistics helper is exactly the kind of thing that resurfaces as
+an inexplicable number three phases later, which is why it is written down rather than left as a flag.
+
+**Blast radius TODAY is nil, and saying so is part of the record.** The delta is
+`1.644854 − 1.644853627 = 3.7e-7` (relative ~2.3e-7) — numerically irrelevant to a Wilson interval at
+any n this project uses, and it cannot move a rung verdict. The 12-01 executor also **checked rather
+than assumed** why the collision is dormant: nothing `runtests.jl` reaches loads `p11_consts.jl` into
+`Main`, and `spike/p13/preconditions.jl` reads it through `module _P11C` precisely to dodge this
+class.
+
+**So the hazard is the MECHANISM, not this delta.** A later phase binding the same convenience name
+to a genuinely different value — a 95 % limb at 1.959964, say — would change coverage verdicts
+silently and with no test able to see it. Both current bindings are in **append-only Tier 1** and
+cannot be renamed, so the durable mitigation is the one Phase 13 already uses: read a foreign consts
+file through a private module, never into the shared scope. Related: DEF-12-01 / DEF-12-02 /
+DEF-12-03, and the user's repo-wide sweep `6d3bc8a` (29 poisoned guards of 220).
