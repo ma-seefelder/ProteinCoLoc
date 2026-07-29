@@ -31,9 +31,12 @@ constants (`P12_SBC_M/L/BINS`, `P12_SBC_TARGET_KS_ALPHA`, `P12_SBC_TOST_*`, `P12
 `P12_STAGE2_COVERAGE_TOST_DELTA`, `P12_STAGE2_N_MIN`, `P12_STAGE2_LOGSCORE_MIN`), `P12_MASK_K_SET`, the
 reporting-only bars, the budget constants, and `P12_ITERATION_ALLOWANCE`.
 
-Also not here: the four **Tier-2** constants (`P12_CHOSEN_PRIOR`, `P12_K_PROD`, `P12_D_PROD`,
-`P12_FISHERZ_NEFF`). Those are *measured* and appended with provenance, by design — confirming a value for
-them in advance would be the data-snooping the two-tier structure exists to prevent.
+Also not here: the **Tier-2** constants — `P12_CHOSEN_PRIOR`, `P12_K_PROD`, `P12_D_PROD`, `P12_N_LOW` and
+`P12_FISHERZ_NEFF`, five of them. Those are *measured* and appended with provenance, by design — confirming
+a value for them in advance would be the data-snooping the two-tier structure exists to prevent.
+**`P12_N_LOW` joined this list as a RESULT of item 3 below**: the question §3 asked was precisely whether
+`n_low` belongs in Tier 1 or Tier 2, and the 2026-07-29 answer moved it here. So §3 appearing in this
+document is not a contradiction of this paragraph — it is where the paragraph's fifth entry came from.
 
 ## 1. `P12_R1_PRIOR` — the lattice prior over induced lag-1 correlation
 
@@ -45,7 +48,7 @@ them in advance would be the data-snooping the two-tier structure exists to prev
 | **Too wide** | r₁ → 1 approaches an intrinsic (improper) CAR limit where the field is nearly constant; the deviation field carries almost no energy and the phase's premise becomes untestable at that rung. |
 | **Too narrow** | Excluding the low-r₁ end removes the regime where per-region borrowing is *hardest*, which is precisely where D-12 Stage 1 needs discriminating power. Excluding the high end removes the regime where borrowing should be easiest, i.e. the positive control on the premise. |
 | **Confirm** | That `Uniform` (not a Beta or a log-uniform) is the intended shape. A uniform on r₁ is the honest default given no prior belief about biological smoothness — which is also D-08's stated reason for inferring rather than conditioning. |
-| **✅ CONFIRMED 2026-07-29** | `P12_R1_PRIOR = Uniform(0.05, 0.95)`, uniform on **r₁**. The R-8 argument is the reason the shape is *right* and not merely permitted, so it is recorded here rather than left in the Derivation row: measured induced lag-1 correlation runs 0.136 at α = 0.5 to 0.947 at α = 0.999, so a uniform prior on **α** would put roughly 90 % of its mass on "no spatial structure" and would make D-08's correlation length unidentifiable **by parametrization rather than by physics** — the S-1 prior-echo trap, which this milestone has already met once in Phase 11. Parametrizing both arms by induced r₁ is what makes the CAR-vs-GP comparison a question about the kernels rather than about their coordinates. No plan change follows: 12-01:167 already pre-registers exactly this binding in Tier 1, and 12-07 reads it rather than re-declaring it. |
+| **✅ CONFIRMED 2026-07-29** | `P12_R1_PRIOR = Uniform(0.05, 0.95)`, uniform on **r₁**. The R-8 argument is the reason the shape is *right* and not merely permitted, so it is recorded here rather than left in the Derivation row: measured induced lag-1 correlation runs 0.136 at α = 0.5 to 0.947 at α = 0.999, so a uniform prior on **α** would put roughly 90 % of its mass on "no spatial structure" and would make D-08's correlation length unidentifiable **by parametrization rather than by physics** — the S-1 prior-echo trap, which this milestone has already met once in Phase 11. Parametrizing both arms by induced r₁ is what makes the CAR-vs-GP comparison a question about the kernels rather than about their coordinates. No plan change follows: 12-01's `THE r₁ PRIOR ITSELF` block already pre-registers exactly this binding in Tier 1, and 12-07 reads it rather than re-declaring it. |
 
 ## 2. ~~`P12_GOLDEN_IMSIZE` / `P12_GOLDEN_KEYS`~~ — WITHDRAWN, no decision needed
 
@@ -79,7 +82,7 @@ would have stalled wave 4. Removed from 12-01; 12-08 owns them.
 
 | | |
 |---|---|
-| **What it gates** | Nothing mechanically (all four guards are reporting-only, and `P12_RADIAL_ENERGY_CEILING` / `P12_OFFSET_GRID_TOL` are members of `P12_REPORTING_ONLY_CONSTANTS`). But it is the **fraction of `headline_logscore_delta` that `radial_orth_logscore_delta` must retain** for the guard to read as "the advantage survives the confound being removed", and 12-20 requires it to be stated in the header *before* the run. |
+| **What it gates** | Nothing mechanically (all four guards are reporting-only, and `P12_RADIAL_ENERGY_CEILING` / `P12_OFFSET_GRID_TOL` are members of `P12_REPORTING_ONLY_CONSTANTS`). It *was* the **fraction of `headline_logscore_delta` that `radial_orth_logscore_delta` must retain** for the guard to read as "the advantage survives the confound being removed", and 12-20 *used to* require it stated in the header before the run. **That requirement was removed by the 2026-07-29 confirmation below** — recorded in the past tense here because this row is the question as asked, and the answer changed the plan. |
 | **Proposed** | No value proposed. |
 | **Derivation** | Cannot be argued from any existing measurement: no repo artifact reports how much of a per-region log-score advantage is radial, which is the whole reason the guard exists. Any number I picked would be invention dressed as design. |
 | **Too high** | The guard reads FAIL whenever any radial component contributes, including a genuinely radial *biological* field — and note the projection removes real radial signal too, so a strict fraction penalises truthful models. |
