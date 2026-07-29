@@ -159,6 +159,13 @@ datagen, sbc, coverage, guards, + `P12_FIXTURE_COUNTER = 99`.
 **Threshold-derivation voice** (`p11_consts.jl:213-241`) — a Tier-1 threshold is argued from the
 *design*, never from a result, and the arithmetic is recorded verbatim:
 
+> **Quoted VERBATIM from `spike/validation/p11_consts.jl:212-216`, including its imprecision — do not
+> "fix" the quotation.** The comment says "Wilson interval" while the formula on the next line is the
+> **Wald** half-width `z·√(p(1−p)/N)`; Wilson is a different construction (`p11_stats.jl:49-64`) and gives
+> a different N. Phase 11 is CLOSED and that file is frozen pre-registration, so it stays as written.
+> **Phase 12 copies the DISCIPLINE — arithmetic recorded verbatim — not the label**: 12-01 states that
+> N_MIN is *sized* with the Wald half-width while the interval *reported* is Wilson.
+
 ```julia
 # DERIVATION OF N_MIN (recorded verbatim ...). Require the 90 % Wilson interval at
 # p̂ = SC2_COVERAGE_NOMINAL to fit inside a ±SC2_TOST_DELTA band:
