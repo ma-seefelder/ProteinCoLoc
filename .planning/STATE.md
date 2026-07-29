@@ -5,13 +5,13 @@ milestone_name: milestone
 status: in-progress
 stopped_at: Phase 12 context gathered
 last_updated: "2026-07-27T14:06:54.610Z"
-last_activity: 2026-07-29 -- Phase 13 plan 13-12 complete (amended three-way gate RAN and PASSED)
+last_activity: 2026-07-29 -- Phase 13 plan 13-13 complete (REPORTED alpha ladder RAN; alpha* = 0.25)
 progress:
   total_phases: 16
   completed_phases: 10
   total_plans: 80
-  completed_plans: 66
-  percent: 64
+  completed_plans: 67
+  percent: 65
 ---
 
 # Project State
@@ -114,10 +114,78 @@ answered:
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
-Plan: 13 of 16 complete (13-01…13-12 + 13-15); remaining 13-13, 13-14, 13-16
-**STATUS: Executing — waves 1-8 (gate arm) done. τ MEASURED (0.15), Phase-11 basis BOUND, the
-three-way evidence net is TRAINED (13-11), and THE AMENDED GATE HAS RUN AND PASSED (13-12, one run,
-D-04 allowance still UNSPENT).**
+Plan: 14 of 16 complete (13-01…13-13 + 13-15); remaining 13-14, 13-16
+**STATUS: Executing — waves 1-8 done (both the gate arm and the α-series arm). τ MEASURED (0.15),
+Phase-11 basis BOUND, the three-way evidence net is TRAINED (13-11), THE AMENDED GATE HAS RUN AND
+PASSED (13-12, one run), and the REPORTED α-ladder has run (13-13). D-04 allowance still UNSPENT.**
+
+- **2026-07-29 — 13-13 COMPLETE (`0943a02` runner + reported artifact).** The REPORTED, NON-GATED
+  α-graded segregation series ran ONCE on 64 simulated items drawn at `ρ_true = 0` on the reserved
+  stream at `P13_ALPHA_COUNTER = 4`, disjoint from both the training pool's counter 2 and the gate's
+  counter 3. Executed on the MAIN working tree, no worktree, same ruling as 13-11/13-12.
+  **HEADLINE: `α* = 0.25`** — the smallest rung of the frozen `P13_ALPHA_LADDER` at which the mean
+  `log BF(exclusion : random)` first exceeds 0. Reported as a RUNG, never interpolated, so the true
+  crossing lies somewhere in `(0.125, 0.25]` and this design cannot say where inside it.
+  **THE CROSSING IS NOT ARBITRARY — IT LANDS EXACTLY ON THE PRE-REGISTERED HYPOTHESIS BOUNDARY.**
+  Mapping the persisted `m̄` through the frozen `ghat`: α = 0.125 induces ρ = **−0.1443**, INSIDE the
+  measured `P13_TAU = 0.15` dead zone (by 0.006); α = 0.25 induces ρ = **−0.2499**, the FIRST rung to
+  clear it. The evidence head declines below the boundary — correctly, by D-05's own label rule — and
+  calls exclusion at the first rung the rule permits, on a spatially-constructed ladder it never saw
+  in training. The summary's own sign flip happens ONE RUNG EARLIER (m̄ crosses between α = 0 and
+  0.125), and that one rung of lag IS the τ dead zone, not an unexplained gap.
+  **THE LADDER** (mean log BF(E:R) / mean log BF(C:R) / m̄, over 9 rungs): −4.074/−3.239/+0.0678 →
+  −1.137/−5.694/−0.0182 → **+1.505**/−7.310/−0.1043 → +3.678/−8.068/−0.1860 → +5.446/−8.403/−0.2598
+  → +6.843/−8.634/−0.3233 → +7.913/−8.852/−0.3764 → +8.725/−9.061/−0.4197 → +9.345/−9.250/−0.4546.
+  Per-image positive rate for the exclusion head rises **0% → 27% → 86% → 98% → 100%** and the
+  per-rung spread NARROWS 1.88 → 0.82 nats. The coloc head is negative on 64/64 items at every rung
+  above α = 0.
+  **THE LADDER IS PROVABLY NOT SHAPED BY A MECHANICAL ARTIFACT.** All EIGHT transform invariants hold
+  on ALL 64 REPORTED images (not merely on a fixture), verified BEFORE any curve was read: bitwise
+  identity at α = 0, no NEW zero, intensity conserved (worst residual 9.63e-16 against an rtol bar of
+  1e-10), mask α-invariant, mask fraction 0.284–0.343 inside the (0.01, 0.40) band. Pitfall-2 signs:
+  **ZERO absent patches at every rung** (0 of 4,096 at both ends), the count did not rise, and the
+  summary's MASK ROWS are **byte-identical across every rung on every image**.
+  **NO GATE, AND NONE WAS ADDED.** `P13_ALPHA_GATED = false` was frozen before any Phase-13 result;
+  the runner carries no assertion on any curve (asserted by source grep, 0 occurrences).
+  `consts.jl` byte-unchanged (git blob `5a4ea222…`, identical to 13-11's and 13-12's records);
+  `src/`, `corpus/` and both spike manifests byte-unchanged, `src/` asserted again at RUN TIME.
+  **`P13_ITERATION_ALLOWANCE` remains 1 of 1 UNSPENT.**
+  **NAMED LIMIT — the physical anchor stays deferred and the seal stays shut.** The one real
+  segregated anchor (`neg-lightmycells-01`) is triply unavailable — `sha256 = "PENDING-FETCH"`, no
+  bytes on disk (`bytes = 0`), and `split = sealed_holdout` behind the anti-snooping accessor. Phase
+  13 did NOT open it: that control exists for Phase 16's BLIND evaluation. No download-size claim
+  attaches (assumption A6 withdrawn — Phase 13 fetches nothing). Nothing under `corpus/` was checked,
+  fetched or referenced; the runner contains the string "corpus" **zero** times, not even in a
+  comment. 13-13-SUMMARY §6 carries the deferral as a paragraph 13-14 can lift verbatim.
+  **SCOPE: this is the `:simulated` arm ONLY.** The `:real` arm is 13-16's, over the six committed
+  `test/test_images/` TIFFs, and the two are **NEVER averaged** — α = 0 means "random by
+  construction" here (both acquisitions at ρ_true = 0) and "moderately colocalized" there (m̄ +0.3292
+  / +0.2481). The CBS `cbs-RG-000` arm is **DROPPED**, not deferred.
+  **DECLARED DEVIATION worth carrying:** the simulated arm declares an **UNBOUNDED** dynamic range
+  rather than the frozen `P13_ALPHA_MAX_VALUE_BOUND = 1.0`, which is a Gray-TIFF property of the REAL
+  substrate; simulator intensities measured **4.08–17.96** here. `max_value` is a caller-supplied
+  substrate property by `alpha_series.jl`'s own design, so nothing is clamped and no new bar was
+  invented — but the consequence is that the `max_value_ok` invariant is **vacuously true on this
+  arm** and is never quoted as evidence. Realized maxima are recorded per image instead.
+  **13-11's OPEN QUESTION IS NOW ANSWERED FOR 13-13 TOO:** the epoch-4 best-validation checkpoint is
+  sufficient here as well — monotone means on both heads, 100% positive rate from α ≥ 0.5, narrowing
+  spread. It remains open only for 13-16.
+  **SCOPE LIMITS on α\*:** α is a CONSTRUCTION parameter, not a physical quantity, so α\* CALIBRATES
+  the correlation-versus-localization gap rather than MEASURING it; the ladder spans induced ρ
+  [−0.705, −0.026] and therefore does **not** probe the −0.99 atom (that tail was cleared separately
+  by 13-12's gate at AUC 0.997257); and the result is specific to one mask rule and one
+  redistribution rule. The exclusion hypothesis still has NO observed real-data instance anywhere in
+  this project.
+  Artifact `spike/p13/alpha_report.jld2` (53,391 bytes, 65 keys) is COMMITTED and carries the three
+  curves, the per-image scores, the invariant residuals, α\*, the seed/counter and the consts
+  fingerprint. `spike/figures/p13_alpha_ladder.png` is **gitignored** under the house `*.png` rule;
+  regenerating it costs a ~2.5 min re-run that is BYTE-IDENTICAL (counter-based Philox per index), so
+  a loss is a compute cost, not a re-seed. **No bulk cache directory was created** and
+  `spike/data/cache/p11/` (54 MB) was neither read nor written.
+  Test files run directly (the full suite still aborts at the Phase-4 `SPEEDUP_GATE`, pre-existing):
+  `test_p13_alpha.jl`, `test_p13_real.jl` and `test_p13_calibration.jl` all exit 0 — the latter two
+  matter because both discover `spike/p13/` with `readdir` and source-grep every `.jl` in it,
+  including the new runner.
 
 - **2026-07-29 — 13-12 COMPLETE (`e5f9569` runner + reported artifact).** The amended D-12/D-13
   gate ran ONCE on a FRESH 4,000-pair evaluation set at `P13_GATE_COUNTER = 3`, disjoint from the
