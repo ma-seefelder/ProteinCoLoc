@@ -789,7 +789,11 @@ end
 **Paired-draw path** (`harness.jl:124-136`) — the template for the sample/control pass that yields
 per-region Δρ.
 
-**Interval + coverage helper** (`run_p11_coverage.jl:93-95`, and the print/store block at `:153-197`):
+**Interval + coverage helper** (`run_p11_coverage.jl:93-95`, and the print/store block at `:153-197`) —
+**COPY the three lines below; do NOT `include` that file.** It has no `*_LOAD_ONLY` guard and ends in a
+bare `main()`, so an include to reach the helper executes the whole Phase-11 coverage run. Phase 12
+ports it once into `p12_consts.jl` as `_p12_interval`, at wave 1, because 12-15 (wave 8) and 12-16
+(wave 10) both need it:
 
 ```julia
 "90% (or nominal) equal-tailed interval of a draw vector."
