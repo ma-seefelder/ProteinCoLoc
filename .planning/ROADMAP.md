@@ -252,9 +252,10 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 
 ### Phase 12: Spatial Colocalization Map (GP/CAR)
 **Goal**: Replace exchangeable patch pooling with a spatial lattice prior over the correlation grid, producing an amortized per-region Δρ map with calibrated per-region uncertainty — the feature that makes v2.0 "spatial" and differentiates it from Tapqir
-**Depends on**: Phases 7, 11 (file overlap: both retrain/modify the shared PosteriorEstimator + simulator/training path — serialized to avoid a merge collision; spatial map trains on the registration-aware θ)
-**Requirements**: TBD
+**Depends on**: Phase 7 — the substantive dependency. ~~Phases 7, 11 (file overlap: both retrain/modify the shared PosteriorEstimator + simulator/training path — serialized to avoid a merge collision; spatial map trains on the registration-aware θ)~~ **VOID** per the 2026-07-27 premise audit (V-1, V-2, V-3): no registration-aware trained model exists (plans 11-08…11-11 were superseded by the diagnosis) and Δρ RMSE was measured flat in λ (ratio 1.0003), so there is nothing to train on and nothing gained; Phase 11 is closed, so there is no concurrent writer to serialize against. What DOES stand (K-1): Phase 11's composed affine stage 6 landed at `ca02b0e` and is this phase's baseline, which D-06's field application stacks on.
+**Requirements**: SPAT-01, SPAT-02, SPAT-03, SPAT-04, SPAT-05, SPAT-06, SPAT-07, SPAT-08, SPAT-09
 **Success Criteria** (what must be TRUE):
+**AMENDED** — SC1, SC2 and SC3 are superseded/scoped by `.planning/phases/12-spatial-colocalization-map/12-SC3-AMENDMENT.md` (D-02/D-09/D-10/D-11, frozen before any Phase-12 result). The original text below is retained and must be cited alongside any amended result.
   1. A lattice prior (CAR vs. AbstractGPs, chosen by mini-spike) is placed over the `correlation()` grid with a CNN/DeepSet summary
   2. `coloc_map(...)` returns a Δρ map + uncertainty map, amortized in a forward pass
   3. The spatial (CAR) model beats independent pooling in coverage on ≥1 real image

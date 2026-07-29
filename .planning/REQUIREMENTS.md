@@ -80,6 +80,25 @@ Spike-local harness that positions v2.0 as "knows when the classics are wrong." 
 - [ ] **CMP-08**: Single seeded entry point `run_comparator.jl` (Random123 Philox); bit-reproducible across runs and thread counts (SC3; D-12)
 - [ ] **CMP-09**: Spike test gate asserts determinism, finiteness, Manders-equality, traffic-light-by-oracle, and Tapqir anchor-or-skip (SC1,SC2; D-13)
 
+### Spatial Colocalization Map (Phase 12 — feature expansion)
+
+Replaces exchangeable patch pooling with a spatial lattice prior over the `correlation()` grid,
+producing an amortized per-region Δρ map with calibrated per-region uncertainty. Research lane: all
+new code under `spike/`; `src/` stays provably untouched; the shipped bundle and the 2026-07-24 GO
+are not reopened. SC1, SC2 and SC3 are superseded/scoped by
+`.planning/phases/12-spatial-colocalization-map/12-SC3-AMENDMENT.md` (frozen before any Phase-12
+result).
+
+- [ ] **SPAT-01**: A lattice prior (CAR or a dense GP kernel, chosen by the pre-registered mini-spike) is placed over the `correlation()` grid and sampled through a marginal-preserving copula that holds SIM-02 per region. (D-03, D-05, R-8)
+- [ ] **SPAT-02**: The forward simulator renders a spatially-varying ρ field by smooth separable interpolation to pixel resolution, and reproduces the current simulator bit-for-bit at constant ρ. (D-06)
+- [ ] **SPAT-03**: The encoded summary is read as a `G×G×2` lattice by a lean CNN; summary content is unchanged. (D-02, R-7)
+- [ ] **SPAT-04**: The head emits a global term plus a per-region deviation field in an exact orthonormal (DCT-II) basis, with the spatial correlation length inferred as part of θ. (D-01, D-04, D-07, D-08, R-1, R-2)
+- [ ] **SPAT-05**: A spike-local `coloc_map` returns a per-region Δρ map and a per-region uncertainty map from one amortized forward pass. (SC2 as scoped by 12-SC3-AMENDMENT §3)
+- [ ] **SPAT-06**: Leave-region-out predictive coverage on real microscopy images is measured for the spatial model against a matched retrained ablation, on both calibration and a proper scoring rule. (D-09, D-10, D-11, R-4)
+- [ ] **SPAT-07**: Per-region calibration is reported as atom-free Gaussian-space SBC plus randomized-rank ρ-space SBC, with nuisance-appropriate equivalence testing on non-identified rows. (R-2, Pitfalls 7-8)
+- [ ] **SPAT-08**: The chromatic-radial confound, the offset-grid artifact and the ε = 0 ablation are measured and reported as named guards. (S-4, D-06)
+- [ ] **SPAT-09**: A two-stage pre-registered descope trigger governs the phase: Stage 1 is evaluated BEFORE any training spend, and on descope the ablation model ships as the deliverable. (D-12, D-13, R-5)
+
 ## v2 Requirements
 
 Deferred / optional; tracked but not gating the v2.0 milestone.
@@ -148,14 +167,24 @@ Mapped during roadmap creation (2026-06-26). Every v1 requirement maps to exactl
 | CMP-07 | Phase 9 — Cross-Method Comparator Harness | Pending |
 | CMP-08 | Phase 9 — Cross-Method Comparator Harness | Pending |
 | CMP-09 | Phase 9 — Cross-Method Comparator Harness | Pending |
+| SPAT-01 | Phase 12 — Spatial Colocalization Map | Pending |
+| SPAT-02 | Phase 12 — Spatial Colocalization Map | Pending |
+| SPAT-03 | Phase 12 — Spatial Colocalization Map | Pending |
+| SPAT-04 | Phase 12 — Spatial Colocalization Map | Pending |
+| SPAT-05 | Phase 12 — Spatial Colocalization Map | Pending |
+| SPAT-06 | Phase 12 — Spatial Colocalization Map | Pending |
+| SPAT-07 | Phase 12 — Spatial Colocalization Map | Pending |
+| SPAT-08 | Phase 12 — Spatial Colocalization Map | Pending |
+| SPAT-09 | Phase 12 — Spatial Colocalization Map | Pending |
 
 **Coverage:**
 - v1 requirements: 27 total
 - Mapped to phases: 27 ✓
 - Unmapped: 0
-- Feature-expansion requirements: CMP-01..CMP-09 (Phase 9) mapped ✓; other Phase 8/10–16 IDs still TBD
+- Feature-expansion requirements: CMP-01..CMP-09 (Phase 9) mapped ✓; SPAT-01..SPAT-09 (Phase 12) mapped ✓; other Phase 8/10–11 and 13–16 IDs still TBD
 - v2 requirements (BACK-01, BACK-02): deferred, not gating v2.0 — intentionally unmapped
 
 ---
 *Requirements defined: 2026-06-26*
 *Last updated: 2026-07-02 — added Phase 9 CMP-01..CMP-09 (cross-method comparator harness) during phase planning*
+*Last updated: 2026-07-29 — added Phase 12 SPAT-01..SPAT-09 (spatial colocalization map) during Phase-12 execution (plan 12-02), so every Phase-12 plan's `requirements` field resolves to a written requirement instead of `TBD`*
