@@ -258,6 +258,66 @@ expectation, or re-order the harness so they stop masking siblings. **No seed, b
 allowance may be moved to resolve this**, and `P13_ITERATION_ALLOWANCE` cannot be spent on a
 real-image observation (`13-SC2-AMENDMENT.md` §7).
 
+**✅ BLOCKER CLOSED — RULED 2026-07-29. APPENDED by plan 13-17 (ADDITIVE — nothing above this line
+was altered). THE RED STAYS, AND THE MASKING IS FIXED.**
+
+**The ruling: accept the three misses as NAMED LIMITS, leave them RED, and do NOT amend the D-16
+real-substrate expectation.** Recorded verbatim, because the reasoning is the point:
+
+> *Phase 13's own two-sentence verdict already says the three-way Bayes factor works on simulated
+> data and is NOT SHOWN to work on real microscopy. A test that asserts the real-substrate
+> expectation and FAILS is therefore TELLING THE TRUTH. Amending it to expect the new measurement
+> would produce a GREEN TEST STANDING NEXT TO A CONCLUSION THAT SAYS "NOT SHOWN" — a test that
+> passes while the science says otherwise is worse than a red one, and this project's credibility
+> rests on exactly that not happening. **The red is not a defect to be cleared; it is the finding,
+> encoded where a future reader will trip over it.***
+
+- **THE RETRACTION IS WRITTEN, PLAINLY.** The manuscript-bound sentence *"negative induced μ is
+  CONSTRUCTIBLE from real microscopy pixels via the D-16 mask-based reassignment"* is **RETRACTED**.
+  It was an **artefact of segregating a target channel against a nuclear counterstain**:
+  `alpha_star_real` went from 0.875 / 0.625 to **`nothing` / `nothing`**, and `m-bar` stays
+  **positive at every rung on both fixtures** (+0.4603 → +0.1381, +0.3815 → +0.2041). **The
+  correction COST the claim rather than revealing a new one** — the same register as the amendment
+  taking the worse number. The converse is **not** asserted either; n = 2 cannot settle whether the
+  negative regime is physically reachable, only that it is **not demonstrable on this substrate**.
+- **CORROBORATED BY TWO INDEPENDENT ROUTES**, both verified against the *Quick Tasks Completed*
+  table in this file and against `spike/simulator/ghat.jl:84-91` at HEAD: **260725-vl8** (`151ad79`)
+  **WITHDREW — did not invert** — the unqualified *"negative tail not physically reachable /
+  PRIOR-ONLY"* claim; **260725-wb7** (`78dc37f`) found `neg_reachable` flipping to `true` on a masked
+  reading of **−0.0338 ≈ 0** to be a **PREDICATE ARTEFACT rather than evidence**. Three routes, one
+  direction — and that agreement is what makes this robust rather than one surprising measurement.
+- **The D-05 coherence disagreement stays RED on the same principle, and is recorded as an
+  INFORMATIVE red.** Contrast **0.09819** inside `tau = 0.15` assigns RANDOM by the phase's own
+  label rule while the net's argmax says COLOC — on fixtures flagged OOD at **4.198×** their own
+  threshold, i.e. above the maximum of all 96,000 simulated acquisitions the null was fit on. A
+  disagreement there is **close to what one should expect**; continued agreement would have been the
+  surprising outcome.
+- **THE MASKING IS FIXED STRUCTURALLY, and re-ordering was rejected as a fix.** The documented house
+  pattern (`runtests.jl`, *"THE CORRECTION ARM IS LAST, AND DELIBERATELY SO"*) **supports exactly ONE
+  throwing file**; there are now two, so whichever ran first masked the other and re-ordering would
+  only choose which red is hidden. Each known-red include is now wrapped and a **ledger** runs after
+  the last one, with four verified properties: every Phase-13 sibling **runs and reports**; the
+  named-limit failures **still surface**; the suite **still exits non-zero**; and a known-red file
+  that ever **starts passing fails loudly**, naming itself. Anything that is not a
+  `Test.TestSetException` is **rethrown immediately** and never recorded as an expected red.
+- **MEASURED, one full-suite run each side, 2026-07-29.** BEFORE: aborts at `runtests.jl:223`,
+  **4** Phase-13 file-level testsets report (703 pass / 3 fail), **7 files masked**, exit 1.
+  AFTER: runs to completion, **11** Phase-13 file-level testsets report (**1,901 pass / 5 fail**)
+  plus the ledger's 3 pass, **0 masked**, **exit 1**, on **exactly 5 `Test Failed at` lines** and no
+  non-Phase-13 failure. `test_p12_suite.jl` keeps FIRST position and `test_p12_consts.jl` testset 9
+  still passes **44 / 44**. **A full-suite green was neither achieved nor claimed — the named limits
+  keep it red BY DESIGN.** *Concurrency disclosed:* a live Phase-12 executor landed five commits
+  (`986d518` … `406015e`) between the two runs, none touching any file under `spike/test/` or
+  `spike/p13/`.
+- **NOTHING WAS RELAXED.** The five failing assertions (`test_p13_real.jl:226` ×1 and `:292` ×2;
+  `test_p13_correction.jl:245` and `:246`) are **byte-unchanged** — not rewritten, not
+  `@test_skip`-ed, not `@test_broken`-ed. No seed, bar, floor, band or allowance moved.
+  `P13_ITERATION_ALLOWANCE` **1 of 1, UNSPENT**. `spike/p13/consts.jl` byte-unchanged at git blob
+  `d82caea6`. `spike/validation/p12_consts.jl`, `src/`, `spike/Project.toml` and
+  `spike/Manifest.toml` byte-unchanged; the Phase-16 seal stays SHUT. Written up in `13-REPORT.md`
+  §8c (the retraction), §9 **Limit E**, **§9a** (the five red assertions and the harness fix) and
+  §14.9 (the ruling). **`13-17-SUMMARY.md` is now `status: complete`.**
+
 - **2026-07-29 — 13-14 COMPLETE (`0c1a0bd` report + `48fb808` ROADMAP tick-off). THE PHASE IS
   CLOSED.** `.planning/phases/13-three-hypothesis-amortized-bayes-factor/13-REPORT.md` (1,086 lines):
   what was CLAIMED, what was MEASURED, what was DECLINED, what is OWED.
