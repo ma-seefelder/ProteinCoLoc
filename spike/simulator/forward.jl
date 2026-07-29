@@ -99,6 +99,70 @@ function _smooth_field(rng::AbstractRNG, imsize::Tuple{Int,Int})
 end
 
 """
+    _p12_check_field(F) -> F
+
+Entry guard for an OPTIONAL `θ.rho_field` (D-06): reject a non-square, too-small, non-finite or
+out-of-`[-1,1]` field, naming the offending value, in the voice of the `:136-158` θ block --
+reject rather than clamp.
+
+THE SCALAR GUARD CANNOT SEE INSIDE A FIELD. `-1 ≤ θ.ρ_true ≤ 1` validates ONE number; once ρ is a
+G×G field that check is structurally blind to 63 of the 64 values it is supposed to cover.
+
+THE DUPLICATION WITH `p12_prior.jl`'s `validate_rho_field` IS DELIBERATE AND BOUNDED, AND SO IS
+THE THING THAT KEEPS IT HONEST. `forward.jl` must NOT include `p12_prior.jl`: that would invert the
+dependency and pull the lattice, the copula and the Tier-1 pre-registration into every existing
+consumer of the forward model. So the check is inlined here instead, and `test_p12_prior.jl`
+testset 16 runs BOTH validators over one shared list of bad inputs -- if the two ever drift apart,
+that testset is what says so.
+"""
+function _p12_check_field(F)
+    F isa AbstractMatrix || throw(ArgumentError(
+        "rho_field must be a G×G matrix, got a $(typeof(F))"))
+    size(F, 1) == size(F, 2) || throw(ArgumentError(
+        "rho_field must be square, got $(size(F,1))×$(size(F,2))"))
+    size(F, 1) ≥ 2 || throw(ArgumentError(
+        "rho_field must have both dimensions ≥ 2 (the bilinear upsample interpolates between " *
+        "cell pairs), got $(size(F,1))×$(size(F,2))"))
+    @inbounds for k in eachindex(F)
+        v = F[k]
+        isfinite(v) || throw(ArgumentError(
+            "rho_field must be finite, got $v at flat index $k"))
+        (-1.0 ≤ v ≤ 1.0) || throw(ArgumentError(
+            "rho_field entries must be in [-1, 1], got $v at flat index $k"))
+    end
+    return F
+end
+
+"""
+    _p12_upsample_local(F, imsize) -> Matrix{Float64}
+
+Render the `G×G` ρ field `F` to `imsize` pixels as `A * F * B'` -- TWO MATMULS, never a per-pixel
+interpolant. Measured (12-RESEARCH.md Pattern 3) at 1376×1028: 0.0252 s for the separable form
+against 0.3622 s for a scalar interpolant evaluated per output pixel, i.e. ~8 min against ~5 h over
+a 50 000-pair pool.
+
+DUPLICATED FROM `p12_prior.jl`'s `p12_upsample` ON PURPOSE, so `forward.jl` keeps ZERO includes and
+zero new `using`s (see [`_p12_check_field`](@ref) for the dependency-inversion reason). Only the
+`offset = false` variant lives here: the D-06 HALF-CELL GUARD ARM (`offset = true`) stays in
+`p12_prior.jl` alone, and the 12-20 guard reaches this mixer by PRE-RENDERING its offset field into
+a θ -- never by a second branch in this file. One code path, one behaviour.
+"""
+function _p12_upsample_local(F::AbstractMatrix, imsize::Tuple{Int,Int})
+    op(G, m) = begin
+        A  = zeros(Float64, m, G)
+        xs = range(1, G; length = m)
+        @inbounds for (r, x) in enumerate(xs)
+            i = clamp(floor(Int, x), 1, G - 1)
+            t = x - i
+            A[r, i]     = 1 - t
+            A[r, i + 1] = t
+        end
+        A
+    end
+    return op(size(F, 1), imsize[1]) * F * op(size(F, 2), imsize[2])'
+end
+
+"""
     simulate_pair(rng::AbstractRNG, θ; imsize=(256,256)) -> Vector{Matrix{Float64}}
 
 Generate a 2-channel microscopy image pair from the 8-field θ NamedTuple (the 7
@@ -111,6 +175,10 @@ generator (D-15): `c1 = softplus(√|ρ|·L + √(1−|ρ|)·ε₁)`,
 `c2 = softplus(sign(ρ)·√|ρ|·L + √(1−|ρ|)·ε₂)` -- the `sign(ρ)` on channel-2's
 shared component makes anti-correlation reachable at negative ρ_true. Higher
 ρ_true ⇒ monotonically higher induced cross-channel patch correlation.
+
+θ may OPTIONALLY carry `rho_field`, a G×G matrix with every entry in `[-1,1]`, in which case
+stage 1 mixes PER PIXEL from that field's bilinear upsample instead of from the scalar `ρ_true`
+(D-06); a θ without it is unchanged in behaviour and in output bytes.
 
 Returns `[ch1, ch2] :: Vector{Matrix{Float64}}`, each `imsize`, all entries finite
 and ≥ 0 with a small-positive background (no hard zeros), ready for `build_mci`.
@@ -133,11 +201,20 @@ function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256)
     # (e.g. the θ reconstructed by src/amortized/ood.jl `_theta_tuple` from a 7-row posterior
     # mean) is therefore a valid input meaning "no chromatic aberration".
     chromatic_eps_val = hasproperty(θ, :chromatic_eps) ? θ.chromatic_eps : 0.0
+    # D-06 backward compatibility, EXACTLY the discipline the line above establishes: the ρ FIELD is
+    # read through ONE defensive local binding. A θ WITHOUT `rho_field` is a valid input meaning
+    # "spatially constant ρ" and takes the scalar branch of stage 1 UNCHANGED -- which is what makes
+    # the golden fixture's exact `==` criterion hold BY CONSTRUCTION rather than by luck: that path
+    # never enters the upsample at all.
+    rho_field_val = hasproperty(θ, :rho_field) ? θ.rho_field : nothing
     all(isfinite, (θ.ρ_true, θ.spillover, θ.autofluorescence, θ.label_efficiency,
                    θ.shift_dx, θ.shift_dy, θ.noise, chromatic_eps_val)) ||
         throw(ArgumentError("all θ fields must be finite, got $θ"))
     (-1.0 ≤ θ.ρ_true ≤ 1.0) ||
         throw(ArgumentError("ρ_true must be in [-1, 1], got $(θ.ρ_true)"))
+    # D-06: an out-of-range field must be rejected HERE, before any pixel work (T-12-27). The
+    # scalar bound above is structurally blind to 63 of a G×G field's 64 values.
+    rho_field_val === nothing || _p12_check_field(rho_field_val)
     # WR-07: reject physically out-of-range nuisances rather than silently clamping
     # (label_efficiency) or corrupting downstream stages (negative spillover would
     # SUBTRACT signal in stage 4; negative autofluorescence/noise are non-physical).
@@ -161,14 +238,28 @@ function simulate_pair(rng::AbstractRNG, θ; imsize::Tuple{Int,Int} = (256, 256)
 
     # --- (1) shared-latent correlated smooth Gaussian fields (D-15) -------------
     # Smooth latent L shared across channels; ε₁,ε₂ independent per-channel fields.
+    # THE THREE `_smooth_field` CALLS STAY **BEFORE** THE BRANCH AND IN THIS ORDER. That is not
+    # tidiness: it is what makes RNG consumption IDENTICAL on both paths, so a field-carrying θ and
+    # a scalar θ riding the same key see the same `L, ε1, ε2`. Without it the constant-field
+    # comparison in `test_p12_prior.jl` testset 14 would be comparing two different noise
+    # realizations and would mean nothing.
     L  = _smooth_field(rng, imsize)
     ε1 = _smooth_field(rng, imsize)
     ε2 = _smooth_field(rng, imsize)
-    a  = sqrt(abs(ρ))           # shared-component weight
-    b  = sqrt(1.0 - abs(ρ))     # private-component weight  (a² + b² = 1)
-    # sign(ρ) flips channel-2's shared component so negative ρ ⇒ anti-correlation.
+    # sign(ρ) flips channel-2's shared component so negative ρ ⇒ anti-correlation -- per pixel when
+    # a field is supplied, globally when it is not.
+    if rho_field_val === nothing
+        a   = sqrt(abs(ρ))          # shared-component weight   (SCALAR PATH, UNCHANGED)
+        b   = sqrt(1.0 - abs(ρ))    # private-component weight  (a² + b² = 1)
+        sgn = sign(ρ)
+    else
+        ρpx = _p12_upsample_local(rho_field_val, imsize)  # D-06: two matmuls, not a per-pixel loop
+        a   = sqrt.(abs.(ρpx))                            # a² + b² = 1 holds PER PIXEL
+        b   = sqrt.(1.0 .- abs.(ρpx))
+        sgn = sign.(ρpx)
+    end
     ch1 = _softplus.(a .* L .+ b .* ε1)
-    ch2 = _softplus.(sign(ρ) .* a .* L .+ b .* ε2)
+    ch2 = _softplus.(sgn .* a .* L .+ b .* ε2)
 
     # --- (2) Bernoulli thinning (label_efficiency = keep-probability) -----------
     p     = clamp(θ.label_efficiency, 0.0, 1.0)
