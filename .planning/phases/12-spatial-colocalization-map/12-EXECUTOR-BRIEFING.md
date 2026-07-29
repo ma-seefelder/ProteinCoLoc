@@ -161,3 +161,48 @@ actually bites — 12-07's precedent. **Never move a threshold to make a test bi
   Do NOT tune a threshold, widen a grid, or re-run for a nicer number. Do NOT spend the phase's
   iteration allowance. If a pre-registered bar is missed, **report the miss**.
 - Do not shorten a pre-registered sample size to save time.
+
+---
+
+## 10. Pool generation — who actually generates what (corrected after 12-09)
+
+**12-09 builds the datagen MACHINERY, not a large pool.** The orchestrator's dispatch initially
+asked 12-09 for "the pool at the pre-registered size"; 12-09 correctly refused, and it was right.
+Every keyword entering the content hash for a large pool is owned by a later plan, and one of them
+does not exist yet: **12-17:137 generates the 50,000-pair pool with `arm = P12_CHOSEN_PRIOR`, a
+Tier-2 constant that 12-15 has not yet appended.** Guessing the arm would burn ~73 min into a
+directory nothing reads. `12-14:375` states the scope verbatim: *"12-09 only builds 64 samples into
+a `mktempdir()`."*
+
+| Plan | Pool it generates |
+|---|---|
+| 12-09 | 64 samples into `mktempdir()` — machinery + gate only |
+| 12-11 | five 5,000-sample rung pools, `r1` PINNED per rung (~7.3 min each) |
+| 12-15 | 10,000-sample per-arm pools (~14.5 min each) |
+| 12-17 | the 50,000-pair pool at `arm = P12_CHOSEN_PRIOR` (~72.5 min) |
+
+**MEASURED by 12-09 on the real F5 mixture at 32 threads: 87–90 ms/sample.** So `P12_N_PAIRS`
+= 50,000 projects to **~72.5 min** against the append-only ceiling of 150 — confirming the research's
+65–80 min estimate. **No pool size is at risk of the ceiling.** Use these figures rather than
+re-measuring.
+
+The pool regenerates **byte-identically** from the counter-based Philox seed. That makes a loss a
+compute cost, not a re-seed — but at ~73 min for 50k it is **not free**, and must never be recorded
+as free.
+
+### Two traps 12-09 found that are aimed at LATER plans — read if you generate a pool
+
+1. **`p12_pool_dir` CREATES the directory it resolves.** So `isdir(...)` is `true` for a pool that
+   has never been generated. This defeats **12-14:203** ("assert `isdir`"), **12-15:147** and
+   **12-17:137** ("generate only if absent") exactly as written. 12-09 added **`p12_pool_complete`**
+   and demonstrated it false→true. **Use `p12_pool_complete`, not `isdir`.** (Same defect class as
+   12-06's un-fireable `@assert isdir`.)
+2. **`imsize_tag` is unspecified in 12-11 / 12-14 / 12-15's plan text.** The image-size sampler is a
+   closure and cannot be hashed, so a pinned-size pool without an explicit tag hashes into the
+   **F5-mixture** directory — and 12-14's descope `:none` pool would collide with 12-15's `:none`
+   pool. Latent today only because routing makes them mutually exclusive. **Pass an explicit
+   `imsize_tag` whenever you pin a size.**
+
+Also: `test_p12_decoupling.jl:337` bans the `p11` literal from `p12_generate.jl` outright. Do not
+write a runtime guard that has to spell a banned literal in order to check for it — the structural
+ban is stronger, and the sibling test will fail you.
