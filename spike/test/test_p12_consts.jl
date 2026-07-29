@@ -220,11 +220,37 @@ const P12_TEST_FILES = ("test_p12_consts.jl", "test_p12_lattice.jl", "test_p12_p
 
         # The aggregator is wired into the suite at all ...
         @test findfirst("test_p12_suite.jl", rt) !== nothing
-        # ... and it sits BEFORE the throwing Phase-13 correction arm. A thrown testset aborts
-        # every subsequent include, so a Phase-12 aggregator placed after it would report green
-        # by never executing.
-        @test first(findfirst("test_p12_suite.jl", rt)) <
-              first(findfirst("test_p13_correction.jl", rt))
+
+        # ... and it precedes EVERY OTHER PHASE-TEST INCLUDE, which is the guarantee this
+        # testset exists to encode.
+        #
+        # THE WEAKER ASSERTION THIS REPLACES ASSERTED ONLY "before `test_p13_correction.jl`",
+        # AND THAT WAS NOT ENOUGH -- it was true while the aggregator never ran. A thrown
+        # `@testset` aborts every remaining include, so "before the file that throws" is
+        # contingent on knowing which file throws TODAY, and on 2026-07-29 that was
+        # `test_npe.jl` (Phase-4 SC3, `median_speedup > SPEEDUP_GATE`) rather than the Phase-13
+        # correction arm the wiring had been reasoned against. FIRST POSITION IS STRUCTURAL: no
+        # other phase's failure can mask Phase 12, whichever file throws.
+        #
+        # The sibling filenames are DERIVED FROM THE SOURCE TEXT, never hardcoded -- a literal
+        # list here would go stale the moment another phase adds an include, which is precisely
+        # the class of staleness this assertion replaces. The pattern matches the phase-test
+        # include form `include(joinpath(@__DIR__, "<name>.jl"))`; the smoke include inside the
+        # outer testset uses a different, two-segment path and is deliberately not in scope.
+        _inc_pat  = r"include\(joinpath\(@__DIR__, \"([A-Za-z0-9_]+\.jl)\"\)\)"
+        _includes = [(m.offset, m.captures[1]) for m in eachmatch(_inc_pat, rt)]
+        @test !isempty(_includes)
+        @test any(t -> t[2] == "test_p12_suite.jl", _includes)
+        _p12_at = first(t[1] for t in _includes if t[2] == "test_p12_suite.jl")
+        for (off, name) in _includes
+            name == "test_p12_suite.jl" && continue
+            # Written as a pair so a regression names WHICH include jumped ahead of us.
+            @test (name => _p12_at < off) == (name => true)
+        end
+        @test _p12_at == minimum(t[1] for t in _includes)
+        # Corollary, kept explicit because it is a stated acceptance criterion of plan 12-01:
+        # the aggregator is ahead of the throwing Phase-13 correction arm in particular.
+        @test _p12_at < first(findfirst("test_p13_correction.jl", rt))
 
         # Every Phase-12 test file exists AND has a line in the aggregator, so adding a file
         # without wiring it is a failure here rather than a silent omission at run time.

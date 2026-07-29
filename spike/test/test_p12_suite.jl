@@ -24,19 +24,25 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # with one wiring line is what keeps the include ORDER a property of a single file instead of a
 # thing every plan has to re-reason about.
 #
-# WHY THE POSITION OF THE ONE WIRING LINE MATTERS. This file is included from `runtests.jl`
-# immediately BEFORE `test_p13_correction.jl`, whose outer `@testset` carries two committed
-# MEASURED MISSES and therefore THROWS. A thrown testset aborts every remaining include, so a
-# sibling placed after it would report green by never running at all.
+# WHY THE POSITION OF THE ONE WIRING LINE MATTERS, AND WHY IT IS **FIRST**. This file is
+# included from `runtests.jl` ahead of EVERY other phase-test include. A thrown `@testset`
+# aborts every remaining include, so any position other than first is contingent on knowing
+# which file throws TODAY -- and that contingency has already failed once, in this very phase.
 #
-# THE ORDERING RULE IS "BEFORE THE FIRST THROWING INCLUDE", AND `test_p13_correction.jl` IS NOT
-# THE ONLY ONE. Measured on 2026-07-29: `include(".../test_npe.jl")` at `runtests.jl:169` also
-# throws today -- its SC3 (NPE-03) assertion `median_speedup > SPEEDUP_GATE` evaluates
-# 84.44 > 100.0 -- so on this machine the suite aborts there and NOTHING from `runtests.jl:174`
-# onward executes, this aggregator and the whole Phase-13 block included. That shortfall is a
-# pre-existing, phase-level matter (the >100x wall-clock claim), it is NOT introduced by Phase 12,
-# and it is NOT resolved by this wiring. It is recorded here because it is the difference between
-# "these testsets are wired" and "these testsets ran".
+# THE ORIGINAL WIRING PUT THIS AGGREGATOR IMMEDIATELY BEFORE `test_p13_correction.jl`, on the
+# documented belief that the Phase-13 correction arm (two committed MEASURED MISSES, so its
+# outer testset throws) was the include that aborts the rest. It is not the only one. Measured
+# on 2026-07-29: `include(".../test_npe.jl")` throws FIRST -- its Phase-4 SC3 (NPE-03)
+# assertion `median_speedup > SPEEDUP_GATE` evaluated 84.44 > 100.0 -- so the suite aborted
+# there and NOTHING after it executed: this aggregator, the Phase-5 validation bundle, the
+# Phase-9 comparator and the whole Phase-13 block. The aggregator was wired and still never ran.
+#
+# That Phase-4 shortfall is PRE-EXISTING and is the >100x wall-clock claim rather than a wiring
+# defect; re-deriving the bar is a pre-registration decision the user owns, and it is NOT
+# resolved here. What IS resolved here is the contingency: first position is STRUCTURAL, so no
+# other phase's failure can mask Phase 12 whichever file throws. Testset 9 of
+# `test_p12_consts.jl` asserts that ordering against every sibling include, derived from the
+# source text rather than from a hardcoded list that would go stale the same way.
 #
 # THE MARKER LINES BELOW ARE WHAT MAKE THAT DIFFERENCE DETECTABLE, and they exist because the
 # obvious check does not work. Julia's `Test` prints TESTSET NAMES, not filenames, and none of

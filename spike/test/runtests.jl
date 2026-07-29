@@ -153,6 +153,26 @@ using Pkg
 
 end
 
+# Phase-12 spatial colocalization map. EVERY Phase-12 testset is aggregated behind the single
+# include below, so adding one means adding a line to `test_p12_suite.jl`, never to this file.
+#
+# IT IS FIRST AMONG THE PHASE-TEST INCLUDES, AND "FIRST" IS THE POINT. A thrown `@testset`
+# aborts every remaining include, so any position other than first is contingent on knowing
+# which file throws TODAY. That contingency has already failed once: this aggregator was
+# originally wired immediately before `test_p13_correction.jl` on the belief that the Phase-13
+# correction arm was the only throwing include, and it then never ran -- because
+# `include(".../test_npe.jl")` below throws FIRST, on the Phase-4 SC3 (NPE-03) assertion
+# `median_speedup > SPEEDUP_GATE`, and aborts everything after it. That shortfall is
+# PRE-EXISTING, it is the >100x wall-clock claim rather than a wiring defect, re-deriving the
+# bar is a pre-registration decision the user owns, and it is NOT resolved here. First position
+# is structural instead of contingent: no other phase's failure can mask Phase 12, whichever
+# file happens to throw. `test_p12_consts.jl` testset 9 asserts exactly that ordering.
+#
+# The aggregator prints one `P12-SUITE-RAN: <file>` marker per include, because `Test` prints
+# testset NAMES and none of the Phase-12 names contains its filename -- so only a printed marker
+# distinguishes "the include ran" from "the include was silently skipped".
+include(joinpath(@__DIR__, "test_p12_suite.jl"))
+
 # Phase-2 Wave-0 scaffold: the SIM-03 summary-contract testset runs in the same
 # harness so a single `julia --project=spike spike/test/runtests.jl` is the gate.
 include(joinpath(@__DIR__, "test_simulator.jl"))
@@ -216,12 +236,4 @@ include(joinpath(@__DIR__, "test_p13_preconditions.jl"))
 # basis, no re-fit standardizer, no inlined recipe value, no CUDA -- run in any state of the
 # repository. Placed before the correction arm because that arm throws (see above).
 include(joinpath(@__DIR__, "test_p13_datagen.jl"))
-# Phase-12 spatial colocalization map: EVERY Phase-12 testset is aggregated behind the single
-# include below, so adding one means adding a line to `test_p12_suite.jl` rather than to this
-# file. It MUST sit before the throwing Phase-13 correction arm (see above): a thrown testset
-# aborts the remaining includes, so a Phase-12 aggregator placed after it would report green by
-# never running. The aggregator prints one `P12-SUITE-RAN: <file>` marker per include, because
-# `Test` prints testset NAMES and none of the Phase-12 names contains its filename -- so only a
-# printed marker distinguishes "the include ran" from "the include was skipped".
-include(joinpath(@__DIR__, "test_p12_suite.jl"))
 include(joinpath(@__DIR__, "test_p13_correction.jl"))
