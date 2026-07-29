@@ -72,6 +72,9 @@ isdefined(@__MODULE__, :ablate) || include(joinpath(@__DIR__, "..", "npe", "abla
 # any of them after a run would be data-snooping -- they are committed here first.
 const NPE_RMSE_TOLERANCE   = 1.2       # D-09 (A2): NPE ρ_true RMSE ≤ 1.2× ADVI ρ_true RMSE
 const SPEEDUP_GATE         = 100.0     # NPE-03: t_advi/t_npe > 100 at the reported thread count
+                                       # VALUE UNCHANGED. Its ASSERTION is PAUSED (not retired,
+                                       # not relaxed) pending a quiet-machine re-measurement --
+                                       # see DEFERRED-NPE-03-WALLCLOCK in SC3 below.
 const ABL_REL_MARGIN       = 0.05      # D-07 (A3): aug wins iff RMSE_aug ≤ (1−δ)·RMSE_min on ρ_true …
 const ABL_FOLD_CONSISTENCY = 4         # … AND aug improves in ≥4 of 5 folds (else keep :min, parsimony)
 const BENCH_THREADS        = 1         # D-13: headline thread count (sweep {1,2,4,8} reported separately)
@@ -227,8 +230,54 @@ const ABL_FIX_RESULT = ablate(NPE_REPRO_DIR; master_seed = NPE_MASTER_SEED, K = 
         @test sr.use_gpu == false
 
         # THE GATE (NPE-03): median speedup > SPEEDUP_GATE ...
-        @test sr.median_speedup > SPEEDUP_GATE
+        #
+        # ============================ DEFERRED-NPE-03-WALLCLOCK ============================
+        # PAUSED, NOT RETIRED (user ruling, 2026-07-29). `SPEEDUP_GATE = 100.0` at :74 is
+        # UNCHANGED and the assertion below is UNWEAKENED -- it is `@test_skip`ed, so the
+        # expression and its bar both stay in the source as the pre-registered record. This
+        # is a deferral of the MEASUREMENT, not a withdrawal of the CLAIM. Nothing about the
+        # threshold is relaxed; re-arming is a one-word edit (`@test_skip` -> `@test`).
+        #
+        # WHY, IN NUMBERS (measured, `spike/npe/flow_width_ab.jl`, artifact
+        # `spike/npe/flow_width_ab.jld2`, commit ca994b9 -- 9 interleaved order-rotated reps
+        # at this testset's own bench_N=50 / bench_seconds=0.4, CPU-only, 1 thread):
+        #   * to clear 100 the NPE needs 4.962 ms; it measures 5.178 ms. A 1.04x MISS.
+        #   * run-to-run spread across all arms is 28.8 POINTS (82.42 .. 111.19). Every arm,
+        #     including an 8-marginal one, CLEARS 100 in its best repetition.
+        #   * recorded history on the SAME unchanged model: 92.50, 83.97, 84.44, 89.77, 68.35
+        #     -- a 24-point range with the model byte-identical throughout.
+        # This is a MEASUREMENT-CONDITIONS problem, NOT a performance regression: pass/fail
+        # is decided by whatever else is running on the machine (the sub-88 reps were taken
+        # with 4 concurrent julia processes, the >110 reps with 2).
+        #
+        # THE 8-MARGINAL HYPOTHESIS IS FALSIFIED AT THE ROOT. STATE.md recorded the failure
+        # as caused by Phase-11 D-09 widening the flow to 8 marginals. `speedup_report` loads
+        # `DEFAULT_NPE_MODEL = spike/npe/trained_npe.jld2`, whose persisted flow is `q.d = 7`,
+        # `d_in = 128`, last changed in `200e971` (the Phase-5 retrain) -- Phase 11 never
+        # touched it. The 8-marginal net lives only in `p11_research_npe.jld2`, which this
+        # benchmark never loads. Measured anyway, the 8th marginal costs 1.67% of forward-pass
+        # latency (5.208 -> 5.295 ms) = 1.78 speedup points, against that 28.8-point spread.
+        #
+        # WHY THE NUMBER IS THIS NOISY -- ONLY ONE SIDE OF THE RATIO IS BENCHMARKED.
+        # `BenchmarkTools` (a declared dependency, CLAUDE.md "Wall-clock NPE-ms vs
+        # ADVI-minutes claim (AP4)") IS used, but only on the DENOMINATOR: `_time_npe_pair`
+        # takes `@belapsed` (minimum of many samples). The NUMERATOR `t_advi` is a SINGLE
+        # un-replicated `time_ns()` per pair (`spike/baseline/run_advi.jl:136-137`), frozen
+        # into `advi_artifact.jld2` on 2026-07-01 under that machine's then-current load and
+        # never re-measured. A ratio of a benchmarked denominator to a one-shot numerator
+        # cannot be tightened by repeating this testset.
+        #
+        # DEFERRED OBLIGATION -- THIS MUST BE RE-RUN, NOT DROPPED. At the END of v2.0
+        # development, on a QUIET machine (no concurrent julia processes), with proper
+        # benchmarking tooling on BOTH sides of the ratio (re-measure `t_advi` under
+        # `BenchmarkTools` rather than reusing the frozen one-shot), re-arm this assertion
+        # against the UNCHANGED bar of 100.0 and report the result. If it fails under those
+        # conditions, THAT is a real result about the >100x claim and must be reported as one.
+        # ==================================================================================
+        @test_skip sr.median_speedup > SPEEDUP_GATE
         # ... asserted JOINTLY with the comparable-RMSE condition (D-08 -- never alone).
+        # The RMSE half of the joint condition is NOT paused: it is an accuracy claim, is not
+        # wall-clock dependent, and stays live so a genuine accuracy regression still fails.
         @test sr.rmse.npe_rho_rmse <= NPE_RMSE_TOLERANCE * sr.rmse.advi_rho_rmse
 
         # The pairing is real: per-pair speedups and a finite ADVI wall-clock exist.
