@@ -825,6 +825,69 @@ None yet.
   symbol no other phase mirrors — see the `P13_DEV_SEED` include-guard blocker below, which is exactly
   this trap already live in the suite.
 
+- **2026-07-29 — D-15 amendment planning passed an independent plan-check; five defects fixed; the
+  M1/M2 mechanism question is STILL OPEN and was NOT resolved.** The check's verdict on the central
+  question was that `13-D15-AMENDMENT.md` is **not** laundering: the "no gating threshold moves"
+  claim was independently grep-verified TRUE (all seven files exactly zero for both pair constants),
+  the 39-hour upstream-drift fact VERIFIED, `rng_stream = "NONE"` VERIFIED, the mask-fraction
+  reportable-finding path VERIFIED REAL, the 13-15 no-re-execute ruling VERIFIED CORRECT, and the
+  13-01 / 13-15 revisions confirmed surgical and byte-auditable. Fixed in this planning pass, no
+  `.jl` file touched and `spike/p13/consts.jl` still at blob `70fe66df`:
+  **(D1)** `spike/p13/real_images.jl` was in NO task's file list while its header blocks (b2)
+  `:39-49` and (e) `:66-71` and the `real_mbar` docstring `:277-283` carry stale prose — the same
+  drift class the amendment exists to repair, one level down. Now assigned to `13-17` Task 3 as a
+  COMMENT-ONLY edit with explicit M1/M2-conditional wording (`13-D15-AMENDMENT.md` §6.4a).
+  **(D2)** `.planning/ROADMAP.md` — the phase's most-read surface — quoted the superseded-pair
+  result unmarked at four sites and was absent from the inventory. Now §6.6. The planner marked all
+  four SUPERSEDED and corrected `16 plans (9 waves)` -> `17 plans (10 waves)` with a 13-17 bullet,
+  as one pathspec-scoped commit after re-reading the file (a Phase-12 executor is live on it); Task
+  5 adds the amended figures beside them after the re-run. **The gate sentences were not touched.**
+  **(D3)** Task 5's "four honesty items survive" criterion was a single alternated `grep -c ... >= 4`
+  that counts lines matching ANY branch — four lines saying only "Phase 16" would have satisfied it
+  while the other three were deleted. T-13-72, the plan's central anti-rescue guarantee, rested on
+  it. Replaced with four separate greps, each `>= 1`.
+  **(D4)** Under M2 the not-a-gate source gate would have gone blind: `test_p13_real.jl:336` builds
+  its `P13_REAL_*` name set from `consts.jl` alone, although `:86-88` already discovers every `.jl`
+  in `spike/p13/` by `readdir` precisely "so a file added later cannot slip past the gate" (`:241`).
+  Fixed by sourcing `:336` from the amendment module too, via `get(P13_CODE, ..., "")` at `:90` — one
+  line, mechanism-independent — rather than by the weaker hand-written testset originally planned.
+  **(D5)** Task 3 never named the `include` of the amendment module. Under M2 the runner must
+  include it, and the guard-symbol hazard Task 2 flags applies to that include site, which lives in
+  Task 3's file (`run_p13_realimage.jl:132-136`). Now named, guarded on
+  `P13_REAL_CHANNEL_PAIR_AMENDED`, placed above the `real_images.jl` include.
+  Also folded in: the check's strongest observation, now `13-D15-AMENDMENT.md` **§2.1** — **the
+  amendment picks the WORSE number.** `ghat.jl:69-71` says the masked read of the corrected pair
+  "separates the controls far more sharply" (0.8576) and `:79-83` RETRACTS the earlier "MASKED is
+  biased NEGATIVE" framing as overstated, so upstream neither forbids masked nor prefers unmasked.
+  The amendment forbids it anyway on a code property (`patch_summary` applies no Otsu mask; the net
+  was trained unmasked), taking 0.0788 — narrower even than the 0.0811 it replaces — and then
+  deleting an arm. Selecting against its own arm's interest when the better number was available
+  and unforbidden is the check that distinguishes correction from relaxation.
+  Corrected as smaller findings: §3's occurrence counts for the two CONSUMING files were low
+  (`run_p13_realimage.jl` is 16 + 8, not "10 + 4"; `real_images.jl` is 11 and NOT "all as keyword
+  defaults" — 5 defaults, 5 docstring echoes, 1 header line) — **the ZERO rows, which carry the
+  gating-arm-is-blind claim, were exact and are re-verified exact**; five superseded-value sites
+  annotated (`13-01:353`, `13-15:278, 294-295, 488, 547`); `13-15`'s frontmatter `must_have` at `:17`
+  restored to ANNOTATED form (it had been REWRITTEN, contradicting that plan's own line-70 claim);
+  and the timeline made exact — **38 h 46 min 18 s** (`ea4a7d3` 23:56:54 -> `c42cc8e` 14:43:12), with
+  `13-01:62`'s figure re-attributed to `78dc37f` at **39 h 15 min 06 s**.
+  **STILL OPEN, and the reason this entry exists: the M1/M2 ruling at `13-17` Task 1.** The plan's
+  claim that "Tasks 2-5 name their M1/M2 deltas explicitly; nothing else in this plan changes with
+  the answer" was **FALSE and is retracted on the page**. M1 additionally requires: **(B1)** an
+  M1-conditional rewrite of `13-REPORT.md` §13, whose `git log` "two commits only … no commit that
+  produced a Phase-13 result touched it", `rev-parse` `70fe66df…`, `hash-object` `5a4ea222…` and
+  `sha256` `100e97a3…` rows all become verifiably false — i.e. the section that exists to prove
+  nothing was tampered with must itself be rewritten — while Task 5 currently orders §13 left
+  byte-unchanged; **(B2)** an explicit `channels = (1, 2)` pin on `test_p13_real.jl:144-146` against
+  literal `0.3292 / 0.2481`, because it currently rides the default, so under M1 both sides move
+  together, it STILL PASSES, and the c1/c2 lineage proof is silently destroyed while the executor
+  believes it was kept as instructed; **(B3)** a `git diff -U0 | grep '^[+-]'` form of the
+  no-threshold-moved criterion, because `P13_REAL_ANCHOR_TOL` (`consts.jl:579`) sits three lines
+  from `P13_REAL_ANCHOR_MBAR` (`:576`) and appears as diff CONTEXT, failing that criterion on
+  correct work. **These three are recorded, NOT resolved and NOT pre-fixed** — under M2 all three
+  are no-ops, so pre-fixing would pre-decide the question. They materially raise M1's cost and the
+  user must see them WITH the Task-1 choice.
+
 - Phase 11 plan 11-07: the SC1g lambda-ablation tripwire FAILED and the prescribed diagnosis came back GREEN. Datagen (50,000 pairs, F5 mixture) took 56.37 min vs P11_DATAGEN_WALLCLOCK_CEILING_MIN = 150 (ceiling NOT exceeded, image-size arm NOT downgraded). Training completed CPU-only in 16.08 min at d_in = 129, D = 8; validation risk 15.6452 -> 6.0490 (best epoch 22), early stopping epoch 63 of 300. spike/test/test_lambda_ablation.jl then failed (exit 1, 9 pass / 8 fail): per-dataset delta-rho posterior-SD ratios 1.109 / 0.987 / 0.936 and 90% HDI ratios 1.122 / 0.984 / 0.940 against the pre-registered P11_LAMBDA_ABLATION_FACTOR = 2.502. The plan's prescribed diagnosis is green on all three legs: (a) on the REALIZED pool 0 of 50,000 samples violate |shift| <= lambda, cor(lambda,|shift|) = 0.604/0.611 vs a > 0.3 bar, cor(lambda,|chromatic_eps|) = -0.007; (b) training inputs were 129 rows with row 129 varying over 39,968 of 40,000 columns; (c) augment_input ran AFTER standardization (row 129 == encode_lambda(lambda) exactly, rows 1:128 == standardized summary exactly). A fourth diagnostic settles the ambiguity: the shift marginals, whose lambda response is analytically known, widen by 4.84/6.99/8.05 (dx) and 3.98/6.52/9.05 (dy) against an ideal prior-SD ratio of 12.0. THE LAMBDA CONDITIONING IS ALIVE AND USED; it is the rho_true width that does not track lambda (1.20 / 1.06 / 0.98). Consequence: wave 7 (plan 11-08, the SC2 ladder) stays GATED and no ladder was run; waves 8 and 9 (11-09, 11-10, 11-11) are gated behind it. Nothing was relaxed: P11_LAMBDA_ABLATION_FACTOR unchanged, LAMBDA_MAX unchanged (the R11 reduce-LAMBDA_MAX remedy was NOT executed - premise falsified, LAMBDA_MAX is Tier-1 pre-registration, and a narrower span makes the bar harder), no capacity raised, no re-seed, no re-run. p11_consts.jl and src/ byte-unchanged. P11_ITERATION_ALLOWANCE remains 1 of 1 UNSPENT. DECISION REQUIRED (user/orchestrator, not an executor call): SC1g's statistic is delta-rho width, the same quantity SC2 measures, so as authored it cannot separate "conditioning dead" from "effect null" - the separation its own header claims. Options: (i) re-scope SC1g onto the shift marginals (diagnostic d) as a corrected liveness tripwire, keeping delta-rho as an SC2 question; (ii) read the flat rho response as the SC2 result and proceed to the ladder to measure it at pre-registered scale; (iii) spend P11_ITERATION_ALLOWANCE. Reusable at zero further compute for any option keeping LAMBDA_MIN/LAMBDA_MAX and the F5 mixture: the 54 MB pool (spike/data/cache/p11/, untracked, content-hash-keyed on lambda_max) and spike/npe/p11_research_npe.jld2 (4,933,362 bytes, committed, generated 2026-07-27T13:49:47.473Z). Full detail: .planning/phases/11-registration-and-chromatic-uncertainty-as-latent/11-07-SUMMARY.md
 
 ### Quick Tasks Completed

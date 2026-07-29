@@ -41,11 +41,18 @@ verified against the working tree at `d7195cc4c5ba5a4aaceef8f2d59ddf9bd4422be1`:
 3. **No success criterion moves** (§3). No AUC floor, no ECE band, no `P13_ITERATION_ALLOWANCE`, no
    gating threshold of any kind is touched. The phase's only gating arm (13-12, simulated) does not
    read `P13_REAL_CHANNEL_PAIR` at all — grep-verified, §3.
-4. **The consequence is honestly worse-or-equal, not better** (§4). Unmasked, the two fixtures
-   barely separate: `0.4603` against `0.3815`. The corrected arm is *weak* evidence. The masked
-   figures (`+0.8238 / −0.0338`) separate the controls far more sharply and are **forbidden** — they
-   are the trap, and §5.3 states why. **An amendment that makes the result worse is not a result
-   being chased.**
+4. **The amendment picks the WORSE number, and a better one was available and unforbidden**
+   (§2.1, §4). Unmasked, the two fixtures barely separate: `0.4603` against `0.3815` — a separation
+   of **0.0788**, narrower even than the **0.0811** of the superseded pair it replaces. The masked
+   read of the *same corrected pair* separates them by **0.8576** (`+0.8238 / −0.0338`), and
+   `ghat.jl:69-71` — the frozen upstream this amendment adopts — says in its own words that the
+   masked pair "separates the controls far more sharply", while `:79-83` **retracts** the earlier
+   "MASKED is biased NEGATIVE" framing as having OVERSTATED the case. **Upstream therefore neither
+   forbids the masked read nor prefers the unmasked one.** This amendment forbids it anyway (§5.3),
+   on a property of the code rather than a preference, and takes the ten-times-narrower number — and
+   then deletes an arm on top of it (§5.2). **An amendment that selects against its own arm's
+   interest, when the better number was there for the taking, is structurally not a result being
+   chased.** §2.1 states that check in mechanical form.
 
 ### 0.1 The authorisation timeline, stated without softening and without overstatement
 
@@ -54,7 +61,7 @@ verified against the working tree at `d7195cc4c5ba5a4aaceef8f2d59ddf9bd4422be1`:
 | 2026-07-25 22:54 | `151ad79` | `ghat.jl` real-anchor header corrected to record MASKED as well as unmasked reads |
 | 2026-07-25 23:28 | `78dc37f` | `ghat.jl` header corrected to the **c2/c3** pair; `0.3292 / 0.2481` marked **SUPERSEDED**; unmasked `0.4603 / 0.3815` recorded |
 | 2026-07-25 23:56 | `ea4a7d3` | STATE.md blocker recorded: the Phase-13 plans "pre-register the real-image arm on the DAPI counterstain and **MUST be corrected before Phase 13 executes**"; `11-10-PLAN.md` fixed in the same commit |
-| **2026-07-27 14:43** | **`c42cc8e`** | **Phase-13 Tier-1 `consts.jl` LOCKED — still `(1,2)` / `(1,3)` / `0.3292` / `0.2481`. 38 h 47 min after the blocker.** |
+| **2026-07-27 14:43** | **`c42cc8e`** | **Phase-13 Tier-1 `consts.jl` LOCKED — still `(1,2)` / `(1,3)` / `0.3292` / `0.2481`. **38 h 46 min 18 s** after the blocker (23:56:54 → 14:43:12, both copied from `git log`).** |
 | 2026-07-27 21:46 | `bfba6ac` | Tier-2 `P13_TAU` appended (the only other commit to `consts.jl`) |
 | 2026-07-29 17:07 | `2112bed` | **13-16 executed** on `(1,2)` primary and `(1,3)` redundancy |
 | 2026-07-29 17:48 | `f411ee7` | The miss recorded; the user's **full disposition** received: pair `(2,3)`, redundancy dropped, unmasked values, document as an amendment |
@@ -184,6 +191,65 @@ blocker against Phase 13 specifically. The `consts.jl` values are the outlier, n
 *Would a blind reviewer have made this change?* **Yes, and one did, twice, before Phase 13 existed
 — once in `ghat.jl`, once in `11-10-PLAN.md`.**
 
+### 2.1 The check that separates a correction from a relaxation: this amendment picks the WORSE number
+
+The strongest test of whether an amendment is a correction or a rescue is not what it argues. It is
+whether, at the one point where a **better number was available and permitted**, it took it.
+**It did not — and the record shows the better number was there for the taking.**
+
+`spike/simulator/ghat.jl:69-71` [VERIFIED at HEAD] — the same frozen upstream header this amendment
+adopts in §2 — states, unprompted:
+
+```
+#   anchor caveat    : on this pair the two estimators AGREE in order -- positive > negative under
+#     BOTH -- and the MASKED pair separates the controls far more sharply (0.8238 vs
+#     -0.0338) than the unmasked pair does (0.4603 vs 0.3815).
+```
+
+and `:79-83` goes further, **retracting the one argument that had previously been used against
+masking**:
+
+```
+#     The earlier "MASKED is biased NEGATIVE" framing
+#       OVERSTATED it: here the masked POSITIVE control reads 0.8238, so the selection does
+#       not prevent detecting strong colocalization -- the large negative readings that motivated
+#       that wording were predominantly the wrong-channel (counterstain) artifact, not the mask.
+```
+
+Read together, the upstream position is unambiguous: **it neither forbids the masked read nor
+prefers the unmasked one.** It records both on the corrected pair, rates the masked pair the sharper
+separator, and withdraws its own prior objection to masking. Meanwhile `:72-75` says the *unmasked*
+estimator is biased POSITIVE and that on this pair the bias "COMPRESSES the contrast between the
+controls, which is why the unmasked pair barely separates them."
+
+So at the moment of choosing, the options were:
+
+| Candidate anchor | separation | upstream's own verdict on it | adopted? |
+|---|---|---|---|
+| **masked** c2/c3 `+0.8238 / −0.0338` | **0.8576** | *"separates the controls far more sharply"*; the anti-masked framing **retracted as overstated** | **NO — forbidden by §5.3** |
+| **unmasked** c2/c3 `+0.4603 / +0.3815` | **0.0788** | biased POSITIVE, *"COMPRESSES the contrast … barely separates them"* | **YES** |
+| unmasked c1/c2 `+0.3292 / +0.2481` | 0.0811 | measured against the counterstain — **SUPERSEDED** | no (§1) |
+
+**This amendment took the 0.0788.** It adopted a separation roughly **eleven times narrower** than
+the one it was permitted to adopt, and narrower even than the superseded number it replaces. The
+reason is a property of the code and not a preference: `patch_summary` (`spike/contract.jl:85`)
+applies **no Otsu mask**, so the net was trained on unmasked summaries and masked summaries would be
+off-distribution input to it (§5.3 in full). Then, on top of that, the amendment **deletes one of
+its own two arms** (§5.2).
+
+An amendment that is chasing a result does not do this. Handed a permitted, upstream-endorsed,
+order-of-magnitude-sharper number, it takes it. The mechanical form of the check, for a reader who
+wants a test rather than a paragraph:
+
+> **Was a better number available, unforbidden by any prior source, at the moment of amendment?
+> Yes — 0.8576 against 0.0788, on the very pair being adopted.
+> Was it taken? No.**
+
+That is the difference between a correction and a relaxation, and this document would rather have it
+on the page than leave it implicit. It is also falsifiable: if a later reader finds the masked
+figures adopted anywhere in this arm, this paragraph is a lie and §5.3's prohibition was theatre.
+`13-17-PLAN.md` makes that a grepped acceptance criterion rather than a promise.
+
 ---
 
 ## 3. Fact 3 — no gating threshold moves, and the gating arm cannot see this change
@@ -220,8 +286,18 @@ Counted occurrences of `P13_REAL_CHANNEL_PAIR` or `P13_REAL_REDUNDANCY_PAIR` [VE
 | `spike/p13/datagen.jl` | labelled pool | **0** |
 | `spike/p13/net.jl` | architecture / persistence | **0** |
 | `spike/p13/alpha_series.jl` | the shared α transform | **0** |
-| `spike/p13/run_p13_realimage.jl` | **the real arm (13-16)** | 10 + 4 |
-| `spike/p13/real_images.jl` | ingestion (13-15) | 8, **all as keyword defaults** |
+| `spike/p13/run_p13_realimage.jl` | **the real arm (13-16)** | **16 + 8** (on 14 + 6 lines; `:588` carries both) |
+| `spike/p13/real_images.jl` | ingestion (13-15) | **11** — 5 keyword defaults (`:206, 237, 290, 371, 423`), 5 docstring echoes (`:183, 225, 273, 348, 393`), 1 header prose line (`:40`) |
+
+**Count provenance, because these two rows were wrong in the first draft of this document.** An
+independent recount on 2026-07-29 found the two CONSUMING rows undercounted — they read "10 + 4" and
+"8, all as keyword defaults" — and they are corrected above. The correction makes the amendment's
+blast radius **larger**, not smaller, and the `real_images.jl` row is no longer "all as keyword
+defaults": 5 of its 11 are docstring echoes and 1 is header prose, which is why §6.4a now assigns
+that file remediation instead of listing it. **The ZERO rows — the load-bearing ones, the ones that
+carry the claim that the gating arm cannot see this change — were exact and are re-verified exact.**
+Commands, so a reader can repeat them:
+`grep -o 'P13_REAL_CHANNEL_PAIR' <file> | wc -l` and the same for `P13_REAL_REDUNDANCY_PAIR`.
 
 **The phase's gate verdict is untouched by this amendment**: per-class AUC 0.990169 (coloc) /
 0.988262 (exclusion) against the 0.90 floors, ECE 0.0119808 / 0.012886 against the 0.05 green band,
@@ -248,6 +324,12 @@ Unmasked, on the corrected pair, the two fixtures **barely separate**:
 | positive | +0.3292 | **+0.4603** |
 | negative | +0.2481 | **+0.3815** |
 | separation | 0.0811 | **0.0788** |
+
+**And a third option existed that this amendment declined.** The masked read of the *same amended
+pair* separates the fixtures by **0.8576** (`+0.8238 / −0.0338`), which `ghat.jl:69-71` calls the
+sharper separator and which no prior source forbids. §5.3 forbids it here, on a code property; §2.1
+states why that refusal — taking 0.0788 when 0.8576 was available and permitted — is the
+load-bearing check that this is a correction rather than a relaxation.
 
 The separation does not improve. Both fixtures move *further into positive correlation*, which is
 if anything a stronger illustration of `13-SC2-AMENDMENT.md` §5(d)(ii): **every unmodified real
@@ -312,7 +394,7 @@ The reason is a property of the code, not a preference:
   Given that the fixtures are **already** flagged out-of-distribution at ~2.5× on unmasked input,
   masking would push them further out and the resulting log-BFs would be measuring the mask, not
   the specimens.
-- `ghat.jl:76-80` additionally records the masked estimator's own range-restriction caveat: each
+- `ghat.jl:76-83` additionally records the masked estimator's own range-restriction caveat: each
   channel is thresholded independently and `_exclude_zero` then keeps only pixels bright in **both**
   — a selection on both variables — leaving only ~20-22 of 64 patches above the ≥15-survivor floor.
 
@@ -320,6 +402,14 @@ So the sharper-looking number is the *wrong* number twice over: wrong distributi
 a selection-biased statistic. **Choosing the worse-separating figure because it is the correct one
 is the whole content of §0.** It is stated here so a reader can check that the choice went against
 the arm's apparent interest.
+
+**Be precise about whose prohibition this is.** `ghat.jl` does **not** forbid the masked read — it
+records both reads on the corrected pair, calls the masked pair the sharper separator (`:69-71`) and
+retracts its own earlier anti-masked framing as overstated (`:79-83`). The prohibition in this
+section is therefore **this amendment's own choice, made against its own arm's interest**, not an
+inherited constraint it had no say in. §2.1 states that as the load-bearing check. A reader who
+wants to attack this document should attack §2.1, because if the masked figures were adopted
+anywhere the whole legitimacy argument collapses — and that is greppable.
 
 ### 5.4 What follows mechanically from the pair change, and must not be silently absorbed
 
@@ -396,6 +486,31 @@ deletion of the second call and its section, not a refactor.
 `13-REPORT.md:30, 568, 595, 684, 857, 992`; `13-16-SUMMARY.md:68, 132, 215, 267, 276, 406`;
 `13-15-SUMMARY.md:69-72, 150, 222-224, 230, 236, 242`.
 
+#### 6.4a REMEDIATED — `spike/p13/real_images.jl` is assigned to a task, not merely listed
+
+**This file was in no task's file list until 2026-07-29, and that was a defect in this document.**
+Listing a stale site in an inventory without assigning it remediation is the same drift class this
+amendment exists to repair, one level down: §2's whole argument is that a corrected upstream was
+recorded and then **not carried into the file that reads it**.
+
+Three blocks here are load-bearing prose and each goes stale, differently under each §7 mechanism:
+
+| Site | Block | Under **M1** | Under **M2** |
+|---|---|---|---|
+| `:39-49` | (b2) the channel-pair caveat; `:40` opens `P13_REAL_CHANNEL_PAIR IS FROZEN AT c1/c2.` | **literally FALSE in shipped source** | literally true, but **misleading about what is operative** — the reader learns what is frozen, not what is read |
+| `:66-71` | (e) THE LINEAGE CLAIM — records the c1/c2 anchors `0.3292 / 0.2481` as *the* claim, unqualified | anchors no longer bound to those values | anchors still bound, but no longer the colocalization reference |
+| `:277-283` | the `real_mbar` docstring, restating the frozen lineage expectation | same as (e) | same as (e) |
+
+**Assigned to `13-17-PLAN.md` Task 3, with explicit M1/M2-conditional wording, as a COMMENT-ONLY
+edit.** No executable line changes: the five `channels = P13_REAL_CHANNEL_PAIR` keyword defaults are
+**not** re-pointed — under M2 they cannot be, and under M1 they follow automatically — and the
+runner instead passes `channels` explicitly at every call site, which is what makes the operative
+pair visible at the point of use. The lineage claim in block (e) is **kept, not withdrawn**: what it
+asserts is the identity of the read chain, and that identity holds on whichever pair it is exercised
+on. Only its status as *the colocalization reference* is superseded.
+
+#### 6.4b LEFT DELIBERATELY — the frozen sibling documents
+
 **`13-SC2-AMENDMENT.md:343, 381, 413, 423, 478` also quote `+0.3292 / +0.2481`. Those are NOT
 edited.** That document is FROZEN and its numbers were correct as prior measurements at the time it
 was written; this document supersedes them by reference, which is how the two amendments stack.
@@ -427,6 +542,33 @@ Two knock-on notes for the re-run:
 - `run_p13_realimage.jl:741` falls back to `P13_REAL_OOD_SHIPPED_DENSITY` when no shipped bundle is
   readable. After this amendment that fallback would quote a superseded-pair number; if it fires it
   must be labelled as such.
+
+### 6.6 `.planning/ROADMAP.md` — the phase's most-read summary surface, and it was missing here
+
+**`.planning/ROADMAP.md` quotes the superseded-pair result in four places and was absent from this
+inventory.** It is the surface a reader hits first — before the report, before any summary — and §9's
+rule ("any report that quotes an amended real-image number must quote the superseded one beside it")
+applies to it with more force than to anything else listed above, not less.
+
+| Site | What it quotes | Status |
+|---|---|---|
+| `:176` | Phase-13 table row: *"13-16: real-image arm REPORTED (RANDOM on both pairs, both OOD-flagged 2.49x/2.42x, agreement)"* | measured on the **SUPERSEDED** pairs; "both pairs" refers to the dropped redundancy arm |
+| `:275` | `**Plans**: 16 plans (9 waves …)` | stale — becomes **17 plans (10 waves)** |
+| `:291` | the `13-16` plan bullet: `417.30 vs 167.54 (2.49×)`, `433.69 vs 179.14 (2.42×)`, `alpha_star_real = 0.875 / 0.625`, *"RANDOM on both unmodified pairs"*, contrast ±0.1156 | every figure measured on the **SUPERSEDED** pair |
+| `:293` | the `**Verdict:**` block, which correctly reports the **gate** but folds the real arm into the same sentence | the gate half is untouched by this amendment and must stay so; the real-arm half is superseded |
+
+**Split across two owners, deliberately:**
+
+1. **Now, by the planner** — the part that is knowable without the re-run: the plan count and wave
+   count, a `13-17-PLAN.md` bullet, and a SUPERSEDED marker on every quoted real-image figure. Done
+   as the smallest additive edit, pathspec-scoped, with the file re-read immediately before writing
+   **because a Phase-12 executor is live on this same file**.
+2. **After the re-run, by `13-17-PLAN.md` Task 5** — the amended figures, each printed beside its
+   superseded counterpart with the pair named, per §9. `.planning/ROADMAP.md` is in that task's file
+   list, and the same re-read-immediately-before-writing discipline applies.
+
+**The gate row and the `**Verdict:**` block's gate sentences are NOT touched by either owner.** The
+gate's AUC/ECE figures are simulator-ground-truth results that this amendment cannot reach (§3).
 
 ---
 
@@ -511,6 +653,13 @@ keeps its numbers. `13-16-SUMMARY.md` keeps its measured tables in full.
 must say which pair each was measured on. Plan 13-17 makes that a checked property of `13-REPORT.md`,
 not an intention.
 
+**"Any report" includes `.planning/ROADMAP.md`, and that surface matters most, not least.** It is
+the first thing a reader reaches — before the report, before any summary — and it was missing from
+this inventory until 2026-07-29. §6.6 lists its four sites and splits the work: the planner marks
+them SUPERSEDED and corrects the plan/wave count now; plan 13-17 Task 5 prints the amended figures
+beside them after the re-run, on its own pathspec, with the file re-read immediately before writing
+because a Phase-12 executor is live on it.
+
 ---
 
 ## 10. What the re-run is required to answer, in words
@@ -549,6 +698,10 @@ section: **does the conclusion change?**
 | mask fractions 13.49% / 22.92% | 13-RESEARCH §J5.1 | prior measurement **on c1** — superseded as a c2 expectation, §5.4 |
 | every commit sha and timestamp in §0.1 | `git log`, copied from output | repository history |
 | `d7195cc4c5ba5a4aaceef8f2d59ddf9bd4422be1` | `git rev-parse HEAD` at the time of writing | the sha this inventory was verified at |
+
+| separations `0.0811`, `0.0788`, `0.8576` | subtraction of the paired figures in the rows above | **arithmetic on prior measurements**, not a measurement |
+| `39 h 15 min 06 s` (`78dc37f` → `c42cc8e`), `38 h 46 min 18 s` (`ea4a7d3` → `c42cc8e`), `40 min 49 s` (`2112bed` → `f411ee7`) | differences of the `git log` timestamps in §0.1 | arithmetic on repository history |
+| occurrence counts in §3 | `grep -o '<name>' <file> \| wc -l`, re-verified 2026-07-29 | property of the source tree |
 
 **No number in this document was measured by this document.** Every Phase-13 figure quoted is a
 prior result, labelled with the pair it was measured on, and the amended anchors are prior
