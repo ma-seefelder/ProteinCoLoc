@@ -5,13 +5,13 @@ milestone_name: milestone
 status: in-progress
 stopped_at: Phase 12 context gathered
 last_updated: "2026-07-27T14:06:54.610Z"
-last_activity: 2026-07-29 -- Phase 13 plan 13-13 complete (REPORTED alpha ladder RAN; alpha* = 0.25)
+last_activity: 2026-07-29 -- Phase 13 plan 13-16 complete (REPORTED real-image arm RAN; RANDOM on both pairs, both OOD-flagged)
 progress:
   total_phases: 16
   completed_phases: 10
   total_plans: 80
-  completed_plans: 67
-  percent: 65
+  completed_plans: 68
+  percent: 66
 ---
 
 # Project State
@@ -114,10 +114,88 @@ answered:
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING
-Plan: 14 of 16 complete (13-01…13-13 + 13-15); remaining 13-14, 13-16
-**STATUS: Executing — waves 1-8 done (both the gate arm and the α-series arm). τ MEASURED (0.15),
-Phase-11 basis BOUND, the three-way evidence net is TRAINED (13-11), THE AMENDED GATE HAS RUN AND
-PASSED (13-12, one run), and the REPORTED α-ladder has run (13-13). D-04 allowance still UNSPENT.**
+Plan: 15 of 16 complete (13-01…13-13 + 13-15 + 13-16); remaining 13-14 (the phase report)
+**STATUS: Executing — waves 1-8 done (the gate arm, the α-series arm and the real-image arm). τ
+MEASURED (0.15), Phase-11 basis BOUND, the three-way evidence net is TRAINED (13-11), THE AMENDED
+GATE HAS RUN AND PASSED (13-12, one run), the REPORTED α-ladder has run (13-13), and the REPORTED
+real-image arm has run (13-16). D-04 allowance still UNSPENT.**
+
+- **2026-07-29 — 13-16 COMPLETE (`2112bed` runner + reported artifact).** The amended D-15
+  QUALITATIVE real-image arm ran ONCE on the six committed `test/test_images/` TIFFs, on the MAIN
+  working tree, no worktree, same ruling as 13-11/13-12/13-13. **This arm consumes NO RNG stream at
+  all** — six committed files, a deterministic transform and a deterministic forward pass — so no
+  reserved counter was touched and none could be pre-observed.
+  **HEADLINE: on BOTH unmodified real pairs, at EVERY pre-registered λ rung, in BOTH read
+  directions, the descriptive verdict is RANDOM — and every one of those reads is OOD-FLAGGED.**
+  At the headline rung `λ = 3.0` (`:widest_rung`, asserted equal to Phase-11's `LAMBDA_MAX` and to
+  the frozen `P13_REAL_LAMBDA_HEADLINE_EXPECTED`): positive-as-sample `log BF(C:R) = −0.4658`,
+  `log BF(E:R) = −10.2727`; negative-as-sample `−3.9432` / `−9.0534`. Both log-BFs negative ⇒ the
+  `argmax(logBF_C, 0, logBF_E)` rule lands on the RANDOM reference for both specimens.
+  **AND THAT IS THE COHERENT ANSWER BY THE PHASE'S OWN LABEL RULE.** Through the frozen `ghat` the
+  positive fixture sits at ρ = **+0.3304** and the negative at **+0.2148**, so the D-05 contrast is
+  **±0.1156** — INSIDE the measured `P13_TAU = 0.15` dead zone. Both specimens are individually
+  correlated but to SIMILAR degrees, and "less colocalized than the control" is not segregation.
+  A consistency check that passed — **NOT** a correctness check: there is no ground-truth label.
+  **THE OOD FINDING IS THE ARM'S HEADLINE HONESTY ITEM, AND BOTH DETECTORS AGREE.** Phase-13 net:
+  density **417.2974** vs its own ID threshold **167.5446** (**2.491×**). Shipped reference:
+  **433.6884** vs **179.1368** (**2.421×**), reproducing the frozen `P13_REAL_OOD_SHIPPED_DENSITY`
+  / `..._THRESHOLD` (433.69 / 179.14) EXACTLY. **A12 outcome: `agreement`.** So the
+  registration-aware Phase-11 basis did NOT move real microscopy back inside the training
+  distribution. The real fixtures score above the **maximum** of 96,000 simulated acquisitions
+  (ID q50 40.17, q95 167.54, max 290.69). Not suppressed, not softened, not "fixed" — every number
+  in every table is printed and persisted on the SAME ROW as its density, threshold and verdict.
+  **λ RESPONSE IS ESSENTIALLY FLAT** — 0.0117 / 0.0585 nats on the exclusion head across the whole
+  ladder, 0.2595 / 0.1750 on the coloc head — which Phase 11's own flat-in-λ result had already made
+  a PRE-AUTHORIZED expected outcome, not a defect.
+  **THE REAL α-LADDER, its own arm, NEVER averaged with 13-13's:** `alpha_star_real` = **0.875**
+  (positive) / **0.625** (negative), each a RUNG of the frozen ladder, never interpolated. On the
+  negative fixture that is EXACTLY the first rung whose induced ρ clears −τ (−0.2193; the rung below
+  sits at −0.1450, inside the dead zone by 0.005); on the positive fixture it is ONE RUNG beyond the
+  boundary. With n = 2 that is a two-point observation, not a bias estimate. The gap from 13-13's
+  `α* = 0.25` is a difference of STARTING POINT (α = 0 is moderately colocalized here, random there),
+  not of net quality. All EIGHT transform invariants hold on BOTH conditions, verified BEFORE any
+  curve was read (worst intensity residual 2.86e-16, zero absent patches at every rung).
+  **REDUNDANCY arm (`P13_REAL_REDUNDANCY_PAIR = (1,3)`):** same qualitative outcome, both log-BFs
+  negative at every rung, at a HIGHER density (607.5728, 3.63× over). Corroborates; adds nothing
+  independent.
+  **NOT A GATE, AND NONE WAS ADDED.** `P13_REAL_IS_GATED = false` / `P13_REAL_QUALITATIVE_ONLY =
+  true` were frozen first; the runner has zero `@test` lines (source-grep asserted) and no threshold
+  exists for any real-image quantity. `consts.jl` byte-unchanged (git blob `5a4ea222…`, identical to
+  13-11/13-12/13-13); `src/`, `test/` and both spike manifests byte-unchanged, `src/` asserted again
+  at RUN TIME. **`P13_ITERATION_ALLOWANCE` remains 1 of 1 UNSPENT.**
+  **THE SEAL STAYS SHUT.** The sealed-holdout accessor is never called, no path under the sealed
+  provenance tree is constructed, the runner contains the string "corpus" **zero** times (not even
+  in a comment), and it asserts that about its own source text at load. `test/test_images/` is
+  proven byte-identical before and after: digest
+  `eaee22f9185460fd910788026e7a33511f6de373f313459b96bb43f3fc1ef276` both times, matching 13-15's.
+  **DEVIATION worth carrying:** the plan named `artifacts/grid_8/` as the frozen OOD comparison
+  reference; that bundle records `id_threshold = 99.22` and scores these fixtures at 85.04. The
+  frozen 433.69 / 179.14 belong to `artifacts/amended_v2/grid_8/`. The runner does not hard-code
+  either — it selects the candidate whose OWN recorded threshold reproduces the frozen constant, so
+  **the pre-registration is the selector**. Note `artifacts/` is UNTRACKED, so `consts.jl` is the
+  durable record and the recomputation is corroboration.
+  **NAMED LIMITS for 13-14 to lift verbatim (13-16-SUMMARY §8 and §9):** n = **2 specimens** (six
+  files = 3 channels each), so no rate and no coverage claim; no colocalization ground-truth label,
+  so BEHAVIOUR and never CORRECTNESS; both specimens OOD-flagged by both detectors; **both**
+  pre-registered channel pairs include the DAPI nuclear counterstain — a limit of the frozen
+  pre-registration, NAMED rather than repaired by choosing a new pair after the fixtures had been
+  measured; and the one physically-segregated anchor stays `sealed_holdout`, deferred to Phase 16.
+  Open Questions 6, 7 and 8 are CLOSED (13-16-SUMMARY §10). The manuscript sentence: **negative
+  induced μ is CONSTRUCTIBLE from real microscopy pixels via the D-16 construction, but has NOT been
+  observed to occur naturally in the images this project holds.**
+  Artifact `spike/p13/realimage_report.jld2` (81,649 bytes, 57 keys) is COMMITTED.
+  `spike/figures/p13_realimage.png` is **gitignored** under the house `*.png` rule; regenerating it
+  costs a ~1.0–1.3 min re-run that is BYTE-IDENTICAL (deterministic substrate), so a loss is a
+  compute cost, not a re-seed. **No bulk cache directory was created:** the 48,000-pair training pool
+  was opened READ-ONLY shard by shard with the cache layer's `open_or_invalidate` deliberately NOT
+  called, and `spike/data/cache/p11/` (54 MB) was neither read nor written.
+  Test files run directly (the full suite still aborts at the Phase-4 `SPEEDUP_GATE`, pre-existing):
+  `test_p13_real.jl`, `test_p13_alpha.jl` and `test_p13_calibration.jl` all exit 0 — and
+  `test_p13_real.jl`'s seal testset is now **34 pass / 0 broken**, because the `@test_skip` 13-15 left
+  for this plan's runner is LIVE and passing.
+  **13-11's OPEN QUESTION IS NOW CLOSED FOR EVERY ARM:** the epoch-4 best-validation checkpoint
+  behaves coherently here too (strictly monotone ladders, no degeneracy, no non-finite value). The
+  binding constraint on this arm is **not** the checkpoint — it is the OOD flag.
 
 - **2026-07-29 — 13-13 COMPLETE (`0943a02` runner + reported artifact).** The REPORTED, NON-GATED
   α-graded segregation series ran ONCE on 64 simulated items drawn at `ρ_true = 0` on the reserved
