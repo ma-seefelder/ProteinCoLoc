@@ -616,3 +616,69 @@ end
     # but this section is the one that loads contract.jl and src/).
     @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
 end
+
+# =====================================================================================
+# THE COMMITTED SIM-02 ARTIFACT (12-10) -- testset 17, APPENDED below the sixteen above,
+# which this plan does not touch.
+# =====================================================================================
+# WHAT THIS TESTSET IS FOR, AND WHY IT IS NOT A DUPLICATE OF TESTSET 1. Testset 1 SCREENS the
+# copula at M = 2 000 on the FIXTURE stream, so a regression fails in seconds. This one holds the
+# COMMITTED REPORTED ARTIFACT -- `run_p12_sim02.jl` at `P12_SIM02_M = 20 000` on the reported
+# stream -- to the same Tier-1 bar. That is what makes the artifact NON-OPTIONAL: once committed, a
+# later regression in the copula (or an artifact regenerated from a narrower sweep) turns the suite
+# red without anyone re-running a 20 000-draw job, and the manuscript's per-region SIM-02 claim
+# cannot silently decay after the run that established it.
+#
+# THE RUNNER IS NEVER INVOKED FROM THE SUITE. A missing artifact is a WORKFLOW state, not a
+# calibration failure, so the executable half is skipped with an @info rather than failed --
+# `test_p12_decoupling.jl`'s gitignored-directory testset is the precedent for the opposite mistake
+# (a testset that reported 0 tests instead of a pass).
+#
+# TWO THINGS ARE ASSERTED THAT THE PLAN'S LIST DOES NOT NAME, AND BOTH ARE THERE BECAUSE THE RUN
+# MEASURED THEM.
+#   (i) THE LADDER SWEEP IS ASSERTED, NOT ASSUMED. With the `./ sqrt.(diag(Sigma))` rescale deleted
+#       in memory and the REAL runner re-run at M = 20 000, the pre-registered SCOPED statistic
+#       reads 0.1220 / 0.1089 / 0.0775 / 0.0394 / 0.0905 across the five CAR rungs -- i.e. a
+#       single-rung artifact taken at r1 = 0.50, 0.75 or 0.95 would have PASSED a demonstrably
+#       broken copula. An artifact that stopped sweeping is therefore a real regression, and this
+#       testset refuses it.
+#  (ii) THE FULL-SUPPORT COMPANION IS HELD TO THE SAME BAR. On the same mutant the full-support
+#       statistic reads 0.1138 at r1 = 0.50 and 0.3241 at r1 = 0.95, where the scoped one passes:
+#       the D-16 scoping damps this failure mode because a compressed marginal moves most of its
+#       mass into exactly the tails the scoping removes (12-07's recorded Assumption Drift). No
+#       threshold is added -- `P12_SIM02_W1_TOL_PERREGION` is the bar for both.
+# The atom mass is asserted only to be PRESENT. It is reporting-only and nothing here compares it
+# to anything.
+
+@testset "the committed SIM-02 artifact clears the pre-registered per-region bar (D-05)" begin
+    _p12s_path = joinpath(@__DIR__, "..", "validation", "p12_sim02_report.jld2")
+    if !isfile(_p12s_path)
+        @info "spike/validation/p12_sim02_report.jld2 is absent — run " *
+              "`julia --project=spike -t auto spike/validation/run_p12_sim02.jl` to produce it. " *
+              "Skipping the executable half: a missing REPORTED artifact is a workflow state, " *
+              "not a calibration failure."
+        @test P12_SIM02_M == 20_000        # the pre-registered size the artifact must carry
+    else
+        d = JLD2.load(_p12s_path)
+        @test d["schema_version"] == 1
+        @test d["M"] == P12_SIM02_M
+        @test d["tolerance"] == P12_SIM02_W1_TOL_PERREGION
+        # THE MAX OVER THE 64 REGIONS, PER ARM x RUNG, NEVER THE MEAN.
+        @test maximum(d["w1_max"]) <= P12_SIM02_W1_TOL_PERREGION
+        @test maximum(d["w1_full_max"]) <= P12_SIM02_W1_TOL_PERREGION
+        @test length(first(values(d["w1_per_region"]))) == P12_G^2
+        @test all(v -> length(v) == P12_G^2, values(d["w1_per_region"]))
+        @test haskey(d, "atom_mass_per_region")
+        @test occursin("gates nothing", d["caption"])
+        # The bar was READ from Tier 1, not derived from the run -- recorded in the artifact itself.
+        @test occursin("before the field simulator existed", d["tolerance_source"])
+        # ... and the sweep really is every pre-registered rung of both spatial arms plus the
+        # ablation, which is what makes the bar able to bite (see (i) in the header above).
+        for r1 in P12_R1_LADDER, arm in ("car", "gp")
+            @test "$(arm)@r1=$(float(r1))" in d["config_labels"]
+        end
+        @test "none@r1=$(float(P12_ABLATION_R1))" in d["config_labels"]
+        @test length(d["config_labels"]) == 2 * length(P12_R1_LADDER) + 1
+        @info "p12 committed SIM-02 artifact" M = d["M"] w1_max = maximum(d["w1_max"]) w1_full_max = maximum(d["w1_full_max"]) tol = d["tolerance"] atom_mass_mean = mean(d["atom_mass_mean"]) configs = length(d["config_labels"])
+    end
+end
