@@ -568,7 +568,7 @@ baseline between the BEFORE and AFTER runs. **No race was rebased or amended**; 
 | `3257783` | Task 6 — `.planning/ROADMAP.md`, on its own pathspec |
 | `156ca4e` | **The ruling** — `spike/test/runtests.jl`: the known-red ledger, the structural masking fix |
 | `dfb5991` | **The ruling** — `13-REPORT.md`: the retraction (§8c), **Limit E** (§9), **§9a**, §14.9 |
-| *(this commit)* | **The ruling** — `13-17-SUMMARY.md` flipped to `complete`, plus the additive `STATE.md` block |
+| `1eccf5e` | **The ruling** — `13-17-SUMMARY.md` flipped to `complete`, plus the additive `STATE.md` block (60 insertions, 0 deletions) |
 
 All used `git commit … -- <explicit paths>`. Never `-a`, never `--no-verify`.
 
