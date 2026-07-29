@@ -1,7 +1,7 @@
 ---
 phase: 12-spatial-colocalization-map
 plan: 01
-status: blocked
+status: complete
 subsystem: pre-registration + test wiring
 tags: [tier-1, seeds, thresholds, include-ordering, r-5]
 requires: []
@@ -36,27 +36,30 @@ key-files:
     - spike/test/runtests.jl
 decisions:
   - "The forbidden-seed LIST carries P13_BURNED_DEV_SEEDS once and PROVES that the three Phase-11 burned tuples are subsumed by it, rather than concatenating all four — which would have double-counted twelve keys and made the plan's own no-duplicate assertion unsatisfiable."
-  - "The runtests.jl insertion was made exactly where the plan specifies (immediately before test_p13_correction.jl) even though a strictly earlier include already aborts the suite. Moving it earlier is a cross-phase ordering decision and is escalated, not taken."
+  - "The aggregator is wired FIRST among the phase-test includes, not merely before the include that throws today. 'Before the throwing file' is contingent on knowing which file throws; first position is structural. Orchestrator ruling, 2026-07-29."
+  - "Testset 9 asserts the aggregator precedes EVERY sibling include, with sibling names derived from the source text rather than hardcoded, so the assertion cannot go stale the way the original premise did."
+  - "The Phase-4 SPEEDUP_GATE shortfall is NOT touched: re-deriving that bar is a pre-registration decision the user owns (standing project ruling)."
 metrics:
-  duration: ~55 min
+  duration: ~85 min
   completed: 2026-07-29
   tasks: 3
-  commits: 3
+  commits: 5
   files: 13
 ---
 
 # Phase 12 Plan 01: Tier-1 Pre-registration and Phase-12 Test Wiring — Summary
 
 Every Phase-12 threshold, seed, salt and counter is now frozen as a literal before a single
-Phase-12 number exists, with the gated/reported split machine-checkable and the DEV stream
-executably proven disjoint from all 43 reserved, burned and recomputed streams in the repo —
-**but the Phase-12 testsets do not actually execute under `spike/test/runtests.jl`, for a
-pre-existing reason the plan's model of the suite did not include.**
+Phase-12 number exists, with the gated/reported split machine-checkable, the DEV stream
+executably proven disjoint from all 43 reserved, burned and recomputed streams in the repo, and
+all ten Phase-12 testsets provably *executing* under `spike/test/runtests.jl` rather than merely
+wired into it.
 
-## STATUS: BLOCKED — read this first
+## The wiring blocker, and how it was resolved
 
-Tasks 1, 2 and 3 were all executed as specified and are committed. **Task 3's `<verify>` FAILS**,
-and it fails for a reason that is not fixable inside this plan.
+Executed as three tasks, then a fourth commit resolving a blocker this plan's own verify exposed.
+Kept in full below because the failure mode is instructive and the fix changed the plan's
+mechanism.
 
 ### What disagreed with what
 
@@ -84,9 +87,9 @@ Measured twice, on two independent runs (84.44 and 89.77 against a gate of 100.0
 with no competing processes — so it is not a load artefact. The `>100×` speedup gate genuinely
 misses on this machine.
 
-### Evidence
+### Evidence (the failing state, before the fix)
 
-`Task 3 <verify>` run verbatim against the committed tree:
+`Task 3 <verify>` run verbatim against the tree as the plan specified it:
 
 ```
 SUITE_EXIT=1
@@ -108,17 +111,20 @@ aggregator prints all ten markers and exits 0 with zero failures — so the aggr
 only its *position in the suite* fails to deliver execution.
 
 The plan's `must_haves.truths` entry **"A Phase-12 testset that is added later cannot silently
-never run"** is therefore NOT delivered by the specified insertion point. It is delivered against
-`test_p13_correction.jl` and against nothing else.
+never run"** was therefore NOT delivered by the specified insertion point. It was delivered
+against `test_p13_correction.jl` and against nothing else. *(It is delivered now — see the
+resolution below.)*
 
-### Why this was not auto-fixed
+### Why the executor escalated instead of auto-fixing
 
-The mechanical fix is a one-line move: put `include(joinpath(@__DIR__, "test_p12_suite.jl"))`
-before `include(joinpath(@__DIR__, "test_npe.jl"))` at `runtests.jl:169` instead. That would
-satisfy every stated acceptance criterion (one added include line, nothing removed or reordered,
+The mechanical fix looked like a one-line move: put `include(joinpath(@__DIR__, "test_p12_suite.jl"))`
+before `include(joinpath(@__DIR__, "test_npe.jl"))` at `runtests.jl:169` instead. That would have
+satisfied every stated acceptance criterion (one added include line, nothing removed or reordered,
 lower line index than `test_p13_correction.jl`, testset 9 still passes) *and* the verify.
 
-It was **not** applied, for two reasons:
+It was **not** applied by the executor, for two reasons — and the escalation was upheld, since the
+ruling both hardened the fix beyond that one-line version and supplied a standing project ruling
+the executor did not have:
 
 1. It hops Phase-12's testsets in front of a pre-existing, unaddressed abort that also kills
    Phases 5, 9 and 13. Doing that for Phase 12 only is a cross-phase process decision of the same
@@ -135,8 +141,64 @@ It was **not** applied, for two reasons:
 | B | Fix or re-scope the Phase-4 `SPEEDUP_GATE` (currently 84.44 vs 100.0) | the whole suite runs again; this is a v2.0 headline-claim question, not a wiring one |
 | C | Accept that Phase-12 testsets are run via `test_p12_suite.jl` directly, not via `runtests.jl` | zero code; the "cannot silently never run" guarantee is downgraded to a convention |
 
-**Nothing else in this plan is blocked.** Tier 1 is complete, self-consistent, committed and
-verified; the literal-assertion test passes 122/122; every later Phase-12 plan can proceed.
+### RESOLUTION — orchestrator ruling, 2026-07-29: **Option A, hardened** (commit `afae172`)
+
+Two facts decided it, neither of which the executor had:
+
+1. **The placement was deliberate-but-stale, not deliberate-and-load-bearing.** `.planning/STATE.md`
+   already recorded this exact finding, measured during 13-11 on the same day: *"the suite never
+   REACHES line 213. It aborts EARLIER, at runtests.jl:169 -> test_npe.jl:230, on the Phase-4
+   SPEEDUP_GATE (median speedup 68.35 against the pre-registered bar 100.0)."* The project had
+   corrected its model of the suite **in writing, before 12-01 was dispatched**; the plan's
+   insertion point simply predated that correction. Fixing it therefore serves the plan's stated
+   intent rather than overriding a live design choice.
+2. **Option B is out of scope by standing ruling.** STATE.md: *"Re-deriving that bar is a
+   pre-registration decision and is left for the user."* `SPEEDUP_GATE` and `test_npe.jl` were
+   not touched.
+
+Option A was taken **hardened**, because plain Option A repeats the defect at one remove:
+
+**(a) The aggregator is now FIRST among the phase-test includes**, ahead of `test_simulator.jl`,
+not merely ahead of whichever file happens to throw. "Before the throwing include" is contingent
+on knowing which file throws *today* — that is precisely the construction that just failed. First
+position is *structural*: no other phase's failure can mask Phase 12, whichever file throws. The
+comment block moved with it and now names the real abort (Phase-4 `SPEEDUP_GATE`, pre-existing,
+user-owned) instead of `test_p13_correction.jl`. The same stale claim was also corrected in
+`test_p12_suite.jl`'s own header, which had asserted the old placement in prose.
+
+**(b) Testset 9 now encodes the guarantee instead of the stale premise.** The old assertion
+(aggregator offset < `test_p13_correction.jl` offset) stayed *true* after the move but was
+insufficient for the same reason it was insufficient before — it was true throughout the period
+the aggregator never ran. It is replaced by an assertion that the aggregator precedes **every**
+other phase-test include, with the sibling filenames **derived from the source text** by regex
+rather than hardcoded, since a literal list would go stale exactly as the original premise did.
+The `test_p13_correction.jl` check is retained as an explicitly-labelled corollary because it is
+a stated acceptance criterion of this plan.
+
+**Proof the strengthening bites:** reverting the aggregator to its original placement in a scratch
+copy — a placement that *passed* the old assertion — now fails the new one six times over, naming
+each include that jumped ahead: `test_simulator.jl`, `test_data_pipeline.jl`, `test_npe.jl`,
+`test_sbc.jl`, `test_bf.jl`, `test_ood.jl` …
+
+**Task 3 `<verify>`, re-run against the committed tree:**
+
+```
+SUITE_EXIT=1
+VERIFY_RESULT: MISSING=0 (0 == pass)
+  6:P12-SUITE-RAN: test_p12_consts.jl        35:P12-SUITE-RAN: test_p12_train.jl
+ 19:P12-SUITE-RAN: test_p12_lattice.jl       39:P12-SUITE-RAN: test_p12_result.jl
+ 23:P12-SUITE-RAN: test_p12_prior.jl         43:P12-SUITE-RAN: test_p12_sbc.jl
+ 27:P12-SUITE-RAN: test_p12_architecture.jl  47:P12-SUITE-RAN: test_p12_coverage.jl
+ 31:P12-SUITE-RAN: test_p12_datagen.jl       51:P12-SUITE-RAN: test_p12_decoupling.jl
+```
+
+**Both facts recorded, because only one of them is ours.** All ten markers are present and every
+Phase-12 testset reports green (143 + 9 = 152 passes, 0 failures). **The suite still exits
+non-zero**, at `test_npe.jl` (`runtests.jl:189` after the insertion shifted line numbers), for a
+Phase-4 reason Phase 12 does not own and did not touch.
+
+**Net effect on `runtests.jl` versus its pre-Phase-12 state: 20 insertions, 0 deletions** — one
+`include(` line plus its comment block. No Phase-13 include was touched or reordered.
 
 ## What Was Built
 
@@ -171,13 +233,15 @@ Stage-1 golden-regression triple.
 | `P12_PRIMARY_CHECKOUT != P12_REPO_ROOT` inside a worktree | loaded from a throwaway `git worktree add --detach` tree | **PASS** — worktree root vs `.../ProteinCoLoc`; equal in the primary checkout |
 | git-absent fallback warns and names the degradation | `withenv("PATH" => "")` | **PASS** — warning emitted, enclosing root returned |
 | `p12_require_proceed` throws with no verdict file | temp dir | **PASS** (also exercised PROCEED, DESCOPE, and malformed-file throw) |
-| Task 2 verify | `include("spike/test/test_p12_consts.jl")` | **PASS** — 122/122, 0 failed, 0 errored, exit 0 |
+| Task 2 verify | `include("spike/test/test_p12_consts.jl")` | **PASS** — 143/143 after the ruling (122 before), 0 failed, 0 errored, exit 0 |
 | mutation `0.95 → 0.94` breaks testset 5 | scratch copy | **PASS** — 2 failures in "recorded derivations reproduce" |
 | moving the aggregator after the throwing arm breaks testset 9 | scratch copy | **PASS** — `4887 < 4833` failed |
+| **strengthened** testset 9 rejects the *original* placement | scratch copy | **PASS** — 6 failures naming `test_simulator.jl`, `test_data_pipeline.jl`, `test_npe.jl`, `test_sbc.jl`, `test_bf.jl`, `test_ood.jl` |
 | each scaffold: one non-comment `P12_PENDING_SCAFFOLD`, no `@test false`/`@test_broken` | `grep` | **PASS** — 9/9 |
-| `runtests.jl` diff shape | `git diff -U0` | **PASS** — 8 insertions (1 include + 7 comment), 0 deletions |
+| `runtests.jl` net diff vs pre-Phase-12 | `git diff 2d620b6 --` | **PASS** — 20 insertions (1 include + comments), 0 deletions |
 | aggregator standalone | `include("spike/test/test_p12_suite.jl")` | **PASS** — all ten markers, exit 0 |
-| **Task 3 verify (markers in the full suite log)** | the plan's loop over all ten | **FAIL — all ten missing** (see blocker) |
+| **Task 3 verify (markers in the full suite log)** | the plan's loop over all ten | **FAIL before the ruling** (all ten missing) → **PASS after** (`MISSING=0`, all ten present, every Phase-12 testset green) |
+| suite exit code | `julia --project=spike spike/test/runtests.jl` | **non-zero, expected and not ours** — aborts at `test_npe.jl` on the Phase-4 `SPEEDUP_GATE`, unchanged from the pre-plan baseline |
 
 **Not run:** `julia --project=. -e 'using Pkg; Pkg.test()'`. No pre-plan baseline for it was
 captured, so "unchanged from its pre-plan state" is not something this run can assert. `src/` is
@@ -252,6 +316,27 @@ prior → 12-07, datagen → 12-09, result → 12-12, train → 12-14, coverage 
 |------|------|-------------|
 | threat_flag: availability | `spike/validation/p12_consts.jl` | `p12_primary_checkout()` falls back **only** when `Sys.which("git") === nothing`, as the plan specifies. Observed consequence: loading the file from a directory tree that is not a git checkout (an export, a tarball, a sandbox) makes git exit 128 and the include **throw**, taking every Phase-12 runner with it. Encountered for real while building the scratch mutation harness. The `test_p13_result.jl:199-201` precedent guards on "is this a checkout at all" for exactly this reason. Tier 1 is append-only, so this is **reported, not repaired**. |
 
+## Carried-forward advisories — accepted as reported, deliberately UNREPAIRED
+
+Both are consequences of Tier 1 being append-only: they are now documented facts rather than
+open work items. Orchestrator ruling 2026-07-29 accepts both as reported and carries them upward.
+
+1. **`p12_primary_checkout()` throws outside a git checkout.** The threat-flag row above, in full.
+   The plan specifies fallback *only* on `Sys.which("git") === nothing`, so a tree where git
+   exists but the directory is not a checkout produces exit 128 and a thrown include rather than a
+   degraded-but-working root. Hit for real, not hypothesised.
+
+2. **`Z_TWO_SIDED_90` is an unprefixed name that `spike/validation/p11_consts.jl:209` already
+   binds to `1.644853627`; Phase 12 binds it to `1.644854`** — more and fewer digits of the same
+   quantile Φ⁻¹(0.95). It is safe today for two independent reasons, both checked rather than
+   assumed: the two consts files are never loaded into one module by the test suite (nothing
+   `runtests.jl` reaches includes `p11_consts.jl` into `Main` — `p13/preconditions.jl` reads it
+   through the isolated `module _P11C` precisely to avoid the sentinel collision), and under
+   Julia 1.12 a same-name `const` rebinding is legal rather than an error. Were both ever loaded
+   into one module, the later binding would silently change the default `z` of
+   `p11_stats.jl`'s `wilson_ci`. Recorded in `p12_consts.jl` §7 as a fact; **both files are
+   frozen pre-registrations and neither may be edited**, so no repair is available or attempted.
+
 ## For the Next Plan
 
 - Every Tier-1 name later plans consume is defined and verified. `P12_CACHE_ROOT`/`P12_POOL_SCHEMA`
@@ -263,14 +348,20 @@ prior → 12-07, datagen → 12-09, result → 12-12, train → 12-14, coverage 
   `:P12_N_LOW` (12-15) and `:P12_FISHERZ_NEFF` (12-16). Each append removes its own negative
   assertion in `p12_consts.jl` **and** its mirror in testset 8 of `test_p12_consts.jl`, in the
   same commit, and only then.
-- **Do not treat "wired into `runtests.jl`" as "runs in `runtests.jl`" until the blocker above is
-  resolved.** Until then, `julia --project=spike -e 'using Test; include("spike/test/test_p12_suite.jl")'`
-  is the command that actually exercises the Phase-12 surface.
+- **Add a Phase-12 testset by adding a line to `test_p12_suite.jl` and to `P12_TEST_FILES` in
+  `test_p12_consts.jl` — never to `runtests.jl`.** Testset 9 fails if a file is missing from
+  either. The aggregator is first among the phase-test includes and testset 9 asserts it stays
+  there, so a new Phase-12 test cannot be masked by another phase's failure.
+- **The suite still exits non-zero** at `test_npe.jl` (Phase-4 `SPEEDUP_GATE`, 84.44 vs 100.0).
+  Phase-12 testsets all run and report *before* that point. Do not read a red suite as a Phase-12
+  failure; read the `P12-SUITE-RAN` markers and the Phase-12 testset summaries.
 
 ## Self-Check: PASSED
 
-All 13 created/modified files verified present on disk; all three commits verified present in
+All 13 created/modified files verified present on disk; all five commits verified present in
 `git log`: `ee86ab8` (Tier 1), `2d620b6` (literal-assertion test), `261a0cc` (aggregator,
-scaffolds, wiring). `spike/data/cache/p11` intact at 54 MB; `src/`, `corpus/`,
-`spike/Project.toml` and `spike/Manifest.toml` byte-unchanged; `.planning/STATE.md` and
-`.planning/ROADMAP.md` untouched.
+scaffolds, wiring), `afae172` (orchestrator ruling: aggregator first + structural assertion),
+`f32a998`/this update (summary). `spike/data/cache/p11` intact at 54 MB; `src/`, `corpus/`,
+`spike/Project.toml` and `spike/Manifest.toml` byte-unchanged; `artifacts/amended_v2/grid_8`
+untouched; `.planning/STATE.md` and `.planning/ROADMAP.md` untouched; `test_npe.jl` and
+`SPEEDUP_GATE` untouched.
