@@ -342,3 +342,275 @@ end
 @testset "prior surface ran CPU-only" begin
     @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
 end
+
+# =====================================================================================
+# THE D-06 STAGE-1 GOLDEN REGRESSION (12-08) -- testsets 12-16, APPENDED below the eleven
+# copula testsets above, which this plan does not touch.
+# =====================================================================================
+# EXACT EQUALITY IS THE PRE-REGISTERED CRITERION FOR THE NO-FIELD ARM AND IT IS NOT NEGOTIABLE.
+# `P12_STAGE1_EXACT` IS `true` IN THE FROZEN TIER-1 PRE-REGISTRATION, SO TESTSET 13 COMPARES RAW
+# Float64 BYTES WITH `==`. It holds BY CONSTRUCTION rather than by luck: a theta carrying no
+# `rho_field` takes stage 1's SCALAR branch, which never enters the upsample at all, and the three
+# `_smooth_field` calls sit BEFORE the branch so RNG consumption is identical on both paths. A
+# FAILURE THERE IS A GENUINE SIGNAL -- an upstream numerics change, or a moved line in stage 1 --
+# AND MUST BE INVESTIGATED, NOT SMOOTHED AWAY. THE ONLY SANCTIONED ESCAPE HATCH IS THE
+# PRE-REGISTERED `P12_STAGE1_GOLDEN_TOLERANCE_FALLBACK` (p12_consts.jl §17), AND ANY USE OF IT MUST
+# BE RECORDED AS A NAMED DEVIATION IN THE PLAN SUMMARY. DO NOT SOFTEN A FAILING ASSERTION TO A
+# TOLERANCE COMPARISON IN THIS FILE.
+#
+# TWO MEASURED CORRECTIONS THIS SECTION CARRIES, BOTH BECAUSE THE ASSERTION AS SPECIFIED WOULD
+# OTHERWISE BE UNABLE TO PASS OR UNABLE TO FAIL.
+#
+# (1) THE CONSTANT-FIELD DIFFERENCE IS NOT "A FEW ULP". IT IS EXACTLY ZERO. 12-VALIDATION.md, and
+# `p12_consts.jl:710-714` in its wake, reason that a constant-VALUED field must differ from the
+# scalar path in the last few ULP, because the separable upsample's row weights `1-t` and `t` sum
+# to 1 only up to IEEE rounding. MEASURED THIS SESSION on the committed operator, that rounding
+# does not materialize at these operating points: `_p12_upsample_local(fill(0.7, 8, 8), sz)` is
+# EXACTLY 0.7 in every pixel at 128^2, 256^2 and 512^2 (max deviation 0.0, all entries `==`), so
+# `a`, `b` and `sgn` are bit-identical to the scalar branch's and the whole seven-stage pipeline
+# reproduces the golden bytes with max|delta| = 0.0 across all six keys. 12-07's testset 8 measured
+# the same thing independently at 0.42 / 512^2. The pre-registered criterion
+# `max|delta| <= P12_STAGE1_CONSTFIELD_TOL` therefore HOLDS (0.0 <= 1e-12) and is asserted
+# unchanged -- but the falsifier the plan pairs with it, `0 < max|delta|`, is measurably FALSE, and
+# its stated reasoning ("a difference of precisely zero proves the branch did NOT run") is false in
+# the same breath: the branch DID run and the difference IS precisely zero. Testset 14 therefore
+# proves the branch ran the way that actually bites -- a constant field at a value DIFFERENT from
+# `theta.rho_true` must OVERRIDE it. If the field branch were skipped that theta would return the
+# golden bytes and the difference would collapse to 0; measured, it is 3.04.
+#
+# (2) THE TWO VALIDATORS DIVERGE ON EXACTLY ONE OF THE FIVE SHARED BAD INPUTS, AND THE DIVERGENCE
+# IS RECORDED RATHER THAN ASSERTED AWAY. Measured: on `> 1`, `< -1`, `NaN` and a non-square matrix
+# both `validate_rho_field` and a field-carrying `simulate_pair` throw `ArgumentError`. On a 1x1
+# matrix `validate_rho_field` does NOT throw (1x1 is square, finite and in range), while
+# `simulate_pair` does. That is not a bug in either: the "at least two cells per axis" rule is a
+# constraint of the RENDERER, and on the `p12_prior.jl` side it lives in `p12_bilinear_op`'s
+# `G >= 2` guard rather than in the validator -- `p12_upsample(fill(0.5,1,1), ...)` throws too.
+# `forward.jl`'s inlined `_p12_check_field` merges the two into one entry guard because it has no
+# separate upsample to fail in. Testset 16 asserts the four-way agreement AND this one divergence
+# explicitly, so a future edit that silently changes either side is caught.
+#
+# CPU-only. Two `simulate_pair` calls at 128^2 x 6 keys plus four at 256^2 (testset 15).
+
+using JLD2
+
+# `contract.jl` is reached for the SIM-03 patch summary (testset 15) and is GUARDED: inside the
+# aggregated suite an earlier file has already loaded it, and its two `src/` includes are READ-ONLY
+# (CLAUDE.md decoupling). Measured cost when it is not already loaded: 0.84 s.
+isdefined(@__MODULE__, :build_mci) || include(joinpath(@__DIR__, "..", "contract.jl"))
+
+# PHASE-PREFIXED, deliberately: a bare `_res`-style helper in this repository has already silently
+# overwritten a Phase-13 namesake through an identical zero-positional signature.
+const _P12G_PATH   = joinpath(@__DIR__, "fixtures", "p12_stage1_golden.jld2")
+const _P12G        = JLD2.load(_P12G_PATH)
+const _P12G_THETA  = _P12G["theta"]
+const _P12G_IMSIZE = _P12G["imsize"]
+const _P12G_CHANS  = _P12G["channels"]
+const _P12G_KEYS   = _P12G["golden_keys"]
+# The off-value constant field of testset 14's falsifier: a legal constant field that is NOT
+# `theta.rho_true`, so "the field was read" and "the field was ignored" have different answers.
+const _P12G_OFFVAL = 0.1
+
+"""
+    _p12g_source_between(startmark, endmark) -> String
+
+The lines of THIS file strictly between two sentinel comments, with whole-line comments stripped --
+the `test_stage6_regression.jl:79-80` idiom, applied to this file's own source so a claim about how
+testset 13 is written is checkable from the running suite instead of by review.
+"""
+function _p12g_source_between(startmark::AbstractString, endmark::AbstractString)
+    lines = split(replace(read(@__FILE__, String), "\r\n" => "\n"), '\n')
+    i = findfirst(l -> occursin(startmark, l), lines)
+    j = findfirst(l -> occursin(endmark, l), lines)
+    (i === nothing || j === nothing || j <= i + 1) && return ""
+    return join(filter(l -> !startswith(strip(l), "#"), lines[(i + 1):(j - 1)]), '\n')
+end
+
+"Across-region spread of a patch-correlation grid, `missing` patches dropped."
+_p12g_spread(M) = std(collect(skipmissing(vec(M))))
+
+@testset "the golden fixture PRECEDES the stage-1 edit (D-06)" begin
+    # A fixture REGENERATED after the edit would have been captured through a Phase-12 draw, would
+    # carry `rho_field`, and would compare the new code against itself -- passing vacuously and
+    # silently. Refuse that fixture outright, exactly as test_stage6_regression.jl:129-134 refuses
+    # a post-eps fixture by the presence of the 8th field.
+    @test !hasproperty(_P12G_THETA, :rho_field)
+    @test length(_P12G_THETA) == 8
+    @test last(keys(_P12G_THETA)) === :chromatic_eps
+    @test _P12G_THETA.chromatic_eps == 0.0        # the stage-6 term is pinned INERT by the literal
+
+    sha = _P12G["p12_base_sha"]
+    @test sha isa AbstractString
+    @test length(sha) == 40
+
+    # The fixture rode the FIXTURE stream on the FIXTURE counter, never a reported one.
+    @test _P12G["fixture_counter"] == P12_FIXTURE_COUNTER
+    @test _P12G["seed"] == UInt64(P12_FIX_SEED)
+    @test _P12G["salt"] == UInt64(P12_SALT)
+    @test length(_P12G_CHANS) == length(_P12G_KEYS) == 6
+
+    # AND THE ORDERING IS CHECKABLE, NOT MERELY CLAIMED: the capture-time sha must be an ANCESTOR
+    # of HEAD. Guarded by the test_p13_result.jl:199-201 predicate so a sandbox without git skips
+    # the executable half rather than failing for an unrelated reason.
+    _has_git = Sys.which("git") !== nothing &&
+               (isdir(joinpath(P12_REPO_ROOT, ".git")) || isfile(joinpath(P12_REPO_ROOT, ".git")))
+    if _has_git
+        @test success(Cmd(`git merge-base --is-ancestor $sha HEAD`; dir = P12_REPO_ROOT))
+    else
+        @info "git unavailable — skipping the executable fixture-precedes-edit ancestry assertion"
+    end
+end
+
+@testset "a theta with no rho_field reproduces the golden bytes EXACTLY (P12_STAGE1_EXACT)" begin
+    @test P12_STAGE1_EXACT == true      # the contract this testset scores against, asserted where
+                                        # it is enforced rather than only where it is declared
+    # --- P12-T13-EXACT-ARM-BEGIN ---
+    for (i, k) in enumerate(_P12G_KEYS)
+        out = simulate_pair(p12_fix_rng(P12_FIXTURE_COUNTER + k), _P12G_THETA;
+                            imsize = _P12G_IMSIZE)
+        @test collect(out[1]) == collect(_P12G_CHANS[i][1])
+        @test collect(out[2]) == collect(_P12G_CHANS[i][2])
+    end
+    # --- P12-T13-EXACT-ARM-END ---
+
+    # SOURCE-LEVEL TRIPWIRE, mirroring the `count("warp(", code) == 1` assertion
+    # test_stage6_regression.jl:94-96 makes on the simulator: the comparison above must stay an
+    # exact one. A future edit that softens it to a tolerance changes the SOURCE, so the check is
+    # made on the source. The strings below sit OUTSIDE the sentinels on purpose -- inside them
+    # they would match themselves and the tripwire would fail on its own text.
+    exact_arm = _p12g_source_between("P12-T13-EXACT-ARM-BEGIN", "P12-T13-EXACT-ARM-END")
+    @test !isempty(exact_arm)                     # the extraction really found the block ...
+    @test occursin("_P12G_CHANS", exact_arm)      # ... and the block really is the comparison
+    @test occursin("==", exact_arm)
+    @test !occursin("isapprox", exact_arm)
+    @test !occursin("≈", exact_arm)
+    @test !occursin("atol", exact_arm)
+    @test !occursin("rtol", exact_arm)
+end
+
+@testset "a CONSTANT field agrees with the scalar path to the pre-registered tolerance" begin
+    ρ  = _P12G_THETA.ρ_true
+    θf = merge(_P12G_THETA, (rho_field = fill(ρ, 8, 8),))
+    @test length(θf) == 9 && hasproperty(θf, :rho_field)
+
+    dmax = 0.0
+    for (i, k) in enumerate(_P12G_KEYS)
+        out = simulate_pair(p12_fix_rng(P12_FIXTURE_COUNTER + k), θf; imsize = _P12G_IMSIZE)
+        dmax = max(dmax,
+                   maximum(abs, collect(out[1]) .- collect(_P12G_CHANS[i][1])),
+                   maximum(abs, collect(out[2]) .- collect(_P12G_CHANS[i][2])))
+    end
+    # THE PRE-REGISTERED CRITERION, UNCHANGED AND NOT MOVED. It is a TOLERANCE by construction
+    # rather than a softened `==`, because the upsample's row weights `1-t` and `t` sum to 1 only up
+    # to IEEE rounding -- see p12_consts.jl:710-714.
+    @test dmax <= P12_STAGE1_CONSTFIELD_TOL
+    # MEASURED THIS SESSION: the rounding does not materialize here and dmax is EXACTLY 0.0 (header
+    # correction 1). Recorded with @info so the phase report can quote the number rather than the
+    # bound, and asserted only as the bound, which is what was pre-registered.
+    @info "p12 stage-1 constant-field agreement with the scalar path" max_abs_delta = dmax tol = P12_STAGE1_CONSTFIELD_TOL exactly_zero = (dmax == 0.0)
+
+    # THE FALSIFIER, AND IT IS NOT `0 < dmax` -- THAT ONE IS MEASURABLY FALSE (header correction 1).
+    # A constant field at a value DIFFERENT from theta.rho_true must OVERRIDE the scalar. If stage
+    # 1's field branch never ran, this theta would take the rho_true = 0.7 path and return the
+    # golden bytes, collapsing `off_vs_golden` to 0.0 and failing the bound below. Measured: 3.04.
+    θoff = merge(_P12G_THETA, (rho_field = fill(_P12G_OFFVAL, 8, 8),))
+    o_off = simulate_pair(p12_fix_rng(P12_FIXTURE_COUNTER + _P12G_KEYS[1]), θoff;
+                          imsize = _P12G_IMSIZE)
+    off_vs_golden = max(maximum(abs, collect(o_off[1]) .- collect(_P12G_CHANS[1][1])),
+                        maximum(abs, collect(o_off[2]) .- collect(_P12G_CHANS[1][2])))
+    @test off_vs_golden > 0.5
+    @test _P12G_OFFVAL != ρ            # ... and the two values really are different, so the
+                                       # falsifier cannot pass by comparing rho_true with itself
+
+    # ... and the same constant field reproduces the SCALAR path at ITS OWN value to the same
+    # pre-registered bar, which is the claim "a constant field is the scalar case" in full.
+    o_scal = simulate_pair(p12_fix_rng(P12_FIXTURE_COUNTER + _P12G_KEYS[1]),
+                           merge(_P12G_THETA, (ρ_true = _P12G_OFFVAL,)); imsize = _P12G_IMSIZE)
+    off_vs_scalar = max(maximum(abs, collect(o_off[1]) .- collect(o_scal[1])),
+                        maximum(abs, collect(o_off[2]) .- collect(o_scal[2])))
+    @test off_vs_scalar <= P12_STAGE1_CONSTFIELD_TOL
+    @info "p12 stage-1 constant field at an OFF value" off_value = _P12G_OFFVAL vs_golden = off_vs_golden vs_scalar_at_same_value = off_vs_scalar
+end
+
+@testset "a NON-constant field changes the image, and changes it spatially" begin
+    # A REAL draw from the D-05 copula, not a hand-built field, so what reaches stage 1 is what
+    # 12-09's datagen will send it.
+    d  = sample_p12_prior(p12_fix_rng(P12_FIXTURE_COUNTER); r1 = 0.5)
+    θF = merge(_P12G_THETA, (rho_field = d.rho_field,))
+    @test size(θF.rho_field) == (P12_G, P12_G)
+    @test !all(==(first(d.rho_field)), d.rho_field)     # it really is non-constant
+
+    # 256^2 so each of the 64 patches is 32x32 px, far above the >15-surviving-pixel floor.
+    for k in _P12G_KEYS[1:2]
+        ctrl = simulate_pair(p12_fix_rng(P12_FIXTURE_COUNTER + k), _P12G_THETA; imsize = (256, 256))
+        fld  = simulate_pair(p12_fix_rng(P12_FIXTURE_COUNTER + k), θF;          imsize = (256, 256))
+        # (a) the field changes the image at all
+        @test collect(fld[1]) != collect(ctrl[1])
+        @test collect(fld[2]) != collect(ctrl[2])
+
+        # (b) AND IT REACHES THE PATCH SUMMARY rather than being averaged away by the PSF, which is
+        # the only part of (a) that is actually about D-06 delivering a SPATIAL map. Directional
+        # check, NOT the D-12 gate: no bar here is pre-registered, and none is invented -- the
+        # comparison is against the constant-rho control measured on the same key.
+        Sc = patch_summary(build_mci(ctrl))
+        Sf = patch_summary(build_mci(fld))
+        sc, sf = _p12g_spread(Sc), _p12g_spread(Sf)
+        @test sf > sc
+        # ... and the field arm reaches regions the constant-rho control never does. At
+        # rho_true = 0.7 the control's grid is entirely positive; a drawn field spans the prior, so
+        # its weakest region sits below the control's. This is the assertion that separates
+        # "spatially varying" from "noisier".
+        @test minimum(skipmissing(vec(Sf))) < minimum(skipmissing(vec(Sc)))
+        @info "p12 stage-1 across-region spread, field vs constant-rho control" key = k control_spread = sc field_spread = sf ratio = sf / sc
+    end
+    # 12-RESEARCH Pitfall 2 measured a constant-rho across-region spread of 0.0847 against a
+    # per-draw noise sd of 0.0662 and warned that only a modest excess is expected. That pairing is
+    # NOT this configuration and is not quoted as if it were: measured here at 256^2, rho = 0.7 and
+    # this theta's nuisances, the control spread is ~0.155-0.22 and the field arm runs ~2.2x it.
+end
+
+@testset "the two field validators agree (the deliberate duplication is bounded)" begin
+    _p12g_bad = (("an entry > 1",  [2.0 0.0; 0.0 0.0]),
+                 ("an entry < -1", [-2.0 0.0; 0.0 0.0]),
+                 ("a NaN",         [NaN 0.0; 0.0 0.0]),
+                 ("a non-square",  zeros(2, 3)))
+    # THE FOUR-WAY AGREEMENT. This is the test `forward.jl`'s `_p12_check_field` docstring names as
+    # the thing keeping the inlined guard honest with `p12_prior.jl`'s `validate_rho_field`: the
+    # duplication exists because forward.jl must not include p12_prior.jl (that would invert the
+    # dependency and pull the lattice into every consumer of the forward model), so the two are
+    # pinned to one another here instead.
+    for (name, F) in _p12g_bad
+        @test_throws ArgumentError validate_rho_field(F)
+        @test_throws ArgumentError simulate_pair(p12_fix_rng(P12_FIXTURE_COUNTER),
+                                                 merge(_P12G_THETA, (rho_field = F,));
+                                                 imsize = _P12G_IMSIZE)
+    end
+
+    # THE ONE DIVERGENCE, ASSERTED RATHER THAN ASSUMED AWAY (header correction 2). A 1x1 field is
+    # square, finite and in range, so `validate_rho_field` accepts it; `simulate_pair` rejects it
+    # because a bilinear upsample interpolates BETWEEN cell pairs and there is no pair. On the
+    # p12_prior.jl side that rule lives in the RENDERER (`p12_bilinear_op`'s `G >= 2`), not in the
+    # validator -- so nothing is missing there either, and the two sides together reject exactly
+    # what forward.jl's merged guard rejects.
+    _p12g_tiny = fill(0.5, 1, 1)
+    @test validate_rho_field(_p12g_tiny) === _p12g_tiny            # accepts -- by design
+    @test_throws ArgumentError p12_upsample(_p12g_tiny, (128, 128))  # the renderer refuses
+    @test_throws ArgumentError simulate_pair(p12_fix_rng(P12_FIXTURE_COUNTER),
+                                             merge(_P12G_THETA, (rho_field = _p12g_tiny,));
+                                             imsize = _P12G_IMSIZE)
+
+    # A LEGITIMATE FIELD STILL PASSES, so neither guard is simply always-throw.
+    @test simulate_pair(p12_fix_rng(P12_FIXTURE_COUNTER),
+                        merge(_P12G_THETA, (rho_field = fill(0.3, 8, 8),));
+                        imsize = _P12G_IMSIZE) isa Vector{Matrix{Float64}}
+
+    # THE UPSAMPLE HALF OF THE SAME DUPLICATION. `_p12_upsample_local` is a private copy of
+    # `p12_upsample`'s `offset = false` path; if the copy ever drifts, every field-carrying
+    # simulation silently renders a different image from the one 12-09's pool believes it drew.
+    _p12g_F = randn(p12_fix_rng(P12_FIXTURE_COUNTER), P12_G, P12_G) ./ 4
+    @test _p12_upsample_local(_p12g_F, (128, 128)) == p12_upsample(_p12g_F, (128, 128))
+    @test _p12_upsample_local(_p12g_F, (129, 97))  == p12_upsample(_p12g_F, (129, 97))
+
+    # The golden-regression section ran CPU-only too (the eleven copula testsets assert this above,
+    # but this section is the one that loads contract.jl and src/).
+    @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
+end
