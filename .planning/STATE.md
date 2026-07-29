@@ -36,8 +36,9 @@ Three phases are active concurrently. All lines are authoritative — do not ove
 
 Phase: 12 (spatial-colocalization-map) — PLANNED, NOT STARTED
 Plans: 20 of 20 written and committed (`927cf7a`); FOUR plan-checker gates run 2026-07-28/29.
-**STATUS: Planning complete. Both user decisions received 2026-07-28 and propagated. Execution may
-begin; five Tier-1 constants still need confirmation (see 12-CONSTANTS-FOR-CONFIRMATION.md).**
+**STATUS: Planning complete and UNBLOCKED. All user decisions received and propagated: the two of
+2026-07-28, and all four remaining constants CONFIRMED 2026-07-29 (12-CONSTANTS-FOR-CONFIRMATION.md is
+now CLOSED). No Tier-1 constant awaits confirmation. Wave 1 has no remaining blocker.**
 Gate 1 found 7 blockers (5 defects, fixed; 2 escalated as the decisions below). Gate 2 found the
 prose-vs-executable Δρ gap: the three-map ruling had been propagated as PROSE into six plans while the
 executable specs stayed single-map. Gate 3 found 6 blockers and 11 concerns, all closed. Gate 4 (2026-07-29,
@@ -83,16 +84,21 @@ answered:
      A ±0.03 tolerance at n=2 is still noise, so the Stage-2 gate rests on 12-16's simulated arm
      (N ≥ 271). Recorded as clause (h) plus §5 of the frozen amendment.
      The effective independent n is **2**, not 128: the 128 region-draws are pseudo-replicates.
-  **OPEN FOR THE USER (1):** whether to fetch the corpus. Doing so would not change the Δρ n unless the
-  fetched data includes genuine sample/control pairs — the sealed rows are single specimens too.
-  **OPEN FOR THE USER (2) — NEW, raised by gate 4, and it is a blocker on 12-18 rather than a preference.**
-  `n_low` and `P12_K_PROD` can be mutually inconsistent and NEITHER is chosen yet. `dev_low` is "the first
-  `n_low` deviation coefficients"; if the confirmed `n_low` exceeds the `P12_K_PROD` that 12-15 measures,
-  12-18's `dev_low`/`dev_high` split is ill-defined and its strict row partition cannot be built at all.
-  The plans do NOT resolve this by clamping — that would move a pre-registered test boundary after the
-  measurement. `12-CONSTANTS-FOR-CONFIRMATION.md` §3's option (ii) (`n_low` as a Tier-2 append derived from
-  12-15's own truncation curve) makes the inconsistency impossible by construction, since both numbers then
-  come from one curve. Recorded in 12-18 as a blocker for the user; not decided here.
+  **CORPUS FETCH — RULED 2026-07-29: not a Phase-12 decision.** Phase 12 needs nothing from the corpus:
+  both `physical-primary` rows are `sealed_holdout`, reserved for Phase 16 and untouchable here, so
+  fetching would not yield this phase a single usable image. It IS a **Phase-16 prerequisite** — the
+  `PENDING-FETCH` sentinels must be replaced with real digests before Phase 16 opens the sealed holdout —
+  and the positive anchor is a ~6.3 GB archive whose download was deliberately left as an explicit human
+  decision, still open and still the user's. Fetching would not create a matched pair either: the sealed
+  anchors are single specimens too. Framing recorded in 12-CONSTANTS-FOR-CONFIRMATION.md so Phase 16
+  inherits it.
+  **CLOSED 2026-07-29 — the `n_low` / `P12_K_PROD` blocker raised by gate 4 is RESOLVED structurally.**
+  The user confirmed option (ii): `n_low` is a Tier-2 append (`P12_N_LOW`), appended by 12-15 under a third
+  reserved sentinel `:P12_N_LOW` and read off the SAME truncation curve that yields `P12_K_PROD`. So
+  `P12_N_LOW <= P12_K_PROD` holds BY CONSTRUCTION rather than by luck, and 12-15 asserts it at append time.
+  12-18 reads the binding, declares no local `n_low`, records `n_low_source = :tier2_from_minispike`, and
+  stops rather than defaulting if the constant is absent. No clamp was needed, so no pre-registered
+  boundary moved after a measurement.
 No code has been written, no seed consumed, no compute spent. `spike/` and `src/` untouched by Phase 12.
 
 Phase: 13 (three-hypothesis-amortized-bayes-factor) — EXECUTING

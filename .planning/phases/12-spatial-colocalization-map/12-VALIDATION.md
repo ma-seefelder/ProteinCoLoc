@@ -192,6 +192,10 @@ written.
 carries it as the §5 the frozen amendment must encode. Per this section's own standing rule, that
 resolution was verified on disk before this line was changed.
 
-What remains is **not** a validation gap and does not block a wave: five Tier-1 constants await user
-confirmation in `12-CONSTANTS-FOR-CONFIRMATION.md`. 12-01 cannot execute until they are answered, because
-Tier 1 is append-only once written.
+**Nothing remains outstanding.** The five items in `12-CONSTANTS-FOR-CONFIRMATION.md` are all closed: item
+2 was withdrawn (raised in error, false citation recorded), and the other four were **CONFIRMED by the user
+on 2026-07-29**, each as recommended — `P12_R1_PRIOR = Uniform(0.05, 0.95)` uniform on r₁; `n_low` as a
+Tier-2 append (`P12_N_LOW`) off 12-15's truncation curve, which also closed the `n_low`/`P12_K_PROD`
+consistency blocker structurally; Guard 4 purely descriptive with no pass fraction; and
+`P12_GUARD_METRICS` deliberately runner-local. 12-01 can now execute: Tier 1 is complete and append-only,
+and no constant in it is a placeholder.
