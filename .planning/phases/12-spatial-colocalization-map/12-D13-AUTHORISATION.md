@@ -151,8 +151,10 @@ deferral is EXTENDED on the record rather than stretched in silence:** the user'
 - **The D-13 ablation ships without the S-4 guard suite**, which `12-11-PLAN.md:258` calls *"a real
   reduction in the honesty apparatus"*. It belongs in the memo, not in a later discovery.
 
-**SPAT-07** is not deferred: 12-16 carries it in reduced scope (`spat07_scope = :reduced_descope`) —
-**if and when 12-16 is implemented.**
+**SPAT-07** — *this paragraph as first written said "is not deferred: 12-16 carries it in reduced
+scope". **THAT IS SUPERSEDED BY §9**, written after a later user ruling the same day. The original
+sentence is corrected here rather than left standing, because unlike the epochs figure it is not a
+stale estimate but a statement that now contradicts the decision on record.*
 
 ## 8. What travels with this deliverable, unchanged
 
@@ -178,3 +180,57 @@ deferral is EXTENDED on the record rather than stretched in silence:** the user'
   **+51.05 %**, and the two spatial arms **swap which is worse** — two orders of magnitude larger than
   the 0.33 % margin that decided the earlier rule-3 branch. **LIMIT: n = 1 versus n = 1. It bounds
   nothing.**
+
+---
+
+## 9. SPAT-07 — **DEFERRED TO v2.1**, and the evidence that this is genuinely cheap
+
+**User ruling, 2026-07-31 (later the same day than §7, and superseding the SPAT-07 sentence there).**
+The authorised 12-16 scope is **SPAT-05** (`p12_coloc_map`) and **SPAT-06** (leave-region-out
+predictive coverage in Fisher-z, with `P12_FISHERZ_NEFF` appended). **SPAT-07 is deferred to v2.1
+alongside SPAT-08.**
+
+### 9.1 What is thereby NOT delivered, stated plainly
+
+- **No Gaussian-space SBC, no randomized-rank ρ-space SBC, no nuisance-appropriate equivalence
+  testing.**
+- **THE PHASE MAKES NO PER-REGION CALIBRATION CLAIM BEYOND PREDICTIVE COVERAGE.** What SPAT-06
+  establishes is that the leave-region-out predictive intervals cover what was actually measured. It
+  does **not** establish that the posterior is calibrated in the SBC sense, and the two must not be
+  conflated in the memo.
+- `spat07_scope` is recorded as **deferred**, not `:reduced_descope`.
+
+### 9.2 THE EVIDENCE THAT SPAT-07 EXTENDS RATHER THAN REBUILDS
+
+Recorded because *"we deferred it and it will be cheap to add"* is a claim a future reader is entitled
+to see backing for, rather than a reassurance.
+
+1. **It is a different STATISTIC over the SAME machinery.** SPAT-07's reduced pass is
+   `sbc_uniformity` from the **already-existing** `spike/validation/sbc.jl`, computed over the target
+   rows in Gaussian space. It consumes the same posterior-read path (`lro_arm` / the sample pass) that
+   SPAT-05 and SPAT-06 require and that 12-16 Task 1 builds regardless. **No new inference machinery
+   is implied by adding it later.**
+2. **12-16 was designed for it to stand alone.** `12-16-PLAN.md:91-93` explicitly forbids branching on
+   whether 12-18's `p12_sbc.jl` exists — *"on the descope route 12-18 is skipped, so it provably will
+   not, and a dead branch invites an executor to assume the full path is available"* — and directs the
+   pass be computed directly from `sbc.jl`. **The SPAT-07 half was written to have no dependency on
+   the half that is skipped.**
+3. **The artifact absorbs the addition backward-compatibly.** `spat07_scope` is already a required key
+   whose value merely changes; the SBC arrays are **added** keys. This is the same pattern as adding
+   `risk_trace` and `train_seed` to the training bundle in `faa1871`, where `schema_version` was
+   deliberately **not** bumped because the loader checks for the *presence* of required keys, so an
+   added key is compatible while a bumped version would invalidate every existing artifact.
+
+**Conclusion: LOW LOCK-IN. Building only SPAT-05 + SPAT-06 now does not force a rebuild when v2.1
+picks up SPAT-07 — it forces an extension.** The cheaper path is genuinely cheaper in total, not just
+sooner.
+
+### 9.3 The one piece of genuinely unexercised work, named as such
+
+**`lro_pass` is built but CANNOT FIRE on this route.** It compares a spatial arm against the ablation;
+there is no spatial arm, so `stage2_gate = :not_applicable_descope` **by construction**.
+
+It is built anyway, deliberately: small next to `p12_coloc_map`, it keeps the artifact contract intact
+for 12-20 Guard 3 (`headline_logscore_delta`), and it is the first thing a v2.1 spatial arm needs.
+**Its tests exercise the BRANCH LOGIC, not the gate, and must say so in their names or comments — a
+green test must never be read as the gate having run.**
