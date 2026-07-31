@@ -218,3 +218,54 @@ control that confirms the diagnosis rather than a coincidence.
 
 **No partial output from the corrected run was read before the artifact was written.** After a first
 run that looked complete and was void, that is part of the provenance and not merely good manners.
+
+---
+
+## 7. THE RE-RUN (2026-07-31, added additively) — the branch HOLDS, one claim above does NOT
+
+Full result: **`12-15-RERUN-VERDICT.md`**. Reading fixed in advance by
+`12-15-RERUN-PREDECLARATION.md` (`ea1d2b7`, 15:37:40+02:00), which precedes both artifacts.
+
+**Nothing in §1–§6 above is edited.** Those numbers remain the correct record of the 12:57Z run. Two
+things are added here because they bear directly on how §1–§6 should now be read.
+
+**THE BRANCH HOLDS, THREE FOR THREE.** A seeded 18-epoch control and a seeded 100-epoch treatment both
+returned **`NONE-BEATS-ABLATION`**. The spatial premise is **unsupported at mini-spike scale** — the
+qualifier stays.
+
+**THE NEGATIVE IS STRONGER, because §2.2's open question is now closed by measurement.** §2.2 could not
+separate *under-trained* from *cannot-learn*, because the LR schedule is tied to the epoch count. At a
+100-epoch budget **early stopping fires at 56, 99 and 36 epochs** and validation risk improves 11–27 %
+— so the 18-epoch run **was** under-trained, exactly as §2.2 suspected, **and training it to
+convergence rescues nothing**: no arm becomes admissible, no arm reaches positive skill.
+
+**ONE CLAIM ABOVE DOES NOT SURVIVE A RE-SEED, and it is the one §1 calls "the stronger finding".**
+
+> §1: *"The stronger finding is not the ordering — it is that no arm learned the field at all. All
+> three arms score worse than predicting a constant zero."*
+
+At the **same 18 epochs** with only the weight init changed, `:car` scores **skill +0.08629** — a
+*positive* skill, better than a constant-zero predictor. **"Every arm has negative skill" is a
+property of one initialisation, not of the method.** The init spread measured across the two 18-epoch
+runs is **37–51 % of RMSE**, against the **0.33 %** margin §2.1 already declined to read a ranking
+out of. §2.1's refusal was right, and is now backed by observation rather than by argument alone.
+
+**The robust claim, which should be cited in place of §1's:** *no spatial arm is ever both calibrated
+and better than the ablation.* Across the three runs `admissible` was `[:gp]`, `[]`, `[]` and
+`beats_ablation` was `false` every time.
+
+**Carried verbatim, and unchanged by any of the above:**
+
+> **A comparison between two failed arms is not evidence about priors — the CAR-vs-GP question is
+> UNRESOLVED, not answered.**
+
+The re-run does **not** vindicate or refute a comparison this run never made. In both new runs
+*neither* spatial arm was admissible, which is further from a prior comparison than §2's trace, not
+closer. **The two negatives of §1/§3 stay reported as two** and remain **this** run's two; the new
+runs show a third and fourth pattern (both arms over-wide at 18 epochs, both under-wide at 100), not a
+reproduction.
+
+**The truncation curve is BYTE-IDENTICAL across all three runs** — §3's table stands unchanged, and
+its invariance is again the control showing that only the nets moved.
+
+**No Tier-2 constant was appended by the re-run either.** All three sentinels remain intact.
