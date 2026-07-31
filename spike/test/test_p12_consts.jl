@@ -288,6 +288,35 @@ const P12_TEST_FILES = ("test_p12_consts.jl", "test_p12_lattice.jl", "test_p12_p
             @test name ∉ P12_REPORTING_ONLY_CONSTANTS
         end
 
+        # THE VALUE IS A CENTRAL ESTIMATE OVER theta, NOT A CONSTANT, and the spread that says so
+        # is bound in the SAME block -- so `P12_FISHERZ_NEFF` can never be read without it being
+        # available. Same rule as width-beside-coverage and floor-beside-log-score.
+        @test isdefined(@__MODULE__, :P12_FISHERZ_VARZ_THETA_SPREAD_BY_IMSIZE)
+        @test Set(keys(P12_FISHERZ_VARZ_THETA_SPREAD_BY_IMSIZE)) == Set(string.(P12_IMSIZE_SET))
+        @test Set(keys(P12_FISHERZ_VARZ_THETA_GENUINE_REL_BY_IMSIZE)) == Set(string.(P12_IMSIZE_SET))
+
+        # THE PREMISE THAT JUSTIFIES FISHER-z IS FALSIFIED AT THE ORDER OF 10 %, NOT 1 %. The
+        # transform is adopted because Var(z) should be approximately independent of the underlying
+        # correlation; the between-theta spread measures that directly, and it is not negligible.
+        # Asserted so a later reader cannot quietly downgrade the limit to "approximately constant".
+        @test maximum(values(P12_FISHERZ_VARZ_THETA_GENUINE_REL_BY_IMSIZE)) > 0.05
+        @test P12_FISHERZ_VARZ_THETA_GENUINE_REL_BY_IMSIZE["(1376, 1028)"] > 0.10
+
+        # PART OF THE OBSERVED SPREAD IS SAMPLING NOISE, AND THE FLOOR IS DERIVED, NOT TYPED. Each
+        # block's pooled Var(z) comes from n_obs observations over G^2 regions.
+        @test isapprox(P12_FISHERZ_VARZ_SAMPLING_FLOOR_REL,
+                       sqrt(2 / (P12_FISHERZ_NEFF_N_OBS - 1)) / sqrt(P12_G^2); atol = 1e-5)
+        # At (1024, 1024) the observed spread is BARELY above that floor, so theta-dependence is
+        # only weakly evidenced there. Recorded rather than smoothed over: reporting the raw 5.1 %
+        # as if it were all theta would OVERSTATE the very limit this block exists to disclose.
+        @test P12_FISHERZ_VARZ_THETA_REL_SPREAD_BY_IMSIZE["(1024, 1024)"] <
+              2 * P12_FISHERZ_VARZ_SAMPLING_FLOOR_REL
+
+        # theta IS LATENT, so this spread is IRREDUCIBLE -- unlike the image-size dependence, which
+        # is OBSERVED at read time and was conditioned away (`applied === :per_imsize`). The two are
+        # different kinds of limit and the artifact says which is which.
+        @test P12_FISHERZ_NEFF.applied === :per_imsize
+
         # TIER 1 DID NOT MOVE DURING THE APPEND. The file grew; it did not change.
         @test P12_COVERAGE_NOMINAL == 0.90
         @test P12_STAGE2_COVERAGE_TOST_DELTA == 0.03

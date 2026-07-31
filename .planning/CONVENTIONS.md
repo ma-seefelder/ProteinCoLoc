@@ -297,3 +297,51 @@ property.
 - **Phase 12 / 12-11** — safe: pinning `r1` changes the *sample* at a given index, and each rung is
   scored within its own split, never across rungs.
 - **Phase 12 / 12-16, 12-18, 12-19** — safe by rule 4: they never read cached pools at all.
+
+---
+
+## C-05 — a WORDING rule is checked on the RAW source; a STRUCTURAL ban on the COMMENT-STRIPPED source
+
+**Authorised 2026-07-31 by the phase-12 orchestrator, after the rule was arrived at twice: once as a
+recorded plan defect (12-02) and once as a live test failure in 12-16 that repeated it.**
+
+Several plans in this project assert things about source text. Two DIFFERENT kinds of assertion get
+made that way, and **they need opposite treatments of comments.** Applying one treatment to both is
+what breaks them, and it breaks them in the direction that looks fine.
+
+| kind of assertion | example | check against | why |
+|---|---|---|---|
+| **STRUCTURAL BAN** — "this construct does not appear" | `fit(ZScoreTransform` absent from a read-time file; `use_gpu = true` absent; no `GlobalMeanPool` in the Phase-12 net; `generate_p12_pool` absent from the trainer | **COMMENT-STRIPPED** source | A comment that merely *mentions* the banned construct would satisfy an `occursin` on the raw text. **A ban a comment can satisfy is not a ban.** Every one of these files legitimately discusses the thing it forbids — that discussion is the point — so the check must not see it. |
+| **WORDING RULE** — "this sentence is present" | Pitfall 6's `no spatial borrowing, full nuisance and global borrowing`; `coverage-only win`; the R-1 `derived` label | **RAW** source | **A wording rule lives precisely in the prose, so stripping comments is exactly what deletes the thing being checked.** These rules exist because a phrase is a falsifiable claim about the method; the assertion pins the phrase where a reader will meet it. |
+
+### The failure this prevents, in both directions
+
+- **Ban checked on raw source** → passes on a file that only *talks about* the construct, or fails on
+  a file that is compliant but honest about what it forbids. Silent either way.
+- **Wording rule checked on stripped source** → fails on a compliant file (the rule is in a header
+  comment and got stripped), or, worse, **passes for the wrong reason** if the phrase happens to
+  survive in a docstring somewhere unrelated to where the rule belongs.
+
+### And a corollary that bit twice: A REQUIRED LITERAL MUST NOT BE LINE-WRAPPED
+
+An `occursin("...")` is a substring test, so a phrase broken across a newline **does not match** —
+even though a human reads the file as containing it. Where a file is required to carry an exact
+phrase, write that phrase **on one line**, unwrapped, even if it makes the line long or forces an
+indented display block. `12-02-SUMMARY.md` records "a line-wrap that broke an acceptance literal" as
+a plan defect; 12-16 reproduced it independently in `p12_coverage.jl`, where the Pitfall-6 wording
+survived unwrapped in the file header and was wrapped in a docstring.
+
+**The fix in both cases was to correct the mechanism, never to loosen the check.** A wording
+assertion that gets relaxed until it passes has stopped asserting the wording.
+
+### In-repo instances
+
+- **Phase 12 / 12-02** — the first instance, recorded among that plan's line-wrap and stale-citation
+  defects.
+- **Phase 12 / 12-16** — `spike/test/test_p12_coverage.jl` testset 8 applies the split explicitly:
+  `raw` for the two wording rules, `_p12cov_tstrip(raw)` for `fit(ZScoreTransform` and
+  `use_gpu = true`. `spike/validation/p12_coverage.jl` carries the Pitfall-6 phrase unwrapped in
+  BOTH its header comment and an indented docstring block, so the rule survives either treatment.
+- **Existing consumers to read this way, not to change:** `test_p12_consts.jl` and
+  `test_p12_decoupling.jl` both define `_strip_comment_lines` and use it for STRUCTURAL bans, which
+  is the correct side of this rule and needs no edit.

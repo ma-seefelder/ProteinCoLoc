@@ -49,7 +49,32 @@ call: the interval on the independent unit is `[0.9675, 0.9738]`, clear of the b
   `P12_STAGE2_LOGSCORE_MIN` = 0.02.
 - `clamped_region_count` = **0**, `masked_region_count` = **0**. No region was degenerate; every one
   of the 17,344 region-draws was a measurement.
-- `logscore_by_imsize`: −0.7350 (512²) · −0.6133 (1024²) · −0.5852 (1376×1028) · −0.4767 (2048²).
+
+### 2.1 Per image size — INFORMATIVE, NOT GATED, and the tolerance does not apply at these n
+
+| image size | datasets | coverage | log score | **is [0.87, 0.93] applicable?** |
+|---|---|---|---|---|
+| (512, 512) | **113** | 0.9638 | −0.7350 | **no** |
+| (1024, 1024) | **76** | 0.9714 | −0.6133 | **no** |
+| (1376, 1028) | **57** | 0.9742 | −0.5852 | **no** |
+| (2048, 2048) | **25** | 0.9913 | −0.4767 | **no** |
+| **pooled** | **271** | **0.9707** | **−0.6455** | **yes — this is the gated quantity** |
+
+**`P12_STAGE2_COVERAGE_TOST_DELTA` = 0.03 was derived for N ≥ 271 independent datasets. It does NOT
+apply to any row above the last one.** At n = 25 the Wald half-width at p = 0.9 is ≈ 0.099 — more
+than three times the tolerance — so a per-size figure printed beside a [0.87, 0.93] band would be
+read against a bar it is nowhere near powered for. **This is the pseudo-replication family in a
+fourth guise: a bar derived for N applied to a fraction of N.** The pre-declaration's branches apply
+to the **pooled** number over 271 and to nothing else.
+
+*(Correcting an assumption in the dispatch: the sizes are **not** ~68 each. `P12_IMSIZE_WEIGHTS` is
+an uneven mixture and the realized split was 113 / 76 / 57 / 25 — so the smallest cell is 25
+datasets, not 68, and the mis-powering is worse than a quarter-of-N estimate suggests.)*
+
+The per-size numbers are nonetheless worth reading for **direction**: coverage rises monotonically
+with image size, 0.9638 → 0.9913, while the log score improves. That is consistent with the
+over-widening being strongest where the noise model has the least to do — but with n = 25 in the top
+cell it is a pattern, not a measurement, and it is recorded as one.
 
 **The log score is a density in Fisher-z units.** The change-of-variables Jacobian is omitted
 deliberately and visibly: it depends only on the observation, so it is identical across arms at a
@@ -133,13 +158,17 @@ Calibrated by holding a parameter FIXED and re-observing it: `n_theta = 5` prior
 size, each observed `n_obs = 20` times through independent simulations. Redrawing the field each
 time would have measured the prior convolved with the noise and fitted an `n_eff` far too small.
 
-| image size | `n_eff` | realized `Var(z)` | between-θ sd |
-|---|---|---|---|
-| (512, 512) | **36.84** | 0.029547 | 0.003113 |
-| (1024, 1024) | **128.31** | 0.007980 | 0.000408 |
-| (1376, 1028) | **166.43** | 0.006119 | 0.000781 |
-| (2048, 2048) | **454.93** | 0.002213 | 0.000225 |
-| **pooled** | **90.22** | 0.011465 | — |
+| image size | `n_eff` | realized `Var(z)` | **between-θ sd** | **rel.** | **genuine θ component** |
+|---|---|---|---|---|---|
+| (512, 512) | **36.84** | 0.029547 | 0.003113 | 10.5 % | **9.7 %** |
+| (1024, 1024) | **128.31** | 0.007980 | 0.000408 | 5.1 % | 3.1 % *(barely above the floor)* |
+| (1376, 1028) | **166.43** | 0.006119 | 0.000781 | 12.8 % | **12.1 %** |
+| (2048, 2048) | **454.93** | 0.002213 | 0.000225 | 10.1 % | **9.3 %** |
+| **pooled** | **90.22** | 0.011465 | — | — | — |
+
+**The between-θ spread is reported beside `P12_FISHERZ_NEFF` wherever that constant appears — in the
+artifact, in the Tier-2 block, and here — and never alone.** Same rule as width-beside-coverage and
+floor-beside-log-score.
 
 **`varz_fit_residual` = 0.018082 — LARGER than the pooled variance itself (0.011465).** One constant
 does not fit these four sizes. The run therefore applied the **per-size** value and records
@@ -156,6 +185,47 @@ shows how much it mattered.
 noise model whose JOINT with the posterior D-09 validates. It gates nothing by itself, no branch
 compares anything against it, and it joins neither `P12_GATING_CONSTANTS` nor
 `P12_REPORTING_ONLY_CONSTANTS`.
+
+### 6.1 `n_eff` IS A SUMMARY OF A DISTRIBUTION, NOT A CONSTANT — and why θ-replication was added
+
+The θ-replication was **not** added for robustness. It was added because **the between-θ spread is a
+direct test of the assumption that justifies the transform.** Fisher-z is adopted precisely because
+`Var(z)` should be approximately independent of the underlying correlation; measuring that spread
+measures the premise. **The premise does not hold exactly** — genuine θ-dependence of ≈ 9–12 % at
+three of four sizes. That is a measurement of an assumption, not a variance reduction, and the very
+first two blocks already showed the premise is not exact.
+
+**The consequence that must be written down: a predictive interval built from a single `n_eff` is
+too wide for some θ and too narrow for others, so POOLED coverage can sit inside [0.87, 0.93] while
+θ-CONDITIONAL coverage does not — and this run does not measure the latter.** That is the same shape
+as the trap the pre-declaration's §1 names: a number that looks calibrated for a reason other than
+the one claimed. *(It did not arise here — pooled coverage is outside the band anyway — but it is a
+live hazard for any future run that lands inside it.)*
+
+**Two sources of variation, and they are different kinds of thing. We conditioned on what is
+observable and named what is not:**
+
+| source | status | what was done |
+|---|---|---|
+| **image size** | **OBSERVED** at read time, on simulated and real data alike | **conditioned away** — `applied = :per_imsize` |
+| **θ** | **LATENT** — cannot be conditioned on, on any data | **IRREDUCIBLE limit**, named, not fixable |
+
+**What `n_θ = 5` bounds, so five numbers are not read as a distribution.** Five blocks characterise a
+spread **loosely**: the relative uncertainty on an sd estimate from 5 draws is `1/√(2·4)` = **35 %**.
+These figures establish that θ-dependence **exists** and give its **order of magnitude**; they do not
+pin it, and no interval should be built from them.
+
+**And part of the observed spread is sampling noise, not θ.** Each block's pooled `Var(z)` is itself
+estimated from `n_obs` = 20 observations over 64 regions, a relative sampling sd of
+`√(2/19)/√64` = **4.06 %**. The "genuine θ component" column subtracts that floor in quadrature. **At
+(1024, 1024) the observed 5.1 % is barely above the 4.06 % floor, so θ-dependence is only weakly
+evidenced there** — recorded rather than smoothed over, because quoting the raw 5.1 % as if it were
+all θ would *overstate* the very limit this discloses.
+
+**A figure in circulation that should not be quoted: the ~30 % spread** cited during the build came
+from the **throwaway smoke run** at `n_θ = 1, n_obs = 4`, where the variance estimate's own sampling
+error dominates completely (floor 10.2 % per block, two blocks). **It is not a measurement.** The
+reported run gives ≈ 10 %, and that is the number.
 
 ### The Tier-2 append, and the paired removal
 
@@ -204,6 +274,14 @@ artifact as `spat07_scope = spat08_scope = :deferred_to_v2_1` and in prose here:
 4. **Spike scale**, 10,000 pairs (§4).
 5. **`p12_coloc_map` was exercised on synthetic images, not on real specimens.** The `--real` path is
    wired and deliberately UNEXERCISED; it is 12-19's, and 12-19 does not run on this route.
+6. **`P12_FISHERZ_NEFF` IS A CENTRAL ESTIMATE OVER θ, NOT A CONSTANT, AND THE RESIDUAL θ-DEPENDENCE
+   IS IRREDUCIBLE.** Genuine between-θ variation of ≈ 9–12 % in `Var(z)` at three of four image
+   sizes. **θ is latent, so it cannot be conditioned on** — unlike image size, which is observed and
+   *was* conditioned away. **Every coverage figure in this report is therefore a θ-MARGINAL
+   statement; θ-conditional coverage is not measured.** Characterised loosely at `n_θ = 5` (±35 % on
+   each spread). Full treatment in §6.1.
+7. **Per-size coverage is informative, not gated** (§2.1). The pre-registered 0.03 tolerance was
+   derived for N ≥ 271 and does not apply at n = 113 / 76 / 57 / 25.
 
 ---
 
@@ -235,13 +313,44 @@ predictive interval, so `nominal` and `n_eff` have nothing to consume. The signa
 stops a map and its coverage numbers being built under different settings) and both are validated,
 but the docstring says plainly that no predictive interval is stored in the returned object.
 
-**Three defects in this plan's own first draft of the tests**, found by running them: a fixture
-sitting exactly on a floating-point boundary (`0.90 - 0.03` = `0.8699999999999999`, so an arm meant
-to be *calibrated at the edge* was silently miscalibrated and the testset reported `:disqualified`
-where it meant `:fail`); **a line-wrap that broke an acceptance literal** — 12-02's recorded defect,
-met again; and a test asserting something the construction never produces (two independent draw sets
-from one posterior do not difference to exactly zero). All three fixed at the mechanism, none by
-loosening a check. Full detail in `1c80c5b`.
+**A criterion met by a construction that dominates it, recorded so it is not "restored" to satisfy a
+grep.** `12-16-PLAN.md`'s acceptance criterion asks that a source read show **two `sampleposterior`
+calls** in `p12_coloc_map`. The file does contain exactly two — but in `p12_coloc_map` they arrive as
+**one `_p12cov_single_stack` helper called twice**, not as two inlined copies. That is strictly
+stronger for what the criterion protects: as one helper called twice the sample and control passes
+**cannot** differ, whereas two inlined copies could drift apart. Testset 8 asserts the stronger
+property directly (exactly two `_p12cov_single_stack(` call sites in `p12_coloc_map`, exactly one
+`sampleposterior(` inside the helper). **Inlining two copies to make a literal grep pass would be a
+regression, not a fix.**
+
+**Three defects in this plan's own first draft of the tests**, found by **running** them rather than
+reading them. Full detail in `1c80c5b`; two of the three generalise:
+
+1. **A fixture sat exactly on a floating-point boundary.** `0.90 - 0.03` = `0.8699999999999999`, so
+   `|coverage − nominal|` = `0.030000000000000027 > 0.03` and an arm meant to be *calibrated, at the
+   edge* was silently **miscalibrated** — the testset reported `:disqualified` where it meant
+   `:fail`, and stayed green because the surrounding assertions were consistent with the wrong
+   branch. **The general rule: a fixture for a BRANCH must sit clearly inside it, never on its
+   boundary — a test that lands on a threshold is testing floating-point representation, not
+   behaviour.** Use half the tolerance. Boundary behaviour may be tested, but then it is a *boundary*
+   test, named as one, with its expected value derived the way the implementation derives it. This is
+   the phase's recurring "a gate that measures something other than what it names" failure, at test
+   scale and harder to see because the suite stays green. *(Recorded here rather than in
+   `CONVENTIONS.md`: the orchestrator's authorisation for a conventions entry was scoped to the
+   raw/stripped rule below and to nothing else, and I kept it to that.)*
+2. **A line-wrap broke an acceptance literal** — 12-02's recorded defect, reproduced independently.
+   Now **`CONVENTIONS.md` C-05**, authorised by the orchestrator and citing both instances: **wording
+   rules are checked on the RAW source, structural bans on the COMMENT-STRIPPED source**, because a
+   rule that lives in prose is deleted by stripping while a ban a comment can satisfy is no ban at
+   all. Corollary: a required literal must never be line-wrapped.
+3. **A test asserting something the construction never produces.** Two independent draw sets from one
+   posterior do not difference to exactly zero, so scoring an image against itself does not yield a
+   measured Δρ of 0.0. Replaced by a deterministic construction through 12-12's own
+   `p12_region_maps`, which is sharper: region 7 and region 8 carry the **same value** in
+   `region_delta_rho` and are unambiguously different states. **The distinguisher is the flag, not
+   the value** — which is the property a downstream consumer actually depends on.
+
+All three were fixed at the mechanism; none by loosening a check.
 
 ---
 
@@ -260,6 +369,70 @@ loosening a check. Full detail in `1c80c5b`.
 | `git diff --quiet HEAD -- src spike/Project.toml spike/Manifest.toml corpus` | **clean** |
 | `test/test_images`, `spike/data/cache/p11/`, `artifacts/amended_v2` | untouched |
 | bundle `sha256` | `4bdf5b03…f017` **re-verified before scoring**; a mismatch refuses to score |
+
+---
+
+## 11. THE PATH-AGREEMENT CHECKLIST — every point where a READ path must match the GENERATION path
+
+Requested by the orchestrator after this plan found the **second** wrong-space defect in the same
+scoring function (the missing `reconstruct` in the afternoon, the missing inverse permutation at
+night). Two independent instances of one family in one function make a third likelier than not. This
+is the checklist **this plan's own read path was built against**, and it is the one the repair agent
+can audit the old scorer with. **The last column is the point:** several of these are *implemented*
+correctly in some files without being *stated* anywhere as a contract — and an ambiguity that two
+files resolved differently is exactly how both defects happened.
+
+| # | pairing | generation side | read side | documented as a CONTRACT? |
+|---|---|---|---|---|
+| 1 | **θ standardization** | pool stores RAW θ; trainer fits `theta_zt`, trains on `transform(theta_zt, θ)` | `reconstruct(bundle.theta_zt, ·)` **before any row is touched** | **YES, loudly** — `infer.jl:35-38`, and mechanically swept on every `run_p12_*` runner |
+| 2 | **summary standardization** | pool stores RAW `summary_min` (128 rows, never z-scored at rest) | `standardize_p12(Zraw, bundle.zt)` — z-scores rows 1:64, passes 65:128 through | **YES** — `train_p12_npe.jl:250-261`, `summary.jl:85-87` |
+| 3 | **mask → standardize ORDER** | augment on RAW, then standardize (`train_p12_npe.jl:428-445`) | `mask_regions` on RAW, then `standardize_p12` | **YES, loudly** — `train_p12_npe.jl:30-42`; asserted at the producer (12-14 T3) and now at the consumer (12-16 T6) |
+| 4 | **the SMOOTHNESS PERMUTATION** | `p12_dct_vec(vec(z_field))[p12_dct_order(G)]` — θ rows are **permuted** | must **scatter back through `p12_dct_order` BEFORE** `p12_idct_vec` — i.e. `p12_region_field` | **NO — AND THIS IS THE DEFECT'S ROOT.** See below. |
+| 5 | **DCT direction** | `p12_dct` = `C F C'` | `p12_idct` = `C' Ĉ C`, orthonormal, exactly invertible | **YES** — asserted, `p12_idct∘p12_dct == id` |
+| 6 | **flat index convention** | `encode_d01` `vec`s column-major; lattice uses `p12_idx(i,j) = (j-1)G+i` | `reshape(rows[1:G²], G, G)` with **NO transpose**; same `p12_idx` | **YES** — `p12_architecture.jl:31-40`, asserted by `test_p12_architecture` T1 |
+| 7 | **Gaussian vs ρ space** | θ carries the **Gaussian** field `z`; ρ is `ghat(quantile(MU_PRIOR, Φ(z)))` | truth scored in **Gaussian** space (atom-free, R-2); observed entries are **correlations** | **PARTLY** — the *distinction* is documented; the *composition* was not named. See below. |
+| 8 | **θ row layout** | one assembler, `p12_theta_column` | `P12_THETA_ROWS` / `p12_theta_index` / `p12_row_*`, never inline arithmetic | **YES** — single assembler by design |
+| 9 | **head width / truncation** | `p12_truncate_theta`, provably a no-op at `K_dev = 63` | `load_p12_npe` **refuses** a bundle whose `theta_rows` disagrees with its `D` | **YES** — refusal, not repair |
+| 10 | **image-size joint (F5)** | pool drawn from `P12_IMSIZE_SET`/`WEIGHTS` | evaluation drawn from the **same** mixture | **YES** — the binding F5 invariant |
+| 11 | **prior arm** | pool at `arm = :none` | evaluation at `arm = :none` (§8 limit 1) | **YES** — but only as prose; nothing refuses a mismatch |
+| 12 | **held-out region encoding** | naturally unusable patch ⇒ value 0, mask 0 | `mask_regions` produces **byte-identically** that | **YES** — `p12_architecture.jl:129-141` |
+
+### The two that were ambiguous rather than merely unimplemented — say so, as asked
+
+**(4) THE PERMUTATION HAS NO STATED CONTRACT, AND ONE DOCSTRING ACTIVELY MISLEADS.**
+`p12_idct_vec`'s own docstring reads *"Inverse of `p12_dct_vec`, on the same column-major flat
+layout."* That is **true of `p12_dct_vec`'s output and false of a θ column** — and a θ column *looks
+exactly like* a flat coefficient vector: same length `G²`, same element type, same plausible
+magnitudes. Nothing at either site says **"θ rows are permuted; do not feed them to `p12_idct_vec`
+directly."** `p12_theta_column` documents that it permutes, and `p12_region_field` documents that it
+inverts, but **neither names the other**, so a reader holding only one of them reaches the wrong
+conclusion with no warning. That is the whole mechanism of the defect. **The cheapest durable fix is
+one sentence in `p12_idct_vec`'s docstring** — "θ columns are in `p12_dct_order`; use
+`p12_region_field`, not this function" — and it is the repair agent's to make, not mine.
+
+**(7) THE READ-TIME COPULA WAS IMPLEMENTED THREE TIMES INLINE AND NAMED NOWHERE.**
+`ghat(quantile(MU_PRIOR, cdf(Normal(), ·)))` appears in `rho_field` (elementwise, over a field), in
+`theta_scalar_view` (over the field **mean**), and in `p12_architecture.jl`'s comment for the derived
+scalar (over `c0/G`). Three call sites, three different arguments, one composition, **no shared
+function** — so nothing enforces that a fourth consumer composes it the same way, and the difference
+between "apply to each region" and "apply to the mean" is invisible at the call site. I added
+**`p12_z_to_rho`** in `p12_coverage.jl` for exactly this reason and used it everywhere in this
+plan's read path; it is documented there as *not a new map* but as the existing composition, named.
+
+**(11) is a real gap with no defect attached yet.** The evaluation arm must match the training arm
+for any calibration claim to mean anything, and **nothing refuses a mismatch** — a bundle trained at
+`:none` scored against `:car` draws would run happily and produce a misspecification measurement
+labelled as a calibration one. This run records `eval_arm` in the artifact and states the limit, but
+that is prose. **A cheap executable guard would be to compare `bundle.arm` against the draw arm and
+refuse.** Named here rather than built, because adding a refusal to a shared surface is outside
+12-16's scope.
+
+**What this plan's own code does about all twelve:** every row is honoured; #1, #3, #4, #6 and #7 are
+additionally asserted or exercised in `test_p12_coverage.jl`; #4 and #7 are honoured through the
+single named functions `p12_region_field` and `p12_z_to_rho` rather than by inline re-derivation, so
+a future reader of this file cannot resolve either ambiguity the wrong way by accident.
+
+---
 
 **A positive property worth claiming, because a referee will ask:** these coverage numbers **cannot**
 have been computed on training data, structurally rather than incidentally. This plan never opens a

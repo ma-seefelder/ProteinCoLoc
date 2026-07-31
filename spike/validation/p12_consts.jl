@@ -1091,4 +1091,101 @@ if !isdefined(@__MODULE__, :P12_FISHERZ_NEFF)
     @assert P12_COVERAGE_NOMINAL == 0.90
     @assert P12_STAGE2_N_MIN == 271
     @assert P12_ITERATION_ALLOWANCE == 1
+
+    # =====================================================================================
+    # THE VALUE ABOVE IS A CENTRAL ESTIMATE OVER theta, NOT A CONSTANT
+    # =====================================================================================
+    # APPENDED IN A FOLLOW-UP COMMIT to the block above, on the orchestrator's requirement, and
+    # ADDITIONS-ONLY: not one line of the block above is edited, no existing value moves, and
+    # nothing here is a bar. The Tier-2 rule is that constants are APPENDED and never EDITED;
+    # this is an append.
+    #
+    # WHY IT MATTERS. The whole justification for working in Fisher-z is that the variance becomes
+    # approximately INDEPENDENT of the underlying correlation. `calibrate_neff` therefore drew
+    # P12_FISHERZ_NEFF_N_THETA = 5 independent parameters per image size and reported the spread of
+    # the fitted Var(z) ACROSS them -- a direct test of the premise, not a variance reduction. The
+    # premise does not hold exactly, and that is a MEASUREMENT of an assumption rather than a
+    # nuisance:
+    #
+    #   n_eff IS A SUMMARY OF A DISTRIBUTION, NOT A CONSTANT. A predictive interval built from it is
+    #   too wide for some theta and too narrow for others. POOLED coverage can therefore sit inside
+    #   [0.87, 0.93] while theta-CONDITIONAL coverage does not, and THIS RUN DOES NOT MEASURE THE
+    #   LATTER. That is the same shape as the trap 12-16-PREDECLARATION.md section 1 names: a number
+    #   that looks calibrated for a reason other than the one claimed.
+    #
+    # TWO SOURCES OF VARIATION, AND THEY ARE NOT THE SAME KIND OF THING.
+    #   IMAGE SIZE is OBSERVED at read time -- on simulated AND on real data -- so it can be
+    #     conditioned on, and it WAS: `P12_FISHERZ_NEFF.applied === :per_imsize`. Fixable, fixed.
+    #   theta is LATENT. It cannot be conditioned on, on any data. The spread below is therefore an
+    #     IRREDUCIBLE limit of this noise model, not an engineering shortfall, and no amount of
+    #     further calibration removes it.
+    #
+    # WHAT n_theta = 5 BOUNDS, STATED SO FIVE NUMBERS ARE NOT READ AS A DISTRIBUTION. Five blocks
+    # characterise a spread LOOSELY: the relative uncertainty on an sd estimate from 5 draws is
+    # 1/sqrt(2(n-1)) = 35 %. These figures establish that theta-dependence EXISTS and give its order
+    # of magnitude; they do not pin it, and no interval should be built from them.
+    #
+    # AND PART OF THE OBSERVED SPREAD IS SAMPLING NOISE, NOT theta. Each block's pooled Var(z) is
+    # itself estimated from n_obs = 20 observations over G^2 = 64 regions, giving a relative sampling
+    # sd of sqrt(2/19)/sqrt(64) = 4.06 %. Subtracting that floor in quadrature leaves the genuine
+    # theta component recorded below. AT (1024, 1024) THE OBSERVED SPREAD IS BARELY ABOVE THE FLOOR
+    # (5.12 % against 4.06 %), so theta-dependence is only weakly evidenced there -- which is
+    # recorded rather than smoothed over, because reporting 5.12 % as if it were all theta would
+    # overstate exactly the limit this block exists to disclose.
+    #
+    # A NOTE ON A FIGURE IN CIRCULATION: an earlier ~30 % spread came from the THROWAWAY SMOKE run
+    # at n_theta = 1, n_obs = 4, where the variance estimate's own sampling error dominates
+    # completely (floor 10.2 % per block, two blocks). IT IS NOT A MEASUREMENT AND MUST NOT BE
+    # QUOTED. The reported run's figures are the ones below.
+
+    # sd of the fitted Var(z) ACROSS the 5 theta blocks, per image size, at full precision.
+    const P12_FISHERZ_VARZ_THETA_SPREAD_BY_IMSIZE = Dict{String,Float64}(
+        "(512, 512)"    => 0.003112807491150477,
+        "(1024, 1024)"  => 0.0004084236770584623,
+        "(1376, 1028)"  => 0.0007809020074348617,
+        "(2048, 2048)"  => 0.00022451990864181634,
+    )
+    # The same, RELATIVE to each size's Var(z) -- the readable form, and the one the named limit
+    # quotes. Derived, and re-derived by the assertion below rather than trusted.
+    const P12_FISHERZ_VARZ_THETA_REL_SPREAD_BY_IMSIZE = Dict{String,Float64}(
+        "(512, 512)"    => 0.10535,
+        "(1024, 1024)"  => 0.05118,
+        "(1376, 1028)"  => 0.12762,
+        "(2048, 2048)"  => 0.10147,
+    )
+    # The per-block sampling-noise floor on a pooled Var(z): sqrt(2/(n_obs-1))/sqrt(G^2).
+    const P12_FISHERZ_VARZ_SAMPLING_FLOOR_REL = 0.040555
+    # Observed spread with that floor removed in quadrature: the GENUINE theta component.
+    const P12_FISHERZ_VARZ_THETA_GENUINE_REL_BY_IMSIZE = Dict{String,Float64}(
+        "(512, 512)"    => 0.09723,
+        "(1024, 1024)"  => 0.03121,
+        "(1376, 1028)"  => 0.12100,
+        "(2048, 2048)"  => 0.09301,
+    )
+
+    # --- EXECUTABLE self-checks -------------------------------------------------------------
+    # (a) The relative spreads really are the ratio of the two recorded Dicts. Two records that can
+    # disagree are two records that eventually will.
+    for k in keys(P12_FISHERZ_VARZ_THETA_SPREAD_BY_IMSIZE)
+        @assert isapprox(P12_FISHERZ_VARZ_THETA_REL_SPREAD_BY_IMSIZE[k],
+                         P12_FISHERZ_VARZ_THETA_SPREAD_BY_IMSIZE[k] /
+                         P12_FISHERZ_VARZ_BY_IMSIZE[k]; atol = 1e-5)
+    end
+    # (b) The sampling floor is the stated formula at the recorded design, not a typed-in number.
+    @assert isapprox(P12_FISHERZ_VARZ_SAMPLING_FLOOR_REL,
+                     sqrt(2 / (P12_FISHERZ_NEFF_N_OBS - 1)) / sqrt(P12_G^2); atol = 1e-5)
+    # (c) The genuine component is the quadrature subtraction, everywhere it is defined.
+    for k in keys(P12_FISHERZ_VARZ_THETA_REL_SPREAD_BY_IMSIZE)
+        r = P12_FISHERZ_VARZ_THETA_REL_SPREAD_BY_IMSIZE[k]
+        @assert r > P12_FISHERZ_VARZ_SAMPLING_FLOOR_REL
+        @assert isapprox(P12_FISHERZ_VARZ_THETA_GENUINE_REL_BY_IMSIZE[k],
+                         sqrt(r^2 - P12_FISHERZ_VARZ_SAMPLING_FLOOR_REL^2); atol = 1e-4)
+    end
+    # (d) THE PREMISE IS FALSIFIED AT THE ORDER OF 10 %, not at the order of 1 %. Asserted so the
+    # limit cannot be quietly downgraded to "approximately constant" by a later reader.
+    @assert maximum(values(P12_FISHERZ_VARZ_THETA_GENUINE_REL_BY_IMSIZE)) > 0.05
+    # (e) STILL NOT A BAR. None of these names may be applied as a pass/fail threshold.
+    @assert :P12_FISHERZ_VARZ_THETA_SPREAD_BY_IMSIZE ∉ P12_GATING_CONSTANTS
+    @assert :P12_FISHERZ_VARZ_THETA_GENUINE_REL_BY_IMSIZE ∉ P12_GATING_CONSTANTS
+    @assert :P12_FISHERZ_VARZ_SAMPLING_FLOOR_REL ∉ P12_GATING_CONSTANTS
 end
