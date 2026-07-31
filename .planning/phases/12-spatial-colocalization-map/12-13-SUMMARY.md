@@ -18,6 +18,8 @@ affects:
   - "the phase report's named limit #4 (vacuous nuisance columns): r1 JOINS it, with two estimators"
   - "the phase report: a NEW named limit — per-region uncertainty is a marginal over the r1 prior"
   - "the phase report: the RECONCILIATION section below must be carried, not left to a reader"
+  - "the phase report / user docs: the user-facing smoothness statement must sit WITH the deliverable"
+  - "Phase 16 / v2.1: whether to report intervals under a user-chosen smoothness range (FLAGGED, not answered)"
   - "the manuscript's D-08 paragraph: the hedge is RESOLVED, in the negative, with a live control"
 tech-stack:
   added: []
@@ -137,6 +139,30 @@ mean) rather than the global one. Not changed here — the plan specified the gl
 headline result does not depend on it, and re-specifying a reported metric after seeing its output is
 the move this phase is careful about. **Recorded so 12-18 and the phase report do not read the
 central bin as a physical statement.**
+
+## WHAT THIS MEANS FOR SOMEONE USING THE TOOL — state this WITH the deliverable, not only in the limits
+
+Everything below is written as a statement about a prior. For a microscopist it is a statement about
+**their sample**, and it must appear that way at least once wherever the per-region map is described:
+
+> **Spatial borrowing helps most when the biology is spatially SMOOTH, and barely at all when it is
+> ROUGH.** Measured across the smoothness range the model assumes: at r₁ = 0.95 (smooth) a region's
+> value is recovered at **0.336** of the prior error; at r₁ = 0.05 (rough) at **0.926** — almost no
+> better than not borrowing at all. **The headline per-region benefit is an average over a
+> smoothness range your sample may not match.** A sample whose fields are rougher than the middle of
+> that range should expect materially less benefit than the average advertises; smoother, more.
+
+That sentence is what a user needs in order to interpret the headline correctly, and it is not
+derivable from "the prior choice is material" without their doing the reasoning themselves. **A limit
+a user must go looking for in order to read the headline correctly is a limit in the wrong place.**
+
+**The shape is familiar from Phase 11, and the resemblance is worth naming.** Registration was
+disposed of as *"calibrate externally with fiducial beads"* precisely because the data could not
+supply it. This is the same shape: a quantity the summary cannot recover, which the user must
+therefore supply as **belief** rather than read off their images. **FLAGGED FOR PHASE 16 AS A v2.1
+QUESTION, NOT ANSWERED HERE:** whether the honest deliverable is a single map, or intervals reported
+**under a smoothness range the user considers plausible** — the analogue of the bead calibration.
+That is a design decision about what the tool should output, and it is above this plan's authority.
 
 ## RECONCILIATION — this result and Stage-1 are NOT in tension, and must not be read as if they were
 
