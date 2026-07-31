@@ -34,10 +34,54 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
-Phase: 12 (spatial-colocalization-map) — **HALTED AT THE STAGE-1 GATE, AWAITING A USER RULING**
-(started 2026-07-29 from plan HEAD `79c66d0`; 11 of 20 plans complete, waves 1-6 run)
+Phase: 12 (spatial-colocalization-map) — **RESUMED. Stage-1 gate ADJUDICATED 2026-07-31; waves 7-12
+executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)
 
-## ⛔ BLOCKER — Phase 12 needs ONE user decision before it can continue
+## ✅ RESOLVED 2026-07-31 — the Stage-1 blocker below was ruled by the user (`ee78cfe`)
+
+**`VERDICT: PROCEED`.** `.planning/phases/12-spatial-colocalization-map/12-STAGE1-VERDICT.md` now
+exists, so `p12_stage1_verdict()` returns `:proceed` and `p12_require_proceed` admits 12-17, 12-18,
+12-19 and 12-20. **Nothing is descoped** — SPAT-07 stays with 12-18 at full scope, SPAT-08 with 12-20.
+
+**The ruling, stated without softening: the positive control did NOT pass as written.** `control_live`
+is still `false` in the artifact and `stage1_pass` is still `false`; the ruling adjudicates those
+values rather than changing them. The user ruled the frozen rule's *premise* false — a control above
+the ceiling does not here mean a dead harness — because the own-row ridge attains the analytic
+information limit `sqrt(1−corr²)` to within 5·10⁻⁴ at every rung, a bound computed with no ridge,
+split or standardizer, so no defect in the audited machinery could manufacture agreement with it.
+
+**One claim in the blocker below is CORRECTED by that commit, and the blocker text is left standing
+as the historical record rather than edited.** The condensed retelling — including the "0.766 / 0.712
+/ 0.637 at r₁ ≤ 0.50" sentence in the paragraph below — says the information limit exceeds the 0.5
+ceiling at the **three** shortest rungs. It exceeds it at **four** (0.05 / 0.25 / 0.50 / 0.75), and at
+the fourth the control **cleared the ceiling anyway** (0.49659), because the own-row bound does not
+bound the full-128 control, which borrows from the other 63 regions.
+`12-STAGE1-ADJUDICATION-BLOCKED.md` §4 stated this correctly with the qualifier *"from that region's
+own row"*; condensation dropped it. Found by asserting the argument executably; both tuples are now
+recorded in Tier-2 and re-derived by assertion, so the "three rungs" phrasing fails loudly if
+reintroduced. **It sharpens rather than weakens the ruling**: the only thing that carries the control
+under 0.5 anywhere is borrowing — the effect under test — so the control passes where that effect is
+strongest and fails where it is weakest, and cannot certify the instrument independently of it.
+
+**Tier 1 untouched, and the diff proves it** (171 added, 0 deleted). `P12_STAGE1_CONTROL_CEILING`
+keeps its value of **0.5** as the historical record, as `SPEEDUP_GATE = 100.0` and
+`P11_LAMBDA_ABLATION_FACTOR = 2.502` kept theirs. `P12_ITERATION_ALLOWANCE` stands at **1, UNSPENT**.
+The adjudication is Tier-2 block 4 (sentinel `:P12_STAGE1_CONTROL_ADJUDICATION`) — every constant in
+it is a measurement or a record, none is a bar, none enters `P12_GATING_CONSTANTS`.
+
+**FOR PHASE 16, RECORDED SO IT IS NOT ASSEMBLED BY A REFEREE INSTEAD:** this is the **fourth** time
+this milestone has concluded *"the bar was wrong, not the model"* — SC1g's component-vs-total, the
+n=2-against-271 real arm, the Wald-labelled-Wilson sizing (DEF-12-04), and now a gating ceiling with
+no derivation. The honest framing is that pre-registration is what SURFACES these and all four were
+caught before corrupting a result — but the count is now high enough that "we pre-registered it" no
+longer settles an argument alone. The common licensing standard, and the thing a referee should hold
+each amendment to, is that every one was shown **from evidence independent of the machinery under
+audit** to measure something other than what it named. Belongs in the manuscript's methods as a
+stated observation. `12-STAGE1-VERDICT.md` §7 carries the table.
+
+---
+
+## ⛔ BLOCKER (HISTORICAL — RESOLVED ABOVE 2026-07-31; retained as the record of the halt)
 
 **12-11 measured the Stage-1 gate and deliberately wrote NO verdict.** `12-STAGE1-VERDICT.md` does
 not exist, so `p12_stage1_verdict()` returns `:absent` and `p12_require_proceed` correctly refuses
