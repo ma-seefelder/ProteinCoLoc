@@ -222,15 +222,78 @@ const P12_TEST_FILES = ("test_p12_consts.jl", "test_p12_lattice.jl", "test_p12_p
         @test P12_MINISPIKE_WALLCLOCK_CEILING_MIN > 0
     end
 
-    @testset "Tier 2 does not exist yet" begin
-        # THESE THREE ASSERTIONS ARE REMOVED IN THE SAME COMMIT THAT APPENDS THE CORRESPONDING
-        # TIER-2 BLOCK, AND ONLY THEN -- 12-15 opens :P12_CHOSEN_PRIOR and :P12_N_LOW, 12-16
-        # opens :P12_FISHERZ_NEFF. Until then they prove Tier 2 has not been pre-empted, which is
-        # what makes the two-tier structure a pre-registration rather than a filing convention.
+    @testset "Tier 2 does not exist yet — the TWO sentinels that stay closed" begin
+        # THESE ASSERTIONS ARE REMOVED IN THE SAME COMMIT THAT APPENDS THE CORRESPONDING TIER-2
+        # BLOCK, AND ONLY THEN. Until then they prove Tier 2 has not been pre-empted, which is what
+        # makes the two-tier structure a pre-registration rather than a filing convention.
         # (Same discipline as `test_p11_consts.jl:135-139`.)
+        #
+        # :P12_CHOSEN_PRIOR and :P12_N_LOW STAY CLOSED. Both are 12-15's, and 12-15's
+        # NONE-BEATS-ABLATION branch appended NEITHER -- so their absence is a POSITIVE RECORD of
+        # which branch fired, not an unfinished task. 12-16 opened neither and may not.
         @test !isdefined(@__MODULE__, :P12_CHOSEN_PRIOR)
         @test !isdefined(@__MODULE__, :P12_N_LOW)
-        @test !isdefined(@__MODULE__, :P12_FISHERZ_NEFF)
+        # :P12_FISHERZ_NEFF's negative assertion was retired here on 2026-07-31, in the same commit
+        # that appended block 5 and removed its file-side counterpart at `p12_consts.jl`. The
+        # positive assertions that replace it are the next testset.
+    end
+
+    @testset "Tier-2 block 5 — the Fisher-z observation-noise model (12-16)" begin
+        # THE APPEND EXISTS, and it is the reserved sentinel the Tier-1 header foresaw at :47.
+        @test isdefined(@__MODULE__, :P12_FISHERZ_NEFF)
+        @test P12_FISHERZ_NEFF isa NamedTuple
+        @test Set(keys(P12_FISHERZ_NEFF)) == Set((:by_imsize, :pooled, :applied))
+
+        # THE LITERAL MEASURED VALUES, at full precision, exactly as the artifact carries them.
+        # Asserted as LITERALS rather than re-derived, because that is what makes an accidental
+        # edit to the appended block break the suite loudly instead of quietly rewriting a
+        # measurement (`test_p11_consts.jl`'s discipline for its own Tier-2 block).
+        @test P12_FISHERZ_NEFF.by_imsize["(512, 512)"]   == 36.84437519087758
+        @test P12_FISHERZ_NEFF.by_imsize["(1024, 1024)"] == 128.307574931308
+        @test P12_FISHERZ_NEFF.by_imsize["(1376, 1028)"] == 166.42790882779167
+        @test P12_FISHERZ_NEFF.by_imsize["(2048, 2048)"] == 454.9270535543171
+        @test P12_FISHERZ_NEFF.pooled  == 90.22383775087685
+        @test P12_FISHERZ_NEFF.applied === :per_imsize
+        @test P12_FISHERZ_NEFF_VARZ_FIT_RESIDUAL == 0.01808225147267538
+        @test P12_FISHERZ_NEFF_N_THETA == 5
+        @test P12_FISHERZ_NEFF_N_OBS   == 20
+        @test P12_FISHERZ_NEFF_ARTIFACT == "spike/validation/p12_coverage_sim_report.jld2"
+
+        # F5: the calibrated sizes are EXACTLY the frozen mixture, so train-joint == eval-joint.
+        # A missing size would silently fall back at read time; an extra one would be a size
+        # nothing was ever trained on.
+        @test Set(keys(P12_FISHERZ_NEFF.by_imsize)) == Set(string.(P12_IMSIZE_SET))
+
+        # EVERY ENTRY ADMITS A POSITIVE FISHER-z VARIANCE. `n_eff <= 3` makes `1/(n_eff - 3)`
+        # non-positive and every predictive interval undefined.
+        @test all(v -> v > 3.0, values(P12_FISHERZ_NEFF.by_imsize))
+
+        # THE POOLED VALUE IS FITTED ON THE MEAN VARIANCE, NEVER AVERAGED OVER THE PER-SIZE n_eff.
+        # `n_eff` is a nonlinear function of the variance, so the two differ -- here by a wide
+        # margin -- and recording the wrong one would misstate what `.pooled` gives a reader.
+        vs = collect(values(P12_FISHERZ_VARZ_BY_IMSIZE))
+        @test isapprox(P12_FISHERZ_NEFF.pooled, 3 + 1 / (sum(vs) / length(vs)); rtol = 1e-9)
+        @test !isapprox(P12_FISHERZ_NEFF.pooled,
+                        sum(values(P12_FISHERZ_NEFF.by_imsize)) /
+                        length(P12_FISHERZ_NEFF.by_imsize); rtol = 1e-3)
+
+        # A MEASUREMENT, NEVER A BAR. `n_eff` is a declared modelling assumption: it parametrizes
+        # the observation-noise model whose JOINT with the posterior D-09 validates, and it gates
+        # nothing by itself. The machine-checkable form of that is membership in neither
+        # constant-name tuple -- section 16's split, applied to a Tier-2 append.
+        for name in (:P12_FISHERZ_NEFF, :P12_FISHERZ_VARZ_BY_IMSIZE,
+                     :P12_FISHERZ_NEFF_VARZ_FIT_RESIDUAL, :P12_FISHERZ_NEFF_N_THETA,
+                     :P12_FISHERZ_NEFF_N_OBS)
+            @test name ∉ P12_GATING_CONSTANTS
+            @test name ∉ P12_REPORTING_ONLY_CONSTANTS
+        end
+
+        # TIER 1 DID NOT MOVE DURING THE APPEND. The file grew; it did not change.
+        @test P12_COVERAGE_NOMINAL == 0.90
+        @test P12_STAGE2_COVERAGE_TOST_DELTA == 0.03
+        @test P12_STAGE2_N_MIN == 271
+        @test P12_STAGE2_LOGSCORE_MIN == 0.02
+        @test P12_ITERATION_ALLOWANCE == 1
     end
 
     @testset "Tier-2 block 4 — the D-12 Stage-1 control adjudication (user ruling, 2026-07-31)" begin

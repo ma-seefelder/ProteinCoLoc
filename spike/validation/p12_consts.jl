@@ -797,7 +797,13 @@ if !isdefined(@__MODULE__, :P12_DEV_SEED)
     # symmetric.
     @assert !isdefined(@__MODULE__, :P12_CHOSEN_PRIOR)
     @assert !isdefined(@__MODULE__, :P12_N_LOW)
-    @assert !isdefined(@__MODULE__, :P12_FISHERZ_NEFF)
+    # :P12_FISHERZ_NEFF's negative assertion was REMOVED 2026-07-31 by 12-16, in the SAME COMMIT
+    # that appended its Tier-2 block (block 5, at the foot of this file) and its mirror in
+    # spike/test/test_p12_consts.jl testset "Tier 2 does not exist yet". Dropping only one of the
+    # three -- file-side assertion, test-side assertion, block -- is the documented way this goes
+    # wrong: it leaves an append with a retired counterpart on one side only, which reads as an
+    # omission to a later auditor. The other two sentinels stay closed: 12-15's NONE-BEATS-ABLATION
+    # branch appended NEITHER :P12_CHOSEN_PRIOR nor :P12_N_LOW, and this plan opens neither.
 end
 
 # =========================================================================================
@@ -969,4 +975,120 @@ if !isdefined(@__MODULE__, :P12_STAGE1_CONTROL_ADJUDICATION)
     # the right place for a check that needs the working tree.
     const P12_STAGE1_VERDICT_ADJUDICATED = :proceed
     @assert P12_STAGE1_VERDICT_ADJUDICATED === :proceed
+end
+
+# =========================================================================================
+# TIER-2 APPEND (block 5) -- THE FISHER-z OBSERVATION-NOISE MODEL
+# Sentinel: :P12_FISHERZ_NEFF.  Opened by 12-16, which is the plan the header at :47 reserved
+# it for -- unlike block 4, this one WAS foreseen at freeze time.
+# Provenance artifact: spike/validation/p12_coverage_sim_report.jld2
+#   generated     = 2026-07-31T21:46:02.339Z
+#   elapsed_min   = 19.988
+#   produced by   spike/validation/run_p12_coverage.jl on the RESERVED stream
+#                 p12_rng(P12_COVERAGE_COUNTER = 8) off P12_DEV_SEED, in ONE reported run
+#   scored bundle spike/artifacts/p12/p12_ablation_none.jld2
+#                 sha256 4bdf5b030ae0a02eb7052479a53dc20bedbac5fb9d432986f26fae9112b6f017
+# =========================================================================================
+#
+# THIS IS A DECLARED MODELLING ASSUMPTION, NOT A THRESHOLD, AND NOTHING BELOW GATES ANYTHING.
+# `n_eff` parametrizes the per-region observation-noise model whose JOINT with the posterior D-09
+# validates. No branch anywhere compares a measured quantity against it, none of these names joins
+# `P12_GATING_CONSTANTS` (which is Tier 1 and append-only, so it could not be extended even if that
+# were wanted), and a later plan may NOT apply any of them as a pass/fail bar.
+#
+# WHAT WAS MEASURED. Under the Fisher-z model the per-region correlation entry satisfies
+# `Var(atanh(r)) = 1/(n_eff - 3)`. `calibrate_neff` draws `n_theta = 5` prior parameters at each
+# image size and observes EACH of them `n_obs = 20` times through independent channel-pair
+# simulations, so within a block the parameter is FIXED and only the observation varies -- the
+# spread is observation noise and nothing else. A design that redrew the field each time would
+# measure the prior convolved with the noise and would fit an `n_eff` far too small.
+#
+# THE PER-SIZE VALUES ARE THE ONES THE RUN APPLIED. `n_eff` moves by more than 12x across
+# `P12_IMSIZE_SET` -- 36.8 at 512^2 against 454.9 at 2048^2 -- exactly the image-size dependence
+# Pitfall 2 measured for the per-region noise sd, and the reason `12-16-PLAN.md:168` asks for a
+# per-size calibration rather than one number. THE IMAGE SIZE IS OBSERVED AT READ TIME, NOT LATENT,
+# so conditioning on it is free and is also available on a real image. Applying the pooled constant
+# instead would make every 512^2 interval too narrow and every 2048^2 interval too wide, and the
+# pooled coverage could then sit at nominal as the AVERAGE OF TWO OPPOSITE MISCALIBRATIONS while
+# neither size was calibrated. `P12_FISHERZ_NEFF.applied` records which was used.
+#
+# THE POOLED SCALAR IS RECORDED BUT WAS NOT APPLIED, and `P12_FISHERZ_NEFF_VARZ_FIT_RESIDUAL` is
+# the evidence for why: it is the largest gap between a size's REALIZED Var(z) and the variance the
+# pooled constant implies, and at 0.0181 it is LARGER THAN THE POOLED VARIANCE ITSELF (0.01146).
+# A single constant does not fit these four sizes, and that fact is recorded as a measurement
+# rather than left for a reader to rediscover.
+if !isdefined(@__MODULE__, :P12_FISHERZ_NEFF)
+
+    # ONE BINDING CARRYING BOTH, SO THE POOLED VALUE CANNOT BE REACHED BY ACCIDENT. A bare
+    # `P12_FISHERZ_NEFF = 90.2` beside a separate per-size Dict would let a later caller pick the
+    # scalar because it is shorter to type, which is precisely the choice this measurement says is
+    # wrong. Reading `.pooled` is then a deliberate act, and `.applied` says what the run did.
+    const P12_FISHERZ_NEFF = (
+        by_imsize = Dict{String,Float64}(
+            "(512, 512)"    => 36.84437519087758,
+            "(1024, 1024)"  => 128.307574931308,
+            "(1376, 1028)"  => 166.42790882779167,
+            "(2048, 2048)"  => 454.9270535543171,
+        ),
+        pooled  = 90.22383775087685,
+        applied = :per_imsize,
+    )
+
+    # The realized Var(z) each entry above was inverted from, at FULL Float64 precision, read back
+    # out of the artifact rather than retyped from a console log.
+    const P12_FISHERZ_VARZ_BY_IMSIZE = Dict{String,Float64}(
+        "(512, 512)"    => 0.02954700727551148,
+        "(1024, 1024)"  => 0.0079803635219035,
+        "(1376, 1028)"  => 0.006118905927222789,
+        "(2048, 2048)"  => 0.0022127464867066427,
+    )
+    # REPORTED, GATES NOTHING. See the header: larger than the pooled variance itself.
+    const P12_FISHERZ_NEFF_VARZ_FIT_RESIDUAL = 0.01808225147267538
+    # The calibration design, recorded so the conditioning is readable from the file.
+    const P12_FISHERZ_NEFF_N_THETA = 5
+    const P12_FISHERZ_NEFF_N_OBS   = 20
+    const P12_FISHERZ_NEFF_ARTIFACT  = "spike/validation/p12_coverage_sim_report.jld2"
+    const P12_FISHERZ_NEFF_GENERATED = "2026-07-31T21:46:02.339Z"
+
+    # --- EXECUTABLE self-checks: the block re-derives its own arithmetic ---------------------
+    # These gate nothing. They make the block FALSIFIABLE at include time, the same discipline
+    # block 4 applies to its own premises.
+
+    # (1) Every entry admits a positive Fisher-z variance. `n_eff <= 3` would make 1/(n_eff-3)
+    # non-positive and every predictive interval undefined.
+    @assert all(v -> v > 3.0, values(P12_FISHERZ_NEFF.by_imsize))
+    @assert P12_FISHERZ_NEFF.pooled > 3.0
+    # (2) The keys are EXACTLY the frozen F5 mixture -- train-joint == eval-joint. A missing size
+    # would silently fall back at read time; an extra one would be a size nothing was trained on.
+    @assert Set(keys(P12_FISHERZ_NEFF.by_imsize)) == Set(string.(P12_IMSIZE_SET))
+    @assert Set(keys(P12_FISHERZ_VARZ_BY_IMSIZE)) == Set(string.(P12_IMSIZE_SET))
+    # (3) Each n_eff really is the inverse of its recorded variance, so the two records cannot
+    # drift apart into a pair that looks consistent and is not.
+    for k in keys(P12_FISHERZ_VARZ_BY_IMSIZE)
+        @assert isapprox(P12_FISHERZ_NEFF.by_imsize[k],
+                         3 + 1 / P12_FISHERZ_VARZ_BY_IMSIZE[k]; rtol = 1e-9)
+    end
+    # (4) THE POOLED VALUE IS RE-DERIVED FROM THE PER-SIZE ONES, not trusted. It is fitted on the
+    # MEAN VARIANCE, never averaged over the per-size n_eff -- n_eff is a nonlinear function of the
+    # variance, so a mean of n_eff values is not the n_eff of the mean variance, and recording the
+    # wrong one would misstate what a reader reaching for `.pooled` would get.
+    @assert isapprox(P12_FISHERZ_NEFF.pooled,
+                     3 + 1 / (sum(values(P12_FISHERZ_VARZ_BY_IMSIZE)) /
+                              length(P12_FISHERZ_VARZ_BY_IMSIZE)); rtol = 1e-9)
+    # (5) THE SIZE DEPENDENCE IS REAL, AND THAT IS WHY THE PER-SIZE CONSTANT WAS APPLIED. The
+    # largest n_eff exceeds the smallest by more than 10x, and the pooled misfit exceeds the pooled
+    # variance itself -- both asserted rather than described.
+    @assert maximum(values(P12_FISHERZ_NEFF.by_imsize)) >
+            10 * minimum(values(P12_FISHERZ_NEFF.by_imsize))
+    @assert P12_FISHERZ_NEFF_VARZ_FIT_RESIDUAL > 1 / (P12_FISHERZ_NEFF.pooled - 3)
+    @assert P12_FISHERZ_NEFF.applied === :per_imsize
+    # (6) A MEASUREMENT, NEVER A BAR. None of these names may join the gating tuple.
+    @assert :P12_FISHERZ_NEFF ∉ P12_GATING_CONSTANTS
+    @assert :P12_FISHERZ_VARZ_BY_IMSIZE ∉ P12_GATING_CONSTANTS
+    @assert :P12_FISHERZ_NEFF_VARZ_FIT_RESIDUAL ∉ P12_GATING_CONSTANTS
+    # (7) The Tier-1 record is intact and the ruling spent no allowance, asserted HERE in the block
+    # that appended, so a later edit fails where its meaning is written down.
+    @assert P12_COVERAGE_NOMINAL == 0.90
+    @assert P12_STAGE2_N_MIN == 271
+    @assert P12_ITERATION_ALLOWANCE == 1
 end

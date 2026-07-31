@@ -354,14 +354,26 @@ The body mirrors `generate_p12_sample` (`spike/data/p12_generate.jl:286`) with O
 difference: that function keys its RNG on the global pool index and rides the DATAGEN salt, while
 this one takes an `rng` off the VALIDATION stream. That difference is the whole reason this
 plan's numbers cannot be computed on training data.
+
+**THE DRAW COMES BEFORE THE IMAGE SIZE, AND THAT ORDER IS COPIED DELIBERATELY.** `imsize = nothing`
+takes the size from `imsize_sampler(rng)` AFTER the parameter has been drawn, exactly as
+`generate_p12_sample:288-290` does, because the image size is a nuisance of the OBSERVATION and
+not of the parameter. Pinning `imsize` skips the sampler and therefore consumes less of `rng` --
+also as in the original, and stated so a pinned-size caller is not surprised by a different
+stream position.
+
+The F5 binding invariant applies: rank and coverage claims hold only under the joint the estimator
+was TRAINED on, so a reported run takes the MIXTURE, never one convenient size.
 """
-function draw_simulate_infer_p12(rng::AbstractRNG; imsize, arm::Symbol = :none,
-                                 r1 = nothing, G::Integer = P12_G)
-    draw = sample_p12_prior(rng; G = G, arm = arm, r1 = r1)
+function draw_simulate_infer_p12(rng::AbstractRNG; imsize = nothing,
+                                 imsize_sampler = sample_p12_imsize,
+                                 arm::Symbol = :none, r1 = nothing, G::Integer = P12_G)
+    draw = sample_p12_prior(rng; G = G, arm = arm, r1 = r1)      # the PARAMETER first
+    isz  = imsize === nothing ? imsize_sampler(rng) : imsize     # the OBSERVATION's nuisance second
     θs   = merge(theta_scalar_view(draw), (rho_field = draw.rho_field,))
-    mci  = build_mci(simulate_pair(rng, θs; imsize = imsize))
+    mci  = build_mci(simulate_pair(rng, θs; imsize = isz))
     Zraw = encode_d01(patch_summary(mci))
-    return (draw = draw, Zraw = Zraw, imsize = imsize)
+    return (draw = draw, Zraw = Zraw, imsize = isz)
 end
 
 """
@@ -720,8 +732,12 @@ Returns a `G^2 x N` matrix so it plugs into the same scoring path as the model a
 carries an independent draw set, because the marginal prior is identical across regions but the
 Monte-Carlo noise should not be shared.
 
-**THIS IS THE FLOOR THAT MAKES THE ABLATION READABLE.** The D-10 ablation is *no spatial
-borrowing, full nuisance and global borrowing* -- its predictive is the prior CONDITIONAL on the
+**THIS IS THE FLOOR THAT MAKES THE ABLATION READABLE.** The required description of the D-10
+ablation, in full and never line-wrapped, is:
+
+    no spatial borrowing, full nuisance and global borrowing
+
+Its predictive is the prior CONDITIONAL on the
 shared nuisances and the global term, which is strictly narrower than the marginal prior. Without
 this arm a reader cannot tell how much of the ablation's performance is nuisance/global borrowing
 rather than spatial borrowing, and the Pitfall-6 overclaim becomes unfalsifiable rather than
