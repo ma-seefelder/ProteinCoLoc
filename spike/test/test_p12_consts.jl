@@ -203,6 +203,25 @@ const P12_TEST_FILES = ("test_p12_consts.jl", "test_p12_lattice.jl", "test_p12_p
         @test all(d -> d isa AbstractString, P12_RESEARCH_NET_DEVIATIONS)
     end
 
+    @testset "the TWO wall-clock ceilings are distinct budgets that happen to share a value" begin
+        # ADDED 2026-07-31. A sweep found P12_MINISPIKE_WALLCLOCK_CEILING_MIN to be the ONLY
+        # constant in the pre-registration that NOTHING read on EITHER axis: no runner applied it
+        # and no test asserted its value, so it could be silently edited AND silently ignored.
+        # `run_p12_minispike.jl`'s `_p12ms_check_budget` is now its enforcer; this is its value lock,
+        # so it is guarded like its siblings.
+        @test P12_MINISPIKE_WALLCLOCK_CEILING_MIN == 150
+        @test P12_DATAGEN_WALLCLOCK_CEILING_MIN == 150
+
+        # THEY ARE SEPARATE BUDGETS AND THE EQUAL VALUES ARE WHAT MAKES A CONFLATION INVISIBLE.
+        # The datagen ceiling is enforced PER CALL inside `generate_p12_pool` by projection, so
+        # three pools are three independent draws on it and their SUM is never compared to 150.
+        # The mini-spike ceiling is one run's TOTAL. A conflation obvious at 150-vs-90 is invisible
+        # at 150-vs-150 and survives review because both numbers check out.
+        @test P12_MINISPIKE_WALLCLOCK_CEILING_MIN isa Real
+        @test P12_DATAGEN_WALLCLOCK_CEILING_MIN isa Real
+        @test P12_MINISPIKE_WALLCLOCK_CEILING_MIN > 0
+    end
+
     @testset "Tier 2 does not exist yet" begin
         # THESE THREE ASSERTIONS ARE REMOVED IN THE SAME COMMIT THAT APPENDS THE CORRESPONDING
         # TIER-2 BLOCK, AND ONLY THEN -- 12-15 opens :P12_CHOSEN_PRIOR and :P12_N_LOW, 12-16
