@@ -581,6 +581,94 @@ reported as "within budget" or "no breach", because there is no budget. It can o
 generalisable rule: **a constant that records a cost must name the bar that cost is judged against, or
 it is telemetry rather than a budget — and telemetry must not be reported as compliance.**
 
+### §7.4 A FOURTH FAMILY-B INSTANCE and a SECOND §7.1 instance, added 2026-07-31 by the 12-15 scorer audit
+
+Two entries, from one audit of `_p12ms_score_arm`. **Both are ADDITIONS to existing families, not new
+families** — which is itself the point worth reporting: the families are now predicting what turns up.
+
+---
+
+**(a) A SECOND §7.1 WRONG-SPACE DEFECT, IN THE SAME FUNCTION, FOUND BY LOOKING FOR IT.**
+
+§7.1 was written after `_p12ms_score_arm` scored **standardized** draws against **raw** truth. The
+audit that followed found a **second, independent** wrong-space error in the same function: the θ
+coefficient rows are stored **permuted into `p12_dct_order` smoothness order** (`p12_generate.jl:193`),
+and the scorer applied `p12_idct_vec` **directly to the permuted vector**, never inverting the
+permutation. Every arm was therefore scored against a **scrambled reconstruction of the truth**.
+
+**The magnitude, measured rather than argued** (real `sample_p12_prior` draw, idx 7, `:car`):
+
+| | max error vs. the true field | RMS error / field's own RMS |
+|---|---|---|
+| correct inverse (`p12_region_field`) | **3.11e-15** | — |
+| the scorer's naive inverse | **3.72** | **1.302** |
+
+> **A PERFECT POSTERIOR WOULD STILL HAVE SCORED ~1.30× THE TRIVIAL PREDICTOR. The three arms were
+> ranked on how well each net's coefficients happened to survive a scramble.**
+
+**Why §7.1's own mitigation could not catch it, and this is the sharpening §7.1 needs.** §7.1
+prescribed `trivial_rmse` — report the null predictor beside your own. **It fired.** Skill was
+negative for every arm in all three runs. What a null baseline establishes is *that* the numbers are
+in a wrong space; **it cannot say WHICH wrong space**, so the first defect's fix left a second one
+wearing the first one's symptoms. And **a permutation is orthogonal**, so on top of §7.1's affine
+argument even *Parseval* holds: total energy is preserved exactly.
+
+> **Sharpened rule for §7.1: a null baseline detects a wrong space; it does not localise one. When a
+> wrong-space defect is found, audit every space the read path crosses, not only the one that
+> failed.** Applied here, that audit compared generation against scoring on fifteen agreement points —
+> the standardization inverse, the permutation inverse, the DCT direction, the θ row ordering, ρ vs
+> Fisher-z vs Gaussian space, region indexing, batch shape, and the rest — and executed all fifteen
+> rather than reading them.
+
+**What the defect did and did not reach, established by execution.** *Affected:* `rmse`, `skill`,
+`rmse_per_region`, `coverage`, `coverage_per_region`, hence **admissibility**, hence the
+`NONE-BEATS-ABLATION` verdict. *Unaffected:* `c0_rmse` / `c0_coverage` (because `p12_dct_order(G)[1]
+== 1`, verified bit-identical on both sides), `r1_shrinkage`, the truncation curve (flat index space
+throughout), and **the trained bundles** (training consumes θ as stored and never reconstructs a
+field). Recording which numbers survive is what lets a write-up be precise instead of gesturing.
+
+**A third instance was hunted and NOT found.** The batched `sampleposterior` fallback
+(`smp isa AbstractVector ? smp : [smp]`) would have scored 1 dataset per chunk of 100 while dividing
+by 1000, had the library returned a single matrix for a batch. It returns a `Vector`, verified by
+execution. **"No third defect" is a finding here because it was looked for, not because nothing was
+noticed.**
+
+Repaired at `f039729`, routed through the pre-existing `p12_region_field` (`spike/p12/result.jl:562`)
+rather than a second inverse — the repository containing **both a right and a wrong reconstruction of
+the same object** is the proximate cause and is not reproduced. Guarded by a test that is numeric as
+well as textual, because the file legitimately contains `p12_idct_vec` for the truncation curve and
+source text alone cannot separate the correct use from the wrong one.
+
+---
+
+**(b) A FOURTH FAMILY-B INSTANCE: `P12_STAGE2_COVERAGE_TOST_DELTA` IS APPLIED TO A PSEUDO-REPLICATED
+STATISTIC. NAMED, NOT CORRECTED.**
+
+`P12_STAGE2_COVERAGE_TOST_DELTA = 0.03` is derived in `p12_consts.jl` from a binomial standard error
+at **N ≥ 271 DATASETS** (`P12_STAGE2_N_MIN`), and `select_prior` **asserts** that `n_test ≥ 271`
+before applying it. But the quantity it is applied to — `coverage` — is the mean over **64 regions ×
+1000 datasets**, and the 64 within-dataset trials are **strongly correlated**: they are 64 readings of
+one posterior over one field. The effective independent n is therefore neither 1000 nor 64000, and the
+bar is sized for neither.
+
+This is Family B exactly: **a sound bar applied to something it was not built for.** It is the same
+shape as entry 2 (`effective_independent_n` of 2 against a bar sized for N ≥ 271) and as the SC1g
+component-vs-total error — **the third independent recurrence of pseudo-replication in this
+milestone**, which is the finding, more than any single instance is.
+
+**IT IS NAMED AND NOT MOVED, AND THE REASON IS THE ONLY ONE THAT LICENSES LEAVING IT.** It is Tier-1
+pre-registered and append-only. Correcting a bar *after* seeing that the runs it gated came back
+negative — and negative for an unrelated, now-repaired reason — is indistinguishable from tuning a
+gate until it passes, which is exactly what this phase refused to do when it declined to hunt the
+epoch count that lands coverage inside the band. **A bar that is wrong and pre-registered is reported
+as a named limit; it is not quietly repaired by the party it inconveniences.**
+
+**Duty on Phase 16:** report (a) as a second §7.1 instance **with the sharpened rule**, and (b) as the
+fourth Family-B instance, carrying the note that it was left standing deliberately. The honest
+aggregate sentence: **the families are no longer only a retrospective classification — §7.1 predicted
+where to look for (a), and Family B predicted the shape of (b).** That is a stronger claim about the
+audit than the count of instances is a weakness in the science.
+
 ## §8 Routing consequences of PROCEED
 
 - `p12_stage1_verdict()` now returns `:proceed`, so `p12_require_proceed` admits **12-17, 12-18,
