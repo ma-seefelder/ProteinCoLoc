@@ -41,6 +41,19 @@ using Random
 isdefined(@__MODULE__, :train_p12_npe) ||
     include(joinpath(@__DIR__, "..", "npe", "train_p12_npe.jl"))
 
+# 12-15's `select_prior` and its scoring runner. Loaded WITHOUT running the job: the runner's last
+# line is `isdefined(@__MODULE__, :P12_MINISPIKE_LOAD_ONLY) || main()`.
+#
+# WHY THESE TESTS LIVE HERE AND NOT IN `test_p12_consts.jl`, which is where 12-15's `files_modified`
+# would have put them: the runner transitively loads `train_p12_npe.jl` and NeuralEstimators, and
+# `test_p12_consts.jl` is the Tier-1 PRE-REGISTRATION GATE and the FIRST file the aggregator runs.
+# Making the pre-registration gate depend on the neural stack would mean a NeuralEstimators problem
+# breaks the check that the frozen constants are intact -- a coupling regression. This file already
+# loads that stack, so the tests are free here.
+P12_MINISPIKE_LOAD_ONLY = true
+isdefined(@__MODULE__, :select_prior) ||
+    include(joinpath(@__DIR__, "..", "validation", "run_p12_minispike.jl"))
+
 """
 Strip whole-line comments before making a source-text assertion, so a claim recorded IN a comment
 cannot satisfy a check about the CODE. Mirrors `test_stage6_regression.jl:88-100`.
@@ -350,5 +363,182 @@ const _P12TRAIN_CODE = _p12train_strip_comments(_P12TRAIN_SRC)
 
     @testset "training ran CPU-only" begin
         @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
+    end
+
+    # =====================================================================================
+    # 12-15's SELECTION RULE, exercised on SYNTHETIC score tables.
+    #
+    # These were an ACCEPTANCE CRITERION of 12-15 Task 1 that commit 4287862 did not actually
+    # satisfy: its message claimed all five branches were exercised, but nothing in spike/test/
+    # referenced `select_prior`, so the branches had been demonstrated ad hoc in a shell command
+    # and then lost. A demonstration that is not persisted is not a test.
+    #
+    # TWO OF THESE CASES ARE THE ONLY EVIDENCE THE MACHINERY WOULD ACT AGAINST THE MORE
+    # ATTRACTIVE NUMBER, which is the entire reason a rule written in advance is worth anything:
+    #   - the TIE case, where GP's RMSE is NOMINALLY LOWER and the answer is still CAR;
+    #   - the DISQUALIFICATION case, where GP has the LOWER RMSE and loses anyway for being
+    #     miscalibrated.
+    # A pre-declared tie-break that only ever fires when it agrees with the numbers is not a
+    # tie-break, it is a preference wearing a rule's name. In the real 2026-07-31 run neither
+    # case arose -- GP was both miscalibrated AND worse -- so these synthetic tables are where
+    # that property is actually established.
+    # =====================================================================================
+    @testset "select_prior — the pre-registered rule, all branches (12-15)" begin
+        # Admissible band is P12_COVERAGE_NOMINAL ± P12_STAGE2_COVERAGE_TOST_DELTA = [0.87, 0.93].
+        _sc(; car, gp, none, n = 1000) = Dict(
+            :car  => (coverage = car[1],  rmse = car[2],  n_test = n),
+            :gp   => (coverage = gp[1],   rmse = gp[2],   n_test = n),
+            :none => (coverage = none[1], rmse = none[2], n_test = n))
+
+        # -- both admissible, CAR genuinely better -------------------------------------
+        r = select_prior(_sc(car = (0.90, 0.50), gp = (0.90, 0.70), none = (0.90, 0.90)))
+        @test r.selected == "CAR"
+        @test r.beats_ablation
+        @test Set(r.admissible) == Set([:car, :gp])
+
+        # -- both admissible, GP genuinely better: the rule CAN pick GP ------------------
+        # Without this case the tie-break test below would be consistent with a rule that
+        # simply always answers CAR.
+        r = select_prior(_sc(car = (0.90, 0.70), gp = (0.90, 0.50), none = (0.90, 0.90)))
+        @test r.selected == "GP"
+        @test r.beats_ablation
+
+        # -- EVIDENTIAL CASE 1: a TIE resolves to CAR even though GP's RMSE is LOWER ------
+        # 0.4975 vs 0.5000 is a 0.5 % gap, inside the pre-declared 1 % tie band.
+        r = select_prior(_sc(car = (0.90, 0.5000), gp = (0.90, 0.4975), none = (0.90, 0.90)))
+        @test r.selected == "CAR"
+        @test occursin("TIE", r.reason)
+
+        # -- EVIDENTIAL CASE 2: a MISCALIBRATED arm with the LOWER RMSE is DISQUALIFIED ---
+        # GP's 0.30 beats CAR's 0.70 by a wide margin and is still not selected, because
+        # coverage 0.99 is outside the band. "Better" is not a property a miscalibrated
+        # posterior can have.
+        r = select_prior(_sc(car = (0.90, 0.70), gp = (0.99, 0.30), none = (0.90, 0.90)))
+        @test r.selected == "CAR"
+        @test r.admissible == [:car]
+
+        # -- both miscalibrated -> NONE-BEATS-ABLATION, regardless of RMSE ----------------
+        r = select_prior(_sc(car = (0.99, 0.10), gp = (0.60, 0.10), none = (0.90, 0.90)))
+        @test r.selected == "NONE-BEATS-ABLATION"
+        @test !r.beats_ablation
+        @test isempty(r.admissible)
+
+        # -- the ablation wins -> NONE-BEATS-ABLATION, not "pick a winner anyway" ---------
+        r = select_prior(_sc(car = (0.90, 0.95), gp = (0.90, 0.97), none = (0.90, 0.90)))
+        @test r.selected == "NONE-BEATS-ABLATION"
+        @test !r.beats_ablation
+        @test occursin("UNSUPPORTED", r.reason)
+
+        # -- the n-guard: the 0.03 tolerance may not be applied at an n it was not derived
+        #    for. P12_STAGE2_N_MIN = 271 DATASETS.
+        @test_throws Exception select_prior(
+            _sc(car = (0.90, 0.50), gp = (0.90, 0.70), none = (0.90, 0.90), n = 100))
+
+        # -- a missing arm is refused, not defaulted -------------------------------------
+        @test_throws Exception select_prior(Dict(
+            :car => (coverage = 0.90, rmse = 0.5, n_test = 1000),
+            :gp  => (coverage = 0.90, rmse = 0.7, n_test = 1000)))
+
+        # -- PURITY: same input, same answer ---------------------------------------------
+        s = _sc(car = (0.90, 0.50), gp = (0.91, 0.70), none = (0.90, 0.90))
+        @test select_prior(s).selected == select_prior(s).selected
+        @test select_prior(s).reason == select_prior(s).reason
+    end
+
+    # =====================================================================================
+    # PITFALL 5 REGRESSION GUARD. The 2026-07-31T09:51Z mini-spike run scored STANDARDIZED
+    # posterior draws against RAW truth because it never applied `bundle.theta_zt`, and it
+    # produced a report that passed every structural check -- index disjointness, per-region
+    # pooling, budget accounting -- because none of those look at SCALE. It was caught only by
+    # noticing the winning arm scored 0.45 % better than PREDICTING A CONSTANT ZERO. Its
+    # `selected_prior`, `k_prod_recommended` and `n_low_recommended` were all invalid, and both
+    # are append-only Tier-2 constants, so harvesting it would have been permanent.
+    # =====================================================================================
+    @testset "the mini-spike un-standardizes theta before scoring (Pitfall 5)" begin
+        src = _p12train_strip_comments(
+            read(joinpath(@__DIR__, "..", "validation", "run_p12_minispike.jl"), String))
+        # The inverse transform is applied, to the BUNDLE'S OWN frozen theta_zt.
+        @test occursin("StatsBase.reconstruct(bundle.theta_zt", src)
+        # And the raw `sampleposterior` output is not what gets scored.
+        @test occursin("sampleposterior", src)
+
+        # The scoring path reports a null-predictor baseline, so "the net learned nothing"
+        # is VISIBLE in the artifact rather than looking like a measurement.
+        @test occursin("trivial_rmse", src)
+        @test occursin("skill", src)
+
+        # REPORTED IS NOT GATED, asserted on the rule's own body rather than in prose. `skill`
+        # was added AFTER the numbers existed, so it must not be able to reach the selection --
+        # that would be exactly the post-hoc bar the two-tier pre-registration forbids. This
+        # FIRES if anyone ever wires it in.
+        i = findfirst("function select_prior(scores)", src)
+        @test i !== nothing
+        body = src[first(i):last(findnext("\nend", src, last(i)))]
+        @test !occursin("skill", body)
+        @test !occursin("trivial", body)
+    end
+
+    # =====================================================================================
+    # THE θ-SPACE CONTRACT, MADE MECHANICAL — a SWEEP over every Phase-12 reporting runner.
+    #
+    # WHY A SWEEP AND NOT ONE MORE PER-FILE TEST. The contract already existed in prose at
+    # `spike/npe/infer.jl:35-38`, named itself Pitfall 5, and said in as many words that reading
+    # a standardized draw as raw "would be silently wrong". It was honoured by `infer.jl:110,122`
+    # and `benchmark.jl:188` -- and violated, silently, by the ONE consumer that did not read it.
+    # Prose did not hold. This is the same class as the repo's include-guard sweep: solve it once,
+    # structurally, rather than once per plan.
+    #
+    # SCOPE IS `spike/validation/run_p12_*.jl` -- the phase's REPORTING RUNNERS -- and the scope is
+    # chosen, not incidental. A blanket "every file calling sampleposterior must call reconstruct"
+    # would be RED on files that are correct: `test_p12_architecture.jl:264` asserts only
+    # `size(draws)`, and Phase 11's `test_lambda_ablation.jl` reports RATIOS of two posterior sds
+    # of the same row, which an affine ZScoreTransform leaves invariant. Scoring against RAW TRUTH
+    # is the thing that needs the inverse, and the reporting runners are where that happens.
+    #
+    # AT THE TIME OF WRITING THIS COVERS EXACTLY ONE FILE, and that is the point: `run_p12_minispike.jl`
+    # is the only run_p12_* runner that samples a posterior at all -- the other four (ell_ridge,
+    # eps_ridge, sim02, stage1_ridge) are ridge estimators -- which is precisely why the defect had
+    # no sibling to be caught against. 12-16, 12-18, 12-19 and 12-20 add runners that DO score
+    # posteriors, and they produce this phase's SBC and coverage claims. This sweep covers them the
+    # moment they exist, and goes red until they un-standardize.
+    # =====================================================================================
+    @testset "EVERY p12 reporting runner un-standardizes theta and reports a null baseline" begin
+        vdir = joinpath(@__DIR__, "..", "validation")
+        runners = sort(filter(f -> startswith(f, "run_p12_") && endswith(f, ".jl"),
+                              readdir(vdir)))
+
+        # THE SWEEP MUST NOT BE VACUOUS. If a rename ever made the glob match nothing, or match
+        # only files that never sample a posterior, this testset would pass by covering NOTHING --
+        # the "0 tests reported as a pass" failure 12-05 already hit once in this phase.
+        @test !isempty(runners)
+        scoring = filter(runners) do f
+            occursin("sampleposterior", _p12train_strip_comments(read(joinpath(vdir, f), String)))
+        end
+        @test !isempty(scoring)
+        @test "run_p12_minispike.jl" in scoring
+
+        for f in scoring
+            code = _p12train_strip_comments(read(joinpath(vdir, f), String))
+            # PITFALL 5: the estimator emits STANDARDIZED theta. A runner that samples a posterior
+            # and compares it to raw truth MUST invert the bundle's frozen theta transform first.
+            # THIS HALF IS UNIVERSAL -- it applies to every runner that scores a posterior at all,
+            # whatever statistic it reports.
+            @test occursin("reconstruct(", code)
+
+            # THE NULL BASELINE, REPORTED-ONLY, AND CONDITIONAL **BY DESIGN**. An RMSE reported alone
+            # is uninterpretable; reported beside what a CONSTANT predictor achieves, it is
+            # self-checking. That is the diagnostic that turned the wrong-space bug from silent into
+            # obvious -- GP scoring 60 % WORSE than predicting zero is impossible to overlook, but
+            # only if something compares.
+            #
+            # IT IS REQUIRED ONLY OF RUNNERS THAT ACTUALLY REPORT AN RMSE, and the condition is the
+            # whole point. An unconditional demand would go RED on runners that are CORRECT: 12-16's
+            # coverage runner reports coverage and a log score and has no RMSE at all, and 12-18's SBC
+            # runner reports RANKS, whose null -- uniformity -- is already built into the statistic.
+            # Demanding an RMSE baseline where there is no RMSE would create a requirement nobody can
+            # satisfy: the same shape as the defect this sweep exists to catch, pointing the other way.
+            # A rule that fires on correct code teaches people to suppress it.
+            occursin("rmse", lowercase(code)) && @test occursin("trivial_rmse", code)
+        end
     end
 end

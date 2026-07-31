@@ -61,6 +61,29 @@
 # `train_indices` AND `val_indices` -- both, because the val block drives early stopping and is
 # contaminated for model selection while its indices genuinely are disjoint from training.
 #
+# PITFALL 5 -- THE ESTIMATOR EMITS **STANDARDIZED** theta, AND SCORING MUST UN-STANDARDIZE IT.
+# `train_p12_npe` fits `theta_zt` and trains on `transform(theta_zt, theta)` (train_p12_npe.jl:458),
+# then carries `theta_zt` in the bundle (:476) for exactly this purpose. EVERY read of a posterior
+# draw therefore goes through `StatsBase.reconstruct(bundle.theta_zt, M)` FIRST. The contract is
+# written down at `spike/npe/infer.jl:35-38` -- "reading a standardized draw as rho would be
+# silently wrong" -- and honoured by `infer.jl:110,122` and `benchmark.jl:188`.
+#
+# THE FIRST RUN OF THIS FILE (2026-07-31T09:51Z) DID NOT DO IT, AND THE RESULT WAS HARVEST-READY
+# GARBAGE: it scored standardized draws against the RAW `z_field`. The report was COMPLETE,
+# internally consistent, and reconciled on every structural check -- index disjointness, per-region
+# pooling, budget accounting -- because none of those checks look at the SCALE. What exposed it was
+# arithmetic no assertion was making: the winning arm's RMSE (0.9898) sat 0.45 % below the RMSE of
+# PREDICTING A CONSTANT ZERO (0.9943, the field's own marginal sd), the GP arm scored 60 % WORSE
+# than that trivial predictor, and `r1_shrinkage` came to 4.298 -- which is just a standardized
+# posterior sd of ~1.1 divided by the RAW prior sd of 0.2598. That run's `selected_prior`,
+# `k_prod_recommended` and `n_low_recommended` were all invalid and were NEVER appended.
+#
+# SO THIS FILE NOW REPORTS `trivial_rmse` AND `skill` PER ARM. They are REPORTED and GATE NOTHING --
+# no bar was added and no threshold moved, because inventing a floor after seeing a number is the
+# move the two-tier pre-registration exists to forbid. But a skill number makes "the net learned
+# nothing" VISIBLE in the artifact instead of invisible, which is the whole difference between the
+# defect above being caught in three minutes and being appended to Tier 2 forever.
+#
 # DECOUPLING (hard constraint, CLAUDE.md): spike-local. Trains through 12-14's `train_p12_npe` and
 # standardizes through its `standardize_p12`; it re-implements NEITHER, so no second training loop
 # and no second standardizer fit can drift from the one surface. Touches no `src/` file.
@@ -72,6 +95,7 @@ using JLD2
 using Dates
 using Statistics
 using LinearAlgebra
+using StatsBase          # reconstruct -- the INVERSE theta-standardization (Pitfall 5, below)
 
 isdefined(@__MODULE__, :P12_DEV_SEED)   || include(joinpath(@__DIR__, "p12_consts.jl"))
 isdefined(@__MODULE__, :train_p12_npe)  || include(joinpath(@__DIR__, "..", "npe", "train_p12_npe.jl"))
@@ -256,6 +280,11 @@ end
 
 Score one trained arm on the HELD-OUT block. Reconstructs each posterior draw's field from its DCT
 coefficients and compares to the drawn `z_field` in GAUSSIAN space (R-2, atom-free).
+
+THE DRAWS ARE UN-STANDARDIZED FIRST (Pitfall 5, header). `sampleposterior` returns theta in the
+STANDARDIZED space the estimator was trained in; `bundle.theta_zt` is the frozen inverse. Scoring
+without it compares a standardized draw to raw truth and reports noise as recovery -- which is
+exactly what the first run of this file did.
 """
 function _p12ms_score_arm(bundle, Zraw_held::AbstractMatrix, Ztrue_held::AbstractMatrix)
     nreg  = P12_G^2
@@ -273,7 +302,10 @@ function _p12ms_score_arm(bundle, Zraw_held::AbstractMatrix, Ztrue_held::Abstrac
         hi = min(lo + MINISPIKE_SCORE_CHUNK - 1, ntest)
         Zc = reshape_summary(Zstd[:, lo:hi], P12_G)
         smp = sampleposterior(bundle.estimator, Zc; N = MINISPIKE_N_DRAWS, use_gpu = false)
-        mats = smp isa AbstractVector ? smp : [smp]
+        raws = smp isa AbstractVector ? smp : [smp]
+        # PITFALL 5: standardized theta -> RAW theta, through the bundle's own frozen transform.
+        # This is the line whose absence invalidated the 2026-07-31T09:51Z run.
+        mats = [StatsBase.reconstruct(bundle.theta_zt, Float64.(Mr)) for Mr in raws]
         for (t, M) in enumerate(mats)
             j = lo + t - 1
             # Rows 1:(1+K_dev) are [c0; the deviation coefficients] -- the field's DCT vector.
@@ -303,7 +335,15 @@ function _p12ms_score_arm(bundle, Zraw_held::AbstractMatrix, Ztrue_held::Abstrac
     # that is a linear point predictor's residual sd. Named apart on purpose; read as a PAIR under
     # 12-13:131-152, and a disagreement is a FINDING, never averaged.
     r1_shrinkage = mean(r1_sds) / std(P12_R1_PRIOR)
+    # REPORTED, GATES NOTHING. `trivial_rmse` is the RMSE of the null predictor "the field is zero"
+    # -- i.e. the ensemble's own marginal sd -- and `skill` is the fraction of it the posterior mean
+    # actually removes. No pre-registered bar reads either. They exist because an arm that has learned
+    # NOTHING scores rmse ~= trivial_rmse, and without this line that fact is invisible in the report:
+    # a pooled RMSE of 0.99 looks like a measurement rather than like the prior talking.
+    trivial_rmse = sqrt(mean(abs2, Ztrue_held))
     return (rmse = sqrt(mean(se_sum) / ntest),
+            trivial_rmse = trivial_rmse,
+            skill = 1 - sqrt(mean(se_sum) / ntest) / trivial_rmse,
             rmse_per_region = rmse_per_region,
             coverage = mean(cov_per_region),
             coverage_per_region = cov_per_region,
@@ -380,6 +420,8 @@ function main()
         println("  pooled per-region RMSE = $(round(s.rmse; digits = 5))   " *
                 "coverage = $(round(s.coverage; digits = 5)) " *
                 "(nominal $(P12_COVERAGE_NOMINAL) +/- $(P12_STAGE2_COVERAGE_TOST_DELTA))")
+        println("  trivial RMSE (predict 0) = $(round(s.trivial_rmse; digits = 5))   " *
+                "skill = $(round(s.skill; digits = 5))   [REPORTED; gates nothing]")
         println("  c0 RMSE = $(round(s.c0_rmse; digits = 5))   " *
                 "c0 coverage = $(round(s.c0_coverage; digits = 5))")
         println("  r1_shrinkage = $(round(s.r1_shrinkage; digits = 5))  " *
@@ -436,6 +478,8 @@ function main()
                          "resolve to CAR, declared in advance. Fixed in code before any number.",
         arms = collect(minispike_arms()),
         rmse = Dict(string(a) => scores[a].rmse for a in keys(scores)),
+        trivial_rmse = Dict(string(a) => scores[a].trivial_rmse for a in keys(scores)),
+        skill = Dict(string(a) => scores[a].skill for a in keys(scores)),
         rmse_per_region = Dict(string(a) => scores[a].rmse_per_region for a in keys(scores)),
         coverage = Dict(string(a) => scores[a].coverage for a in keys(scores)),
         coverage_per_region = Dict(string(a) => scores[a].coverage_per_region for a in keys(scores)),
