@@ -267,10 +267,9 @@ artifact as `spat07_scope = spat08_scope = :deferred_to_v2_1` and in prose here:
 3. **`suspect_mask_ood = true`, in its SINGLE-ARM form only.** Pitfall 4's check is that *both* arms
    far off nominal implicates the MCAR masking augmentation rather than the prior. There is only one
    model arm here, so that form **cannot be evaluated**. The rates are recorded beside the flag:
-   training `realized_mask_rate` = 0.0627 against D-09's held-out configuration of exactly one
-   masked region in 64 = 0.0156. **A reader should look at that pair before the prior** — the net saw
-   ~4× the masking rate D-09 presents it with, and the augmentation is a live candidate explanation
-   for the over-wide predictive that no arm on this route can rule in or out.
+   training `realized_mask_rate` = 0.0627 against D-09's held-out configuration of exactly one masked
+   region in 64 = 0.0156. **But see §8.1 — the mask mismatch predicts the WRONG SIGN, and my earlier
+   framing of it as the lead candidate was wrong.**
 4. **Spike scale**, 10,000 pairs (§4).
 5. **`p12_coloc_map` was exercised on synthetic images, not on real specimens.** The `--real` path is
    wired and deliberately UNEXERCISED; it is 12-19's, and 12-19 does not run on this route.
@@ -282,6 +281,63 @@ artifact as `spat07_scope = spat08_scope = :deferred_to_v2_1` and in prose here:
    each spread). Full treatment in §6.1.
 7. **Per-size coverage is informative, not gated** (§2.1). The pre-registered 0.03 tolerance was
    derived for N ≥ 271 and does not apply at n = 113 / 76 / 57 / 25.
+
+### 8.1 WHICH ERROR DOES THE MASK MISMATCH ACTUALLY PREDICT? — it explains NEITHER, and the sign is why
+
+**A reader meeting `suspect_mask_ood = true` beside two opposite-signed errors will assume it covers
+both. It does not cover either, and this section exists so that assumption cannot be made.**
+
+The two errors require **opposite corrections to the same posterior**:
+
+| to fix | the posterior must | effect on the other |
+|---|---|---|
+| parameter coverage 0.820 → 0.90 | **WIDEN** | pushes predictive further ABOVE 0.90 |
+| predictive coverage 0.971 → 0.90 | total must **NARROW** | narrowing the posterior pushes parameter coverage further BELOW 0.90 |
+
+**So no single-signed effect on the posterior can explain both.** They are reconciled only by *the
+posterior being too narrow AND the observation-noise term being too wide, with the noise error the
+larger of the two.*
+
+**The mask mismatch acts on the posterior, and the sign it predicts is the wrong one.** Fewer masked
+regions means **more** information, so the correct posterior at k = 1 is **narrower** than at the
+training mean of k ≈ 4. A net that under-conditions on the mask would therefore carry the wider,
+average-case posterior into a k = 1 read and be **too WIDE**. The posterior measured here is **too
+NARROW**. The hypothesis predicts the opposite of the observation.
+
+**And the mismatch is weaker than "4×" makes it sound.** `P12_MASK_K_SET` is `0:8`, so **k = 1 is
+in-distribution, not out of it** — it is one of nine equiprobable values, seen in roughly 1/9 of
+training samples, ≈ 1,100 of the 10,000. Under-represented relative to the mean, **not unseen**.
+Pitfall 4's concern is covariate shift into a configuration the net has essentially never met; that
+is not this configuration. The 0.0627-vs-0.0156 comparison is a comparison of a **mean** against a
+**point**, and the point lies inside the training support.
+
+**I over-stated this in my own earlier reporting** — "look at that pair before the prior" implied the
+augmentation is the lead candidate. **On the sign analysis it is not**, and a partial explanation
+named as partial is worth more than one that sounds complete.
+
+**What the arithmetic does point at, with the right sign: the observation-noise model.** Since the
+posterior contributes too *little* width, the excess must come from the noise term, i.e. `n_eff`
+fitted too small. There is a structural reason it would be, and it is checkable:
+
+> **`calibrate_neff` measures the MARGINAL observation noise at fixed θ; the LRO predictive needs the
+> noise CONDITIONAL on having observed the other 63 regions of the same image.** Any component of
+> observation variability that is **shared across regions of one image** — the per-image Otsu
+> threshold, the background floor, any global illumination or gain realization — is already pinned
+> down by those 63 observed regions, and is then **added a second time** at the held-out region.
+> That is a double-count, and it over-widens the predictive **by construction**.
+
+**This is a hypothesis with a predicted sign, not a finding.** It is consistent with both
+observations (it inflates the predictive without touching the posterior), but it is **not measured
+here**, and it does not by itself explain the over-confident posterior either — that remains
+**unaccounted for**.
+
+**What would settle it, stated so it is not re-derived later:** decompose the fixed-θ variance of
+`fisherz(observed)` into a **shared** (across-region, within-simulation) component and an
+**independent** one, and refit `n_eff` on the independent part alone. If the shared component is
+material, the corrected `n_eff` rises, the predictive narrows, and the parameter-coverage shortfall
+is left standing as a separate, genuine posterior defect. **That is a v2.1 measurement — it is new
+compute on a spent iteration allowance, and it would change a modelling constant after seeing a
+result, so it must not be done inside this phase.**
 
 ---
 
