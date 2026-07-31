@@ -417,6 +417,17 @@ distribution measures nothing about neutralization.
 whose realized quantiles are **[0.05017, 0.27345, 0.49885, 0.72227, 0.94992]** — a clean uniform,
 exactly as the instruction implies and exactly what the criterion forbids.
 
+**THIS INSTANCE WAS PREDICTED BEFORE THE RUN AND THEN OBSERVED, WHICH IS EPISTEMICALLY DIFFERENT FROM
+THE OTHER FOUR AND STRONGER.** Entries 1-4 of the families above were all diagnosed *after* a number
+looked wrong. Here the defect was derived from the mechanism (`p12_lattice.jl:311` neutralizes on the
+arm, so r₁'s distribution cannot evidence neutralization), the uniform quantiles were **stated in
+advance as the expected outcome**, the run was executed unchanged, and the prediction held.
+
+**A taxonomy that only ever explains failures after the fact is a narrative; one that predicts the
+next instance is a finding.** Phase 16 should report this instance as the family's first *predictive*
+confirmation, and should say plainly that the prediction was recorded in the runner's header and in
+`12-D13-AUTHORISATION.md` §5.2 **before** the production run wrote its artifact.
+
 **The disposition, and why it is the Family-B-correct one:** the criterion's **purpose** — evidence
 that the prior really was neutralized — **is met by the arm itself**, and better than r₁ could ever
 show it. Its **literal test** is a proxy the generator never touches. **The instruction was followed
@@ -543,6 +554,32 @@ root-cause instances across four families**, all surfaced by pre-registration an
 corrupting a result. The mitigation is cheap and generalisable: **when a decision point is renamed,
 re-sited, or re-implemented, the document that originally defined it must be amended in the same
 commit, or the two definitions must be explicitly cross-referenced.**
+
+### §7.3 THE BUDGET CONSTANTS ARE A FINDING IN THEIR OWN RIGHT, added 2026-07-31
+
+Four separate entries in this record are about **wall-clock ceilings**, and taken singly each reads as
+an isolated slip. **Taken together they are one finding about how this project's budget constants were
+written**, and Phase 16 should report them as one rather than let a reader assemble four accidents:
+
+| # | what | where |
+|---|---|---|
+| 1 | **A gating ceiling with NO DERIVATION** — `P12_STAGE1_RATIO_CEILING = 0.5`, on a control whose only route to passing was the effect it was meant to control for | §4 of this document |
+| 2 | **TWO ceilings with IDENTICAL VALUES guarding DIFFERENT budgets** — `P12_DATAGEN_WALLCLOCK_CEILING_MIN` and `P12_MINISPIKE_WALLCLOCK_CEILING_MIN`, both 150. A conflation obvious at 150-vs-90 is invisible at 150-vs-150 | §7 Family-B near-miss |
+| 3 | **A ceiling with NO ENFORCER** — the mini-spike ceiling had none in the codebase at all until 12-15's runner was required to implement it | §7 Family-B near-miss |
+| 4 | **A REAL SPEND WITH NO CEILING AT ALL** — 12-16 simulates and scores at length, and **no Tier-1 constant governs it.** `P12_DATAGEN_WALLCLOCK_CEILING_MIN` fires only inside `generate_p12_pool`, which 12-16 never calls (it extends `harness.jl`'s `draw_simulate_infer`); `P12_MINISPIKE_WALLCLOCK_CEILING_MIN` is explicitly 12-15's three-arm run. **Yet 12-16's artifact schema records `elapsed_min` — a measured cost with nothing to compare it to.** | found 2026-07-31 |
+
+**The pattern: the ceilings were written where a spend was ANTICIPATED, not where spends actually
+occur, and their values were chosen before the thing they govern existed.** Entry 4 is the sharpest
+form — the schema author knew a cost was worth recording and recorded it, and no one noticed there was
+no bar for it to be recorded against.
+
+**Consequence for entry 4, stated so it is not mistaken for compliance:** a 12-16 run **cannot** be
+reported as "within budget" or "no breach", because there is no budget. It can only be reported as a
+**measurement**. Saying "no breach" would imply a bar was cleared that does not exist.
+
+**Duty on Phase 16:** report as one finding about budget-constant construction, not four slips. The
+generalisable rule: **a constant that records a cost must name the bar that cost is judged against, or
+it is telemetry rather than a budget — and telemetry must not be reported as compliance.**
 
 ## §8 Routing consequences of PROCEED
 
