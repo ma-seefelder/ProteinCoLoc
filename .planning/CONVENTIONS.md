@@ -345,3 +345,56 @@ assertion that gets relaxed until it passes has stopped asserting the wording.
 - **Existing consumers to read this way, not to change:** `test_p12_consts.jl` and
   `test_p12_decoupling.jl` both define `_strip_comment_lines` and use it for STRUCTURAL bans, which
   is the correct side of this rule and needs no edit.
+
+---
+
+## C-06 — a fixture for a BRANCH must sit clearly inside it, never on its boundary
+
+**Authorised 2026-08-01 by the phase-12 orchestrator. Stated phase-agnostically because the rule is
+about fixtures and floating-point, not about any one phase; the originating incident is cited below
+so it is not re-litigated by the next reader who finds the rule inconvenient.**
+
+A threshold written as an arithmetic expression **does not evaluate to the decimal it reads as**.
+When a test fixture is placed *exactly* on such a threshold, which side of the branch it lands on is
+decided by floating-point representation — **a property nobody intended to specify, and one the test
+was not written to check.**
+
+### The rule
+
+1. **A test of BRANCH BEHAVIOUR places its fixture unambiguously INSIDE the branch.** Use half the
+   tolerance, not the tolerance. Use `nominal - δ/2`, never `nominal - δ`.
+2. **Boundary behaviour may of course be tested — but then it is a BOUNDARY test, named as one**,
+   and its expected value must be derived *the same way the implementation derives it* rather than
+   assumed from the decimal the source appears to say.
+3. **The same applies to any fixture on an `==`, `<=` or `>=` frontier**, not only to tolerances:
+   equality on floats, a length exactly at a `>= n` cutoff, a count exactly at a cap.
+
+### Why it is dangerous rather than merely wrong
+
+**The suite stays GREEN.** A fixture that slips to the wrong side of a branch takes the surrounding
+assertions with it, and they remain mutually consistent — so the testset passes while exercising a
+branch other than the one its name claims. There is no red to investigate. It is discovered only by
+someone re-deriving the arithmetic by hand, or by a mutation test that fails to go red where
+expected.
+
+That is the same failure this project has repeatedly met at production scale: **a check that
+measures something other than what it names.** A boundary-straddling fixture is that failure in
+miniature, and harder to see precisely because nothing complains.
+
+### The originating incident
+
+`spike/test/test_p12_coverage.jl`, 12-16, 2026-07-31. A fixture intended to represent *"calibrated,
+at the edge of the tolerance band"* was written as `P12_COVERAGE_NOMINAL - P12_STAGE2_COVERAGE_TOST_DELTA`
+= `0.90 - 0.03`, which evaluates to **`0.8699999999999999`**. The implementation then computed
+`|coverage - nominal|` = **`0.030000000000000027`**, which is **greater** than the `0.03` tolerance —
+so the arm was **miscalibrated**, and the testset returned `:disqualified` where it meant `:fail`.
+
+It was found by **running** the test, not by reading it, and the surrounding assertions had already
+adapted to the wrong branch. The fix was to move the fixture to half the tolerance; **the tolerance
+itself was not touched**, which is the other half of the rule — *a threshold is never moved to make a
+test bite* (see the executor-briefing discipline on mutation testing).
+
+### Related
+
+Adjacent to **C-05** in origin: both came out of the same testset, both were found by execution
+rather than review, and both were repaired **at the mechanism** rather than by relaxing the check.

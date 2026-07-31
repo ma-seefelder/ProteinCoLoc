@@ -553,6 +553,16 @@ Reconstruct the `G x G` lattice field from a theta column's DCT coefficient rows
 INVERTED here (scattering each coefficient back to its flat mode index) before
 `p12_idct_vec` is applied.
 
+**THIS IS THE ONLY CORRECT WAY TO GET A FIELD BACK FROM A theta COLUMN. `p12_idct_vec` ALONE IS
+NOT.** That function expects FLAT mode-index order, a theta column is in SMOOTHNESS order, and the
+two are indistinguishable by length, element type and magnitude -- so the wrong call reconstructs a
+DIFFERENT FIELD silently, wrong by O(1) rather than by a rounding error, because a permutation is
+orthogonal. Every posterior read in this phase routes through HERE. The naming is deliberately
+MUTUAL: `p12_idct_vec` now points at this function and this function points back, because before
+`f039729` all three of `p12_theta_column`, `p12_idct_vec` and this one were individually correct
+while the COMPOSITION was documented nowhere -- and that gap is what produced the phase's second
+wrong-space defect.
+
 THIS IS AN EXACT ORTHONORMAL INVERSE, NOT AN APPROXIMATION. `p12_dct_matrix` is orthonormal
 (`C'C == I` to float tolerance), so `p12_idct_vec . p12_dct_vec` is the identity up to rounding and
 Parseval holds exactly. That is why D-07's no-lossy-transform rule is NOT engaged by this step: no

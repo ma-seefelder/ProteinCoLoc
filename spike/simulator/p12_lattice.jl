@@ -378,7 +378,21 @@ end
     p12_dct_vec(z; G = isqrt(length(z))) -> Vector{Float64}
 
 `p12_dct` on the COLUMN-MAJOR flat field vector, returning a column-major flat coefficient
-vector — the form θ rows are actually stored in.
+vector, in **flat mode-index order**.
+
+!!! warning "THIS IS NOT THE ORDER θ ROWS ARE STORED IN — ONE MORE STEP FOLLOWS"
+    An earlier version of this docstring called the return value *"the form θ rows are actually
+    stored in"*. **THAT WAS FALSE, and it is the sentence that licensed the wrong-basis defect**
+    repaired in `f039729`. `p12_theta_column` (`spike/data/p12_generate.jl:193`) applies
+    [`p12_dct_order`](@ref) to this output before storing it:
+
+        c = p12_dct_vec(vec(draw.z_field); G = G)[p12_dct_order(G)]
+
+    so **θ rows are in SMOOTHNESS order, this vector is in FLAT order, and the two differ** —
+    `p12_dct_order(8)` begins `[1, 2, 9, 10, 3, 17, …]`, not `[1, 2, 3, …]`.
+
+    To go from θ rows back to a field, use [`p12_region_field`](@ref) (`spike/p12/result.jl`),
+    which inverts the permutation first. See the warning on [`p12_idct_vec`](@ref).
 """
 function p12_dct_vec(z::AbstractVector; G::Integer = isqrt(length(z)))
     G * G == length(z) || throw(ArgumentError(
@@ -389,7 +403,31 @@ end
 """
     p12_idct_vec(c; G = isqrt(length(c))) -> Vector{Float64}
 
-Inverse of `p12_dct_vec`, on the same column-major flat layout.
+Inverse of [`p12_dct_vec`](@ref), on the same column-major **flat mode-index** layout.
+
+!!! danger "DO NOT PASS A θ COLUMN TO THIS FUNCTION — USE `p12_region_field`"
+    **θ rows are NOT in this layout.** They are `p12_dct_vec(...)[p12_dct_order(G)]` —
+    permuted into SMOOTHNESS order by `p12_theta_column` — and calling this function on them
+    reconstructs a **DIFFERENT FIELD**, silently.
+
+    **A θ column is indistinguishable from a flat coefficient vector by every property a
+    caller can check**: same length `G²`, same element type, same plausible magnitudes. Nothing
+    throws, nothing is `NaN`, and because a permutation is ORTHOGONAL the error is not a small
+    perturbation — the reconstruction is wrong by O(1). Measured on a real draw: exact to
+    `3.1e-15` through [`p12_region_field`](@ref), wrong by `3.17` through this function.
+
+    Use **[`p12_region_field`](@ref)** (`spike/p12/result.jl`), which scatters each coefficient
+    back through [`p12_dct_order`](@ref) *before* the inverse transform. This function is
+    correct **only** for a vector that came out of `p12_dct_vec` and was never permuted — e.g.
+    the truncation curve in `run_p12_minispike.jl`, which works in flat index space throughout.
+
+    **WHY THIS WARNING EXISTS.** The sentence above it was *locally true and licensed a false
+    inference*, which is worse than a missing check: a careful reader who verified the docstring
+    was **confirmed in the error**. `p12_theta_column` documents that it permutes and
+    `p12_region_field` documents that it inverts, but before `f039729` **neither named the
+    other**, so the composition was undocumented while all three functions were individually
+    correct. That gap produced the phase's second wrong-space defect
+    (`12-STAGE1-VERDICT.md` §7.4).
 """
 function p12_idct_vec(c::AbstractVector; G::Integer = isqrt(length(c)))
     G * G == length(c) || throw(ArgumentError(
