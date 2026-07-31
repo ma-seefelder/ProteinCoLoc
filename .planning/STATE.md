@@ -110,6 +110,132 @@ stated observation. `12-STAGE1-VERDICT.md` §7 carries the table.
 
 ---
 
+## ✅ RESOLVED 2026-07-31 (wave 8) — the NONE-BEATS-ABLATION blocker was ruled by the user: **DESCOPE ONTO THE D-13 ABLATION**
+
+**USER RULING: accept the negative; the full spatial map is given up and the D-13 ablation becomes the
+deliverable.** The blocker recorded at `### Blockers/Concerns` is resolved by this entry and is left
+standing there as the record of the halt.
+
+**THE RESULT HELD IN THREE RUNS.** `select_prior` returned `NONE-BEATS-ABLATION` in the original
+unseeded 18-epoch run, in a seeded 18-epoch control, and in a seeded 100-epoch treatment. **The
+qualifier "at mini-spike scale" stays on it.** Artifacts:
+`spike/validation/p12_minispike_report.rerun_control_18ep.jld2` and `…rerun_treatment_100ep.jld2`;
+verdict `12-15-RERUN-VERDICT.md`; reading pre-declared in `12-15-RERUN-PREDECLARATION.md` (`ea1d2b7`,
+15:37:40+02:00, **committed before both artifacts**). Commit `cb52271`.
+
+**THE UNDER-TRAINING HYPOTHESIS WAS TESTED AND ELIMINATED — this is what the ruling rests on.** The
+18-epoch run ended on its epoch budget, not on convergence, so "under-trained" was the strongest
+available objection to the negative. At a 100-epoch budget **early stopping fired at 56, 99 and 36
+epochs** and validation risk fell **11–27 %**. Trained to convergence, **no arm became admissible and
+no arm reached positive skill.** The best counter-explanation is gone, which is what turned a
+provisional negative into one worth acting on.
+
+**THE CAVEAT, AND IT MUST TRAVEL WITH THE NEGATIVE — THE DISQUALIFICATION WAS A CALIBRATION
+DISQUALIFICATION, NOT AN ACCURACY ONE.** At 100 epochs **both spatial arms BEAT the ablation on
+RMSE** — `:car` 0.99811 and `:gp` 1.10068 against `:none` 1.14663, i.e. by **12.95 %** and **4.01 %**.
+They were disqualified **solely on coverage**. And coverage **crossed the admissible band without
+landing in it**: all three arms **over**-cover at 18 epochs (0.99734 / 0.99998 / 0.97544) and all
+three **under**-cover at 100 (0.79816 / 0.80028 / 0.82403), against the band [0.87, 0.93]. **On this
+evidence admissibility tracks TRAINING DURATION, not the prior.** The honest statement is therefore:
+***no spatial arm was ever both calibrated and better than the ablation — as gated, by a gate whose
+behaviour on this evidence follows training duration.***
+
+**NAMED LIMIT, and a candidate for the `12-STAGE1-VERDICT.md` §7 families.** The Stage-2 coverage
+criterion is, on this evidence, **the same shape as the Stage-1 control ceiling: a criterion whose
+pass/fail tracks something other than what it was meant to measure.** We are **not** pursuing it, and
+not pursuing it is a choice this record shows rather than hides. The reason for refusing to hunt the
+epoch count that lands coverage inside the band, verbatim: **that would be tuning a model until it
+passes its own calibration gate — a gate that has then stopped measuring anything.**
+
+**A CLAIM IN `12-MINISPIKE-VERDICT.md` IS WITHDRAWN, AND THE WITHDRAWAL IS PART OF THE RULING'S
+BASIS.** That document's §1 called it "the stronger finding" that **no arm learned the field at all**
+— every arm worse than a constant-zero predictor. **THAT DOES NOT SURVIVE A RE-SEED.** At the *same*
+18 epochs with only the weight init changed, `:car` reaches skill **+0.08629**. "Every arm has
+negative skill" is a property of **one initialisation**, not of the method. **The robust claim that
+replaces it:** *no spatial arm is ever both calibrated and better than the ablation* — across the
+three runs `admissible` was `[:gp]`, `[]`, `[]` and `beats_ablation` was `false` every time. Recorded
+additively as `12-MINISPIKE-VERDICT.md` §7, with §1–§6 byte-unchanged.
+
+**THE INIT-VARIANCE RESULT, ON ITS OWN LINE.** Same pool, same 18 epochs, only the init different:
+`:car` RMSE **−36.68 %**, `:gp` **+51.05 %**, and **the two spatial arms swap which is worse**. That
+is **two orders of magnitude larger than the 0.33 % margin** that decided the earlier rule-3 branch.
+`12-MINISPIKE-VERDICT.md` §2.1 declined to read a ranking out of one run and argued from the
+mechanism; **that refusal is now observation rather than argument.** LIMIT CARRIED AS DECLARED: this
+is **n = 1 versus n = 1, it bounds nothing**, and nothing rests on it.
+
+**CARRIED VERBATIM, UNCHANGED BY THE RULING:** ***a comparison between two failed arms is not
+evidence about priors — the CAR-vs-GP question is UNRESOLVED, not answered.*** In the two new runs
+**neither** arm was admissible, which is *further* from a prior comparison than the original, not
+closer.
+
+**NOTHING WAS APPENDED OR RELAXED.** `p12_consts.jl` byte-unchanged; `P12_CHOSEN_PRIOR`,
+`P12_K_PROD`, `P12_D_PROD`, `P12_N_LOW` all absent, **all three sentinels intact**; `select_prior`
+untouched; `src/`, `spike/Project.toml`, `spike/Manifest.toml`, `artifacts/`, `spike/data/cache/p11/`
+clean. `K = 35` reported, **not** appended. Budgets, each against its own constant: `elapsed_min`
+**11.29** and **29.29** against `P12_MINISPIKE_WALLCLOCK_CEILING_MIN = 150`; `datagen_min` **per arm**
+against `P12_DATAGEN_WALLCLOCK_CEILING_MIN = 150` (0.09 / 0.00 / 0.00 in both runs) — their sum is
+not a quantity anything compares to 150. `test_p12_train.jl` 107 pass, 0 fail.
+
+### ⛔ NEW BLOCKER OPENED BY THIS RULING — THE STAGE-2 DESCOPE HAS NO EXECUTABLE ROUTE. USER DECISION REQUIRED.
+
+**The plans do not cover the state the phase is actually in, and this is reported rather than
+improvised.** Two descopes are defined; neither is ours:
+
+| route | trigger | producer of the D-13 bundle | consumer |
+|---|---|---|---|
+| **Stage-1 descope** | `12-STAGE1-VERDICT.md` carries `VERDICT: DESCOPE` | **12-14 Task 3** fires | 12-16 → `:descope_ablation_only` |
+| **Stage-2 descope** | 12-16's `lro_pass` returns `:fail`/`:disqualified` **after a full two-arm training** | — | spend `P12_ITERATION_ALLOWANCE` or descope (`12-VALIDATION.md:140`) |
+| **ACTUAL STATE** | Stage-1 **PROCEED** + mini-spike selects **no prior** | **NONE — no plan fires** | 12-16 is specified to **THROW** |
+
+- **`p12_stage1_verdict()` returns `:proceed`** (`12-STAGE1-VERDICT.md:3` = `VERDICT: PROCEED`), so
+  `p12_require_proceed` still **admits** 12-17/12-18/12-19/12-20. Nothing is mechanically blocked —
+  but **12-17 is impossible as written** (`12-17:137` keys its 50,000-pair pool on `P12_CHOSEN_PRIOR`,
+  which does not exist).
+- **12-14 Task 3 is the only executable producer of the D-13 deliverable, and it is keyed on
+  `:descope`.** On `:proceed` it does nothing — it already ran as a no-op (`12-14-SUMMARY.md:31`), and
+  re-running it changes nothing. **It has no branch for this state.**
+- **12-16 resolves its bundle by FILE EXISTENCE, not by the verdict** (`12-16-PLAN.md:77-81`):
+  `p12_train_full_report.jld2` → `:full_two_arm`; else the ablation bundle recorded in
+  `p12_ablation_report.jld2` → `:descope_ablation_only`; **else THROW**, because "a third, unhandled
+  case is not permitted to fall through silently". **Neither file exists.** So the descope *consumer*
+  is intact and runnable; only the *producer trigger* is mis-keyed.
+- **`12-CONTEXT.md:310-312` defines D-12 Stage 1 as the CAR-vs-GP mini-spike itself** — *"If neither
+  does, descope before the full training run"* — which is verbatim what happened. **The implemented
+  Stage-1 gate is a different measurement** (12-11's ridge borrowing probe) that already returned
+  PROCEED. That divergence between the specified and the implemented gate is the root of the gap.
+- **`12-15-PLAN.md:137-139`** requires this outcome be *"carried into the Stage-2 verdict, not silently
+  overwritten"*. The Stage-2 verdict lives in 12-16, which cannot produce one without a bundle.
+
+**WHAT WOULD BE IMPROVISING, AND WAS NOT DONE:** writing `VERDICT: DESCOPE` into
+`12-STAGE1-VERDICT.md` to make 12-14 Task 3 fire — that would be **falsifying a gate record to obtain
+a route**, and the Stage-1 adjudication is on the record; running Task 3's `:descope` body manually
+under a `:proceed` verdict; or inventing a `stage2_gate` value 12-16 does not define.
+
+**THE DECISION, FOR THE USER.** The D-13 recipe **is** fully defined executably — 12-14 Task 3's
+`:descope` body specifies pool generation (`generate_p12_pool(P12_MINISPIKE_N; arm = :none)`, F5
+mixture), training, durable save under `P12_PRIMARY_CHECKOUT` with `sha256`, and the
+`p12_ablation_report.jld2` schema; 12-16 then scores it with `spat07_scope = :reduced_descope` and
+`stage2_gate = :not_applicable_descope`. **What is missing is only the authorisation to spend that
+compute (~11 min datagen + training) while the Stage-1 verdict reads `:proceed`.** Note
+`train_p12_npe`'s `_assert_spend_allowed` **permits** `arm = :none` here, so it is not blocked — it is
+simply not instructed.
+
+**Two consequences the user must also rule on:** (a) **SPAT-08** (12-20's radial/offset/ε guards) has
+**no descope coverage anywhere** and `12-11-PLAN.md:257` says to defer it **to v2.1** — but that
+instruction is written for a *Stage-1* descope and does not literally apply here; **SPAT-07** would be
+carried in reduced scope by 12-16. (b) **D-13 shipped from this route is the SPIKE-SCALE fallback**
+(10,000 pairs), not the 50,000-pair version — `12-CONTEXT.md:323-324` warns the Stage-1-descope
+ablation "exists only at spike scale", and the same reduction applies here.
+
+**`P12_ITERATION_ALLOWANCE` — STATUS IS ITSELF AN OPEN QUESTION, flagged rather than ruled.** The
+constant says the single allowance "is cheapest spent BEFORE the mini-spike — on the D-12 Stage-1
+arm". The 100-epoch re-run **was** a documented iteration on the mini-spike arm with a pre-declared
+reading, and the honest reading is that **it should be counted as SPENT**; it was not a threshold
+relaxation. **This is the user's call, not an executor's**, and it does not block the ruling either
+way.
+
+---
+
 ## ⛔ BLOCKER (HISTORICAL — RESOLVED ABOVE 2026-07-31; retained as the record of the halt)
 
 **12-11 measured the Stage-1 gate and deliberately wrote NO verdict.** `12-STAGE1-VERDICT.md` does
@@ -1191,6 +1317,8 @@ None yet.
 - Phase 11 plan 11-07: the SC1g lambda-ablation tripwire FAILED and the prescribed diagnosis came back GREEN. Datagen (50,000 pairs, F5 mixture) took 56.37 min vs P11_DATAGEN_WALLCLOCK_CEILING_MIN = 150 (ceiling NOT exceeded, image-size arm NOT downgraded). Training completed CPU-only in 16.08 min at d_in = 129, D = 8; validation risk 15.6452 -> 6.0490 (best epoch 22), early stopping epoch 63 of 300. spike/test/test_lambda_ablation.jl then failed (exit 1, 9 pass / 8 fail): per-dataset delta-rho posterior-SD ratios 1.109 / 0.987 / 0.936 and 90% HDI ratios 1.122 / 0.984 / 0.940 against the pre-registered P11_LAMBDA_ABLATION_FACTOR = 2.502. The plan's prescribed diagnosis is green on all three legs: (a) on the REALIZED pool 0 of 50,000 samples violate |shift| <= lambda, cor(lambda,|shift|) = 0.604/0.611 vs a > 0.3 bar, cor(lambda,|chromatic_eps|) = -0.007; (b) training inputs were 129 rows with row 129 varying over 39,968 of 40,000 columns; (c) augment_input ran AFTER standardization (row 129 == encode_lambda(lambda) exactly, rows 1:128 == standardized summary exactly). A fourth diagnostic settles the ambiguity: the shift marginals, whose lambda response is analytically known, widen by 4.84/6.99/8.05 (dx) and 3.98/6.52/9.05 (dy) against an ideal prior-SD ratio of 12.0. THE LAMBDA CONDITIONING IS ALIVE AND USED; it is the rho_true width that does not track lambda (1.20 / 1.06 / 0.98). Consequence: wave 7 (plan 11-08, the SC2 ladder) stays GATED and no ladder was run; waves 8 and 9 (11-09, 11-10, 11-11) are gated behind it. Nothing was relaxed: P11_LAMBDA_ABLATION_FACTOR unchanged, LAMBDA_MAX unchanged (the R11 reduce-LAMBDA_MAX remedy was NOT executed - premise falsified, LAMBDA_MAX is Tier-1 pre-registration, and a narrower span makes the bar harder), no capacity raised, no re-seed, no re-run. p11_consts.jl and src/ byte-unchanged. P11_ITERATION_ALLOWANCE remains 1 of 1 UNSPENT. DECISION REQUIRED (user/orchestrator, not an executor call): SC1g's statistic is delta-rho width, the same quantity SC2 measures, so as authored it cannot separate "conditioning dead" from "effect null" - the separation its own header claims. Options: (i) re-scope SC1g onto the shift marginals (diagnostic d) as a corrected liveness tripwire, keeping delta-rho as an SC2 question; (ii) read the flat rho response as the SC2 result and proceed to the ladder to measure it at pre-registered scale; (iii) spend P11_ITERATION_ALLOWANCE. Reusable at zero further compute for any option keeping LAMBDA_MIN/LAMBDA_MAX and the F5 mixture: the 54 MB pool (spike/data/cache/p11/, untracked, content-hash-keyed on lambda_max) and spike/npe/p11_research_npe.jld2 (4,933,362 bytes, committed, generated 2026-07-27T13:49:47.473Z). Full detail: .planning/phases/11-registration-and-chromatic-uncertainty-as-latent/11-07-SUMMARY.md
 
 - **Phase 12 plan 12-15 (wave 8): `SELECTED PRIOR: NONE-BEATS-ABLATION`. BLOCKS WAVE 9 ONWARD — USER RULING REQUIRED.** At matched induced lag-1 correlation through a full-rank `K = P12_K_DEV = 63` head, neither the CAR nor the GP lattice prior beats a neutralized prior at mini-spike scale. Rule 3 of the pre-registered `select_prior` fired: the best admissible arm (`:gp`, pooled per-region RMSE **1.06141**) does not beat the neutralized ablation (**1.05793**). Per-arm — car RMSE 1.43483 / coverage 0.99981 / **inadmissible**; gp 1.06141 / 0.89666 / admissible; none 1.05793 / 0.95872. **The load-bearing finding is not the ordering: ALL THREE ARMS HAVE NEGATIVE SKILL** against a constant-zero predictor (car −0.44305, gp −0.06856, none −0.06181; trivial RMSE ≈ 0.9943 = the field's own marginal sd). The best net is 6.2 % *worse* than predicting nothing. **NO TIER-2 CONSTANT WAS APPENDED AND NO SENTINEL REMOVED** — `P12_CHOSEN_PRIOR`, `P12_K_PROD`, `P12_D_PROD`, `P12_N_LOW` do not exist; all three negative assertions stand; `p12_consts.jl` byte-unchanged; `src/`, `spike/Project.toml`, `spike/Manifest.toml`, `corpus/`, `spike/data/cache/p11/` untouched. Budgets, separately and each against its own constant (both read 150, which is what hides a conflation): `elapsed_min` = **10.667** vs `P12_MINISPIKE_WALLCLOCK_CEILING_MIN` = 150, in budget, `BLOCKER` guard did not fire; `datagen_min` PER ARM, each judged independently inside `generate_p12_pool` vs `P12_DATAGEN_WALLCLOCK_CEILING_MIN` = 150 — car 0.084, gp 0.000, none 0.000 (pools already complete, resume-by-skip) — their sum is not a quantity anything compares to 150. No contention inflation, measured not assumed (train+score 10.574 vs the first run's 10.156, ratio 1.041). **THE PREDECESSOR'S RUN (2026-07-31T09:51Z) WAS HARVEST-READY AND SCIENTIFICALLY VOID, AND WAS DISCARDED UNHARVESTED.** It scored STANDARDIZED posterior draws against RAW truth — `run_p12_minispike.jl` never applied `bundle.theta_zt`, violating the contract written verbatim at `spike/npe/infer.jl:35-38`. It passed every structural check (all 40 keys, index disjointness, per-region pooling, budget reconciling to 0.006 min) **because none of those look at scale**. It selected **CAR** with `beats_ablation = true`, `K_PROD = 35`, `N_LOW = 3`; the corrected run reverses all of it and the two spatial arms swap admissibility (car 0.92730 → 0.99981 out of band; gp 0.99983 → 0.89666 in band). Had it been harvested, `P12_CHOSEN_PRIOR = :car` and `P12_N_LOW = 3` would have entered an append-only pre-registration permanently — and `n_low = 3` was not "the field is smooth" but "the bar equals the field's own marginal sd because the posterior carries no information in the space it was scored in", a number that would have reached the manuscript as a physical finding about biology. The truncation curve is byte-identical across both runs (arithmetic on the drawn field ensemble, touching no net) — the one quantity the defect could not reach, which makes the diagnosis a control rather than a coincidence. **SECOND FINDING, RECORDED NOT FIXED: training is NOT seeded.** `build_p12_estimator` sets no RNG and `NeuralEstimators.train` is called without one (`train_p12_npe.jl:465-469`), so Flux weight init draws from the unseeded global RNG; only the masking streams and the deterministic tail-block split are reproducible. The margin deciding rule 3 is **0.33 %** and is therefore not a stable quantity — the verdict does not rest on it (NONE-BEATS-ABLATION holds under any reordering of `:gp`/`:none`, because the negative skill carries it) but **no ranking among the three arms is established by this run**. This deviates from the project's fixed-seed constraint; it is 12-14's already-committed surface. **DECISION REQUIRED (user, not an executor or orchestrator call): 12-17 must not be started — it is not merely inadvisable but impossible as written, since `12-17:137` generates the 50,000-pair pool with `arm = P12_CHOSEN_PRIOR`, a constant that does not exist on this branch; guessing it burns ~73 min into a directory keyed on a guess. Waves 10-12 (12-16, 12-18/12-19, 12-20) consume a trained spatial bundle this run does not license. The D-13 ablation is now the likely deliverable.** Options: (i) accept the mini-spike result and re-scope the phase onto the D-13 ablation deliverable; (ii) treat the negative skill as a capacity/epoch artifact (18 epochs, 10,000 samples, 72-row full-rank head) and authorize a larger mini-spike before re-deciding — this is a compute spend and touches `P12_ITERATION_ALLOWANCE` (1, UNSPENT); (iii) seed training first so the 0.33 % margin becomes a measurable quantity, then re-run. Nothing was relaxed, no threshold moved, no arm dropped, no pool shrunk, `select_prior` byte-identical. Full detail: `.planning/phases/12-spatial-colocalization-map/12-MINISPIKE-VERDICT.md` and `12-15-SUMMARY.md`. Commits `f076da6` (fix + mechanical contract), `6176849` (artifact + verdict + summary), `605062e` (plan/briefing edits).
+
+- **↑ RESOLVED 2026-07-31 by the user ruling recorded in `## ✅ RESOLVED 2026-07-31 (wave 8)` above: DESCOPE ONTO THE D-13 ABLATION.** Option (i) of the three listed above was taken; option (ii) was executed first as one pre-declared run and came back negative, which is what licensed (i). The entry above supersedes two claims made in this bullet: **(1) "ALL THREE ARMS HAVE NEGATIVE SKILL" does NOT survive a re-seed** — at the same 18 epochs with only the init changed, `:car` reaches skill **+0.08629**; the robust claim is instead *no spatial arm is ever both calibrated and better than the ablation*. **(2) The disqualification at the converged budget is a CALIBRATION disqualification, not an accuracy one** — at 100 epochs both spatial arms BEAT the ablation on RMSE (by 12.95 % and 4.01 %) and were rejected solely on coverage. This bullet is retained unedited as the record of the halt. **A NEW BLOCKER IS OPEN**: the Stage-2 descope has no executable route (12-14 Task 3 is keyed on `:descope`, the Stage-1 verdict is `:proceed`, and 12-16 is specified to throw with neither bundle present) — see the section above; it needs a user decision.
 
 ### Quick Tasks Completed
 
