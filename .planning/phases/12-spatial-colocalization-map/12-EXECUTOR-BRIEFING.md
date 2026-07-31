@@ -190,6 +190,32 @@ The pool regenerates **byte-identically** from the counter-based Philox seed. Th
 compute cost, not a re-seed — but at ~73 min for 50k it is **not free**, and must never be recorded
 as free.
 
+### INDEX-KEYED GENERATION HAS TWO FACES, AND THE PHASE-11 STORY TEACHES ONLY ONE OF THEM
+
+`generate_p12_sample(idx)` keys its RNG on `p12_datagen_rng(idx)` — **the global index alone** — and
+`generate_p12_pool(n)` always generates indices `1:n`. That single property cuts both ways, and a
+reader who knows only the Phase-11 half will reach exactly the wrong conclusion about the other:
+
+| Face | Consequence |
+|---|---|
+| **The guarantee** (the Phase-11 story) | A lost pool regenerates **byte-identically**. That is why rebuilding Phase 11's destroyed 54 MB pool was a *compute cost, not a re-seed*, and cost no iteration allowance. |
+| **The trap** (found in wave 8) | Two pools at the **same arm and image size** share samples `1:min(n,m)` byte-identically. **A "separate scoring pool" is a SUPERSET of the training pool, never a held-out set.** There is no index-offset keyword to escape it, and changing arm or imsize to force a different content hash makes it a *different experiment*, not a held-out set. |
+
+**Therefore: a held-out block must be CARVED OUT OF THE ONE POOL, never generated as a second pool.**
+`train_p12_npe`'s `pool_indices` keyword exists for exactly this: pass the remainder, score on the
+complement, and assert disjointness against the bundle's recorded `train_indices` / `val_indices`.
+
+**Exclude the VALIDATION block too, not just the training block.** It drives early stopping inside
+`NeuralEstimators.train`, so it is contaminated for model selection — a subtler leak that passes
+every index check, because those indices genuinely *are* disjoint from the training set.
+
+Verified 2026-07-31: sample 7 reproduces identically across calls and differs from sample 8; the
+sweep of every other pool consumer came back **clean** (12-16/18/19 draw fresh on the *validation*
+stream, which is asserted disjoint from the datagen stream; 12-11's rungs differ per pin and are
+scored within-rung). One latent hazard is named there: 12-17's 50k pool contains 12-15's 10k pool as
+indices `1:10000`, harmless as the plans stand but a real leak if anything ever scores a
+12-17-trained net on a 12-15 index range.
+
 ### Two traps 12-09 found that are aimed at LATER plans — read if you generate a pool
 
 1. **`p12_pool_dir` CREATES the directory it resolves.** So `isdir(...)` is `true` for a pool that
