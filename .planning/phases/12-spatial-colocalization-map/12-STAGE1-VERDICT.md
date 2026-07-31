@@ -375,9 +375,28 @@ baseline, the headline result does not depend on the per-bin table, and the arti
 metric as run. The trap is documented, not tuned away — which is the whole difference between a
 documented artifact and a fitted one.
 
-Two families, three root-cause instances in Family B and two in Family A — and every one was caught
-by the same mechanism: writing the claim down in advance made it checkable against something outside
-itself.
+**A Family-B NEAR-MISS, recorded as evidence that the family is a LIVE hazard rather than a
+historical list.** In wave 8 the executor described ~11 min of datagen as leaving the net training
+*"as the dominant cost against the 150-min ceiling"* — conflating **two separate budgets that
+happen to carry the same number**:
+
+```
+P12_DATAGEN_WALLCLOCK_CEILING_MIN   = 150   # p12_consts.jl:476
+P12_MINISPIKE_WALLCLOCK_CEILING_MIN = 150   # p12_consts.jl:477
+```
+
+They govern different things and are enforced differently: the datagen ceiling is checked **inside
+`generate_p12_pool`, per call, by projection** (`p12_generate.jl:603, 665`), so each arm's pool is
+judged on its own; the mini-spike ceiling governs 12-15's **three-arm training run** and has **no
+enforcer in the codebase at all** — 12-15's runner is required to implement it. Caught in review
+before any number was reported against the wrong bar, so it is **not** a fourth instance. It is
+recorded because **identical values are one of the conditions that hide a Family-B error**: a
+conflation that would be obvious at 150 vs 90 is invisible at 150 vs 150, and survives review
+precisely because both numbers check out.
+
+Two families, three root-cause instances in Family B (plus this near-miss) and two in Family A — and
+every one was caught by the same mechanism: writing the claim down in advance made it checkable
+against something outside itself.
 
 Two further things must be said about the list together, and neither excuses the other.
 
