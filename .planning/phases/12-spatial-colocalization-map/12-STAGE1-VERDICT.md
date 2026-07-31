@@ -424,6 +424,47 @@ surfaced two recurring design errors, both caught before either corrupted a resu
 mechanism of each family, the common licensing standard above, and Family A's rule verbatim: *a
 control must be measurable when the effect under test is absent, or it is not a control.*
 
+### §7.1 A THIRD family, added 2026-07-31 by 12-15: STRUCTURAL VERIFICATION CANNOT SEE A WRONG-SPACE ERROR
+
+Families A and B are both about **bars**. This one is about **verification itself**, and it is the
+generalisable lesson of the 12-15 episode.
+
+12-15's first run produced an artifact that was **complete, internally consistent, and scientifically
+void**. It scored standardized posterior draws against raw truth, having never applied
+`bundle.theta_zt` (`spike/npe/infer.jl:35-38`). It nonetheless passed **every** check the phase knew
+how to make:
+
+- all 40 expected keys present, `schema_version` correct;
+- held-out indices disjoint from `train_indices` **and** `val_indices`, all three arms, zero overlap;
+- 64 per-region values pooling **exactly** to the reported scalar, every arm;
+- the wall-clock budget reconciling to **0.006 min** against its own parts.
+
+**It passed all of them because none of them look at SCALE.** That is the family, stated generally:
+
+> **Every structural property of a result — cardinality, disjointness, aggregation identity,
+> conservation, internal reconciliation — is PRESERVED BY AN AFFINE TRANSFORM OF THE VALUES. So no
+> amount of structural verification can detect that the numbers are in the wrong space. A structural
+> check answers "is this table well-formed?", never "is this table about the right quantity?"**
+
+The failure mode this creates is worse than a loud error: **it produces an artifact that looks
+harvestable.** Had it been harvested, `P12_CHOSEN_PRIOR = :car` and `P12_N_LOW = 3` would have entered
+an **append-only** pre-registration permanently, and `n_low = 3` — which meant only "the bar equals
+the field's own marginal sd because the posterior carries no information in the space it was scored
+in" — would have reached the manuscript as a physical finding about biology.
+
+**The cheap fix is a check that DOES look at scale: report the null predictor's score beside your
+own.** `trivial_rmse` costs one line. An RMSE reported alone is uninterpretable; reported beside what
+a *constant* predictor achieves it is self-checking, because "60 % worse than predicting zero" is not
+a number a trained model can produce in the right space. It is now mandatory for every
+`spike/validation/run_p12_*.jl` runner that reports an RMSE, enforced by a sweep in
+`test_p12_train.jl` rather than by prose — **because prose is exactly what failed here.** The contract
+existed, was written down, was honoured by `infer.jl:110,122` and `benchmark.jl:188`, and was violated
+silently by the one consumer that did not read it.
+
+**Duty on Phase 16:** report this as the third family. Families A and B are about writing bars down
+correctly; this one is about the limits of checking. A referee who is told "we verified the artifact"
+should be told *which* class of error that verification could and could not have caught.
+
 ## §8 Routing consequences of PROCEED
 
 - `p12_stage1_verdict()` now returns `:proceed`, so `p12_require_proceed` admits **12-17, 12-18,
