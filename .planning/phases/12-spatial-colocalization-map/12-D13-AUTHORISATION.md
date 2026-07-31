@@ -99,11 +99,21 @@ is the reduced release, and any claim made from it inherits that limit.
    reported. The artifact carries honest quantiles, a
    `realized_r1_degenerate_at_ablation_r1 = false` flag, and a `neutralization_mechanism` field.
 
-3. **Epochs = 100, not 12-15's 18.** The re-run established that at an 18-epoch budget every arm ends
-   **on its budget** rather than on convergence, while at 100 the `:none` arm stops early at **36** —
-   it converges. **A shipped deliverable should be trained to convergence, not halted by its budget.**
-   The budget and the per-epoch `risk_trace` are both persisted, so the actual stopping epoch is
-   auditable after the fact.
+3. **DECLARED DEVIATION FROM THE PLAN'S DEFAULT — EPOCHS = 100, NOT 12-15's 18. A LATER READER MUST
+   NOT ASSUME PLAN DEFAULTS WERE USED.** The re-run established that at an 18-epoch budget every arm
+   ends **on its budget** rather than on convergence, while at 100 the `:none` arm converges and
+   early-stops. **A shipped deliverable should be trained to convergence, not halted by its budget.**
+
+   **REALIZED, FROM THE PERSISTED `risk_trace`: the budget was 100 and training stopped at epoch
+   27.** (`risk_trace` is 28 × 2 — row 1 is the initial validation risk, then 27 epochs.) **The real
+   cost is 27 epochs, not 100**; the budget is a ceiling that was not reached, which is the whole
+   point of setting it above the expected stopping point. Final train 73.549 / val 90.382,
+   **val/train = 1.2289**.
+
+   Note the stopping epoch differs from the 36 observed for `:none` in the 12-15 treatment. That run
+   trained on 9,000 samples of a **pinned 512²** pool; this one trains on the full 10,000 of the
+   **F5 image-size mixture**. Different data, so a different stopping point — expected, and recorded
+   so the two are not read as inconsistent.
 
 ## 6. `P12_ITERATION_ALLOWANCE` — COUNTED AS **SPENT**
 

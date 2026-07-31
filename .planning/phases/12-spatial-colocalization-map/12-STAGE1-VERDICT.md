@@ -398,6 +398,34 @@ Two families, three root-cause instances in Family B (plus this near-miss) and t
 every one was caught by the same mechanism: writing the claim down in advance made it checkable
 against something outside itself.
 
+**A FOURTH FAMILY-B INSTANCE, added 2026-07-31 — and it UPDATES THE COUNT in the paragraph above to
+four in Family B.** Recorded here rather than by editing that sentence, so the record stays additive.
+
+**12-14 Task 3's `realized_r1_quantiles` acceptance criterion cannot be satisfied by Task 3's own
+instruction.** The criterion (`12-14-PLAN.md:410-411`) requires the quantiles be *"degenerate at
+`P12_ABLATION_R1`"* (= 0.0), *"proving the ablation really was trained on the neutralized prior"*. The
+instruction (`12-14-PLAN.md:377`) is `generate_p12_pool(P12_MINISPIKE_N; arm = :none)`, which leaves
+`r1 = nothing` — **drawn** from `Uniform(P12_R1_MIN, P12_R1_MAX)`.
+
+**The bar is sound; it was built for a mechanism this generator does not use.** Neutralization here is
+**structural**: `p12_lattice.jl:311` returns `Symmetric(Matrix(1.0I, G*G, G*G))` for `arm === :none`
+**whatever r₁ is**. Pinning r₁ is simply not how the `:none` arm is neutralized, so a test on r₁'s
+distribution measures nothing about neutralization.
+
+**Verified by execution, not by reading** — twice. First against 12-15's existing `:none` pool
+(r₁ = 0.078, 0.120, 0.908, plainly not 0.0), and then confirmed by the D-13 production run itself,
+whose realized quantiles are **[0.05017, 0.27345, 0.49885, 0.72227, 0.94992]** — a clean uniform,
+exactly as the instruction implies and exactly what the criterion forbids.
+
+**The disposition, and why it is the Family-B-correct one:** the criterion's **purpose** — evidence
+that the prior really was neutralized — **is met by the arm itself**, and better than r₁ could ever
+show it. Its **literal test** is a proxy the generator never touches. **The instruction was followed
+and the truth recorded** — honest quantiles, an explicit
+`realized_r1_degenerate_at_ablation_r1 = false` flag, and a `neutralization_mechanism` field naming
+`p12_lattice.jl:311`. **Pinning r₁ to make the check pass would have been moving the mechanism to
+satisfy the measurement** — the precise inversion of what a check is for, and a thing this phase has
+refused three times now under other names.
+
 Two further things must be said about the list together, and neither excuses the other.
 
 **The honest framing.** Every one of the four was caught **before it corrupted a result**, and it was
