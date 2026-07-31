@@ -465,6 +465,57 @@ silently by the one consumer that did not read it.
 correctly; this one is about the limits of checking. A referee who is told "we verified the artifact"
 should be told *which* class of error that verification could and could not have caught.
 
+### §7.2 A FOURTH family, added 2026-07-31 by the 12-15 descope: ONE NAME, TWO MEASUREMENTS, IN TWO PLACES
+
+Families A and B are about **bars**; §7.1 is about **verification**. This one is about **naming**, and
+it is the only entry so far that reached into *routing* rather than into a number.
+
+**`12-CONTEXT.md:310-312` defines D-12 Stage 1 as the CAR-vs-GP mini-spike itself:**
+
+> *"**Stage 1 (cheap, before the training spend):** at the CAR-vs-GP mini-spike, require the better
+> prior to show a stated coverage improvement over the neutralized-prior ablation on simulated data.
+> **If neither does, descope before the full training run.**"*
+
+**The implemented Stage-1 gate is a different measurement entirely** — 12-11's ridge borrowing probe,
+whose `VERDICT: PROCEED` is the only thing `p12_stage1_verdict()` reads. Both are called "D-12
+Stage 1". They measure different quantities, at different times, on different data.
+
+**The consequence was not cosmetic.** On 2026-07-31 the mini-spike returned `NONE-BEATS-ABLATION` in
+three runs — *precisely the condition `12-CONTEXT` names as the Stage-1 descope trigger* — while the
+implemented gate had already returned PROCEED. So the phase entered a state **no plan step routes**:
+12-14 Task 3, the only executable producer of the D-13 deliverable, is keyed on `:descope` and did
+nothing; 12-17 is impossible as written; and 12-16 is specified to throw. **The descope had to be
+authorised by a standalone user ruling** (`12-D13-AUTHORISATION.md`) because no branch existed to
+carry it.
+
+> **The family, stated generally: when a pre-registered decision point is given a NAME, and that name
+> is later attached to a different measurement, the pre-registration silently acquires two readings —
+> and nothing fails loudly, because each reading is individually coherent. The divergence is visible
+> only where the two are put side by side.**
+
+**Why it survived four review passes:** each document is internally consistent. `12-CONTEXT` describes
+a coherent Stage 1; 12-11 implements a coherent Stage 1; `p12_stage1_verdict` reads a coherent
+verdict. **Nothing is wrong within any one file.** This is the same structural blindness §7.1
+identifies for scale — a property that no single-document check can see, because it is a property of
+the *relation between* documents.
+
+**The near-miss that makes it concrete:** the available shortcut was to write `VERDICT: DESCOPE` into
+`12-STAGE1-VERDICT.md`, which would have fired Task 3 and required no new code. **That would have
+falsified a gate record — a ruling the user made on independent evidence, which did not change — in
+order to obtain a route.** It was refused, and the descope was carried by a new record instead. Recorded
+because the cheapness of that shortcut is exactly what makes this family dangerous: the wrong fix is
+one line, and it looks like routing maintenance.
+
+**Distinct from Family B**, which is a quantity compared against a bar built for a different purpose.
+Here **no bar was misapplied at all** — the correct bar was applied to the correct quantity, and the
+*name* of the gate was what carried two meanings.
+
+**Duty on Phase 16:** report as the fourth family, and report the count honestly — this makes **five
+root-cause instances across four families**, all surfaced by pre-registration and all caught before
+corrupting a result. The mitigation is cheap and generalisable: **when a decision point is renamed,
+re-sited, or re-implemented, the document that originally defined it must be amended in the same
+commit, or the two definitions must be explicitly cross-referenced.**
+
 ## §8 Routing consequences of PROCEED
 
 - `p12_stage1_verdict()` now returns `:proceed`, so `p12_require_proceed` admits **12-17, 12-18,
