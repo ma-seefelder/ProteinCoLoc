@@ -478,6 +478,61 @@ const _P12TRAIN_CODE = _p12train_strip_comments(_P12TRAIN_SRC)
         @test !occursin("trivial", body)
     end
 
+    @testset "the mini-spike inverts the SMOOTHNESS PERMUTATION before the iDCT (Pitfall 6)" begin
+        # THIS TESTSET IS THE FALSIFIABLE HALF OF THE 2026-07-31 REPAIR. Its first block goes RED
+        # the moment the scorer reverts to a bare `p12_idct_vec` on a theta coefficient column, and
+        # the numbers below are what make it red: they are measured, not asserted.
+        #
+        # WHY A NUMERIC TEST AND NOT ONLY A SOURCE-TEXT ONE. `run_p12_minispike.jl` legitimately
+        # CONTAINS `p12_idct_vec` -- the truncation curve uses it correctly, in FLAT index space --
+        # so "does the file mention the right function" cannot separate the correct use from the
+        # wrong one. Only arithmetic can.
+
+        # --- 1. The two reconstructions are DIFFERENT OBJECTS, and only one is the inverse. ------
+        # Built from a REAL prior draw through the REAL assembler, so this exercises the actual
+        # generation path rather than a hand-made coefficient vector.
+        draw  = sample_p12_prior(p12_datagen_rng(7); arm = :car)
+        th    = p12_theta_column(draw)
+        truth = vec(draw.z_field)
+        nreg  = P12_G^2
+
+        correct = vec(p12_region_field(th[1:nreg]; G = P12_G))   # inverts the permutation
+        naive   = p12_idct_vec(th[1:nreg]; G = P12_G)            # does NOT -- the defect
+
+        @test maximum(abs, correct .- truth) < 1e-12             # ~3.1e-15 measured
+        @test maximum(abs, naive   .- truth) > 1.0               # ~3.72 measured
+
+        # The consequence, stated as the quantity that actually misled the run: against a SCRAMBLED
+        # truth even a perfect posterior scores WORSE than predicting a constant zero.
+        naive_rmse   = sqrt(mean(abs2, naive .- truth))
+        trivial_rmse = sqrt(mean(abs2, truth))
+        @test naive_rmse / trivial_rmse > 1.2                    # 1.302 measured
+
+        # The permutation is not the identity -- if it ever became so, the two paths would agree
+        # and the tests above would pass VACUOUSLY.
+        @test p12_dct_order(P12_G) != collect(1:nreg)
+        @test p12_dct_order(P12_G)[1] == 1                       # why c0 survived the defect
+
+        # --- 2. The scorer calls the ONE inverse and does not re-implement it. -------------------
+        src = _p12train_strip_comments(
+            read(joinpath(@__DIR__, "..", "validation", "run_p12_minispike.jl"), String))
+        @test occursin("p12_region_field(", src)
+        # The scoring loop must not scatter coefficients itself: a second inverse in this repo is
+        # what produced the defect in the first place.
+        fn_start = findfirst("function _p12ms_score_arm", src)
+        @test fn_start !== nothing
+        fn_end = findnext("\nend", src, last(fn_start))
+        score_body = src[first(fn_start):last(fn_end)]
+        @test !occursin("p12_dct_order", score_body)
+
+        # --- 3. The head-width guard (H1) exists and names what it protects. ---------------------
+        # Rows 1:64 are the field ONLY at the full-rank head; at K_dev < 63 they run into the
+        # nuisances. Asserted on the source because the run that would trip it is 12-17's, not one
+        # this suite can afford to execute.
+        @test occursin("bundle.K_dev == P12_K_DEV", src)
+        @test occursin("bundle.D == P12_D_MINISPIKE", src)
+    end
+
     # =====================================================================================
     # THE θ-SPACE CONTRACT, MADE MECHANICAL — a SWEEP over every Phase-12 reporting runner.
     #
