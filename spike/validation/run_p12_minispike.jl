@@ -96,6 +96,7 @@ using Dates
 using Statistics
 using LinearAlgebra
 using StatsBase          # reconstruct -- the INVERSE theta-standardization (Pitfall 5, below)
+using Random             # seed! -- the sampling seed, so the artifact is reproducible
 
 isdefined(@__MODULE__, :P12_DEV_SEED)   || include(joinpath(@__DIR__, "p12_consts.jl"))
 isdefined(@__MODULE__, :train_p12_npe)  || include(joinpath(@__DIR__, "..", "npe", "train_p12_npe.jl"))
@@ -290,6 +291,18 @@ function _p12ms_score_arm(bundle, Zraw_held::AbstractMatrix, Ztrue_held::Abstrac
     nreg  = P12_G^2
     ntest = size(Zraw_held, 2)
     Zstd  = standardize_p12(Zraw_held, bundle.zt)          # 12-14's frozen transform, never refit
+
+    # SEED THE SAMPLING. `sampleposterior` is STOCHASTIC, so seeding the weight init alone leaves
+    # the artifact irreproducible: identical nets still give different scores. Counter + 3, off the
+    # same reserved stream as the mask (+0/+1) and weight-init (+2) seeds, so still no new Tier-1
+    # constant.
+    #
+    # DELIBERATELY THE SAME SEED FOR EVERY ARM -- COMMON RANDOM NUMBERS. The arms are scored on the
+    # same held-out block, so giving them a common Monte-Carlo stream removes sampling noise as a
+    # source of BETWEEN-ARM difference. That is variance reduction on the comparison, not a
+    # thumb on it: it cannot favour any arm, and with 1000 datasets x 1000 draws the residual MC
+    # noise is small either way. It matters because 12-15's decisive margin was 0.33 %.
+    Random.seed!(rand(p12_rng(P12_MINISPIKE_COUNTER + 3), UInt64))
 
     se_sum   = zeros(Float64, nreg)      # per-region squared error of the posterior MEAN
     cov_hit  = zeros(Int, nreg)

@@ -105,6 +105,7 @@ using JLD2               # atomic bundle persistence
 using Dates              # UTC-labeled artifact timestamp
 using Statistics         # mean, std
 using Random123          # the reserved counter-based stream
+using Random             # seed! -- the WEIGHT-INIT seeding fix (see _p12_train_seed below)
 
 # --- ORDER MATTERS: the pre-registration FIRST (the `p11_generate.jl:53-56` reason -- consts bind
 #     reserved seeds at UInt64 width and a later narrower rebinding is a hard `const` error), then
@@ -458,15 +459,53 @@ function train_p12_npe(; arm::Symbol = :car,
     theta_train_std = Float32.(StatsBase.transform(theta_zt, theta[:, train_idx]))
     theta_val_std   = Float32.(StatsBase.transform(theta_zt, theta[:, val_idx]))
 
+    # --- AUDITABILITY FIX 1 of 2: SEED THE WEIGHT INITIALISATION -------------------------------
+    # RECORDED DEFECT, found while harvesting 12-15: `build_p12_estimator` takes no RNG and
+    # `NeuralEstimators.train` was called without one, so Flux drew its weight init from the
+    # UNSEEDED global RNG. Only the mask streams and the deterministic tail-block split were
+    # reproducible, which made two runs at identical settings non-comparable -- and left 12-15's
+    # decisive 0.33 % arm margin unattributable.
+    #
+    # THIS IS AN AUDITABILITY FIX, NOT TUNING. It does not change WHAT the model can learn; it makes
+    # what it did learn reproducible. Recorded as the fix to a defect, never as an adjustment made
+    # in pursuit of a better number.
+    #
+    # COUNTER +2 OFF THE EXISTING RESERVED STREAM -- so NO new Tier-1 constant and NO
+    # pre-registration edit. `P12_MINISPIKE_COUNTER + 0` and `+ 1` are the train/val mask streams
+    # above; `+ 2` was free.
+    train_seed = rand(p12_rng(P12_MINISPIKE_COUNTER + 2), UInt64)
+    Random.seed!(train_seed)
+
     # 7. D comes from the TRUNCATED theta, never a literal and never from the raw pool.
     est = build_p12_estimator(; G = P12_G, D = D)
-    verbose && println("[5/6] estimator built (G = $(P12_G), D = $D); training $epochs epoch(s) ...")
+    verbose && println("[5/6] estimator built (G = $(P12_G), D = $D); training $epochs epoch(s) " *
+                       "at train_seed = $train_seed ...")
 
+    # --- AUDITABILITY FIX 2 of 2: PERSIST THE PER-EPOCH RISK TRACE -----------------------------
+    # RECORDED DEFECT: the bundle stored `epochs` and `batchsize` but NO per-epoch risk, and
+    # `train` returns only the estimator. 12-15's convergence evidence -- the train/val ratios that
+    # showed the run ended on its EPOCH BUDGET rather than on convergence -- survived only because
+    # that run's stdout happened to be redirected to a scratch log. A training run whose
+    # convergence cannot be audited afterwards cannot support a claim about convergence.
+    #
+    # `train` ALREADY computes this and writes `loss_per_epoch.csv` under `savepath` (headerless,
+    # (epochs+1) x 2: training risk, validation risk; row 1 is the initial validation risk twice).
+    # Nothing ever read it back. Parsed by hand rather than through CSV.jl so this adds no dependency.
+    lossdir = mktempdir()
     est = NeuralEstimators.train(est, theta_train_std, theta_val_std, Ztrain, Zval;
                                  epochs = epochs,
                                  batchsize = batchsize,
                                  use_gpu = false,          # EXPLICIT: v0.2.1 defaults this to TRUE
+                                 savepath = lossdir,
                                  verbose = verbose)
+
+    risk_trace = let f = joinpath(lossdir, "loss_per_epoch.csv")
+        isfile(f) ? reduce(vcat, [permutedims(parse.(Float64, split(strip(l), ',')))
+                                  for l in readlines(f) if !isempty(strip(l))]) :
+                    Matrix{Float64}(undef, 0, 2)
+    end
+    @assert size(risk_trace, 2) == 2 || isempty(risk_trace) "train_p12_npe: the risk trace must " *
+        "be (epochs+1) x 2 -- training risk, validation risk -- got $(size(risk_trace))"
 
     elapsed_min = (time() - t0) / 60
     bundle = (schema_version = P12_NET_SCHEMA,
@@ -496,6 +535,14 @@ function train_p12_npe(; arm::Symbol = :car,
               pool_indices_given = pool_indices === nothing ? nothing : collect(avail),
               epochs = epochs,
               batchsize = batchsize,
+              # THE TWO AUDITABILITY FIELDS. `train_seed` makes the run reproducible; `risk_trace`
+              # makes its convergence checkable AFTER the fact instead of only in a live stdout.
+              # Both are ADDED fields -- `schema_version` is deliberately NOT bumped, because
+              # `load_p12_npe` asserts `schema_version == 1` and checks for the PRESENCE of its
+              # required keys, so an added key is backward-compatible while a bumped version would
+              # make every existing bundle unloadable.
+              train_seed = train_seed,
+              risk_trace = risk_trace,          # (epochs+1) x 2: [training risk  validation risk]
               mask_k_set = collect(P12_MASK_K_SET),
               realized_mask_rate = realized_mask_rate,
               natural_mask_rate = natural_mask_rate,
