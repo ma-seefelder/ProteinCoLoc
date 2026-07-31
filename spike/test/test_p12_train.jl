@@ -329,6 +329,16 @@ const _P12TRAIN_CODE = _p12train_strip_comments(_P12TRAIN_SRC)
         # BOTH — which is why both sets are recorded.
         @test !isempty(b_sub.val_indices)
 
+        # THE LEAK CHECK IS A POSITIVE CONTROL FOR ITSELF. An `isempty(intersect(...))` that has
+        # never been shown non-empty is an assurance, not a test -- and this phase has already
+        # found six verifies that could not fail. Hand the SAME expression a deliberately
+        # overlapping selection and confirm it fires.
+        b_leak = train_p12_npe(arm = :car, n = 64, pool_dir = pool64, pool_indices = 1:64,
+                               epochs = 1, batchsize = 16, verbose = false)
+        seen_leak = vcat(b_leak.train_indices, b_leak.val_indices)
+        @test !isempty(intersect(seen_leak, held_out))   # FIRES when the block IS overlapped
+        @test length(intersect(seen_leak, held_out)) == length(held_out)
+
         # Malformed selections are refused, not silently repaired.
         @test_throws Exception train_p12_npe(arm = :car, n = 64, pool_dir = pool64,
                                              pool_indices = [1, 1, 2], epochs = 1, batchsize = 16,
