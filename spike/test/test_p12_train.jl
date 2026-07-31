@@ -297,6 +297,47 @@ const _P12TRAIN_CODE = _p12train_strip_comments(_P12TRAIN_SRC)
         @test length(lt.theta_rows) == 17
     end
 
+    @testset "pool_indices — the default is unchanged, and a subset is leak-free" begin
+        # WHY THIS KEYWORD EXISTS. A scoring block cannot come from a SECOND pool:
+        # `generate_p12_sample(idx)` keys on the GLOBAL INDEX alone and `generate_p12_pool(n)`
+        # always generates 1:n, so two pools at the same arm/imsize share samples 1:min(n,m)
+        # byte-identically. Asserted here rather than argued, because the whole leak-free
+        # construction rests on it.
+        s7a = generate_p12_sample(7; arm = :car, imsize = (128, 128))
+        s7b = generate_p12_sample(7; arm = :car, imsize = (128, 128))
+        s8  = generate_p12_sample(8; arm = :car, imsize = (128, 128))
+        @test s7a.summary_min == s7b.summary_min      # index-keyed, so reproducible ...
+        @test s7a.summary_min != s8.summary_min       # ... and index-DISTINCT
+        # => a "separate scoring pool" is a SUPERSET, never a held-out set.
+
+        # The DEFAULT path is provably unchanged: nothing selected means the whole pool.
+        b_all = train_p12_npe(arm = :car, n = 64, pool_dir = pool64, epochs = 1, batchsize = 16,
+                              verbose = false)
+        @test b_all.pool_indices_given === nothing
+        @test sort(vcat(b_all.train_indices, b_all.val_indices)) == collect(1:64)
+
+        # A SUBSET leaves the complement untouched, which is what makes it a held-out set.
+        held_out = 1:16                     # the caller's scoring block (the pool HEAD)
+        remainder = 17:64
+        b_sub = train_p12_npe(arm = :car, n = 64, pool_dir = pool64, pool_indices = remainder,
+                              epochs = 1, batchsize = 16, verbose = false)
+        seen = vcat(b_sub.train_indices, b_sub.val_indices)
+        @test sort(seen) == collect(remainder)
+        @test isempty(intersect(seen, held_out))          # THE LEAK CHECK
+        @test isempty(intersect(b_sub.train_indices, b_sub.val_indices))
+        # The val block is contaminated too (it drives early stopping), so a scorer must exclude
+        # BOTH — which is why both sets are recorded.
+        @test !isempty(b_sub.val_indices)
+
+        # Malformed selections are refused, not silently repaired.
+        @test_throws Exception train_p12_npe(arm = :car, n = 64, pool_dir = pool64,
+                                             pool_indices = [1, 1, 2], epochs = 1, batchsize = 16,
+                                             verbose = false)
+        @test_throws Exception train_p12_npe(arm = :car, n = 64, pool_dir = pool64,
+                                             pool_indices = 60:70, epochs = 1, batchsize = 16,
+                                             verbose = false)
+    end
+
     @testset "training ran CPU-only" begin
         @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
     end

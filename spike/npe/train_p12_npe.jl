@@ -321,6 +321,7 @@ function train_p12_npe(; arm::Symbol = :car,
                        n::Integer = P12_MINISPIKE_N,
                        K_dev::Integer = P12_K_DEV,
                        pool_dir = nothing,
+                       pool_indices = nothing,
                        epochs::Integer = 18,
                        batchsize::Integer = 64,
                        val_fraction::Real = 0.2,
@@ -373,11 +374,41 @@ function train_p12_npe(; arm::Symbol = :car,
 
     # 3. Deterministic TAIL-BLOCK validation split, no shuffle, so two arms at the same `n` get
     #    the SAME index partition -- which is what makes the D-10 matched ablation matched.
-    nval      = round(Int, val_fraction * N)
-    val_idx   = (N - nval + 1):N
-    train_idx = 1:(N - nval)
+    # THE AVAILABLE COLUMNS. `pool_indices === nothing` means ALL of them, which is the behaviour
+    # every existing call site had before this keyword existed -- so the default path is provably
+    # unchanged, and `avail == 1:N` is asserted below rather than assumed.
+    #
+    # WHY THIS KEYWORD EXISTS, AND WHY THE OBVIOUS ALTERNATIVE IS A LEAK. 12-15 needs a scoring
+    # block disjoint from everything training saw. It cannot get one from a second pool:
+    # `generate_p12_sample(idx)` keys its RNG on `p12_datagen_rng(idx)`, the GLOBAL INDEX ALONE,
+    # and `generate_p12_pool(n)` always generates indices 1:n -- so two pools at the same
+    # arm/imsize share samples 1:min(n,m) BYTE-IDENTICALLY. A "separate scoring pool" is a
+    # SUPERSET of the training pool, never a held-out set, and there is no index-offset keyword to
+    # escape that. Verified executably before this keyword was added. Carving the block out of the
+    # ONE pool and handing training the remainder is therefore the only leak-free construction,
+    # and it is also 12-15's own primary instruction.
+    avail = pool_indices === nothing ? collect(1:N) : collect(pool_indices)
+    if pool_indices === nothing
+        @assert avail == collect(1:N)
+    else
+        allunique(avail) || error("train_p12_npe: pool_indices contains duplicates; a repeated " *
+            "column would be trained on twice and would corrupt the val split's disjointness")
+        (minimum(avail) >= 1 && maximum(avail) <= N) || error(
+            "train_p12_npe: pool_indices range $(extrema(avail)) is outside the pool's 1:$N")
+        length(avail) >= 2 || error("train_p12_npe: pool_indices must select at least 2 columns")
+        sort!(avail)
+    end
+    Navail = length(avail)
+
+    nval      = round(Int, val_fraction * Navail)
+    val_idx   = avail[(Navail - nval + 1):Navail]      # deterministic TAIL block of the available
+    train_idx = avail[1:(Navail - nval)]               # columns, no shuffle
+    @assert isempty(intersect(train_idx, val_idx)) "train_p12_npe: train and val index sets overlap"
     verbose && println("[1/6] split: $(length(train_idx)) train / $(length(val_idx)) val " *
-                       "(deterministic tail block, no shuffle)")
+                       "of $Navail available column(s)" *
+                       (pool_indices === nothing ? " (whole pool)" :
+                        " (SUBSET of a $N-column pool; the complement is the caller's held-out set)") *
+                       " — deterministic tail block, no shuffle")
 
     # 4. TRUNCATE theta FIRST, so `theta_zt` is fitted over exactly the rows the head predicts and
     #    never over rows that are then discarded.
@@ -455,6 +486,14 @@ function train_p12_npe(; arm::Symbol = :car,
               n_pool = N,
               n_train = length(train_idx),
               n_val = length(val_idx),
+              # THE REALIZED INDEX SETS, so a scoring runner can ASSERT its held-out block is
+              # disjoint from everything training saw rather than re-derive the arithmetic and
+              # trust it. Both are stored because the val block drives early stopping inside
+              # `NeuralEstimators.train` and is therefore just as contaminated as the train block
+              # for scoring purposes -- a scorer must exclude BOTH.
+              train_indices = collect(train_idx),
+              val_indices = collect(val_idx),
+              pool_indices_given = pool_indices === nothing ? nothing : collect(avail),
               epochs = epochs,
               batchsize = batchsize,
               mask_k_set = collect(P12_MASK_K_SET),
