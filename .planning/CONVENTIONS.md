@@ -169,6 +169,14 @@ the file.
 **`p13/consts.jl:93` is a FALSE POSITIVE of the scan** — a commented illustration of the idiom,
 not a live guard. The live owner-side wrapper is `:100`.
 
+**BEFORE TRUSTING ANY SWEEP, RUN IT AGAINST A SUBSET WHOSE ANSWER YOU ALREADY KNOW.** An over-broad
+filter produces exactly the false alarm that trains you to distrust sweeps. (2026-07-31: a
+ceiling-sweep exclusion pattern skipping any path *containing* `p12_consts.jl` also silently
+swallowed `test_p12_consts.jl`, falsely reporting five gating constants as unread — caught only
+because constants the author had just written tests for came back "unread". The same lesson cost the
+plan-checker's `n_low` regex three tries, fixed only once it was RUN against the forms it claimed to
+forbid.)
+
 **Accumulating record:** the same class is logged as `13-09`, `DEF-12-01` (FIXED, `fb76b84`),
 `DEF-12-02` (worked around per-runner) and `DEF-12-03` (family 1, fixed by `13-17`) in
 `.planning/phases/12-spatial-colocalization-map/deferred-items.md`. That file is the right place
