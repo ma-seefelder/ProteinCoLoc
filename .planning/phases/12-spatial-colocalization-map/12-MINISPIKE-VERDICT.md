@@ -81,6 +81,38 @@ not 12-15's, and is **recorded here, not fixed here**.
 
 ---
 
+### 2.2 The training traces — the run hit its EPOCH BUDGET, not convergence
+
+Recorded here because **the bundle does not persist them.** `train_p12_npe.jl:472-500` stores the
+estimator, both transforms, `theta_rows`, `D`, `epochs`, `batchsize`, the index sets and the mask
+rate — **no per-epoch risk** — and `NeuralEstimators.train` returns only `est`. These numbers survive
+only because this run's stdout was redirected to a log. A training run whose convergence cannot be
+audited afterwards cannot support a claim about convergence, so persisting the trace is a recorded
+gap in the same class as the unseeded init.
+
+| arm | initial val | ep 1 train / val | ep 9 train / val | ep 18 train / val | last Δval | **val/train @18** |
+|---|---|---|---|---|---|---|
+| `:car` | 852,488.1 | 481157.53 / 156.202 | 123.628 / 123.079 | 116.786 / 117.628 | −0.019 (falling) | **1.007** |
+| `:gp` | 1,306,758.8 | 255.372 / 134.495 | 99.528 / 100.727 | 91.054 / 94.340 | **+0.029 (rose)** | **1.036** |
+| `:none` | 97,665.2 | 312.342 / 133.862 | 109.367 / 111.160 | 101.903 / 105.751 | −0.076 (falling) | **1.038** |
+
+**Early stopping never fired. All three arms ran exactly 18 of 18 — the run ended on its epoch
+budget, not on convergence.**
+
+**THE RATIO IS THE HARDER CLAIM, AND IT IS THE ONE THAT MATTERS.** The slope says only "still
+falling". The **val/train ratio of 1.007–1.038 says these nets are nowhere near capacity** — they are
+not fitting their own training data well enough to separate from validation at all. "Cannot learn this
+from the summary" has a characteristic and *different* shape: training risk falling well below
+validation while validation stalls, the model memorising what it cannot generalise. **None of that is
+present.**
+
+Combined with the learning rate annealing **33× to 1.51E-05 across exactly the 18-epoch budget**, this
+is a textbook under-trained run rather than an information ceiling.
+
+**But the experiment as designed CONFOUNDS "converged" with "annealed to a stop"**, because the LR
+schedule is tied to the epoch count. The traces alone therefore cannot separate *under-trained* from
+*cannot-learn*; the no-overfitting fact is what tips it, and that is where this run's evidence ends.
+
 ## 3. Global term, shrinkage, and the truncation curve
 
 | arm | `c0_rmse` | `c0_coverage` | `r1_shrinkage` | `vacuous` |
