@@ -190,7 +190,11 @@ The pool regenerates **byte-identically** from the counter-based Philox seed. Th
 compute cost, not a re-seed — but at ~73 min for 50k it is **not free**, and must never be recorded
 as free.
 
-### INDEX-KEYED GENERATION HAS TWO FACES, AND THE PHASE-11 STORY TEACHES ONLY ONE OF THEM
+### INDEX-KEYED GENERATION HAS TWO FACES — the concrete case; the RULE is `.planning/CONVENTIONS.md` **C-04**
+
+**C-04 is the project-wide rule** (verified at all three defining sites: Phase 11, 12 and 13 all put
+the per-sample index in the counter word, so every phase that builds a pool inherits this). What
+follows is Phase 12's instance of it.
 
 `generate_p12_sample(idx)` keys its RNG on `p12_datagen_rng(idx)` — **the global index alone** — and
 `generate_p12_pool(n)` always generates indices `1:n`. That single property cuts both ways, and a
@@ -208,6 +212,20 @@ complement, and assert disjointness against the bundle's recorded `train_indices
 **Exclude the VALIDATION block too, not just the training block.** It drives early stopping inside
 `NeuralEstimators.train`, so it is contaminated for model selection — a subtler leak that passes
 every index check, because those indices genuinely *are* disjoint from the training set.
+
+### FOR THE PHASE REPORT — a POSITIVE property worth claiming out loud, because a referee will ask
+
+**Phase 12's calibration numbers cannot be computed on training data, structurally rather than
+incidentally.** 12-16, 12-18 and 12-19 — every plan that produces an SBC, coverage or Stage-2
+number — **never read a cached pool at all.** They draw fresh through `harness.jl`'s
+`draw_simulate_infer` on the **validation** stream, while pools ride the **datagen** stream. The two
+salts are different, the streams produce different draws (checked), and their disjointness is
+asserted at load time in **both** `p12_consts.jl` and `p12_generate.jl`.
+
+This matters because an SBC or coverage number computed on training samples would be an invalid
+calibration claim of exactly the class this milestone exists to make honestly — and it is the first
+thing a careful referee will probe. The answer is not "we were careful"; it is **"that path does not
+exist"**. State it in the report with the mechanism, not as a reassurance.
 
 Verified 2026-07-31: sample 7 reproduces identically across calls and differs from sample 8; the
 sweep of every other pool consumer came back **clean** (12-16/18/19 draw fresh on the *validation*

@@ -37,6 +37,35 @@ Three phases are active concurrently. All lines are authoritative — do not ove
 Phase: 12 (spatial-colocalization-map) — **RESUMED. Stage-1 gate ADJUDICATED 2026-07-31; waves 7-12
 executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)
 
+## ⚠️ FOR PHASES 14/15/16 — a pool-overlap hazard that fires OUTSIDE Phase 12 (DEF-12-05, C-04)
+
+**Rule:** `.planning/CONVENTIONS.md` **C-04**, added 2026-07-31 and verified at all three defining
+sites — Phase 11, 12 and 13 **all** key their per-sample RNG on the global sample index, so this is
+project-wide, not a Phase-12 quirk.
+
+**Index-keyed generation has two faces.** The property that makes a lost pool regenerate
+byte-identically (why Phase 11's 54 MB rebuild cost no iteration allowance) is the SAME property
+that makes two pools at the same configuration share samples `1:min(n,m)` byte-identically.
+**A "separate scoring pool" is a SUPERSET of the training pool, never a held-out set.**
+
+**The live instance:** indices `1:10000` of 12-17's 50 000-sample production pool ARE 12-15's
+10 000-sample mini-spike pool, byte-for-byte, **including the block 12-15 held out for scoring**.
+
+**Harmless today** — nothing scores a 12-17 net on a 12-15 index range. **It BECOMES a leak if any
+one of these happens:** (1) anything scores a 12-17-trained net on index range `<= 10000` of the
+production pool; (2) anything reuses 12-15's held-out block as a held-out set for the *production*
+net; (3) **a later phase generates "a fresh evaluation pool" at `arm = P12_CHOSEN_PRIOR`** — under
+C-04 its first `min(n, 50000)` samples ARE the production training set. Any coverage, SBC or BF
+number so obtained is measured on training data and is not a calibration result.
+
+**Correct constructions:** draw fresh through `harness.jl` on the **validation** stream (structurally
+safe — different salt, asserted disjoint at load time), or carve from the ONE pool via
+`train_p12_npe`'s `pool_indices` and assert against the bundle's recorded `train_indices` **and**
+`val_indices` — both, because the val block drives early stopping and is contaminated for model
+selection *while passing every index check*. Full entry: Phase 12 `deferred-items.md` DEF-12-05.
+
+---
+
 ## ✅ RESOLVED 2026-07-31 — the Stage-1 blocker below was ruled by the user (`ee78cfe`)
 
 **`VERDICT: PROCEED`.** `.planning/phases/12-spatial-colocalization-map/12-STAGE1-VERDICT.md` now

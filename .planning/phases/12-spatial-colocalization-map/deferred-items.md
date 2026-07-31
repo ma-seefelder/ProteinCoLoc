@@ -276,3 +276,47 @@ silently and with no test able to see it. Both current bindings are in **append-
 cannot be renamed, so the durable mitigation is the one Phase 13 already uses: read a foreign consts
 file through a private module, never into the shared scope. Related: DEF-12-01 / DEF-12-02 /
 DEF-12-03, and the user's repo-wide sweep `6d3bc8a` (29 poisoned guards of 220).
+
+---
+
+## DEF-12-05 — 12-17's 50k pool CONTAINS 12-15's 10k pool, including its held-out scoring block
+
+**Status: OPEN. Not a defect today. Recorded as the CONDITION THAT MAKES IT FIRE, because "safe
+today" ages badly and this one fires in someone else's phase.**
+
+**Rule:** `.planning/CONVENTIONS.md` **C-04** (index-keyed generation has two faces). This is the
+concrete instance a future phase is most likely to trip over.
+
+**The mechanism.** Every pool builder keys its per-sample RNG on the **global sample index** and
+generates indices `1:n`. So two pools at the same configuration share samples `1:min(n,m)`
+byte-identically. 12-17 builds a **50 000**-sample pool at `arm = P12_CHOSEN_PRIOR`; 12-15 builds a
+**10 000**-sample pool at that same arm. Therefore:
+
+> **Indices `1:10000` of 12-17's production pool ARE 12-15's mini-spike pool, byte-for-byte — and
+> that range INCLUDES the head block 12-15 held out for scoring its own mini-spike net.**
+
+**Why it is harmless as the plans stand.** Nothing scores a 12-17-trained net on a 12-15 index
+range. 12-15 scores its own net on its own held-out head; 12-16, 12-18 and 12-19 never read cached
+pools at all — they draw fresh through `harness.jl` on the **validation** stream, which is asserted
+disjoint from the datagen stream at load time.
+
+**THE CONDITION THAT MAKES IT A REAL LEAK — any ONE of these is sufficient:**
+
+1. **Anything scores a 12-17-trained net on samples drawn from a 12-15 index range** (or on any
+   index range `<= 10000` of the production pool). Those samples are in the production net's
+   training set. Any coverage, SBC, RMSE or Bayes-factor number so obtained is measured on training
+   data and is **not** a calibration result.
+2. **Anything reuses 12-15's held-out block as a "held-out set" for the production net.** It was
+   held out from the *mini-spike*, never from the production net.
+3. **A later phase generates "a fresh evaluation pool" at `arm = P12_CHOSEN_PRIOR`** and scores the
+   production net on it. Under C-04 that pool's first `min(n, 50000)` samples ARE the production
+   training set — the leak this whole entry exists to name.
+
+**The correct constructions, in order of preference:** (a) draw fresh through `harness.jl` on the
+**validation** stream — structurally safe, and what 12-16/12-18/12-19 already do; (b) carve the
+block out of the ONE pool via `train_p12_npe`'s `pool_indices`, and assert disjointness against the
+bundle's recorded `train_indices` **and** `val_indices` (both — the val block drives early stopping
+and is contaminated for model selection while passing every index check).
+
+**Who is likely to trip on it:** Phases 14, 15 and 16, none of which read Phase-12 planning records.
+Cross-posted to `.planning/STATE.md` for that reason.

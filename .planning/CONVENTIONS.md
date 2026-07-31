@@ -232,3 +232,60 @@ from *"a line that happens to mention a bar was touched"*.
 
 Note also: `grep -c` exits **1** when the count is `0`, so a `… && …` chain around a
 must-be-zero grep will report failure on success. Capture the count and compare it.
+
+---
+
+## C-04 — index-keyed generation has TWO faces: reproducible pools, NON-DISJOINT pools
+
+*Added 2026-07-31, authorised by the phase-12 orchestrator, after a wave-8 finding.*
+
+Every pool generator in this repository keys its per-sample RNG on the **global sample index**, in
+the counter word of a counter-based Philox stream. **Verified at all three defining sites, not
+inferred from family resemblance:**
+
+| Generator | Constructor |
+|---|---|
+| Phase 11 | `Philox4x(UInt64, (P11_DEV_SEED ⊻ P11_DATAGEN_SALT, UInt64(idx)))` — `p11_generate.jl:113-114` |
+| Phase 12 | `Philox4x(UInt64, (P12_DEV_SEED ⊻ P12_DATAGEN_SALT, UInt64(idx)))` — `p12_generate.jl:147-148` |
+| Phase 13 | `Philox4x(UInt64, (P13_DEV_SEED ⊻ P13_SALT ⊻ P13_DATAGEN_COUNTER, UInt64(idx)))` — `p13/datagen.jl:181` |
+
+This is not one phase's design choice. It is the counter-based Random123 pattern the project adopted
+at the top level and that CLAUDE.md mandates (*"counter-based, reproducible seeding of the
+simulator"*), so **every future phase that builds a pool inherits both faces of it.**
+
+### The two faces
+
+| Face | Consequence |
+|---|---|
+| **THE GUARANTEE** | A lost pool regenerates **byte-identically**. This is why rebuilding Phase 11's destroyed 54 MB pool was a *compute cost, not a re-seed*, and cost no iteration allowance. |
+| **THE TRAP** | Pool builders generate indices `1:n`. So two pools at the **same configuration** share samples `1:min(n,m)` **byte-identically**. **A "separate scoring pool" is a SUPERSET of the training pool, never a held-out set.** |
+
+**The Phase-11 story teaches only the guarantee.** A reader who knows only that half will conclude
+that generating a second pool yields fresh samples. It yields an overlap. Both faces are the same
+property.
+
+### The rules that follow
+
+1. **A held-out block must be CARVED OUT OF THE ONE POOL, never generated as a second pool.** There
+   is no index-offset keyword on any of the three builders, and changing the configuration to force
+   a different content hash makes it *a different experiment*, not a held-out set.
+2. **EXCLUDE THE VALIDATION BLOCK TOO, not just the training block.** It drives early stopping inside
+   `NeuralEstimators.train`, so it is contaminated for model selection — **a leak that passes every
+   index check**, because those indices genuinely *are* disjoint from the training set. This is the
+   half that survives the obvious test.
+3. **Assert disjointness against the trainer's RECORDED index sets, not against re-derived
+   arithmetic** — and then show the assertion FIRES on a deliberately overlapping fixture. An
+   `isempty(intersect(...))` never shown non-empty is an assurance, not a test.
+4. **Drawing fresh through the VALIDATION stream is structurally safe and is the preferred pattern
+   for evaluation.** Pools ride `DEV_SEED ⊻ DATAGEN_SALT` keyed by index; the `harness.jl`
+   draw-simulate path rides `DEV_SEED ⊻ SALT` keyed by counter. The two salts are asserted distinct
+   at load time. An SBC or coverage number computed on training samples cannot arise on that path.
+
+### In-repo instances
+
+- **Phase 12 / 12-15** — the finding. `train_p12_npe`'s `pool_indices` keyword exists so the scoring
+  block is carved from the one pool; the bundle records `train_indices` / `val_indices` for the
+  disjointness assertion. `12-EXECUTOR-BRIEFING.md` §10 carries the concrete case.
+- **Phase 12 / 12-11** — safe: pinning `r1` changes the *sample* at a given index, and each rung is
+  scored within its own split, never across rungs.
+- **Phase 12 / 12-16, 12-18, 12-19** — safe by rule 4: they never read cached pools at all.
