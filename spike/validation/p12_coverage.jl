@@ -377,6 +377,65 @@ function draw_simulate_infer_p12(rng::AbstractRNG; imsize = nothing,
 end
 
 """
+    p12_assert_eval_arm(bundle, eval_arm::Symbol; context = "") -> Symbol
+
+**REFUSE to score a bundle against evaluation data drawn from a different prior arm.** Returns
+`eval_arm` when they match; throws naming both otherwise.
+
+# WHY THIS IS A REFUSAL AND NOT A WARNING
+
+A net trained at `arm = :none` scored against `:car` draws **runs perfectly happily** and emits a
+full set of coverage numbers. Those numbers measure **MISSPECIFICATION** — how the model behaves
+under a truth it was never fitted to — while every label on them says **CALIBRATION**. Nothing
+throws, nothing is `NaN`, no structural check fires, and the artifact is internally consistent.
+
+**That is the exact shape of every wrong-space defect this phase has produced** — three of them by
+2026-08-01: standardized draws scored against raw truth (12-15, first run); a θ column reconstructed
+in flat order instead of smoothness order (12-15, `f039729`); and a predictive coverage number whose
+two error terms cancel in the wrong direction. Each was complete, self-consistent, and void. **Prose
+does not refuse any of them. A guard does.**
+
+The F5 binding invariant is the formal statement: rank and coverage claims hold only under the joint
+the estimator was TRAINED on, so **train-joint must equal eval-joint**. The arm IS part of that
+joint, and until this function existed it was the one part of it nothing checked.
+
+# `eval_arm` IS MANDATORY AND THERE IS NO OVERRIDE
+
+Which arm the evaluation data was drawn from is **a fact about the run, not a convention**, so it is
+passed explicitly at every call site — the same discipline `p12_mark_unscorable!`'s `stack` keyword
+follows, and for the same reason: a defaulted answer would be a guess recorded as a measurement.
+
+**There is deliberately no `allow_mismatch` escape.** A genuine misspecification study is a
+different experiment with a different claim, and it should have to add a differently-named entry
+point — an addition a reviewer can see — rather than flip a keyword on the calibration path.
+
+`context` is appended to the message so a failure names which runner produced it.
+"""
+function p12_assert_eval_arm(bundle, eval_arm::Symbol; context::AbstractString = "")
+    hasproperty(bundle, :arm) || error(
+        "p12_assert_eval_arm: the bundle carries no `arm` field, so the train-joint cannot be " *
+        "checked against the eval-joint at all. `train_p12_npe` persists `arm` on every bundle " *
+        "it writes; a bundle without it did not come from that surface. Refusing to score." *
+        (isempty(context) ? "" : " ($context)"))
+    bundle.arm === eval_arm && return eval_arm
+    error("""
+        p12_assert_eval_arm: TRAIN-JOINT / EVAL-JOINT MISMATCH — REFUSING TO SCORE.
+            bundle was TRAINED at arm = :$(bundle.arm)
+            evaluation data is DRAWN at arm = :$(eval_arm)
+        $(isempty(context) ? "" : "context: " * context * "\n")
+        These numbers would measure MISSPECIFICATION -- how the model behaves under a truth it was
+        never fitted to -- while every label on them would say CALIBRATION. The run would complete,
+        the artifact would be internally consistent, and no structural check would fire; that is
+        precisely why this is a refusal rather than a warning. F5's binding invariant is that
+        train-joint must equal eval-joint, and the prior arm is part of that joint.
+
+        DO NOT WEAKEN THIS GUARD TO MAKE A RUN PASS. If a misspecification measurement is genuinely
+        wanted, it is a DIFFERENT EXPERIMENT making a DIFFERENT CLAIM, and it needs its own named
+        entry point so that the choice is visible to a reader -- not a keyword flipped on the
+        calibration path.""")
+end
+
+"""
     calibrate_neff(; imsize, n_theta, n_obs, rng, arm = :none, G = P12_G) -> NamedTuple
 
 Calibrate the ONE constant of the observation-noise model at ONE image size.

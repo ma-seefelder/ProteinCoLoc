@@ -486,6 +486,44 @@ _p12cov_tflat(i, j; G = P12_G) = (j - 1) * G + i
     end
 
     # -------------------------------------------------------------------------------------
+    @testset "8b — the train-joint/eval-joint mismatch is REFUSED, not warned about" begin
+        # F5's binding invariant: rank and coverage claims hold only under the joint the estimator
+        # was TRAINED on, and the PRIOR ARM is part of that joint. A :none-trained net scored
+        # against :car draws runs happily and emits a MISSPECIFICATION measurement wearing a
+        # CALIBRATION label -- complete, self-consistent, and void. Prose does not refuse that.
+        b = _p12cov_tbundle()                       # trained at :none
+        @test b.arm === :none
+
+        # THE MATCH PASSES and returns the arm, so the guard is not vacuously true.
+        @test p12_assert_eval_arm(b, :none) === :none
+
+        # THE MISMATCH REFUSES, in BOTH directions, and the message names both arms.
+        for wrong in (:car, :gp)
+            e = try; p12_assert_eval_arm(b, wrong); nothing; catch err; err; end
+            @test e !== nothing
+            msg = sprint(showerror, e)
+            @test occursin("REFUSING TO SCORE", msg)
+            @test occursin("arm = :none", msg) && occursin("arm = :$wrong", msg)
+        end
+
+        # A bundle with NO `arm` field cannot be checked at all, so it is refused rather than
+        # waved through -- an unknown train-joint is not a matching one.
+        nob = (estimator = b.estimator, zt = b.zt, theta_zt = b.theta_zt)
+        @test_throws Exception p12_assert_eval_arm(nob, :none)
+
+        # THERE IS DELIBERATELY NO OVERRIDE. A genuine misspecification study is a different
+        # experiment making a different claim and must add its own named entry point, which a
+        # reviewer can see -- not flip a keyword on the calibration path. Asserted structurally so
+        # a later `allow_mismatch` cannot be added quietly.
+        src = _p12cov_tstrip(read(joinpath(@__DIR__, "..", "validation", "p12_coverage.jl"),
+                                  String))
+        body = split(src, "function p12_assert_eval_arm")[end]
+        body = split(body, "\n\"\"\"")[1]
+        @test !occursin("allow_mismatch", body)
+        @test !occursin("force", body)
+    end
+
+    # -------------------------------------------------------------------------------------
     @testset "9 — the coverage surface ran CPU-only" begin
         @test !any(id -> occursin("CUDA", id.name), keys(Base.loaded_modules))
     end

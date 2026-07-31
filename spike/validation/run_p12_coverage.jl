@@ -362,6 +362,16 @@ function main(args = ARGS;
                (haskey(bundles, :none) ? :none : res.arms[end].name)
     bundle = bundles[abl_name]
 
+    # THE TRAIN-JOINT / EVAL-JOINT REFUSAL, BEFORE ANY COMPUTE IS SPENT. F5's binding invariant is
+    # that rank and coverage claims hold only under the joint the estimator was TRAINED on, and the
+    # PRIOR ARM is part of that joint. Scoring a :none-trained net against :car draws would run
+    # happily and emit a MISSPECIFICATION measurement wearing a CALIBRATION label -- complete,
+    # self-consistent, and void, which is the shape of every wrong-space defect this phase has
+    # produced. Prose does not refuse that; this does. Placed here so a mismatch costs zero minutes.
+    p12_assert_eval_arm(bundle, P12COV_EVAL_ARM;
+                        context = "run_p12_coverage.jl, bundle_source = :$(res.source)")
+    println("  train-joint == eval-joint VERIFIED: both :$(P12COV_EVAL_ARM) (F5)")
+
     # --- 2. Calibrate the observation-noise model ---------------------------------------------
     println("\n[1/4] calibrating n_eff on the reserved coverage stream " *
             "($(neff_theta) theta x $(neff_obs) obs per size) ...")
