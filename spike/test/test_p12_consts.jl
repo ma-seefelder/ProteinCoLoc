@@ -214,6 +214,73 @@ const P12_TEST_FILES = ("test_p12_consts.jl", "test_p12_lattice.jl", "test_p12_p
         @test !isdefined(@__MODULE__, :P12_FISHERZ_NEFF)
     end
 
+    @testset "Tier-2 block 4 — the D-12 Stage-1 control adjudication (user ruling, 2026-07-31)" begin
+        # THE FOURTH TIER-2 BLOCK. It has no negative assertion above because it was NOT FORESEEN
+        # at freeze time: the three reserved sentinels are measurements later plans need, this one
+        # records the adjudication of a Tier-1 GATE COMPONENT the run showed to be mis-scaled.
+        # Full reasoning: .planning/phases/12-spatial-colocalization-map/12-STAGE1-VERDICT.md.
+        @test isdefined(@__MODULE__, :P12_STAGE1_CONTROL_ADJUDICATION)
+        @test P12_STAGE1_CONTROL_ADJUDICATION ===
+              :ceiling_mis_scaled_control_at_information_limit
+
+        # THE TIER-1 RECORD SURVIVED THE RULING INTACT. This is the whole point of the two-tier
+        # structure and it is asserted, not trusted: the ceiling that FAILED keeps its
+        # pre-registered value, and the iteration allowance was not spent.
+        @test P12_STAGE1_CONTROL_CEILING == 0.5
+        @test P12_ITERATION_ALLOWANCE == 1
+
+        # THE ADJUDICATION IS A RECORD, NEVER A BAR. Nothing it appends may be applied as a
+        # pass/fail threshold, and the machine-checkable form of that is membership in neither
+        # constant-name tuple -- the same split section 16 makes for Tier 1.
+        for name in (:P12_STAGE1_CONTROL_ADJUDICATION, :P12_STAGE1_OWNROW_LIMIT_MEASURED,
+                     :P12_STAGE1_OWNROW_RIDGE_MEASURED, :P12_STAGE1_CONTROL_RATIO_MEASURED,
+                     :P12_STAGE1_GLOBAL_CONTROL_MEASURED,
+                     :P12_STAGE1_OWNROW_LIMIT_ABOVE_CEILING_RUNGS,
+                     :P12_STAGE1_CONTROL_CLEARS_CEILING_RUNGS)
+            @test name ∉ P12_GATING_CONSTANTS
+            @test name ∉ P12_REPORTING_ONLY_CONSTANTS
+        end
+
+        # THE TWO FACTS THAT MUST NEVER BE COLLAPSED INTO ONE SENTENCE AGAIN. The own-row
+        # information limit exceeds the ceiling at FOUR rungs; the full-128 control nonetheless
+        # CLEARS the ceiling at two of them, because it borrows and the own-row bound does not
+        # bound it. A condensed retelling of this ruling said "three shortest rungs" and dropped
+        # the qualifier "from a region's own row"; these two assertions are what make that
+        # retelling fail loudly instead of propagating.
+        @test P12_STAGE1_OWNROW_LIMIT_ABOVE_CEILING_RUNGS == (0.05, 0.25, 0.50, 0.75)
+        @test P12_STAGE1_CONTROL_CLEARS_CEILING_RUNGS     == (0.75, 0.95)
+        @test 0.75 ∈ P12_STAGE1_OWNROW_LIMIT_ABOVE_CEILING_RUNGS
+        @test 0.75 ∈ P12_STAGE1_CONTROL_CLEARS_CEILING_RUNGS
+
+        # Both are DERIVED from the measured vectors, not typed in beside them.
+        @test Tuple(P12_R1_LADDER[collect(P12_STAGE1_OWNROW_LIMIT_MEASURED) .>
+                                  P12_STAGE1_CONTROL_CEILING]) ==
+              P12_STAGE1_OWNROW_LIMIT_ABOVE_CEILING_RUNGS
+        @test Tuple(P12_R1_LADDER[collect(P12_STAGE1_CONTROL_RATIO_MEASURED) .<=
+                                  P12_STAGE1_CONTROL_CEILING]) ==
+              P12_STAGE1_CONTROL_CLEARS_CEILING_RUNGS
+
+        # The liveness certificate itself: the ridge attains the analytic limit to within 5e-4.
+        @test all(P12_STAGE1_OWNROW_RIDGE_MEASURED .>= P12_STAGE1_OWNROW_LIMIT_MEASURED)
+        @test maximum(P12_STAGE1_OWNROW_RIDGE_MEASURED .-
+                      P12_STAGE1_OWNROW_LIMIT_MEASURED) < 5e-4
+        # ... and the number that actually failed the gate is the one on the record.
+        @test maximum(P12_STAGE1_CONTROL_RATIO_MEASURED) > P12_STAGE1_CONTROL_CEILING
+
+        # THE FILE SIDE AND THE DOCUMENT SIDE AGREE. `p12_consts.jl` deliberately does NOT call
+        # `p12_stage1_verdict()` at include time -- that would make every Phase-12 runner fail to
+        # LOAD whenever the planning tree is partial. The cross-check belongs here instead, where
+        # the working tree is a fair assumption, and it is skipped rather than failed when the
+        # document is genuinely absent.
+        vdir = joinpath(P12_REPO_ROOT, ".planning", "phases", "12-spatial-colocalization-map")
+        if isfile(joinpath(vdir, P12_STAGE1_VERDICT_FILE))
+            @test p12_stage1_verdict(; dir = vdir) === P12_STAGE1_VERDICT_ADJUDICATED
+            @test P12_STAGE1_VERDICT_ADJUDICATED === :proceed
+        else
+            @test_skip p12_stage1_verdict(; dir = vdir) === P12_STAGE1_VERDICT_ADJUDICATED
+        end
+    end
+
     @testset "Phase-12 wiring manifest — a late include cannot silently never run" begin
         rt        = _strip_comment_lines(read(joinpath(@__DIR__, "runtests.jl"), String))
         suite_src = _strip_comment_lines(read(joinpath(@__DIR__, "test_p12_suite.jl"), String))

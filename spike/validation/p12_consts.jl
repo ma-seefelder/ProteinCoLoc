@@ -799,3 +799,174 @@ if !isdefined(@__MODULE__, :P12_DEV_SEED)
     @assert !isdefined(@__MODULE__, :P12_N_LOW)
     @assert !isdefined(@__MODULE__, :P12_FISHERZ_NEFF)
 end
+
+# =========================================================================================
+# TIER-2 APPEND (block 4 of 4) -- the D-12 STAGE-1 CONTROL ADJUDICATION
+# Sentinel: :P12_STAGE1_CONTROL_ADJUDICATION.  Opened 2026-07-31 BY USER RULING.
+# Provenance artifact: spike/validation/p12_stage1_report.jld2 (generated 2026-07-29T19:14:32.274Z,
+# runner committed at e88b97f BEFORE any pool existed).  Full reasoning:
+# .planning/phases/12-spatial-colocalization-map/12-STAGE1-VERDICT.md.
+# =========================================================================================
+#
+# WHY A FOURTH BLOCK EXISTS WHEN THE HEADER AT :33-47 RESERVES THREE. Three were reserved at
+# FREEZE TIME, when the only foreseen Tier-2 appends were measurements two later plans would
+# need. This one was not foreseen: it records the adjudication of a Tier-1 GATE COMPONENT that
+# the run showed to be mis-scaled. The header block above is deliberately left BYTE-UNCHANGED
+# rather than amended to say "four" -- editing the pre-registration's own description of itself
+# to accommodate a later event is precisely the move this file exists to make impossible. The
+# header is therefore correct AS A RECORD OF WHAT WAS FORESEEN, and this comment is the record
+# of what was not.
+#
+# WHAT WAS ADJUDICATED, in one paragraph, so this file is readable without the verdict document.
+# The D-12 Stage-1 gate is an AND of two components. `borrowing_ok` -- the half the phase is
+# about -- passed at 5 of 5 rungs (`ratio_mean` 0.926/0.847/0.719/0.562/0.336 against
+# P12_STAGE1_RATIO_CEILING = 0.95). `control_live` FAILED (max control ratio 0.732 against
+# P12_STAGE1_CONTROL_CEILING = 0.5), and the frozen rule reads a failed control as "the harness
+# is not live". THE RULING IS THAT THAT PREMISE IS FALSE HERE, on two measured facts:
+#   (a) LIVENESS IS PROVEN, by a certificate the gate never asked for. The own-row ridge attains
+#       the analytic information limit sqrt(1 - corr^2) to within 5e-4 at EVERY rung -- a bound
+#       computed with no ridge, no split and no standardizer, i.e. without any part of the
+#       machinery the control exists to audit, so no defect in that machinery could manufacture
+#       agreement with it. An optimal estimator is not a dead one.
+#   (b) THE CONTROL, AS SPECIFIED, IS NOT A LIVENESS TEST. The own-row limit is ABOVE 0.5 at four
+#       of the five rungs, so nothing could reach 0.5 from a region's own row there; the only
+#       thing that carries the control under 0.5 at all is BORROWING from the other 63 regions --
+#       and borrowing is the very effect the gate exists to measure. The control therefore passes
+#       exactly where `borrowing_ok` is strongest and fails where it is weakest. It is a second,
+#       harder borrowing test wearing a positive control's name, and it cannot certify the
+#       instrument independently of the effect under test.
+# The ceiling is mis-scaled for the unit it is applied to; the harness is provably live by (a);
+# the gate reduces to `borrowing_ok`; the verdict is PROCEED.
+#
+# THE CEILING KEEPS ITS VALUE. `P12_STAGE1_CONTROL_CEILING = 0.5` at :354 is NOT edited and NOT
+# superseded by a friendlier number -- it stands as the historical record of what was
+# pre-registered, exactly as `SPEEDUP_GATE = 100.0` and `P11_LAMBDA_ABLATION_FACTOR = 2.502` kept
+# theirs after their own bars were found mis-specified. Nothing below is a REPLACEMENT BAR.
+#
+# READ THIS BEFORE USING ANY CONSTANT BELOW: EVERY ONE IS A MEASUREMENT OR A RECORD. NONE IS A
+# THRESHOLD. None enters `P12_GATING_CONSTANTS` (which is Tier-1 and append-only, so it could not
+# be extended even if that were wanted) and none may be applied as a pass/fail bar by any later
+# plan. The Stage-1 gate was adjudicated ONCE, by a human, on the numbers below; re-applying a
+# post-hoc criterion to the same data would be the data-snooping this whole file forbids.
+#
+# WHY THE 0.5 CEILING WAS REACHABLE-LOOKING AND THE 0.95 ONE WAS NOT MIS-SCALED: the ratio
+# ceiling carries its derivation verbatim at :358 AND is re-derived by an executable assertion at
+# :763-764, so a wrong value could not have loaded. The control ceiling has NO derivation block
+# anywhere, and its only guard at :765 is the ordering constraint 0 < CONTROL < RATIO < 1, which
+# 0.4, 0.5 and 0.6 satisfy identically. That asymmetry is the defect, and it is why the two
+# ceilings were adjudicated differently.
+if !isdefined(@__MODULE__, :P12_STAGE1_CONTROL_ADJUDICATION)
+
+    # --- The ruling itself, as a readable symbol ------------------------------------------
+    const P12_STAGE1_CONTROL_ADJUDICATION = :ceiling_mis_scaled_control_at_information_limit
+    const P12_STAGE1_CONTROL_ADJUDICATION_DATE     = "2026-07-31"
+    const P12_STAGE1_CONTROL_ADJUDICATION_BY       = :user
+    const P12_STAGE1_CONTROL_ADJUDICATION_ARTIFACT = "spike/validation/p12_stage1_report.jld2"
+    const P12_STAGE1_CONTROL_ADJUDICATION_DOC      =
+        ".planning/phases/12-spatial-colocalization-map/12-STAGE1-VERDICT.md"
+
+    # --- The measurements the ruling rests on, one entry per P12_R1_LADDER rung ------------
+    # All four vectors are copied at FULL Float64 precision from the artifact keys of the same
+    # name, read back out of the .jld2 -- not retyped from a console log or a summary document.
+
+    # `own_row_bound_mean`: sqrt(1 - corr(row_r, z_field[r])^2), the RMSE-over-prior ratio of the
+    # BEST POSSIBLE linear predictor of region r's lattice value from region r's OWN summary row.
+    # A property of the DATA. No ridge, no penalty, no split, no standardizer -- which is exactly
+    # why it can audit the machinery: no defect in that machinery could manufacture agreement
+    # with a bound that does not use it.
+    const P12_STAGE1_OWNROW_LIMIT_MEASURED = (0.765640750897169, 0.7120078394184097,
+                                              0.6366720262496517, 0.5555131021382556,
+                                              0.4718299883347116)
+    # `ownrow_ratio_mean`: the SAME quantity as estimated by the ridge under audit.
+    const P12_STAGE1_OWNROW_RIDGE_MEASURED = (0.7658810882318206, 0.7123565992857308,
+                                              0.6371620688064296, 0.5558956237524629,
+                                              0.4719855253907083)
+    # `control_ratio_mean`: the full-128-row positive control -- region r's own row INCLUDED.
+    # This is the vector `control_live` was computed from, and its maximum (0.73188 at r1 = 0.05)
+    # is the number that failed the 0.5 ceiling.
+    const P12_STAGE1_CONTROL_RATIO_MEASURED = (0.7318805770440442, 0.6774010699701734,
+                                               0.5982727231625359, 0.49658948181593837,
+                                               0.3236859998843231)
+    # `global_control_ratio`: the Phase-11-COMPARABLE benchmark -- recovery of the IMAGE-LEVEL
+    # (not per-region) field mean. 12-CONTEXT S-2 records Phase 11 recovering global rho_true at
+    # 0.157 on a harness known to work; the comparable rung here is r1 = 0.95, where the global
+    # level of a near-constant field is the analogue of a constant rho, and it measures 0.19687
+    # at the noisiest single image size in the F5 set. THIS IS THE ONLY LEGITIMATE COMPARISON TO
+    # PHASE 11'S 0.157 -- S-2 warns explicitly that 0.157 must NOT be read as a per-region
+    # expectation, and reading it as one is how the 0.5 ceiling most plausibly acquired its value.
+    const P12_STAGE1_GLOBAL_CONTROL_MEASURED = (0.7717256500340796, 0.6140011119059539,
+                                                0.38141373438720366, 0.23233993788672802,
+                                                0.1968675170141333)
+
+    # The rungs at which P12_STAGE1_CONTROL_CEILING lies BELOW the OWN-ROW information limit --
+    # i.e. where no estimator of any kind, correct or broken or neural, could reach 0.5 FROM A
+    # REGION'S OWN ROW. FOUR of five, not three. Both DERIVED from the constants above by the
+    # assertion block below, not counted by hand.
+    #
+    # THE QUALIFIER "FROM A REGION'S OWN ROW" IS LOAD-BEARING AND MUST NOT BE DROPPED. The
+    # own-row bound is NOT an upper bound on the full-128 control, which sees all 128 rows and
+    # legitimately BEATS it at every rung by borrowing from the other 63 regions. A condensed
+    # retelling of this ruling stated "the limit is above the bar at the three shortest rungs",
+    # which is true but incomplete -- the limit (0.5555) is above the bar at r1 = 0.75 as well,
+    # where the control nonetheless CLEARED the bar (0.4966) precisely because it borrows. Both
+    # tuples are recorded so the two facts can never again be collapsed into one sentence.
+    const P12_STAGE1_OWNROW_LIMIT_ABOVE_CEILING_RUNGS = (0.05, 0.25, 0.50, 0.75)
+    const P12_STAGE1_CONTROL_CLEARS_CEILING_RUNGS     = (0.75, 0.95)
+
+    # --- EXECUTABLE self-checks: the ruling's premises, re-derived from this file -----------
+    # These do not gate anything. They make the ARGUMENT falsifiable at include time: if a later
+    # edit ever made one of these false, the reasoning in 12-STAGE1-VERDICT.md would no longer
+    # follow from the numbers, and the file would refuse to load rather than quietly disagree
+    # with its own verdict.
+    @assert length(P12_STAGE1_OWNROW_LIMIT_MEASURED)   == length(P12_R1_LADDER)
+    @assert length(P12_STAGE1_OWNROW_RIDGE_MEASURED)   == length(P12_R1_LADDER)
+    @assert length(P12_STAGE1_CONTROL_RATIO_MEASURED)  == length(P12_R1_LADDER)
+    @assert length(P12_STAGE1_GLOBAL_CONTROL_MEASURED) == length(P12_R1_LADDER)
+    # PREMISE 1 -- the estimator ATTAINS the information limit at every rung (optimal, not
+    # broken). The published claim is "to within 5e-4"; assert exactly that.
+    @assert all(P12_STAGE1_OWNROW_RIDGE_MEASURED .>= P12_STAGE1_OWNROW_LIMIT_MEASURED)
+    @assert maximum(P12_STAGE1_OWNROW_RIDGE_MEASURED .- P12_STAGE1_OWNROW_LIMIT_MEASURED) < 5e-4
+    # PREMISE 2 -- the ceiling sits BELOW the own-row information limit at four of the five
+    # rungs, so at those four no own-row estimator could have cleared it...
+    @assert Tuple(P12_R1_LADDER[collect(P12_STAGE1_OWNROW_LIMIT_MEASURED) .>
+                                P12_STAGE1_CONTROL_CEILING]) ==
+            P12_STAGE1_OWNROW_LIMIT_ABOVE_CEILING_RUNGS
+    @assert length(P12_STAGE1_OWNROW_LIMIT_ABOVE_CEILING_RUNGS) == 4
+    # ... and the full-128 control cleared it at exactly the two LONGEST rungs, which is the
+    # substance of the defect: the only thing that carries the control under 0.5 is BORROWING,
+    # and borrowing is the effect the gate exists to measure. A positive control that can only
+    # pass when the effect under test is present is not an independent liveness certificate.
+    @assert Tuple(P12_R1_LADDER[collect(P12_STAGE1_CONTROL_RATIO_MEASURED) .<=
+                                P12_STAGE1_CONTROL_CEILING]) ==
+            P12_STAGE1_CONTROL_CLEARS_CEILING_RUNGS
+    # PREMISE 3 -- borrowing genuinely helps: the full-128 control beats the own-row limit at
+    # EVERY rung, which is what carries it under the ceiling at the two rungs where that is
+    # physically possible at all.
+    @assert all(P12_STAGE1_CONTROL_RATIO_MEASURED .< P12_STAGE1_OWNROW_LIMIT_MEASURED)
+    # PREMISE 4 -- the number that failed really is the maximum of the control vector, so the
+    # gate arithmetic recorded in the artifact is reproduced here rather than asserted in prose.
+    @assert maximum(P12_STAGE1_CONTROL_RATIO_MEASURED) > P12_STAGE1_CONTROL_CEILING
+    # PREMISE 5 -- the Phase-11 benchmark reproduces where the two are comparable (r1 = 0.95),
+    # and is monotone in r1 for the reason the physics predicts.
+    @assert last(P12_STAGE1_GLOBAL_CONTROL_MEASURED) < 0.25
+    @assert issorted(P12_STAGE1_GLOBAL_CONTROL_MEASURED; rev = true)
+    # THE TIER-1 RECORD IS INTACT: the ceiling keeps its pre-registered value, and the ruling
+    # spent no iteration. Both are asserted HERE, in the block that adjudicated them, so that a
+    # later edit to either would fail at the point where its meaning is written down.
+    @assert P12_STAGE1_CONTROL_CEILING == 0.5
+    @assert P12_ITERATION_ALLOWANCE    == 1
+    # The adjudication is a RECORD, never a bar: none of its names may join the gating tuple.
+    @assert :P12_STAGE1_CONTROL_ADJUDICATION ∉ P12_GATING_CONSTANTS
+    @assert :P12_STAGE1_OWNROW_LIMIT_MEASURED ∉ P12_GATING_CONSTANTS
+    @assert :P12_STAGE1_CONTROL_RATIO_MEASURED ∉ P12_GATING_CONSTANTS
+    # The verdict this adjudication produced, recorded as a SYMBOL rather than checked by
+    # calling `p12_stage1_verdict()` here. That call was written first and then deliberately
+    # removed: it would make this constants file -- which every Phase-12 runner and test
+    # includes -- fail to LOAD whenever the planning document is absent, e.g. in a checkout with
+    # a partial .planning tree. The dependency must run consts -> (nothing), and routing ->
+    # document; inverting it would let a docs-only change break the spike. The file-side and
+    # document-side records are instead cross-checked by spike/test/test_p12_consts.jl, which is
+    # the right place for a check that needs the working tree.
+    const P12_STAGE1_VERDICT_ADJUDICATED = :proceed
+    @assert P12_STAGE1_VERDICT_ADJUDICATED === :proceed
+end
