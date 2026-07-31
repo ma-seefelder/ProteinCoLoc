@@ -158,9 +158,12 @@ The own-row limit is above the ceiling at **four** of five rungs, not three — 
 (r₁ = 0.75) the control **cleared the ceiling anyway**, at 0.49659. The two facts are not in
 tension, and keeping them apart is the whole point: **the own-row bound is not an upper bound on the
 full-128 control**, which sees all 128 rows and legitimately beats it at every rung by borrowing
-from the other 63 regions. `12-STAGE1-ADJUDICATION-BLOCKED.md` §4 stated this correctly, with the
-qualifier *"from that region's own row"*; the qualifier was lost in condensation, and losing it
-turned a precise claim into an overclaim. Both tuples are now recorded in the Tier-2 append
+from the other 63 regions. `12-STAGE1-ADJUDICATION-BLOCKED.md` §4 also names three rungs, but it is
+NOT wrong: it carries the qualifier *"from that region's own row"*, never claims those three are the
+only ones, and says outright that the control clears the ceiling at r₁ = 0.75 by borrowing. What was
+lost was the QUALIFIER, in condensing that section into a briefing — and losing it turned a
+true-but-partial statement into an overclaim about what no estimator can do. Both tuples are now
+recorded in the Tier-2 append
 (`P12_STAGE1_OWNROW_LIMIT_ABOVE_CEILING_RUNGS`, `P12_STAGE1_CONTROL_CLEARS_CEILING_RUNGS`) with an
 assertion that re-derives each from the measured vectors, so the file refuses to load if the
 "three rungs" phrasing is ever reintroduced.
@@ -325,7 +328,38 @@ than it deserves:
 | 3 | Phase 12/13, Z_TWO_SIDED_90 | A **Wald**-labelled quantity used to size a **Wilson** interval (DEF-12-04, a silent function default). |
 | 4 | Phase 12, Stage 1 (**this document**) | A gating ceiling with **no derivation**, on a "positive control" whose only route to passing is the very effect it was meant to control *for*. |
 
-Two things must be said about that list together, and neither excuses the other.
+### The four are TWO recurring design errors, not four unrelated slips
+
+This is the part that is actually worth a referee's attention, and it is not visible from the list.
+The four entries fall into **two families with two distinct root causes**, and naming the families
+says something a list of four cannot.
+
+**FAMILY A — a control or tripwire whose statistic IS the quantity under test.** (Entries 1 and 4.)
+
+Such a check cannot do the one job it exists for, because its failure is indistinguishable from the
+outcome it is supposed to be independent of.
+
+| | The check | Its statistic | What it therefore could not separate |
+|---|---|---|---|
+| 1 | Phase 11's SC1g λ-ablation tripwire | Δρ posterior width — **the same quantity SC2 measures** | "conditioning is dead" from "the effect is null" — exactly the separation its own header claimed |
+| 4 | This document's Stage-1 positive control | per-region borrowing performance — **the same quantity `borrowing_ok` measures** | "the instrument is dead" from "borrowing is weak" |
+
+In both cases the check was, structurally, a second and harder version of the measurement it was
+meant to certify, wearing a control's name. **The generalisable rule, stated so no later phase has
+to rediscover it: a control must be measurable when the effect under test is ABSENT. If it is not,
+it is not a control.** Applied to entry 4: the Stage-1 control could only come under its ceiling by
+borrowing, so at a rung where borrowing is weak it must fail whether the instrument works or not.
+
+**FAMILY B — a quantity compared against a bar derived for a different unit or construction.**
+(Entries 2 and 3.) The bar was sound; it was applied to something it was not derived for — an
+`effective_independent_n` of 2 against a bar sized for N ≥ 271, and a Wald-derived quantity used to
+size a Wilson interval. `P12_STAGE1_RATIO_CEILING` carries a recorded warning about exactly this
+hazard in its own derivation block, which is why it was *not* a fifth instance.
+
+Two families, two root causes, four instances — and both families were caught by the same mechanism:
+writing the claim down in advance made it checkable against something outside itself.
+
+Two further things must be said about the list together, and neither excuses the other.
 
 **The honest framing.** Every one of the four was caught **before it corrupted a result**, and it was
 caught *because* the bar had been written down in advance and could therefore be checked against the
@@ -343,9 +377,13 @@ information limit; in Phase 11 it was the component/total decomposition. **That 
 inconvenience of the number, is what licensed each amendment**, and it is the standard a referee
 should hold the fourth one to.
 
-**Duty on Phase 16:** this table belongs in the manuscript's methods as a stated observation about
-the pre-registration process, not left for a reader to assemble from four separate phase records. It
-should be reported with the count, the mechanism of each, and the common licensing standard above.
+**Duty on Phase 16:** this belongs in the manuscript's methods as a stated observation about the
+pre-registration process, not left for a reader to assemble from four separate phase records. Report
+it as **two recurring design errors with four instances**, not as a list of four — the families are
+the finding, and they turn "they keep getting bars wrong" into "the pre-registration discipline
+surfaced two recurring design errors, both caught before either corrupted a result." Report the
+mechanism of each family, the common licensing standard above, and Family A's rule verbatim: *a
+control must be measurable when the effect under test is absent, or it is not a control.*
 
 ## §8 Routing consequences of PROCEED
 
