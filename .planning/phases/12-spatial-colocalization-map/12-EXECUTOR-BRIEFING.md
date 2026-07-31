@@ -81,6 +81,18 @@ Your own `spike/test/test_p12_*.jl` file usually **already exists** as a green p
   this project's baseline: pass `use_gpu = false` **explicitly**.
 - **Phase-prefix your test helpers.** A bare `_res`-style helper silently overwrote its Phase-13
   namesake via an identical zero-positional method signature (found by 12-12).
+- **"PITFALL 5" IS OVERLOADED. CITE THE FILE:LINE, NEVER THE NUMBER.** Spike-wide, Pitfall 5 is the
+  **θ-un-standardization** contract — `spike/npe/infer.jl:35-38`, and also `train_npe.jl:34,78,118`,
+  `ablation.jl:38,95`, `benchmark.jl:43`, `p13/datagen.jl`, `p13/preconditions.jl:503`. But
+  `12-RESEARCH.md:867` numbers a **different** Pitfall 5 — *"the D-09 gate may not discriminate"* —
+  and that is the one `12-16-PLAN.md` means when it says "PITFALL 5 IS WHY THE GATE IS TWO-SIDED".
+  The two meet inside one file. Two numbering systems, not renumbered here because reconciling them
+  is not this phase's to do; write `spike/npe/infer.jl:35-38` when you mean the θ contract.
+- **`sampleposterior` RETURNS STANDARDIZED θ. UN-STANDARDIZE BEFORE COMPARING TO ANYTHING RAW.**
+  `StatsBase.reconstruct(bundle.theta_zt, M)`. 12-15's first run omitted it and produced a report
+  that was COMPLETE, internally consistent, reconciled to 0.006 min against its own parts, and
+  scientifically void — because no structural check looks at SCALE. Enforced mechanically for every
+  `spike/validation/run_p12_*.jl` runner by `test_p12_train.jl`.
 
 ## 6. Report; do not guess
 
