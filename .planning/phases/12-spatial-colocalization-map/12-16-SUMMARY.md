@@ -224,6 +224,10 @@ predicts neither of this plan's outcomes. It does mean the pre-declaration's §1
 uninformative branch is live because latent-field skill is −0.15084"* rests on a number computed in
 the wrong basis — a matter for the orchestrator and the user, not for this plan. **This file's own
 reconstruction uses `p12_region_field` throughout.**
+*(Subsequently repaired outside this plan, in `f039729`, and recorded as a §7.4 family instance in
+`914d6e1`. Both landed after this plan's own work and neither is 12-16's; noted here only so a later
+reader does not take the defect to be still live. **The 12-15 numbers it affects have not been
+re-run**, so anything quoting −0.15084 or +0.08629 still carries the wrong-basis caveat.)*
 
 **A plan defect, reported not silently improved.** `12-16-PLAN.md:201` requires `p12_coloc_map` to
 take `N`, `nominal` **and** `n_eff`, but the function reports posterior sd per region and builds no
