@@ -119,7 +119,7 @@ const MINISPIKE_SCORE_CHUNK = 100
 
 # Training epochs for each arm. Held IDENTICAL across arms -- the arm is the only thing that varies,
 # which is what makes the comparison attributable (D-10).
-const MINISPIKE_EPOCHS = 18
+const MINISPIKE_EPOCHS = parse(Int, get(ENV, "P12_MINISPIKE_EPOCHS", "18"))
 
 # THE TRUNCATION FRACTIONS, NAMED HERE BEFORE THE CURVE IS COMPUTED (the plan requires the fraction
 # be stated in the header before running).
