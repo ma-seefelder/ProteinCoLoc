@@ -350,14 +350,34 @@ to rediscover it: a control must be measurable when the effect under test is ABS
 it is not a control.** Applied to entry 4: the Stage-1 control could only come under its ceiling by
 borrowing, so at a rung where borrowing is weak it must fail whether the instrument works or not.
 
-**FAMILY B — a quantity compared against a bar derived for a different unit or construction.**
-(Entries 2 and 3.) The bar was sound; it was applied to something it was not derived for — an
-`effective_independent_n` of 2 against a bar sized for N ≥ 271, and a Wald-derived quantity used to
-size a Wilson interval. `P12_STAGE1_RATIO_CEILING` carries a recorded warning about exactly this
-hazard in its own derivation block, which is why it was *not* a fifth instance.
+**FAMILY B — a quantity compared against a bar or baseline constructed for a different purpose.**
+(Entries 2 and 3, plus a third instance found after this table was first written.) The bar was
+sound; it was applied to something it was not built for — an `effective_independent_n` of 2 against a
+bar sized for N ≥ 271, and a Wald-derived quantity used to size a Wilson interval.
+`P12_STAGE1_RATIO_CEILING` carries a recorded warning about exactly this hazard in its own
+derivation block, which is why it was *not* a further instance.
 
-Two families, two root causes, four instances — and both families were caught by the same mechanism:
-writing the claim down in advance made it checkable against something outside itself.
+**The third Family-B instance: 12-13's per-r₁-bin table.** Its per-bin ratio divides each bin's
+ridge RMSE by the RMSE of the **global** prior mean *within that bin* — so the denominator is
+essentially the bin's distance from that mean. Measured:
+`corr(|bin midpoint − prior mean|, reported prior RMSE) = 0.99682`, and the central bin's midpoint
+sits **0.0006** from the prior mean, making its baseline near-perfect by construction so that any
+estimator must lose there. The 1.17 in that cell is binning, not physics.
+
+**Family B's failure condition is checkable IN ADVANCE, which is what makes the family actionable
+rather than merely descriptive:** the analogous `run_p12_eps_ridge.jl` escapes this because it bins
+by `|ρ|` while *targeting* ε — two different quantities — whereas in 12-13 **the binning variable IS
+the target**. Ask of any binned report: *is the variable I am binning on the same as the one I am
+predicting, and is the baseline computed globally?* If both, the central bins are uninterpretable.
+
+**12-13 did NOT re-specify that metric after seeing its output.** The plan specified the global
+baseline, the headline result does not depend on the per-bin table, and the artifact records the
+metric as run. The trap is documented, not tuned away — which is the whole difference between a
+documented artifact and a fitted one.
+
+Two families, three root-cause instances in Family B and two in Family A — and every one was caught
+by the same mechanism: writing the claim down in advance made it checkable against something outside
+itself.
 
 Two further things must be said about the list together, and neither excuses the other.
 

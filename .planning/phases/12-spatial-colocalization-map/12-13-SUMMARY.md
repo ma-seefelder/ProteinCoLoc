@@ -14,7 +14,10 @@ provides:
   - "spike/validation/p12_ell_ridge_report.jld2 — the reported measurement (TRACKED)"
 affects:
   - "12-18: r1's SBC row is now expected VACUOUS; a wide r1 posterior there reads as `shrinkage ≈ 1.0`"
+  - "12-18: must CONFIRM the r1-prior sensitivity below on the net's own per-region coverage"
   - "the phase report's named limit #4 (vacuous nuisance columns): r1 JOINS it, with two estimators"
+  - "the phase report: a NEW named limit — per-region uncertainty is a marginal over the r1 prior"
+  - "the phase report: the RECONCILIATION section below must be carried, not left to a reader"
   - "the manuscript's D-08 paragraph: the hedge is RESOLVED, in the negative, with a live control"
 tech-stack:
   added: []
@@ -134,6 +137,74 @@ mean) rather than the global one. Not changed here — the plan specified the gl
 headline result does not depend on it, and re-specifying a reported metric after seeing its output is
 the move this phase is careful about. **Recorded so 12-18 and the phase report do not read the
 central bin as a physical statement.**
+
+## RECONCILIATION — this result and Stage-1 are NOT in tension, and must not be read as if they were
+
+Phase 12 now holds two true results that a reader meeting them in the wrong order will take as a
+contradiction:
+
+- **Stage-1 (12-11): spatial borrowing WORKS.** Neighbouring regions inform a held-out region,
+  monotonically in r₁, with the crossing where the other 63 regions beat a region's own measurement
+  at r₁ = 0.75.
+- **12-13 (this plan): r₁ itself is NOT identifiable** — 1.00655, vacuous, and worse than chromatic
+  ε at 0.96870, i.e. very slightly worse than the prior mean.
+
+**The correct statement is that the map BENEFITS from spatial structure even though the smoothness
+hyperparameter governing that structure cannot be recovered from this summary.** Those are
+compatible, and routinely so: one can marginalise over a hyperparameter one cannot pin down. The
+borrowing gain is a property of the *field*, measured directly at every rung of the ladder; r₁'s
+identifiability is a property of *what the 128-row summary retains about that field's smoothness*.
+Nothing in D-08 requires r₁ to be recoverable for the borrowing to be real, and Stage-1 measured the
+borrowing without ever estimating r₁ — its ladder **pins** r₁ rather than inferring it.
+
+**This does NOT say the spatial model is unidentifiable.** That inference is the misreading this
+section exists to prevent, and it should be stated in the phase report rather than left for a reader
+to assemble.
+
+### The consequence that follows, MEASURED rather than assumed: the deliverable inherits a prior choice
+
+If r₁'s posterior is essentially its prior, then the per-region uncertainty the phase delivers is an
+**average over `P12_R1_PRIOR = Uniform(0.05, 0.95)`** — a Tier-1 constant confirmed on the
+understanding that a uniform is the honest default given no prior belief. So: is the delivered
+uncertainty materially sensitive to that choice?
+
+**Yes, materially — and the answer is already in the Stage-1 artifact, so no new campaign was run.**
+Read off `p12_stage1_report.jld2`'s pinned-r₁ ladder, which is exactly the sensitivity curve this
+question needs:
+
+| r₁ | per-region `ratio_mean` (neighbours only) | full-128 control |
+|---|---|---|
+| 0.05 | 0.92557 | 0.73188 |
+| 0.25 | 0.84660 | 0.67740 |
+| 0.50 | 0.71870 | 0.59827 |
+| 0.75 | 0.56184 | 0.49659 |
+| 0.95 | 0.33569 | 0.32369 |
+
+- Across the prior's support, per-region recoverability varies by a factor of **2.757**
+  (0.3357 → 0.9256).
+- Marginalised over the actual prior: **E[ratio_mean | r₁ ~ U(0.05, 0.95)] = 0.69189**.
+- Under a prior concentrated on the **low** half, U(0.05, 0.50): **0.82862**.
+  Under the **high** half, U(0.50, 0.95): **0.55515**. A factor of **1.49** between them.
+- This is **not a normalisation artifact**: `baseline_rmse_mean` is flat at ≈ 1.0 across every rung
+  (0.998 / 0.996 / 0.990 / 0.980 / 0.998), so the denominator is constant and it is the *achieved*
+  error that moves.
+
+**NAMED LIMIT (new, belongs beside the others).** Because r₁ is unidentified, the per-region
+uncertainty this phase reports is a **marginal over the assumed r₁ prior**, and that marginal shifts
+by ~1.5× between a low-smoothness and a high-smoothness prior over the same support. A user who
+believes their biology is smoother (or rougher) than `Uniform(0.05, 0.95)` implies should expect
+materially different per-region intervals. The honest framing is that the uniform is a deliberate
+no-prior-belief default, not a neutral one — there is no neutral choice here, and the delivered
+interval width depends on it.
+
+**Two caveats on the strength of this evidence, stated rather than glossed.** (i) The ladder is a
+**ridge**, not the trained net's posterior, so these are recoverability ratios and not posterior
+widths — they bound what any linear estimator achieves, and the net's own per-region interval widths
+are 12-18's measurement. (ii) The five rungs are **common-random-number paired** by construction
+(`run_p12_stage1_ridge.jl:82-87`), so they are not five independent experiments; that makes the
+*trend* more reliable, not less, but the spread should not be read as five independent samples.
+**12-18 should confirm this on the net's own coverage, and the phase report should carry the limit
+either way.**
 
 ## Declared deviations
 

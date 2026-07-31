@@ -87,6 +87,57 @@ must not be touched for this. **The defect is on the guard side, every time.**
 - Both-ends re-point: `13-D15-AMENDMENT.md` §5B (`spike/p13/consts.jl:100` +
   `spike/test/test_p13_consts.jl:42` + six sibling callers), executed by `13-17-PLAN.md`.
 
+### THE GENERALISATION: guard poisoning and name collisions are ONE root cause, not two
+
+*Added 2026-07-31, authorised by the phase-12 orchestrator, after the second function-name collision
+of the milestone. Scope of that authorisation: extend C-01 with this subsection only.*
+
+Everything above is about **guard sentinels** colliding. The same milestone has now twice had
+**function names** collide, in a way that produces a different symptom and needs the same fix. They
+are two faces of one root cause, and treating them as separate problems means fixing each twice.
+
+**The root cause: this project `include`s files into SHARED SCOPE.** Almost every spike file is
+`include`d into `Main` (or into a single test module) rather than being read behind a namespace. In
+that arrangement two different files may bind the same name — and **whichever loads last wins,
+silently, with no error and no warning.** What the collision costs depends only on what kind of name
+it is:
+
+| Colliding name | Symptom | Loudness |
+|---|---|---|
+| a **guard sentinel** | the owner-side `if !isdefined(...)` body is SKIPPED entirely, so ~100 constants are never defined and the failure surfaces far away as `UndefVarError` | loud, but misattributed |
+| a **function or helper** | the later definition **overwrites** the earlier one for every caller, including the tests written for the earlier one | **completely silent** — a green suite may be testing the wrong function |
+
+The function case is the more dangerous of the two precisely because nothing fails. A test file that
+believes it is exercising the owner's implementation may be exercising a caller's replacement.
+
+**Instances so far (all three found in execution, none by review):**
+
+| # | Kind | What happened |
+|---|---|---|
+| 1 | guards | the 2026-07-29 sweep: **29 poisoned guards over eight sentinel families**, 220 guards across 118 files (appendix below) |
+| 2 | function | **12-12**: a bare `_res`-style test helper with an identical zero-positional signature silently overwrote its **Phase-13 namesake** |
+| 3 | function | **12-14**: the plan specified `augment_mask!` as one of `spike/npe/train_p12_npe.jl`'s functions, but 12-04 already defines it at `spike/npe/p12_architecture.jl:190` — which that trainer `include`s. Defining it again would have overwritten the pre-registered augmentation, with include order picking the winner, and `test_p12_architecture.jl` would then have been testing the trainer's copy. Avoided by calling 12-04's function and never redefining it |
+
+**THE ONE REMEDY, IN BOTH DIRECTIONS: read a foreign file through a PRIVATE MODULE, never into
+shared scope.** The repo already does this in three places and they are the pattern to copy:
+`module _P11C` (`spike/p13/preconditions.jl:160`), `module _GC` (`spike/p13/consts.jl:96`),
+`module GateV2` (`spike/validation/p11_consts.jl:90`). A private module makes the import explicit —
+you re-bind exactly the names you meant to take — so neither a sentinel nor a helper can be captured
+by accident.
+
+**Two rules that follow, and that every future phase inherits:**
+
+1. **Before defining ANY function in a file that `include`s another, check whether that name already
+   exists in the included tree.** `grep -rn "function <name>" spike/` costs seconds. A plan
+   instructing you to define a function is not evidence that the function does not already exist —
+   in instance 3 the plan explicitly specified one that did.
+2. **Phase-prefix helpers you own** (`_p12train_…`, `_p12s1_…`), so that even in shared scope a new
+   helper cannot capture a name another phase depends on. This is the cheap half of the remedy and
+   costs nothing to apply universally.
+
+**A plan that asks you to define a name that already exists is reporting a defect, not granting
+permission.** Call the existing one; record the deviation.
+
 ---
 
 ## C-01 appendix — the mechanical sweep (2026-07-29): 220 guards, 118 files, 29 poisoned
