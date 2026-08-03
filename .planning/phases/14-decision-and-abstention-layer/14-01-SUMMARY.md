@@ -2,24 +2,42 @@
 phase: 14
 plan: 01
 subsystem: pre-registration
-status: BLOCKED — pending user ruling at Task 0 (blocking checkpoint:decision)
+status: COMPLETE — Task 0 ruled accept-as-proposed 2026-08-03; freeze committed at a6c8258
 tags: [pre-registration, seeds, judgement-call-bars, wave-0]
 requires: []
-provides: []          # nothing yet — Task 0 gates Tasks 1 and 2
-affects: []
+provides:
+  - "spike/p14/consts.jl — the Phase-14 Tier-1 pre-registration (every seed, counter, sample size, alpha and bar)"
+  - "P14_DEV_SEED / P14_FIX_SEED / P14_SALT — fresh Philox streams, disjoint from the whole P13 family by key-word cross-product"
+  - "P14_JUDGEMENT_CALL_BARS — the five ruled bars, enumerated mechanically"
+  - "P14_ITERATION_ALLOWANCE / P14_ITERATION_TRIGGER — the one pre-declared remedy (LAC to APS)"
+affects:
+  - "every later Phase-14 plan: no result-producing commit may precede a6c8258"
 tech-stack:
   added: []           # no dependency added; spike/Project.toml and Manifest.toml byte-unchanged
-  patterns: []
+  patterns:
+    - "Tier-1 guard block keyed on a declared-deviation tuple, never on a seed (CONVENTIONS C-01)"
+    - "forbidden-seed inventory DERIVED by guarded include, never retyped"
+    - "full Philox key-word cross-product, not merely seed inequality"
+    - "run-time-assembled grep needle so a source scan can scan itself"
 key-files:
-  created: []         # spike/p14/consts.jl NOT written — deliberately
+  created:
+    - spike/p14/consts.jl          # 413 lines
+    - spike/test/test_p14_consts.jl # 297 lines, 273 assertions
   modified: []
 decisions: [D-07]
 metrics:
-  duration: ~10 min (read-only)
-  completed: null
-  tasks_completed: 0
+  duration: ~35 min
+  completed: 2026-08-03
+  tasks_completed: 3
   tasks_total: 3
+  freeze_commit: a6c825867dbc786f7c3927df6760295ee0930c77
 ---
+
+> **FRONTMATTER UPDATED IN PLACE 2026-08-03.** The body below is append-only and the original
+> BLOCKED record is preserved verbatim. The frontmatter is machine-read (`status`, `provides`,
+> `tasks_completed`), so leaving it saying BLOCKED would misreport disk state to every later plan.
+> The superseded values were: `status: BLOCKED — pending user ruling at Task 0`, empty `provides`
+> and `key-files.created`, `duration: ~10 min (read-only)`, `completed: null`, `tasks_completed: 0`.
 
 # Phase 14 Plan 01: Freeze the Phase-14 Pre-Registration — Summary
 
@@ -288,4 +306,209 @@ distinguishes them from five numbers an agent picked.
   binding text, not as commentary.
 - `P14_ITERATION_ALLOWANCE` still concerns conformal coverage only. It cannot be spent on any of
   these five, and the file says so.
+
+---
+
+# APPENDED 2026-08-03 — PLAN 14-01 COMPLETE. WAVE 0 IS DONE.
+
+## The freeze commit — the sha every later plan cites as ordering evidence
+
+```
+a6c825867dbc786f7c3927df6760295ee0930c77
+pre-register(14-01): freeze the Phase-14 Tier-1 pre-registration
+```
+
+**It contains exactly one file** — `spike/p14/consts.jl`, 413 insertions. No `.jld2`, no
+`spike/p14/run_p14_*.jl`, no measured number. Verified with `git show --stat HEAD`. That is the
+acceptance criterion this task exists for: **every result-producing commit in Phase 14 must be a
+descendant of `a6c8258`,** and the ordering is a matter of git history rather than trust.
+
+## Commits, in order
+
+| # | Task | Commit | Files |
+|---|---|---|---|
+| 0 | Rule the five undERIVED bars | `de9a6db` | `14-01-SUMMARY.md` (the ruling, recorded **before** anything was written to `spike/`) |
+| 1 | Freeze the Tier-1 pre-registration | **`a6c8258`** | `spike/p14/consts.jl` (413 lines) |
+| 2 | Assert the freeze | `0ff4669` | `spike/test/test_p14_consts.jl` (297 lines) |
+
+Task 0 was committed separately and first, on purpose: the ruling has to exist on disk before the
+values it ruled, or the record cannot distinguish "the user ratified these" from "an agent wrote
+these and the user was told afterwards."
+
+## Verification — actually run, with observed output
+
+| Check | Command | Observed |
+|---|---|---|
+| Tier-1 includes cleanly, every `@assert` passes | `julia --project=spike -e 'include("spike/p14/consts.jl"); …'` | printed `tier-1 ok`, exit 0 |
+| The freeze is executably asserted | `julia --project=spike spike/test/test_p14_consts.jl` | **273 pass, 0 fail, 0 error**, 0.2 s test time / 2.6 s wall including startup |
+| τ is absent from non-comment source | `grep -v '^\s*#' spike/p14/consts.jl \| grep -c 'P14_TAU\|const P13_TAU'` | `0` |
+| Guard sentinel is not a seed | `grep -c 'isdefined(@__MODULE__, :P14_DECLARED_DEVIATIONS)' …` | `2` |
+| All 20 required constant names present as literal text | per-name `grep -q` | 20/20 ok |
+| AGPL header byte-identical to `test_p12_decoupling.jl:1-19` | `diff <(sed -n '1,19p' …)` | identical |
+| CPU-only testset present | `grep -c 'CUDA' spike/test/test_p14_consts.jl` | `1` |
+| `src`, `spike/Project.toml`, `spike/Manifest.toml`, `corpus` byte-unchanged | `git diff --exit-code HEAD -- …` | exit 0 |
+
+**Falsification check, run and reverted.** Flipping one digit of `P14_DEV_SEED`
+(`…0B14_DE71` → `…0B14_DE72`) in place made `test_p14_consts.jl` exit **1**. The flip was chosen so
+it does *not* collide with a forbidden seed — so the file's own self-checks still passed and it was
+the **test's literal assertion** that caught it, which is what the criterion is actually about. The
+scratch change was reverted with `git checkout --` and `git diff --exit-code` confirmed clean before
+anything was staged.
+
+Test breakdown as reported by Julia:
+
+```
+P14 Tier-1 pre-registration (D-07)                                               |  273    273  0.2s
+  the locked literals                                                            |   22
+  seeds are fresh and disjoint                                                   |   31
+  streams are counter-separated                                                  |    9
+  the Philox key-word cross-product is pairwise distinct vs the whole P13 family |  175
+  tau is NOT Tier-1 here (D-07)                                                  |    5
+  the two alphas are distinct bindings (D-07)                                    |    7
+  the judgement-call bars are declared as such                                   |    8
+  the iteration allowance is pre-declared and non-trivial                        |    6
+  declared deviations and decoupling are on the record                           |    9
+  P14 ran CPU-only                                                               |    1
+```
+
+## What is frozen
+
+**Streams.** `P14_DEV_SEED = 0x…0B14_DE71`, `P14_FIX_SEED = 0x…0B14_F1F7`,
+`P14_SALT = 0x5851_F42D_4C95_7F2D` (the MMIX LCG multiplier). The forbidden inventory is **derived**,
+never retyped: `_p14_forbidden_list()` collects `_p13_forbidden()` — which itself *recomputes* both
+frozen ship-gate seed families rather than trusting a comment — and adds Phase 13's own two seeds,
+which Phase 13 could not forbid to itself.
+
+**The disjointness proof goes past seed identity.** Two seeds that differ are not enough, because
+what actually keys Philox in this project's runners is `seed ⊻ salt ⊻ counter`. The file asserts the
+**full key-word cross-product**: 12 Phase-14 key words (dev × 5 counters, fix × 5 counters, plus both
+bare) against 14 Phase-13 key words — 168 pairs, plus pairwise distinctness within Phase 14. The test
+re-runs all of it and adds three draw-a-number checks against the P13 gate, datagen and fixture
+streams.
+
+**Counters.** `CAL = 1`, `EVAL = 2`, `OOD = 3`, `REAL = 4`, `FIXTURE = 99`. `P14_EVAL_COUNTER` is
+recorded in the file as the **shared** reported set that SC1-b, SC1-d and SC3-a/b/c all read — shared
+deliberately, and written down so the multiplicity is visible now rather than discovered later.
+
+**Sizes and alphas.** `N_CAL = N_EVAL = 2000`, `N_OOD = 1000` per arm. `P14_ALPHA_CONFORMAL = 0.10`;
+`P14_ALPHA_FDR_GRID = (0.01, 0.05, 0.10, 0.20)`. The test asserts the sd arithmetic
+(`sqrt(0.10·0.90/2000) ≈ 0.0067`) rather than restating it in a comment.
+
+**The five ruled bars** — `0.60 / 0.95 / 0.20 / 0.80 / 0.50` — sit under a comment block that says
+they are JUDGEMENT CALLS WITH NO DERIVATION, names the four recorded cases of an underived bar
+measuring the wrong thing, records the user's 2026-08-03 ruling, and states the binding clause: **if
+a bar is missed the result is REPORTED and NOT re-tuned.** `test_p14_consts.jl` asserts the strings
+`JUDGEMENT CALL`, `USER RULING`, `2026-08-03` and `NOT RE-TUNED` against the **raw** (un-stripped)
+source, so the words cannot be deleted while the numbers stay.
+
+**τ is not here.** `spike/p14/consts.jl` has no Tier-2 block and must never grow one: D-07 makes τ
+*inherited by loading*, not appended. Its absence is enforced three ways — an `@assert` in the file,
+`!isdefined` in the test, and a comment-stripped source grep.
+
+## Deviations from Plan
+
+### Auto-fixed issues
+
+**1. [Rule 3 — Blocking] The τ-absence assertion could not name τ literally**
+
+- **Found during:** Task 1, immediately after the first draft of `consts.jl`.
+- **Issue:** The plan asks (Task 1 acceptance) that
+  `grep -v '^\s*#' spike/p14/consts.jl | grep -c 'P14_TAU\|const P13_TAU'` return **0**, and
+  `test_p14_consts.jl` testset 5 asserts `!occursin("P14_TAU", P14_CONSTS_CODE)` over the
+  comment-stripped source. Mirroring Phase 13's Tier-1 self-check literally —
+  `@assert !isdefined(@__MODULE__, :P14_TAU) …` — writes that exact string on a **code** line, so the
+  guard would have failed the very file it protects. The two requirements are contradictory in their
+  literal form.
+- **Fix:** assemble the needle at run time — `@assert !isdefined(@__MODULE__, Symbol("P14_", "TAU"))`
+  — which is this repository's own idiom for exactly this situation:
+  `spike/test/test_p12_decoupling.jl` builds three needles by concatenation "so the contiguous
+  literal never appears in this source at all" (14-PATTERNS §3.11). The reason is written into the
+  file beside the assertion rather than left for a reader to reconstruct.
+- **Files modified:** `spike/p14/consts.jl`
+- **Commit:** `a6c8258`
+
+### Structural additions the plan implies but does not name
+
+None of these is a choice about a value; each exists only so an assertion the plan *does* demand can
+be expressed. Recorded so the file's surface is fully declared:
+
+| Name | Why it exists |
+|---|---|
+| `P14_REPORTED_COUNTERS`, `P14_ALL_COUNTERS` | the fixture-counter and pairwise-distinctness assertions need the sets by name |
+| `P14_P13_COUNTERS` | the Phase-13 counter family, held in the `P14_` namespace so this file never shadows a P13 name |
+| `_p14_key_words()`, `_p14_p13_key_words()` | the cross-product the plan requires, expressed once and reused by the test instead of duplicated |
+| `P14_SRC_UNTOUCHED` | mirrors `P13_SRC_UNTOUCHED`; makes D-01 machine-checked rather than asserted in prose |
+| `@assert P14_ALPHA_CONFORMAL in P14_ALPHA_FDR_GRID` | a tripwire on the D-07 warning itself: if the two ever stop sharing 0.10, the comment explaining why they must never be assigned from one another has gone stale and must be re-read |
+
+### Not done, deliberately
+
+- **`14-VALIDATION.md` and `ROADMAP.md` untouched.** Their SC3-a..d rows stay **GATED**. That edit is
+  conditional on the `report-only` option, which the user did not select.
+- **`STATE.md` / `ROADMAP.md` not written** — the orchestrator owns those. (Both show as modified in
+  the working tree; those edits are the orchestrator's, made concurrently with this run, and were
+  neither made nor staged by this executor.)
+
+## Assumption Drift (advisory)
+
+**1. Execution environment — the divergence flagged by the previous run is RESOLVED**
+
+- **Found during:** startup
+- **Planned:** main working tree, no worktrees
+- **Actual:** main working tree, no worktrees — this run was dispatched correctly
+- **Why it matters:** the earlier BLOCKED record above flagged a worktree dispatch and warned it
+  would break later Phase-14 plans that read the gitignored `spike/data/cache/p13/` pool. That
+  advisory stands for the *later* plans; it no longer applies to this run. `git worktree` was never
+  invoked.
+
+Nothing else drifted materially. Every value written matches the ruling and the plan.
+
+## Constraint Verification (all hold, all checked on disk)
+
+| Constraint | Check | Status |
+|---|---|---|
+| `src/` untouched (D-01) | `git diff --exit-code HEAD -- src` | exit 0 |
+| `spike/Project.toml` + `Manifest.toml` byte-unchanged (`test_p12_decoupling.jl:176-178`) | `git diff --exit-code HEAD -- …` | exit 0 |
+| No dependency added or changed | only `Test` (stdlib) + `Random123` (already used by p13) | ok |
+| Phase-16 sealed holdout not consumed (`test_p12_decoupling.jl:210`) | `corpus/` never read; `git diff --exit-code HEAD -- corpus` | exit 0 |
+| DEV seed disjoint from every forbidden stream | executable, in the file **and** in the test | 31 assertions pass |
+| Corrections APPENDED, never overwritten | this summary appends; `consts.jl` is a first write | ok |
+| `runtests.jl` not wired as a gate | mentioned once, in a comment saying it is *not* a gate | ok |
+| `STATE.md` / `ROADMAP.md` not modified by this executor | not staged, not written | ok |
+| Files modified outside the allowed three | none | ok |
+
+## Known Stubs
+
+None. Neither file contains a placeholder, a TODO, or a value awaiting a later run. τ's absence is
+not a stub — it is the D-07 requirement, asserted three ways.
+
+## Threat Flags
+
+None. No network surface, no file write at runtime, no new trust boundary. The two threats this plan
+was written to mitigate are both discharged:
+
+- **T-14-52** (an agent silently choosing five gating numbers) — the blocking checkpoint was honoured
+  by the previous run, the ruling was committed at `de9a6db` **before** `spike/p14/` existed, and the
+  ruling is reproduced as a dated `USER RULING` comment at the point of definition.
+- **T-14-02** (post-hoc tampering with a bar) — every bar is asserted by literal value, and the
+  falsification check above confirms the assertions bite.
+
+## Self-Check
+
+- `spike/p14/consts.jl` — **FOUND** (413 lines)
+- `spike/test/test_p14_consts.jl` — **FOUND** (297 lines)
+- commit `de9a6db` — **FOUND**
+- commit `a6c8258` — **FOUND**, single file, no artifact
+- commit `0ff4669` — **FOUND**
+- `git status --porcelain` limited to the three permitted paths — **clean** (the only other modified
+  files are `.planning/STATE.md` and `.planning/config.json`, both written by the orchestrator, not
+  by this executor)
+
+## Self-Check: PASSED
+
+**Wave 0 is complete.** The pre-registration exists, was ruled by the user before it was written, is
+committed at `a6c8258`, and is executably asserted. No result-producing code exists yet, by
+construction. The five judgement-call bars are on disk, labelled as judgement calls, before any
+number they will score.
+
+Later Phase-14 plans may now run. Every one of them must commit as a descendant of `a6c8258`.
 
