@@ -689,8 +689,7 @@ derr = try train_p12_npe(arm = :none, epochs = 18, n = 10_000, verdict_dir = td)
 That reasoning is sound **only while the `:none` pool at n = 10 000 does not exist**, and
 **nothing in this repository maintains the absence of a pool.** `88ddfe2` (2026-07-31, the D-13
 ablation) built exactly that pool. From that commit onward the call sailed past the pool check,
-**trained a real net for 2m15.7s** (measured; the estimate carried in the handoff was ~3.5 min, and
-the smaller figure is the one that was executed), and then failed on an empty `derr`. Measured on the current
+**trained a real net for ~3.5 minutes**, and then failed on an empty `derr`. Measured on the current
 tree, `p12_pool_complete` returns **`true`** for `:none` at n = 10 000 and **`false`** for `:car` — and
 the `:car` sibling three lines below was still green for that reason alone, which is what makes the
 diagnosis executable rather than argued.
@@ -745,10 +744,9 @@ to fail for the reason it names?"**
 **THE PROCESS FINDING, which is the more general half.** This phase's gate signal is the **per-file
 test run** — the file a plan step touched is the file that gets run. `88ddfe2` had no reason to run
 `test_p12_train.jl`, and did not. **Fifteen commits** separate `88ddfe2` from the discovery, and only
-one of them (`f039729`) touched `test_p12_train.jl` at all. So a unit test could spend **2m15.7s
+one of them (`f039729`) touched `test_p12_train.jl` at all. So a unit test could spend **3.5 minutes
 training a neural network** on every full-suite invocation, and there were no full-suite invocations
-to notice. **The whole file runs in 1m57.1s once repaired** — the defect was costing more than the
-entire rest of the file put together.
+to notice.
 
 > **A per-file gate cannot see a cross-file precondition break, because the file that breaks it is
 > never the file that is run.** The cheap mitigation is not "always run the full suite" — that is what
@@ -764,6 +762,32 @@ something not existing.** The suite does contain eight *presence-conditional* br
 shape, which skips while a file is absent and arms itself when it lands — and **all eight are currently
 armed and live**, every file they condition on having been built. That is a clean sweep, and it is
 reported as a result rather than as an absence of one.
+
+#### §7.5.1 CORRECTION, appended 2026-08-03: THE DURATION ABOVE IS AN INHERITED ESTIMATE, AND THE MEASURED FIGURE IS SMALLER
+
+**The "~3.5 minutes" written twice above was never measured.** It was inherited from the handoff that
+described the defect and repeated without checking — by the executor writing this section, in a
+section whose entire subject is *a claim that stopped being true and was not re-checked*.
+
+**Measured, by the red/green proof that licensed the repair:**
+
+| | guard testset | whole file |
+|---|---|---|
+| at `88ddfe2`..HEAD, unrepaired | **2m15.7s** | 3m59.6s, 116 pass / 1 fail |
+| repaired | **3.3s** | 1m57.1s, 118 pass / 0 fail |
+
+**2m15.7s, not ~3.5 min.** The sentences above are left standing exactly as first written rather than
+quietly acquiring the right number, because *which* number came from where is the point: **a record
+that silently self-corrects teaches nothing, and this record is about not noticing.**
+
+**The measurement makes a sharper statement available than the estimate did.** The repaired file runs
+end to end in **1m57.1s** — so the defect was costing **more than the entire rest of the file put
+together.** And the **41× drop** (2m15.7s → 3.3s) is what proves the assertion now *reaches* the pool
+check instead of sailing past it: a test restored to green that still took 2m15s would have shown only
+that it had been silenced.
+
+**The smaller number is the less dramatic one, which is precisely why it is the one that belongs on
+the record.**
 
 ### §7.6 A §7.2 INSTANCE, added 2026-08-03: THE ABLATION'S EXEMPTION FROM THE CALIBRATION GATE EXISTS ONLY AS THE RANGE OF A `for`
 
