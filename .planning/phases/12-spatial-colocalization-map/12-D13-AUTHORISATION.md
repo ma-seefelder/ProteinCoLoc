@@ -234,3 +234,28 @@ It is built anyway, deliberately: small next to `p12_coloc_map`, it keeps the ar
 for 12-20 Guard 3 (`headline_logscore_delta`), and it is the first thing a v2.1 spatial arm needs.
 **Its tests exercise the BRANCH LOGIC, not the gate, and must say so in their names or comments — a
 green test must never be read as the gate having run.**
+
+---
+
+## 10. APPENDIX, added 2026-08-03: WHERE THE ABLATION'S EXEMPTION FROM THE CALIBRATION GATE ACTUALLY LIVES
+
+**APPENDED, NOT MERGED. §8 ABOVE IS UNTOUCHED AND MUST STAY UNTOUCHED**, including its sentence that
+*"all three arms over-cover at 18 epochs, all three under-cover at 100"*. §8 treating the three arms
+alike on coverage is **the evidence for what follows**; editing it to agree with the code would erase
+the finding instead of recording it.
+
+**The question.** §8 disqualifies both spatial arms on coverage against
+`P12_COVERAGE_NOMINAL ± P12_STAGE2_COVERAGE_TOST_DELTA` = **[0.87, 0.93]**. The ablation's own coverage
+on the repaired control is **0.98694** — also outside that band. Is the ablation exempt, and where is
+the exemption written?
+
+**The answer: nowhere in this document, and nowhere in any document.** It exists as the range of a
+`for` loop at `spike/validation/run_p12_minispike.jl:249`, which tests admissibility over `(:car, :gp)`
+and never over `:none` — while the pre-registered prose at `12-15-PLAN.md:127` and `select_prior`'s own
+docstring both say *"An arm is admissible only if…"*, unqualified.
+
+**It did not manufacture the verdict.** Held to the same gate the ablation fails too, giving *"no arm
+is admissible"* — which selects no spatial prior either. `NONE-BEATS-ABLATION` survives.
+
+**Full record, including why no change to the loop is proposed:** `12-STAGE1-VERDICT.md` §7.6, filed
+as an instance of the §7.2 family.

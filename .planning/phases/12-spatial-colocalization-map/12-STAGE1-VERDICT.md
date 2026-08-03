@@ -669,6 +669,164 @@ aggregate sentence: **the families are no longer only a retrospective classifica
 where to look for (a), and Family B predicted the shape of (b).** That is a stronger claim about the
 audit than the count of instances is a weakness in the science.
 
+### §7.5 A FIFTH family, added 2026-08-03: AN ASSERTION WHOSE SUBJECT IS THE **ABSENCE** OF STATE
+
+Families A and B are about **bars**; §7.1 is about **verification**; §7.2 is about **naming**. This one
+is about **preconditions**, and it is the first family in this record that can be triggered by a commit
+that never touches the test or the code the test covers.
+
+**The instance.** `test_p12_train.jl`'s Stage-1-guard testset distinguishes *permitted by the guard*
+from *blocked by the guard* by the message of the error that comes **next**:
+
+```julia
+# `arm = :none` is permitted -- it gets PAST the guard and fails later, on the absent
+# :none pool, which is a DIFFERENT error.
+derr = try train_p12_npe(arm = :none, epochs = 18, n = 10_000, verdict_dir = td); "" catch e ... end
+@test !occursin("may not be trained", derr)      # NOT the guard's refusal
+@test occursin("no COMPLETE pool", derr)         # the pool check, i.e. past the guard
+```
+
+That reasoning is sound **only while the `:none` pool at n = 10 000 does not exist**, and
+**nothing in this repository maintains the absence of a pool.** `88ddfe2` (2026-07-31, the D-13
+ablation) built exactly that pool. From that commit onward the call sailed past the pool check,
+**trained a real net for ~3.5 minutes**, and then failed on an empty `derr`. Measured on the current
+tree, `p12_pool_complete` returns **`true`** for `:none` at n = 10 000 and **`false`** for `:car` — and
+the `:car` sibling three lines below was still green for that reason alone, which is what makes the
+diagnosis executable rather than argued.
+
+> **The family, stated generally: an assertion whose subject is the ABSENCE of an artifact has a
+> precondition that no file, test or convention owns. Every other precondition a test relies on lives
+> somewhere that a reviewer can be pointed at — a fixture it builds, a constant it reads, a function it
+> calls. Absence lives nowhere. Any commit, in any plan step, can falsify it by CREATING something,
+> with no edit to the test and no edit to the code under test — so no diff review, on either side, has
+> anything to look at.**
+
+**It is distinct from every family above.** Families A and B misapply a bar; §7.1 measures the right
+thing in the wrong space; §7.2 attaches one name to two measurements. Here the bar, the space and the
+name are all correct — **the test simply stopped being about its subject**, silently, from a distance.
+
+**What makes it worse than a stale test:** the failure mode is not "passes vacuously". It is
+**consumes the phase's compute and then fails for a reason unrelated to anything anyone changed.**
+The next person to see it red reads it as a regression in the guard, or in the trainer, or in whatever
+commit happened to be in flight.
+
+**Repaired 2026-08-03** by pointing both assertions at a `mktempdir()` path that is never created, so
+they test the **guard** rather than the **environment**. `isdir` alone would not have sufficed:
+`p12_pool_dir` resolves through `open_or_invalidate`, which **creates** the directory it resolves
+(`train_p12_npe.jl:356-359`), so the real `:car` cache path already exists as an empty hash directory
+and only `p12_pool_complete` sees through it. The `:car` sibling was repaired in the same move rather
+than left standing as a demonstration: **12-17's production pool is specified to build n = 10 000
+`:car`**, so it was one planned commit from the identical failure.
+
+**THE COUNTER-EXAMPLE, AND IT IS THE LOAD-BEARING HALF OF THIS ENTRY.** The obvious lesson —
+*"avoid absence-dependent assertions, decouple every call from the cache"* — **licenses exactly the
+wrong fix**, and the same testset contains the case that proves it.
+
+Two assertions in it are guard-**refusals**: `@test_throws Exception train_p12_npe(arm = :car,
+epochs = 18, n = 10_000, verdict_dir = td)`, under `:absent` and under `:descope`. They carry **no
+message assertion**, and they currently throw **from the guard**. Handing *them* the absent pool
+would mean the `no COMPLETE pool` error satisfies `@test_throws Exception` just as happily as the
+guard's refusal does — so **a guard regression would be MASKED rather than caught.** Applying this
+family's "fix" uniformly would have converted a live test into a vacuous one **in the same commit that
+repaired a vacuous one**, and the suite would have gone greener while testing less.
+
+> **The rule is therefore NOT "decouple every call from the state of the working tree." It is: LET AN
+> ASSERTION DEPEND ON STATE ONLY WHERE THAT DEPENDENCE IS WHAT PROVES THE POINT.** For the two "past
+> the guard" assertions the pool's absence is *incidental* — they are about the guard, and the pool is
+> scenery, so the scenery must be owned by the testset. For the two refusal assertions the real
+> cache is *load-bearing* — it is what forces the throw to come from the guard and nothing else, so
+> touching it would destroy the discrimination the assertion exists to make.
+
+Which is why the two were treated **oppositely in one commit**: the discriminating question is never
+"does this depend on state?" but **"if this dependence were removed, would the assertion still be able
+to fail for the reason it names?"**
+
+**THE PROCESS FINDING, which is the more general half.** This phase's gate signal is the **per-file
+test run** — the file a plan step touched is the file that gets run. `88ddfe2` had no reason to run
+`test_p12_train.jl`, and did not. **Fifteen commits** separate `88ddfe2` from the discovery, and only
+one of them (`f039729`) touched `test_p12_train.jl` at all. So a unit test could spend **3.5 minutes
+training a neural network** on every full-suite invocation, and there were no full-suite invocations
+to notice.
+
+> **A per-file gate cannot see a cross-file precondition break, because the file that breaks it is
+> never the file that is run.** The cheap mitigation is not "always run the full suite" — that is what
+> the per-file gate exists to avoid — but: **a test that spends real compute must be unable to spend it
+> by accident.** Every assertion in this repository that a call *fails fast* should be pointed at state
+> the testset itself owns, so the fast path is guaranteed by construction rather than by the state of
+> the working tree.
+
+**A sweep for siblings was run across the whole p12 test suite** (`test_p12_{architecture, consts,
+coverage, datagen, decoupling, lattice, prior, result, sbc, suite, train}.jl` and
+`capture_p12_golden.jl`). **The two repaired here are the only assertions whose PASS depends on
+something not existing.** The suite does contain eight *presence-conditional* branches — the mirror
+shape, which skips while a file is absent and arms itself when it lands — and **all eight are currently
+armed and live**, every file they condition on having been built. That is a clean sweep, and it is
+reported as a result rather than as an absence of one.
+
+### §7.6 A §7.2 INSTANCE, added 2026-08-03: THE ABLATION'S EXEMPTION FROM THE CALIBRATION GATE EXISTS ONLY AS THE RANGE OF A `for`
+
+**This is an ADDITION to §7.2's family (one rule, two readings), not a new family, and it is recorded
+ADDITIVELY. Nothing above it is edited.** In particular `12-D13-AUTHORISATION.md` §8 is left exactly
+as written — **§8 treating all three arms alike on coverage is the evidence**, and making it agree
+with the code retroactively would destroy the finding rather than resolve it.
+
+**THE QUESTION THAT SURFACED IT.** The `NONE-BEATS-ABLATION` verdict disqualifies both spatial arms on
+coverage against a band of `P12_COVERAGE_NOMINAL ± P12_STAGE2_COVERAGE_TOST_DELTA` = **[0.87, 0.93]**.
+On the repaired control the ablation's own coverage is **0.98694** — also outside that band. So: is
+the ablation exempt from the gate, and if so, where is that written?
+
+**THE PROSE SAYS ALL ARMS.** `12-15-PLAN.md:127`, the pre-registration:
+
+> *"1. An arm is **admissible** only if its Gaussian-space per-region coverage is within
+> `P12_STAGE2_COVERAGE_TOST_DELTA` of `P12_COVERAGE_NOMINAL`."*
+
+**"An arm"**, unqualified. `select_prior`'s own docstring (`run_p12_minispike.jl:222`) repeats it
+unqualified. `12-D13-AUTHORISATION.md` §8 likewise treats the three alike — *"all three arms over-cover
+at 18 epochs, all three under-cover at 100"*.
+
+**THE CODE SAYS TWO ARMS.** `run_p12_minispike.jl:249`:
+
+```julia
+adm = Symbol[]
+for a in (:car, :gp)
+    abs(scores[a].coverage - P12_COVERAGE_NOMINAL) <= P12_STAGE2_COVERAGE_TOST_DELTA && push!(adm, a)
+end
+```
+
+`:none` is **never entered into the admissibility test at all.** It appears in `select_prior` only as
+the RMSE bar of rule 3. The `n_test >= P12_STAGE2_N_MIN` assertion immediately above *does* loop over
+all three — so the file is not uniformly two-armed; the narrowing is specific to admissibility.
+
+**THE DIRECTION OF THE EFFECT, STATED PLAINLY BECAUSE IT CUTS THE REASSURING WAY. THE LOOP BOUND DID
+NOT MANUFACTURE THE VERDICT.** Hold the ablation to the same gate and it fails too (0.98694 against
+[0.87, 0.93]). The outcome is then *"no arm is admissible"* — which selects **no spatial prior**
+either. **`NONE-BEATS-ABLATION` survives holding the ablation to the gate**, so nobody should read
+this as a discovered error in the result. The arithmetic is not in question and is not re-derived
+here.
+
+**WHAT IT ACTUALLY IS: A PROVENANCE DEFECT, NOT AN ARITHMETIC ONE.** The ablation's role as the
+**unconditional fallback** — the thing you land on when nothing else qualifies, rather than a
+candidate that must itself qualify — is a real and defensible design choice. It is simply **implemented
+as a loop bound and asserted nowhere.** A load-bearing verdict in this phase rests on a step that
+exists only as the range of a `for`.
+
+**AND IT IS UNTESTED, WHICH IS CHECKABLE RATHER THAN ASSERTED.** The eight synthetic score tables in
+`test_p12_train.jl`'s `select_prior` branch testset pass `none = (0.90, …)` — coverage **exactly at
+nominal — in all eight**. No test ever hands the ablation an out-of-band coverage, so **every one of
+those tests would pass identically whether or not `:none` were in the admissibility loop.** The
+branch coverage that reads as thorough does not touch this decision at any point.
+
+> **The §7.2 shape, in its cheapest possible form: the divergence is not between two documents here but
+> between the pre-registered prose and the three lines implementing it — and it is invisible from
+> inside either one. The prose is coherent. The code is coherent. Only the pair disagrees, and no test
+> puts them side by side.**
+
+**No change to the loop is proposed and none is made.** Consistent with §7.4(b), a pre-registered rule
+is not quietly rewritten by the party who found it inconvenient; it is **named**. What this entry
+establishes is that the ablation's exemption is a **choice that was never recorded as one** — and
+therefore that any write-up saying the ablation "was not required to be calibrated" is describing a
+loop bound, not a decision anyone can be pointed at.
+
 ## §8 Routing consequences of PROCEED
 
 - `p12_stage1_verdict()` now returns `:proceed`, so `p12_require_proceed` admits **12-17, 12-18,
