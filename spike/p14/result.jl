@@ -274,6 +274,210 @@ struct P14Result <: AbstractColocResult
     end
 end
 
+# --- The batch object ---------------------------------------------------------------------------
+
+# The keys every rung of the prior-sensitivity curve must carry. Enumerated so a curve computed
+# with a missing column fails at construction rather than at report time.
+const P14_PI_SENSITIVITY_KEYS = (:pi_coloc, :k_star, :fdp, :n_accepted)
+
+"""
+    P14BatchDecision
+
+The batch-level output of the decision layer. Bayesian FDR is a BATCH quantity -- the rule is a
+sort over null posteriors and a prefix cut -- so the per-pair results alone cannot express it.
+
+**THE FIELD THIS TYPE EXISTS FOR IS `fdr_scope`.** It is always `:decided_subset_only`, and that is
+not cosmetic: it is the machine-readable form of the phase's honest claim.
+
+> The posterior expected false discovery proportion is controlled at the user-set level **over the
+> DECIDED subset only** -- the batch minus abstentions. It is **not** controlled over the whole
+> batch: an abstained item is neither a discovery nor a non-discovery and appears in neither the
+> numerator nor the denominator. The guarantee is conditional on the model (calibrated posteriors
+> and a correct class prior) and is a posterior expectation, not a frequentist long-run rate.
+
+**AND THE MANDATORY COMPANION NUMBER.** A rule that abstains on 95 % of a batch hits any alpha
+trivially, so `(alpha_fdr, n_decided/n_total)` is ONE quantity and quoting either alone is
+misleading. `n_total` is therefore a REQUIRED keyword of [`p14_batch_decision`](@ref) rather than
+`length(results)`, `decided_fraction` is a stored field, and [`p14_headline`](@ref) emits both in a
+single string so a copy-paste cannot separate them.
+
+# Fields
+- `results::Vector{P14Result}`: the WHOLE batch, abstentions included.
+- `alpha_fdr::Float64`: the user-set FDR level this batch was cut at (SC1: a per-call USER
+  parameter, never read from a constant, and never derived from the conformal miscoverage level).
+- `k_star::Int`: the accepted prefix length.
+- `threshold_t_star::Float64`: the implied threshold on the null posterior; `NaN` when nothing was
+  accepted.
+- `implied_cost_ratio::Float64`: `t*/(1 - t*)`, REPORTED so the decision-theoretic reading is
+  available to a referee; the implementation does not commit to it. `NaN` when nothing was accepted.
+- `posterior_expected_fdp::Float64`: the realized `E[FDP | data]` of the accepted set.
+- `accepted::Vector{Int}`: **positions INTO THE DECIDED SUBSET**, exactly as `p14_bayes_fdr`
+  returns them -- NOT positions into `results`. `results[accepted]` is therefore WRONG whenever
+  anything abstained, and the constructor asserts `1 <= i <= n_decided` to catch the confusion.
+  A caller that needs the mapping back to batch positions must carry its own decided-index vector
+  in `meta`; this type does not invent one.
+- `n_total::Int`, `n_decided::Int`, `n_abstained::Int`, `decided_fraction::Float64`: the
+  denominator, its two parts and their ratio, all cross-checked against one another.
+- `abstain_reason_counts::NamedTuple`: how many items each trigger silenced. Keys are a subset of
+  `p14_abstain_reasons()` and the values sum to `n_abstained`.
+- `class_prior_used::NamedTuple`: the class prior the null posteriors were composed from, on
+  `P14_CLASS_KEYS`.
+- `class_prior_source::Symbol`: one of `P14_CLASS_PRIOR_SOURCES`, so a silently switched prior is
+  not possible.
+- `pi_sensitivity::Vector{<:NamedTuple}`: the REQUIRED prior-sensitivity curve, one rung per
+  `P14_PI_COLOC_GRID` value, each carrying `P14_PI_SENSITIVITY_KEYS`.
+- `conformal::NamedTuple`: the batch's hedge diagnostics (`qhat` and the realized set-size rates,
+  including the `vacuous_hedge` LABEL).
+- `fdr_scope::Symbol`: always `:decided_subset_only`; there is no other legal value in this phase.
+- `meta::NamedTuple`: run metadata and provenance.
+
+Build it with [`p14_batch_decision`](@ref). The inner constructor validates the invariants that are
+properties of the stored values, so they hold no matter which entry point was used.
+"""
+struct P14BatchDecision
+    results                :: Vector{P14Result}
+    alpha_fdr              :: Float64
+    k_star                 :: Int
+    threshold_t_star       :: Float64
+    implied_cost_ratio     :: Float64
+    posterior_expected_fdp :: Float64
+    accepted               :: Vector{Int}
+    n_total                :: Int
+    n_decided              :: Int
+    n_abstained            :: Int
+    decided_fraction       :: Float64
+    abstain_reason_counts  :: NamedTuple
+    class_prior_used       :: NamedTuple
+    class_prior_source     :: Symbol
+    pi_sensitivity         :: Vector{<:NamedTuple}
+    conformal              :: NamedTuple
+    fdr_scope              :: Symbol      # ALWAYS :decided_subset_only -- validated below
+    meta                   :: NamedTuple
+
+    function P14BatchDecision(results::Vector{P14Result}, alpha_fdr::Real, k_star::Integer,
+                              threshold_t_star::Real, implied_cost_ratio::Real,
+                              posterior_expected_fdp::Real, accepted::Vector{Int},
+                              n_total::Integer, n_decided::Integer, n_abstained::Integer,
+                              decided_fraction::Real, abstain_reason_counts::NamedTuple,
+                              class_prior_used::NamedTuple, class_prior_source::Symbol,
+                              pi_sensitivity::Vector{<:NamedTuple}, conformal::NamedTuple,
+                              fdr_scope::Symbol,   # only :decided_subset_only is legal
+                              meta::NamedTuple)
+        0.0 < alpha_fdr < 1.0 || throw(ArgumentError(
+            "P14BatchDecision: `alpha_fdr` must lie strictly inside (0,1); got $alpha_fdr."))
+
+        # THE SCOPE IS NOT A CALLER CHOICE. Compared against the literal so the value a reader
+        # greps for is the value the type enforces; `P14_FDR_SCOPE` is a name for the same literal
+        # and is pinned to it by the assertion below this struct.
+        fdr_scope === :decided_subset_only || throw(ArgumentError(
+            "P14BatchDecision: `fdr_scope` must be :decided_subset_only; got $fdr_scope. There " *
+            "is no other legal value in this phase -- an abstained item is neither a discovery " *
+            "nor a non-discovery and appears in neither the numerator nor the denominator, so " *
+            "batch-wide control is not what was computed and must not be what is claimed."))
+
+        # THE DENOMINATOR AND ITS TWO PARTS, CROSS-CHECKED RATHER THAN DERIVED FROM ONE ANOTHER.
+        n_total > 0 || throw(ArgumentError(
+            "P14BatchDecision: `n_total` must be > 0; got $n_total. A decided fraction over an " *
+            "empty batch is not a number."))
+        n_decided + n_abstained == n_total || throw(ArgumentError(
+            "P14BatchDecision: n_decided ($n_decided) + n_abstained ($n_abstained) must equal " *
+            "n_total ($n_total). Every item is decided or abstained; there is no third state " *
+            "and no item may be counted twice."))
+        length(results) == n_total || throw(ArgumentError(
+            "P14BatchDecision: `results` holds $(length(results)) items but n_total is " *
+            "$n_total. `results` is the WHOLE batch, abstentions included; a mismatch means the " *
+            "quoted denominator is not the batch the results came from."))
+        decided_fraction == n_decided / n_total || throw(ArgumentError(
+            "P14BatchDecision: `decided_fraction` ($decided_fraction) must equal n_decided / " *
+            "n_total ($(n_decided / n_total)). The decided fraction is the companion number the " *
+            "alpha is meaningless without, so it may not be an independently supplied figure."))
+
+        # THE ABSTENTION LEDGER MUST BALANCE. A reason set that does not account for exactly the
+        # silenced items means some abstention was recorded without its trigger -- which is the
+        # failure D-05 and D-06 both exist to prevent, arriving one level up at the batch.
+        all(k -> k in p14_abstain_reasons(), keys(abstain_reason_counts)) || throw(ArgumentError(
+            "P14BatchDecision: `abstain_reason_counts` may only carry keys from " *
+            "$(p14_abstain_reasons()); got $(keys(abstain_reason_counts))."))
+        counted = sum(values(abstain_reason_counts); init = 0)
+        counted == n_abstained || throw(ArgumentError(
+            "P14BatchDecision: `abstain_reason_counts` sums to $counted but n_abstained is " *
+            "$n_abstained. Every ABSTAIN carries which trigger fired; a batch whose reasons do " *
+            "not add up has silenced items nobody can explain."))
+
+        # THE ACCEPTED SET IS INDEXED INTO THE DECIDED SUBSET, NOT INTO THE BATCH. This catches
+        # the one confusion that would silently report the wrong items as discoveries.
+        k_star == length(accepted) || throw(ArgumentError(
+            "P14BatchDecision: k_star ($k_star) must equal length(accepted) " *
+            "($(length(accepted)))."))
+        all(i -> 1 <= i <= n_decided, accepted) || throw(ArgumentError(
+            "P14BatchDecision: every entry of `accepted` must be a position INTO THE DECIDED " *
+            "SUBSET, i.e. in 1:$n_decided; got $(accepted). These are not positions into " *
+            "`results`, and indexing the batch with them would report the wrong items."))
+        (0.0 <= posterior_expected_fdp <= alpha_fdr + 1e-12) || throw(ArgumentError(
+            "P14BatchDecision: the realized posterior expected FDP ($posterior_expected_fdp) " *
+            "must lie in [0, alpha_fdr] ($alpha_fdr); a value outside it did not come from the " *
+            "prefix rule this batch claims to have applied."))
+
+        # THE PRIOR, AND WHERE IT CAME FROM.
+        class_prior_source in P14_CLASS_PRIOR_SOURCES || throw(ArgumentError(
+            "P14BatchDecision: `class_prior_source` must be one of $(P14_CLASS_PRIOR_SOURCES); " *
+            "got $class_prior_source. The DEFAULT is the MEASURED class mass of the prior the " *
+            "net was trained under, so the default is measured rather than chosen."))
+        Set(keys(class_prior_used)) == Set(P14_CLASS_KEYS) || throw(ArgumentError(
+            "P14BatchDecision: `class_prior_used` must carry exactly the keys $(P14_CLASS_KEYS) " *
+            "(in any order); got $(keys(class_prior_used))."))
+
+        # THE SENSITIVITY CURVE IS REQUIRED OUTPUT, NEVER OPTIONAL. Prevalence mismatch is the
+        # biggest way this guarantee fails silently: the class prior is the SIMULATOR's class mix,
+        # not any real batch's prevalence, and a batch that is 90 % coloc makes the rule too
+        # conservative while one that is 1 % coloc makes the claim false. SC1-c is REPORTED, NOT
+        # GATED -- no bar is attached to it, and failing to report it IS the failure.
+        length(pi_sensitivity) == length(P14_PI_COLOC_GRID) || throw(ArgumentError(
+            "P14BatchDecision: `pi_sensitivity` must carry one rung per P14_PI_COLOC_GRID value " *
+            "($(length(P14_PI_COLOC_GRID))); got $(length(pi_sensitivity))."))
+        Tuple(e.pi_coloc for e in pi_sensitivity) == P14_PI_COLOC_GRID || throw(ArgumentError(
+            "P14BatchDecision: `pi_sensitivity` must sweep exactly $(P14_PI_COLOC_GRID), in that " *
+            "order; got $(Tuple(e.pi_coloc for e in pi_sensitivity)). The grid is pre-registered " *
+            "so the sweep cannot be chosen after the fact."))
+        for (i, e) in enumerate(pi_sensitivity)
+            all(k -> haskey(e, k), P14_PI_SENSITIVITY_KEYS) || throw(ArgumentError(
+                "P14BatchDecision: rung $i of `pi_sensitivity` must carry " *
+                "$(P14_PI_SENSITIVITY_KEYS); got $(keys(e))."))
+        end
+
+        return new(results, Float64(alpha_fdr), Int(k_star), Float64(threshold_t_star),
+                   Float64(implied_cost_ratio), Float64(posterior_expected_fdp), accepted,
+                   Int(n_total), Int(n_decided), Int(n_abstained), Float64(decided_fraction),
+                   abstain_reason_counts, class_prior_used, class_prior_source,
+                   pi_sensitivity, conformal,
+                   fdr_scope,   # proven === :decided_subset_only above
+                   meta)
+    end
+end
+
+# The const and the literal the constructor compares against are pinned to each other MECHANICALLY,
+# so the two spellings cannot drift, and the headline token is derived from the symbol rather than
+# typed a second time.
+@assert P14_HEADLINE_SCOPE_TOKEN ==
+        "FDR SCOPE: " * uppercase(replace(String(P14_FDR_SCOPE), "_" => " "))
+
+# --- The named limits, enumerable FROM CODE -----------------------------------------------------
+# EVERY ONE OF THESE TRAVELS WITH EVERY PHASE-14 RESULT. A report that drops one is then a report
+# that failed to iterate a tuple, which is visible in a diff, rather than a report that forgot a
+# sentence, which is not. See the banner for why item 2 says "real-data" rather than naming the
+# withdrawn substrate: this file is scanned by the lane guard, a string literal is code to that
+# scan, and the full record lives in the allowlisted spike/p14/consts.jl section H.
+const P14_NAMED_LIMITS = (
+    "The decision layer is built in the spike research lane and is NOT shipped in v2.0 (D-01): it has a src-shaped signature and subtypes the shipped AbstractColocResult, but src-shaped is not in-src, and no byte of src/ is edited by this phase.",
+    "The conformal guarantee is SIMULATOR-DERIVED (D-02/D-03) and inherits the simulator's misspecification in full; the intended real-data bound is ABSENT, not merely loose, because the substrate it was to be computed on holds no unsealed physical ground truth and its bytes are unfetched (D-03a).",
+    "The real-data check is six committed microscopy TIFFs in two conditions (D-03a) -- an ILLUSTRATION, not a coverage claim. It bounds nothing tightly and must never be quoted as though it did.",
+    "FDR is controlled over the DECIDED SUBSET ONLY -- the batch minus abstentions -- and the decided fraction must be quoted beside alpha, because a rule that abstains on most of a batch hits any alpha trivially. The guarantee is a posterior expectation conditional on the model, not a frequentist long-run rate.",
+    "The per-tile map is UNCONTROLLED DISPLAY, never an FDR-controlled call (D-04): Phase 12 returned NO on calibrated per-region uncertainty and the shipped per-tile map carries no uncertainty field, so there is nothing per-tile to control against.",
+    "SC1 is AMENDED by D-02 (ConformalPrediction.jl is not added; conformal is met in substance, hand-rolled) and SC2 is AMENDED by D-05 (the literal OR of three triggers is replaced by an asymmetric rule in which cross-method disagreement alone DECIDES). Any report citing a Phase-14 result must cite the original ROADMAP wording alongside the amendment.",
+    "The four SC3 bars and the 0.20 coverage floor are JUDGEMENT CALLS with no derivation (P14_JUDGEMENT_CALL_BARS). They were ratified by the user before any Phase-14 result existed, and a missed bar is REPORTED, not re-tuned.",
+    "The underlying net is an epoch-4 checkpoint of an early-overfitting run (13-REPORT limit C), and every Phase-14 number inherits that limit unchanged.",
+)
+
 end # if !isdefined(@__MODULE__, :P14Result) -- consts + structs only
 
 # --- The four REQUIRED accessors (the AbstractColocResult interface) -----------------------------
@@ -511,3 +715,143 @@ It takes the result rather than no argument so that it reads as a property OF A 
 call site, which is where the question is actually asked.
 """
 p14_local_map_is_controlled(::P14Result) = false
+
+# --- The batch constructor ----------------------------------------------------------------------
+
+"""
+    p14_batch_decision(results; alpha_fdr, fdr, n_total, abstain_reason_counts,
+                       class_prior_used, class_prior_source, pi_sensitivity, conformal,
+                       meta = NamedTuple()) -> P14BatchDecision
+
+Assemble the batch object from the whole batch of per-pair results and the output of
+[`p14_fdr_over_decided`](@ref).
+
+**EVERY KEYWORD EXCEPT `meta` IS REQUIRED, AND `n_total` MOST OF ALL.** Deriving the denominator
+from `length(results)` is forbidden here, and the reason is the whole point of the field:
+`(alpha_fdr, n_decided/n_total)` is ONE quantity, not two, because a rule that abstains on 95 % of
+a batch hits any alpha trivially. Making the denominator a REQUIRED INPUT is the structural version
+of that sentence -- the same trick as `p13_calibration_meta`, where `auc` is a required keyword
+precisely so a calibration verdict can never ship without its discrimination number
+(`spike/p13/result.jl:313-315`). It is required AND cross-checked against `length(results)`, so it
+must be stated and cannot be misstated.
+
+`fdr` must be the tuple `p14_fdr_over_decided` returns -- not the bare `p14_bayes_fdr` one. That is
+enforced by requiring its scope and denominator fields, because the scoped rule is the only one
+whose output is a CLAIM rather than a fragment: it already carries `n_total`, `n_decided`,
+`decided_fraction` and the scope label, and this constructor asserts all four agree with what the
+caller stated.
+
+`n_abstained` is NOT a keyword: it is derived by summing `abstain_reason_counts`, and the identity
+`n_decided + n_abstained == n_total` is then a real check rather than a tautology. A batch whose
+reasons do not add up has silenced items nobody can explain, which is the D-05/D-06 failure
+arriving at batch level.
+
+The scope is set BY THIS CONSTRUCTOR and is not a parameter: `:decided_subset_only` is the only
+legal value in this phase.
+"""
+function p14_batch_decision(results::Vector{P14Result};
+                            alpha_fdr::Real,
+                            fdr::NamedTuple,
+                            n_total::Integer,
+                            abstain_reason_counts::NamedTuple,
+                            class_prior_used::NamedTuple,
+                            class_prior_source::Symbol,
+                            pi_sensitivity,
+                            conformal::NamedTuple,
+                            meta::NamedTuple = NamedTuple())
+    # THE RULE'S OWN OUTPUT MUST BE THE SCOPED ONE. Accepting the bare `p14_bayes_fdr` tuple here
+    # would let a batch-wide number be stored under a decided-subset label.
+    for k in (:accepted, :k_star, :fdp, :t_star, :cost_ratio, :n_total, :n_decided,
+              :decided_fraction, :fdr_scope)   # the last must read :decided_subset_only
+        haskey(fdr, k) || throw(ArgumentError(
+            "p14_batch_decision: `fdr` must be the NamedTuple `p14_fdr_over_decided` returns " *
+            "(missing key `$k`). The bare `p14_bayes_fdr` output carries no scope and no " *
+            "denominator, so storing it here would label a batch-wide number as a " *
+            "decided-subset claim."))
+    end
+    fdr.fdr_scope === :decided_subset_only || throw(ArgumentError(
+        "p14_batch_decision: fdr_scope must be :decided_subset_only; got $(fdr.fdr_scope)."))
+    fdr.n_total == n_total || throw(ArgumentError(
+        "p14_batch_decision: the rule was run over a batch of $(fdr.n_total) but `n_total` says " *
+        "$n_total. The denominator is required precisely so it is stated once and checked, not " *
+        "carried twice with two values."))
+
+    n_abstained = sum(values(abstain_reason_counts); init = 0)
+    return P14BatchDecision(results, Float64(alpha_fdr), Int(fdr.k_star), Float64(fdr.t_star),
+                            Float64(fdr.cost_ratio), Float64(fdr.fdp), Vector{Int}(fdr.accepted),
+                            Int(n_total), Int(fdr.n_decided), Int(n_abstained),
+                            fdr.decided_fraction, abstain_reason_counts, class_prior_used,
+                            class_prior_source, [e for e in pi_sensitivity], conformal,
+                            P14_FDR_SCOPE, meta)
+end
+
+# --- The headline -------------------------------------------------------------------------------
+
+"""
+    _p14_headline_line(alpha_fdr, posterior_expected_fdp, n_decided, n_total) -> String
+
+The single headline line, built from the four numbers that may never be separated.
+
+Factored out of [`p14_headline`](@ref) so that [`p14_headline_template_probe`](@ref) exercises the
+SAME code path with placeholder numbers, rather than a second format string that could drift from
+the real one.
+"""
+function _p14_headline_line(alpha_fdr::Real, posterior_expected_fdp::Real,
+                            n_decided::Integer, n_total::Integer)
+    frac = n_total == 0 ? NaN : n_decided / n_total
+    return string("alpha_FDR = ", alpha_fdr,
+                  " | realized posterior expected FDP = ", round(posterior_expected_fdp; digits = 4),
+                  " | decided ", n_decided, "/", n_total,
+                  " (", round(100 * frac; digits = 1), "%)",
+                  " | ", P14_HEADLINE_SCOPE_TOKEN)
+end
+
+"""
+    p14_headline(b::P14BatchDecision) -> String
+
+ONE line carrying the alpha, the realized posterior expected FDP, the decided fraction as both a
+ratio and a percentage, and the literal token `FDR SCOPE: DECIDED SUBSET ONLY`.
+
+**The report and every runner print THIS rather than assembling their own sentence.** That is the
+whole design: `(alpha_fdr, n_decided/n_total)` is one quantity, and two numbers that live in one
+string cannot be separated by a copy-paste. A rule that abstains on most of a batch hits any alpha
+trivially, so an alpha quoted without its denominator is not a weaker claim -- it is a misleading
+one.
+"""
+p14_headline(b::P14BatchDecision) =
+    _p14_headline_line(b.alpha_fdr, b.posterior_expected_fdp, b.n_decided, b.n_total)
+
+"""
+    p14_headline_template_probe() -> String
+
+The headline that [`p14_headline`](@ref) emits, computed through the SAME code path on placeholder
+numbers, so a smoke check can assert the mandatory tokens are present without first assembling a
+whole batch.
+
+It is a PROBE, not a template string: if the real headline ever stopped carrying the scope token or
+the decided fraction, this would stop carrying them too. A second hand-written format string would
+have kept passing.
+"""
+p14_headline_template_probe() = _p14_headline_line(0.10, 0.0432, 37, 100)
+
+# --- The named limits ---------------------------------------------------------------------------
+
+"""
+    p14_named_limits() -> NTuple{8,String}
+
+The honesty items that must travel with EVERY Phase-14 result, enumerable from code:
+
+ 1. the decision layer is NOT shipped in v2.0 (D-01);
+ 2. the conformal guarantee is simulator-derived and the intended real-data bound is ABSENT
+    (D-03/D-03a);
+ 3. the real-data check is six committed TIFFs -- an illustration, not a coverage claim (D-03a);
+ 4. FDR is controlled over the decided subset only, and the decided fraction travels with alpha;
+ 5. per-tile output is uncontrolled display (D-04);
+ 6. SC1 is amended by D-02 and SC2 by D-05, and the original wording must be cited alongside;
+ 7. the four SC3 bars and the coverage floor are judgement calls with no derivation;
+ 8. the underlying net is an epoch-4 checkpoint of an early-overfitting run (13-REPORT limit C).
+
+Enumerated rather than remembered. A report that drops one is a report that failed to iterate a
+tuple, which shows up in a diff; a report that forgot a sentence does not.
+"""
+p14_named_limits() = P14_NAMED_LIMITS
