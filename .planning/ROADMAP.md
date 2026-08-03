@@ -270,8 +270,62 @@ test, not a "must exceed" threshold, because the true value of the gated quantit
   2. `coloc_map(...)` returns a Δρ map + uncertainty map, amortized in a forward pass — **DELIVERED.** `p12_coloc_map` (`spike/validation/p12_coverage.jl:990`) returns the per-region Δρ map together with per-region uncertainty, each of the sample and control stacks one amortized forward pass, verified structurally. **Named caveat that travels with it (`12-VERIFICATION.md` §SPAT-05):** the model behind it is the non-spatial D-13 ablation, not a trained spatial arm, and it exists at spike scale (10,000 pairs), not the 50,000-pair version
   3. The spatial (CAR) model beats independent pooling in coverage on ≥1 real image — **NOT MET, AND UNREACHABLE AS WRITTEN.** Two independent reasons: (i) there is **no spatial model to compare against** — see criterion 1; (ii) the real-image arm (**12-19**) **never ran**, hard-blocked on `p12_train_full_report.jld2`, confirmed absent on disk, which only the never-executed **12-17** produces. The reduced substitute that DID run (12-16, on simulated data, ablation against a prior-only floor) failed its own pre-registered band — `12-16-SUMMARY.md`'s own words: **"SPAT-06 IS NOT MET: pooled leave-region-out coverage 0.9707 lies outside [0.87, 0.93]."** Not a boundary call: the interval on the independent unit is [0.9675, 0.9738], clear of the band by ≈ 0.037
   *(Highest effort-risk phase; the natural descope-to-v2.1 candidate if amortization stalls.)*
-**Plans**: TBD
-- [ ] TBD (run /gsd:plan-phase 12 to break down)
+**Plans**: 20 plans exist and are committed. **16 executed (12-01 … 12-16); 12-17 … 12-20 are FORECLOSED and NEVER RAN.**
+- [x] 12-01-PLAN.md — Freeze the Tier-1 Phase-12 pre-registration before a single Phase-12 number exists, and wire the Phase-12 test surface into `spike/test/runtests.jl` at the one position where it can actually run (SPAT-09)
+- [x] 12-02-PLAN.md — Freeze the amended success criteria before any Phase-12 number can influence their wording, and mint the nine SPAT requirement IDs the ROADMAP had left unassigned — produced `12-SC3-AMENDMENT.md` (SPAT-09)
+- [x] 12-03-PLAN.md — The lattice machinery: CAR and GP covariance arms, the D-05 per-cell rescale, the lag-1 reparametrization of the correlation length, the orthonormal DCT-II basis — `car_sigma` at `spike/simulator/p12_lattice.jl:125`, `gp_sigma` at `:153` (SPAT-01, SPAT-04)
+- [x] 12-04-PLAN.md — Give the network a spatial *view* of the unchanged 128-row summary, topology pinned literally so nobody builds the measured-12.5 h variant — `build_p12_summary_net` at `spike/npe/p12_architecture.jl:253` (SPAT-03, SPAT-04)
+- [x] 12-05-PLAN.md — Make the phase's three hard constraints executable rather than aspirational: `src/` untouched, the spike environment byte-frozen, the Phase-16 sealed holdout unburned (SPAT-09)
+- [x] 12-06-PLAN.md — Answer cheaply, before anything expensive happens, whether `chromatic_eps` is identifiable from the patch-correlation summary. **Gates nothing.** MEASURED: `eps_ratio = 0.96307` — barely identifiable, 3.7 % better than the empirical prior-mean baseline — and `ridge_residual_shrinkage = 0.96870 > 0.90` ⇒ `vacuous = true` (SPAT-08 precursor, in scope, not deferred)
+- [x] 12-07-PLAN.md — Turn 12-03's lattice arithmetic into a prior over ρ **fields** that leaves every region's marginal exactly where the Turing μ-prior puts it (D-05 copula), with a cheap route to pixel resolution (SPAT-01)
+- [x] 12-08-PLAN.md — Capture the pre-edit simulator golden, then make stage 1 accept a spatially-varying ρ without moving a single byte on the path that does not use one — golden matched **12/12** exactly and a constant-valued field matched with `maximum(abs, Δ) = 0.0` against a `1e-12` tolerance (SPAT-02)
+- [x] 12-09-PLAN.md — The field-aware training pool: draw a correlation length, draw a field conditional on it, simulate, encode the unchanged 128-row summary, and store the **drawn lattice** beside it; the single place the 72-row θ vector is assembled (SPAT-01, SPAT-02)
+- [x] 12-10-PLAN.md — Prove at the pre-registered sample size, against a tolerance frozen before the field simulator existed, that D-05's copula leaves **every one of the 64 regions** with the `MU_PRIOR` marginal — max per-region W1 = **0.00675** at M = 20,000 across all 11 arm×rung configurations, against `P12_SIM02_W1_TOL_PERREGION = 0.10` (≈15× headroom) (SPAT-01)
+- [x] 12-11-PLAN.md — The D-12 Stage-1 question the whole phase rests on — *do the other 63 regions tell you anything about the one you held out?* — answered by a closed-form leave-region-out ridge probe before a single network is trained. **COMPLETE IN FACT**: all artifacts on disk (`run_p12_stage1_ridge.jl`, `p12_stage1_report.jld2`, the blocked-adjudication record) and `12-STAGE1-VERDICT.md:3` reads `VERDICT: PROCEED` at commit `ee78cfe`. **ITS SUMMARY FRONTMATTER STILL READS `status: blocked`. THAT IS STALE, AND IT IS DELIBERATELY LEFT BYTE-UNCHANGED** per this phase's append-never-overwrite discipline — corrections are appended, records are never rewritten. **This is precisely why `init.execute-phase` counts 5 incomplete plans rather than 4.** **Do NOT "fix" `12-11-SUMMARY.md`**; the staleness is resolved here, in the roadmap, on purpose (SPAT-02)
+- [x] 12-12-PLAN.md — Give the phase a real result type: a per-region Δρ map **with** a per-region uncertainty map, as a new subtype of the package's actual result hierarchy, without touching `src/` — `SpatialColocResultSpike` in `spike/p12/result.jl` (SPAT-05)
+- [x] 12-13-PLAN.md — Turn D-08's hedge (*"expect this column may prove unidentifiable; report it as such if so"*) into a pre-registered measurement of the correlation length, using a probe strong enough that a null means something. **Gates nothing** (SPAT-04)
+- [x] 12-14-PLAN.md — Build the one training surface every later Phase-12 plan uses, making a leaked standardizer and an out-of-distribution held-out encoding impossible rather than merely discouraged (arm as a keyword, everything else identical by construction). **Its Task 3 — the only coded producer of the D-13 descope bundle — is keyed on `p12_stage1_verdict() === :descope` and therefore RAN AS A NO-OP under the `:proceed` verdict.** That is the wiring defect that forced the standalone `12-D13-AUTHORISATION.md` (SPAT-03, SPAT-04, SPAT-09)
+- [x] 12-15-PLAN.md — Decide by measurement rather than preference which lattice prior the phase uses, running both arms through a full-rank `K = P12_K_DEV = 63` head so the comparison measures the prior and not the head. **OUTCOME: `select_prior` returned `NONE-BEATS-ABLATION` in all three runs** — the original unseeded 18-epoch run, a seeded 18-epoch control, and a seeded 100-epoch treatment (`12-MINISPIKE-VERDICT.md`, `12-15-RERUN-VERDICT.md`). The qualifier *"at mini-spike scale"* stays on it, and a comparison between two failed arms is not evidence about priors: **the CAR-vs-GP question is UNRESOLVED, not answered** (SPAT-01, SPAT-04)
+- [x] 12-16-PLAN.md — Build the D-09 leave-region-out predictive machinery, calibrate its one modelling constant, and measure the comparison on simulation, where ground truth still exists to check the machinery measures what it claims. **OUTCOME: pooled coverage 0.9707 outside the pre-registered [0.87, 0.93] — "SPAT-06 IS NOT MET"**, reported and not tuned; the ablation beats `prior_only_floor` by **+0.19195 nats/region** against `P12_STAGE2_LOGSCORE_MIN = 0.02`; `stage2_gate = :not_applicable_descope` (there is no spatial arm to compare) and `spat07_scope = spat08_scope = :deferred_to_v2_1` recorded in the artifact, not silently omitted (SPAT-05, SPAT-06)
+- [S] 12-17-PLAN.md — Produce the two trained networks the rest of the phase scores: the spatial model on the prior 12-15 selected, and its D-10 matched ablation. **FORECLOSED, NEVER RAN.** It keys its 50,000-pair pool on `P12_CHOSEN_PRIOR` (`12-17-PLAN.md:118`, `p12_full_arms()` = `(P12_CHOSEN_PRIOR, :none)`), which is *asserted absent* at `spike/validation/p12_consts.jl:798`. Dispatching it throws. Superseded by the 2026-07-31 descope (SPAT-03, SPAT-04)
+- [S] 12-18-PLAN.md — Report per-region calibration in the one space where this phase's own prior construction does not manufacture artifacts, with a test matched to what each row actually is. **DEFERRED TO v2.1** by user ruling dated 2026-07-31, `12-D13-AUTHORISATION.md` §9. **NEVER RAN**: `spike/test/test_p12_sbc.jl` remains a self-declaring `P12_PENDING_SCAFFOLD`, and no `p12_sbc.jl` runner exists anywhere in `spike/` (SPAT-07)
+- [S] 12-19-PLAN.md — Score the leave-region-out predictive comparison on genuine microscopy data — the only part of SC3 a simulation cannot supply — and state the claim at exactly the strength the data support. **FORECLOSED, NEVER RAN.** `12-19-PLAN.md:202` resolves and hash-verifies **both bundles** from `p12_train_full_report.jld2`, which only 12-17 produces and which is confirmed absent on disk. Dead behind 12-17 (SPAT-06)
+- [S] 12-20-PLAN.md — Test the explanation that would make this phase's headline result meaningless (the S-4 chromatic-radial confound), then record the D-12 Stage-2 verdict. **DEFERRED TO v2.1** by user ruling dated 2026-07-31, `12-D13-AUTHORISATION.md` §7. **NEVER RAN**, and the consequence is worth stating: **the phase therefore makes NO radial-confound claim at all**, and the S-4 warning carried forward from Stage 1 is **left standing and unaddressed** — nothing in the D-13 release should be read as having ruled a radial confound in or out (SPAT-08, SPAT-09)
+
+**Closure**: `12-VERIFICATION.md` (2026-08-03, `status: gaps_found`; score **8/9 must-haves** — 6 verified,
+2 accepted as deferred-to-v2.1 by recorded user ruling, **1 FAILED**) and `12-D13-AUTHORISATION.md` (the
+standalone, explicitly-dated user authorisation that created the D-13 ablation as a NEW record without
+touching any gate file). Legend: `[x]` = complete, `[S]` = superseded/foreclosed, `[~]` = ran but blocked
+(not used in this phase).
+
+**THE NAMED LIMIT, in the exact form `12-D13-AUTHORISATION.md` §10.5 fixes it for the manuscript:**
+> **"We cannot exclude that longer training would have brought the spatial arms into the coverage band."**
+
+**That sentence is a NAMED LIMIT of v2.0, not a caveat.** It is weaker than what §8 claimed, and it is
+recorded in final form so nobody has to re-derive it later from a chain of appended corrections.
+
+**SPAT-06 IS NOT TO BE RE-TUNED** by adjusting epochs, N, thresholds or the noise model (§10.1, §10.5).
+Three specific moves were each offered and each REFUSED: **widening the admissibility loop** at
+`spike/validation/run_p12_minispike.jl:249` (`for a in (:car, :gp)`) to include `:none` after seeing
+`:none` fail it; **re-deriving the [0.87, 0.93] band** after seeing the arms miss it; and **relaxing the
+early-stopping criterion** in order to train longer. **The loop stays wrong and documented as wrong.**
+The user accepted a weaker negative rather than change a modelling constant after seeing the numbers.
+
+**§10.1's honest statement — stronger than "the spatial priors were miscalibrated", and the sentence
+that should survive:** *NO ARM IS CALIBRATED AT 100 EPOCHS, AND THE FALLBACK WAS RETAINED WITHOUT BEING
+TESTED.* At 100 epochs all three arms lie outside [0.87, 0.93], `car` is closer to nominal than the
+selected `none` (0.0492 against 0.0509), and both spatial arms beat the selected arm on RMSE — the arm
+that won **won by default** and was never held to the criterion that disqualified the others.
+
+**Phase 12 will remain `partial` to the SDK permanently, BY DESIGN.** Five requirements — SPAT-03,
+SPAT-04 and SPAT-06 undelivered at the scope the goal sentence means; SPAT-07 and SPAT-08 deferred to
+v2.1 — will never be marked delivered, and the 12-11 frontmatter staleness will never be repaired. **The
+phase must not be marked complete against 9 requirements.**
+
+**Re-running `/gsd:execute-phase 12` is NOT indicated.** All four remaining plans are foreclosed by
+rulings already on the record, not pending. `12-VERIFICATION.md` explicitly does not recommend executing
+12-17, 12-18, 12-19 or 12-20, and does not recommend re-running, retuning or extending any existing
+measurement.
 
 ### Phase 13: Three-Hypothesis Amortized Bayes Factor
 **Goal**: Extend the amortized evidence network from two- to three-way model comparison — colocalized / random / mutually-exclusive — so segregation becomes a first-class testable hypothesis, replacing the fragile KDE+quadgk Bayes factor
