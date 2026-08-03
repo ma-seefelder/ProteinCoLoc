@@ -272,8 +272,15 @@ end
         # (c) The corpus tree is byte-unchanged, and the PERMITTED real-image path is asserted
         #     POSITIVELY so the three negatives above cannot be satisfied by a phase that reads no
         #     images at all. `test/test_images/` (tracked, `positive/` + `negative/`) is that path.
-        #     No coverage runner exists yet, so this half is skipped rather than faked -- 12-19 is
-        #     the plan that lands it.
+        #     The `else` half exists because no coverage runner existed when this was written; the
+        #     branch below is derived from the FILE rather than from a fixed list precisely so it
+        #     arms itself when one lands.
+        #
+        #     IT HAS LANDED. `spike/validation/run_p12_coverage.jl` exists as of the 12-16 work, so
+        #     THIS HALF IS LIVE and the `@test` below runs. The sentence previously here still read
+        #     "No coverage runner exists yet, so this half is skipped rather than faked" -- true
+        #     when written, false since, and sitting where a reader would take it as current. The
+        #     test was already correct; only its description had stopped being.
         _coverage_runner = joinpath(P12_REPO_ROOT, "spike", "validation", "run_p12_coverage.jl")
         if isfile(_coverage_runner)
             @test any(p -> occursin("test/test_images", _p12_body(p)), sources)
