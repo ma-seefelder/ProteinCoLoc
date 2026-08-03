@@ -33,9 +33,11 @@ created: 2026-08-03
 
 - **After every task commit:** run the relevant `test_p14_*.jl` unit file(s) — each < 10 s, no simulation.
 - **After every plan wave:** run **all** `test_p14_*.jl` unit files, per-file (never via `runtests.jl`).
-- **Before `/bm:verify-work`:** all unit files green **plus** the three integration runners
-  (`run_p14_conformal.jl`, `run_p14_riskcoverage.jl`, `run_p14_ood_arm.jl`) producing persisted `.jld2`
-  artifacts with recorded seeds, counters and sha provenance.
+- **Before `/bm:verify-work`:** all unit files green **plus** the **four** integration runners
+  (`run_p14_fdr_check.jl`, `run_p14_conformal.jl`, `run_p14_riskcoverage.jl`, `run_p14_ood_arm.jl`)
+  producing persisted `.jld2` artifacts with recorded seeds, counters and sha provenance.
+  *(Reconciliation: `run_p14_fdr_check.jl` backs SC1-b/SC1-c and was missing from an earlier
+  three-runner list. Four is the correct count.)*
 - **Max feedback latency:** < 10 s for unit; integration runners are wave-boundary only.
 
 ---
@@ -52,7 +54,7 @@ validate the amended criteria, never the originals.
 | **SC1-c** | Prior sensitivity of the FDR estimate is quantified, not hidden | same batch, π_C swept over {0.05, 0.10, 0.217, 0.40, 0.70} | **REPORTED, NOT GATED** — no bar | failing to report it is the failure | integration | same runner |
 | **SC1-d** | Split-conformal marginal coverage ≥ 1 − α_conf | calibrate `n_cal = 2000` @ `P14_CAL_COUNTER`; measure `n_eval = 2000` @ `P14_EVAL_COUNTER`; both **unstratified** | coverage ≥ 1 − α_conf − 3·√(α(1−α)/n_eval); at α_conf = 0.10, n = 2000 ⇒ **≥ 0.880** | realized coverage falls below the band | integration | `run_p14_conformal.jl` |
 | **SC1-e** | `p14_conformal_quantile` returns the **order statistic**, not an interpolated quantile | fixture | n = 9, α = 0.10 ⇒ `q̂ == maximum(s)` and `q̂ != Statistics.quantile(s, 0.9)` for non-degenerate `s`; at n = 30 the α = 0.03 call **throws** | either equality flips | unit | `test_p14_conformal.jl` |
-| **SC1-f** | The D-03 corpus-side coverage check is *attempted* and its outcome recorded | `corpus/manifest.csv` metadata only | `corpus_images_available == 0`; check recorded **UNEXECUTABLE with reason**; **no coverage number emitted from corpus data** | a coverage number is emitted from corpus data, or the check is silently omitted | integration | `test_p14_decoupling.jl` + report |
+| **SC1-f** ⟵ *rewritten per D-03a* | The real-data check runs on the **six committed microscopy TIFFs**, and the corpus is recorded as unavailable-by-design rather than silently skipped | `test/test_images/{positive,negative}/*_c{1,2,3}.tif`, read-only; `corpus/manifest.csv` **metadata only** (never `corpus/data/`) | the six TIFFs produce a recorded decision + abstention reason each; the corpus row records `corpus_images_available == 0` as **UNFETCHED BY DESIGN** (`.gitignore:451-453`) with the tier breakdown (30 `simulated-secondary`, 2 `physical-primary` = sealed holdout) | a coverage number is emitted from corpus data; the sealed holdout is read; the corpus is reported as "gone"/"empty" rather than unfetched; or the six-TIFF result is presented as a coverage claim | integration | `run_p14_real_images.jl` + `test_p14_decoupling.jl` |
 | **SC2-a** | `p14_fuse` implements the D-05 asymmetry exactly | fixture — all 3 × 3 × 2 × 2 = 36 combinations | full truth table cell by cell; in particular `(:clear, :singleton, true, false) ⇒ (:decide, :decided_contra_classical)` | any cell differs | unit | `test_p14_fuse.jl` |
 | **SC2-b** | D-06: missing / non-finite OOD threshold ⇒ `:not_checked` ⇒ abstain by default | fixture `ood_nulls` with `:thr` absent / `Inf` / `NaN` / finite | all three non-finite/absent cases ⇒ `:not_checked` ⇒ `:abstain`, `reason = :ood_not_checked`; opt-out flips to `:decide` | any case reads as `:clear` | unit | `test_p14_fuse.jl` |
 | **SC2-c** | D-06 anti-regression: no source uses `verdict.flag == false` as an in-distribution proxy | grep of comment-stripped Phase-14 sources | zero hits for `!.*\.flag` / `\.flag == false` outside `p14_ood_state` | any hit | unit (source grep) | `test_p14_decoupling.jl` |
@@ -114,7 +116,7 @@ no three consecutive tasks may run without an automated verify.
 |----------|-------------|------------|-------------------|
 | The four SC3 bars (0.60 / 0.95 / 0.80 / 0.50) and the 0.20 coverage floor are **judgement calls with no derivation** | SC3-a..d | No principled derivation exists; this project has recorded four cases of an underived bar measuring the wrong thing | The numbers are frozen in `spike/p14/consts.jl` **before any result exists** and are labelled in the report as judgement calls. A user may overrule any of them, but only *before* the freeze commit — never after a result. |
 | Assumption A2 — Bayesian posterior-expected FDP is immune to data-dependent pre-selection | SC1-b, D-05 | It is the entire justification for abstain-then-sort; standard conditioning, but load-bearing | The report must state the derivation explicitly so a referee can check it rather than take it on trust. |
-| D-03 corpus coverage check | SC1-f | `corpus/data/` is empty (`corpus_images_available == 0`, all 32 rows `bytes = 0`, open rows have empty `sha256`); a fetch is a licence + bandwidth human decision | Record the check as **UNEXECUTABLE with evidence**. Carry "the D-03 corpus bound is absent, not loose" as a named manuscript limit. Do **not** plan a fetch. |
+| Real-data check substrate (**D-03a**, supersedes D-03's corpus half) | SC1-f | The corpus holds **no unsealed physical ground truth** — 30 of 32 rows are `tier: simulated-secondary` (the CBS benchmark, i.e. another simulator) and the only 2 `physical-primary` rows are Phase 16's `sealed_holdout`. Its bytes are also unfetched by design. So a corpus check would be neither physical nor runnable. | Use the **six committed microscopy TIFFs** under `test/test_images/`, read-only — the same substitution Phase 13 sanctioned at `spike/p13/real_images.jl:71,145` *"precisely so that Phase 16's blind corpus stays blind."* Report it as an **illustration, not a coverage claim**: six TIFFs in two conditions bounds nothing tightly, and the report must say so. The withdrawn `α ≥ 1/31 ≈ 0.032` figure must not appear anywhere. |
 
 ---
 
