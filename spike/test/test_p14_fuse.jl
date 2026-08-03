@@ -209,9 +209,16 @@ const FUSE_FIX_NULLS_UNCHECKED = (FUSE_FIX_NULLS_ABSENT, FUSE_FIX_NULLS_INF, FUS
         # verdict rather than the threshold's mere presence.
         @test p14_ood_state(FUSE_FIX_NULLS_FINITE, FUSE_FIX_VERDICT_OVER) === :fired
         @test p14_ood_state(FUSE_FIX_NULLS_FINITE, FUSE_FIX_VERDICT_UNDER) === :clear
-        # A Dict-shaped `ood_nulls` resolves identically -- `haskey` is the only access used.
-        @test p14_ood_state(Dict(:thr => 3.5), FUSE_FIX_VERDICT_OVER) === :fired
-        @test p14_ood_state(Dict(:density => :fitted), FUSE_FIX_VERDICT_UNDER) === :not_checked
+        # `ood_nulls` IS NAMEDTUPLE-SHAPED, and that is not an accident of this file: the shipped
+        # call site itself does `haskey(ood_nulls, :thr) ? ood_nulls.thr : nothing`
+        # (src/amortized/ood.jl:394-395). Broadening the resolver to `get(ood_nulls, :thr, nothing)`
+        # so that a Dict would also work would be a SILENT divergence from the shipped semantics --
+        # exactly the class of divergence D-06 exists to prevent -- so a Dict carrying a threshold
+        # fails LOUDLY here instead of being quietly accommodated.
+        @test_throws Exception p14_ood_state(Dict(:thr => 3.5), FUSE_FIX_VERDICT_OVER)
+        # A container with no threshold at all is safe on anything `haskey` answers for, and
+        # resolves to the conservative state.
+        @test p14_ood_state(Dict{Symbol, Any}(), FUSE_FIX_VERDICT_UNDER) === :not_checked
         # An INTEGER threshold is Real and finite, so it is a genuine operating point.
         @test p14_ood_state((thr = 3,), FUSE_FIX_VERDICT_UNDER) === :clear
     end
@@ -232,9 +239,14 @@ const FUSE_FIX_NULLS_UNCHECKED = (FUSE_FIX_NULLS_ABSENT, FUSE_FIX_NULLS_INF, FUS
                                               disagree = false)
         @test_throws ArgumentError p14_fuse(; ood_state = :clear, conformal_status = :huge,
                                               disagree = false)
-        # A Bool smuggled in where the three-valued state belongs is the exact D-06 regression.
-        @test_throws MethodError p14_fuse(; ood_state = false, conformal_status = :singleton,
-                                            disagree = false)
+        # A Bool smuggled in where the three-valued state belongs is the exact D-06 regression, and
+        # it is refused by the SIGNATURE rather than by the body: `ood_state::Symbol` on the keyword
+        # makes it a TypeError before a single branch is evaluated, which is a stronger guarantee
+        # than any runtime check in the body could give.
+        @test_throws TypeError p14_fuse(; ood_state = false, conformal_status = :singleton,
+                                          disagree = false)
+        @test_throws TypeError p14_fuse(; ood_state = :clear, conformal_status = :singleton,
+                                          disagree = :yes)
         err = try
             p14_fuse(; ood_state = :maybe, conformal_status = :singleton, disagree = false)
         catch e
