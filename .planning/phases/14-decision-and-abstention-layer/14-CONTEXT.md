@@ -82,6 +82,38 @@ external evaluation itself (Phase 16).
   **Named limit to carry into the manuscript:** the headline conformal guarantee is simulator-derived
   and therefore inherits the simulator's misspecification; the corpus check is what bounds that.
 
+- **D-03a (CORRECTION, appended 2026-08-03 — supersedes D-03's corpus half, not its simulator half).**
+  D-03 above says the real-data check runs on "the 30 open corpus rows". **That is wrong on two
+  counts**, found during Phase-14 research and verified directly against `corpus/manifest.csv`:
+
+  1. **Those rows are not physical ground truth.** 30 of 32 rows are `tier: simulated-secondary`,
+     `truth_label: simulated-degree` — the CBS benchmark, i.e. *another simulator*. Exactly **2** rows
+     are `tier: physical-primary`, and both are the `sealed_holdout` reserved for Phase 16. The
+     corpus contains no unsealed physical truth at all.
+  2. **The bytes are not on disk.** `corpus/data/` is empty and all 32 rows record `bytes = 0`.
+     This is by design — `.gitignore:451-453` keeps downloaded image bytes out of git, and
+     `corpus/fetch.jl` is the fetcher — so the data is *unfetched*, not absent forever. But the check
+     as D-03 worded it is **not runnable** without a network fetch.
+
+  Also corrected: the corpus is already partitioned `dev = 14 / eval = 16 / sealed_holdout = 2`, not
+  "30 open". The figure "α ≥ 1/31 ≈ 0.032" in D-03 was computed from the wrong n and on rows that
+  are not physical truth; **do not carry that number forward.**
+
+  **What Phase 14 does instead — follow the Phase-13 precedent.** Phase 13 hit this exact problem and
+  resolved it by amendment: `spike/p13/real_images.jl:71,145` records that the *"SANCTIONED
+  SUBSTITUTE IS THE SIX COMMITTED MICROSCOPY TIFFS UNDER test/test_images/"*, adopted
+  *"precisely so that Phase 16's blind corpus stays blind."* Phase 14's real-data check uses the
+  **same six committed TIFFs** (`test/test_images/{positive,negative}/*_c{1,2,3}.tif`, read-only),
+  under the same rationale. See `.planning/phases/13-.../13-D15-AMENDMENT.md`.
+
+  **Unchanged by this correction:** conformal still calibrates on held-out simulator draws (D-03's
+  primary), the guarantee is still simulator-derived, and the circularity is still a named manuscript
+  limit. What changes is only *which real substrate* the reported check runs on — and it is now a
+  substrate that is committed, in-repo, and does not require a fetch.
+
+  **Consequence to state honestly:** six TIFFs in two conditions is a very small real-data check. It
+  bounds nothing tightly and must be reported as an illustration, not as a coverage claim.
+
 ### Decision unit
 
 - **D-04: FDR is controlled PER IMAGE PAIR. Tiles are displayed but explicitly NOT FDR-controlled.**
