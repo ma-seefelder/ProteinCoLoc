@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Phase 14 planned -- 14 plans in 8 waves, ready to execute
-last_updated: "2026-08-03T17:51:38.366Z"
-last_activity: "2026-08-03 -- Completed quick task 260803-jm5: ROADMAP Phase 12 amended to CLOSED NEGATIVE (matches 12-VERIFICATION.md). Phase 11 also closed on disk (b0ff45f); Phase 12 verification written (35848a8)."
+stopped_at: Phase 14 context gathered
+last_updated: "2026-08-03T18:16:35.135Z"
+last_activity: 2026-08-03
 progress:
   total_phases: 16
   completed_phases: 11
@@ -34,7 +34,8 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
-Phase: 12 (spatial-colocalization-map) — ~~**RESUMED. Stage-1 gate ADJUDICATED 2026-07-31; waves 7-12
+Phase: 14 (decision-and-abstention-layer) — EXECUTING
+Plan: 1 of 14
 executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)~~
 **SUPERSEDED 2026-08-03: EXECUTION IS OVER — 16 of 20 plans complete, and the remaining four are
 FORECLOSED by rulings on the record, not pending.** `12-VERIFICATION.md` exists (`gaps_found`); the
@@ -1062,7 +1063,7 @@ Offline gate `julia --project=. corpus/test/runtests.jl` → 217/217, ZERO netwo
 untouched; `git ls-files corpus/data` empty. NOTE: this Current Position was previously clobbered by a
 parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
 
-Last activity: 2026-08-03 -- Completed quick task 260803-jm5: ROADMAP Phase 12 amended to CLOSED NEGATIVE (matches 12-VERIFICATION.md). Phase 11 also closed on disk (b0ff45f); Phase 12 verification written (35848a8).
+Last activity: 2026-08-03
 
 Progress: [█████░░░░░] 56% of phases (9/16); 51/53 plans
 
