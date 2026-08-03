@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 9: Cross-Method Comparator Harness** - Costes/Manders/Pearson/Spearman + Tapqir bridge on shared inputs; "knows when the classics are wrong" — parallelizable now
 - [x] **Phase 10: Manuscript Skeleton + Related-Work Positioning** - Compiling Typst skeleton, explicit Tapqir/Costes/Manders delta, figure specs — parallelizable now
  (completed 2026-07-02)
-- [ ] **Phase 11: Registration + Chromatic Uncertainty as Latent** - Promote dx/dy (+ chromatic warp) to inferred θ; posterior widens honestly under registration uncertainty
+- [x] **Phase 11: Registration + Chromatic Uncertainty as Latent** - Promote dx/dy (+ chromatic warp) to inferred θ; posterior widens honestly under registration uncertainty — **CLOSED NEGATIVE-BUT-USEFUL 2026-07-27**: registration at ≤3 px is not inferable from the 8×8 patch summary at any coloc level, AND does not need to be (Δρ RMSE flat in λ, ratio 1.0003). SC1g gate MIS-SPECIFIED, not failed. Plans 11-08…11-11 SUPERSEDED. See `11-CLOSURE.md`
 - [ ] **Phase 12: Spatial Colocalization Map (GP/CAR)** - Lattice prior over the correlation grid → amortized per-region Δρ map + uncertainty (descope-to-v2.1 candidate)
 - [ ] **Phase 13: Three-Hypothesis Amortized Bayes Factor** - Evidence network extended to coloc/random/exclusion; replaces KDE+quadgk BF
 - [ ] **Phase 14: Decision + Abstention Layer** - {coloc/not/ABSTAIN} at controlled Bayesian FDR; abstains on OOD/disagreement/ambiguity
@@ -234,9 +234,10 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 **Depends on**: Phase 7
 **Requirements**: TBD
 **Success Criteria** (what must be TRUE):
-  1. dx/dy (+ optional 1-param chromatic warp) is added to θ (extending `spike/simulator/forward.jl` stage 6 + `prior.jl`) and the NPE is retrained on the extended prior
-  2. Posterior width increases monotonically with injected registration uncertainty on a controlled sweep
-  3. Deliberately mis-registered test images are handled without silent overconfidence
+**OUTCOME 2026-07-27 — the goal is ANSWERED NEGATIVELY, with evidence, and the answer is more useful than the one the phase expected.** SC1 was *delivered* (θ extended to 8 columns at `ca02b0e`, research net trained), but SC2/SC3 rest on a premise the phase disproved: registration at ≤3 px carries no recoverable information in the 8×8 patch-correlation summary. Read each criterion below against that.
+  1. dx/dy (+ optional 1-param chromatic warp) is added to θ (extending `spike/simulator/forward.jl` stage 6 + `prior.jl`) and the NPE is retrained on the extended prior — **DONE** (research net only; the shipped bundle was never retrained)
+  2. Posterior width increases monotonically with injected registration uncertainty on a controlled sweep — **MOOT.** The width the data demands is *flat* in λ (Δρ RMSE 0.13334 → 0.13338, ratio 1.0003). A monotone increase would have been *dishonest* width, not honest width
+  3. Deliberately mis-registered test images are handled without silent overconfidence — **SATISFIED, by a different route than planned.** There is no false confidence to correct: the posterior already reports approximately the right width (1.021) for a quantity whose correct width ratio is ~1.00. Registration must instead be calibrated externally (fiducial beads), which is standard microscopy practice
 **Plans**: 11 plans (9 waves — W1 pre-registration+golden ; W2 the D-11/D-12 single commit ; W3 regression+provenance ∥ research-net scaffold ; W4 pre-flight probe+Tier-2 ; W5 probe-verdict checkpoint ; W6 λ-hierarchical datagen+training ; W7 SC2 ladder ; W8 SC3 breakdown+attenuation ∥ real-image ; W9 report+docs)
 - [x] 11-01-PLAN.md — Tier-1 pre-registration consts, TOST/Wilson/Holm-direction stats, pre-edit golden fixture + PHASE11_BASE_SHA (D-01, D-04, D-07, D-08, D-10, D-14)
 - [x] 11-02-PLAN.md — THE D-11/D-12 SINGLE COMMIT: chromatic ε as an 8th θ column, single composed affine stage 6 in both simulators, θ-arity ripple through src/ and the root suite, named limit #8 with the pinned pre-ε sha (D-02, D-09, D-10, D-11, D-12, D-15)
@@ -244,11 +245,19 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 11-04-PLAN.md — Research-net scaffold: BoundedThetaTransform port + λ encoder/augmenter, d_in=129/D=8 smoke train, the λ-ablation tripwire (D-01, D-02, D-03, D-04)
 - [x] 11-05-PLAN.md — D-06 pre-flight probe (paired, F5 mixture + 256² arm) and the append-only Tier-2 probe-derived constants (D-04, D-06, D-07, D-08, D-09)
 - [x] 11-06-PLAN.md — Probe verdict: mechanical abort-criterion evaluation, blocking branch decision, iteration ledger (D-04, D-06)
-- [ ] 11-07-PLAN.md — λ-hierarchical datagen (50k, F5 mixture) + research-net training + the λ-ablation tripwire firing green (D-01, D-02, D-03, D-09)
-- [ ] 11-08-PLAN.md — SC2 ladder (GATED): λ-aware harness, permutation-Spearman monotonicity, per-rung TOST equivalence with the inverted Holm direction, per-rung shrinkage/vacuity (D-05, D-07, D-08, D-13)
-- [ ] 11-09-PLAN.md — SC3 beyond-prior breakdown curve at λ=3.0 and λ=1.0 + the D-02 ρ_true attenuation measurement, both reported-not-gated (D-02, D-13, D-14, D-15)
-- [ ] 11-10-PLAN.md — D-17 qualitative real-image transfer check on test/test_images/ with null-warp and integer-offset controls, sealed corpus holdout untouched (D-13, D-15, D-17)
-- [ ] 11-11-PLAN.md — Figures, the Phase-11 results report, and the D-16 interpretation section in docs/amortized.md (D-01, D-05, D-12, D-13, D-14, D-16, D-17)
+- [~] 11-07-PLAN.md — λ-hierarchical datagen (50k, F5 mixture) + research-net training + the λ-ablation tripwire firing green (D-01, D-02, D-03, D-09) — **RAN, then BLOCKED on the SC1g tripwire.** `11-07-SUMMARY.md` stays `status: blocked` as the honest record of where execution stopped; the tripwire that stopped it was subsequently shown to be mis-specified (`11-BAR-DERIVATION.md`)
+- [S] 11-08-PLAN.md — SC2 ladder (GATED) — **SUPERSEDED, NEVER RUN.** Entry gate mis-specified; SC2 already answered analytically (≤1.134) and empirically (RMSE ratio 1.0003)
+- [S] 11-09-PLAN.md — SC3 breakdown + D-02 attenuation — **SUPERSEDED IN SUBSTANCE, NEVER RUN.** The attenuation question *is* the flat-RMSE finding
+- [S] 11-10-PLAN.md — D-17 real-image transfer check — **NOT APPLICABLE, NEVER RUN.** Nothing is inferred, so nothing transfers
+- [S] 11-11-PLAN.md — Figures, report, docs — **SUPERSEDED BY `11-DIAGNOSIS.md`, NEVER RUN.** No `11-REPORT.md` exists or is owed; `docs/amortized.md` deliberately unedited (D-01 holds)
+
+**Closure**: `11-CLOSURE.md` (2026-07-27) — evidence in `11-DIAGNOSIS.md`, corrected gate spec in
+`11-BAR-DERIVATION.md`, structural findings in `deferred-items.md`. Legend: `[S]` = superseded,
+`[~]` = ran but blocked. **No retraining, no re-seed, no reship**; `spike/validation/p11_consts.jl`
+and the shipped `amended_v2/grid_8` bundle are byte-unchanged and the Phase-7 GO is untouched.
+**Phase 15 must start from `11-BAR-DERIVATION.md`, not from `p11_consts.jl`** — the constant there is
+correct as history and wrong as a specification, and a re-derived bar must be an equivalence-style
+test, not a "must exceed" threshold, because the true value of the gated quantity is ~1.00.
 
 ### Phase 12: Spatial Colocalization Map (GP/CAR)
 **Goal**: Replace exchangeable patch pooling with a spatial lattice prior over the correlation grid, producing an amortized per-region Δρ map with calibrated per-region uncertainty — the feature that makes v2.0 "spatial" and differentiates it from Tapqir

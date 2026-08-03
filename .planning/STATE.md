@@ -37,6 +37,15 @@ Three phases are active concurrently. All lines are authoritative — do not ove
 Phase: 12 (spatial-colocalization-map) — **RESUMED. Stage-1 gate ADJUDICATED 2026-07-31; waves 7-12
 executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)
 
+Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — **CLOSED 2026-07-27,
+negative-but-useful. NOT active; nothing pending.** Restored 2026-08-03 (this line had been lost to
+the documented single-slot clobber, `deferred-items.md`). Goal answered negatively with evidence:
+registration ≤3 px is not inferable from the 8×8 patch summary at any coloc level, and does not need
+to be (Δρ RMSE flat in λ, ratio 1.0003). SC1g **mis-specified, not failed**. Plans 11-08…11-11
+superseded and now marked as such in their own frontmatter — **do not pick them up as live work; do
+not retrain a registration-aware net.** No retraining/re-seed/reship occurred; `p11_consts.jl` and
+`amended_v2/grid_8` byte-unchanged; iteration allowance unspent (0 of 1). Authority: `11-CLOSURE.md`.
+
 ## ⚠️ FOR PHASES 14/15/16 — a pool-overlap hazard that fires OUTSIDE Phase 12 (DEF-12-05, C-04)
 
 **Rule:** `.planning/CONVENTIONS.md` **C-04**, added 2026-07-31 and verified at all three defining
