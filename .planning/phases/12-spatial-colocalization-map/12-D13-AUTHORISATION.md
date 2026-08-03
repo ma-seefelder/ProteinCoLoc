@@ -259,3 +259,91 @@ is admissible"* — which selects no spatial prior either. `NONE-BEATS-ABLATION`
 
 **Full record, including why no change to the loop is proposed:** `12-STAGE1-VERDICT.md` §7.6, filed
 as an instance of the §7.2 family.
+
+### §10.1 USER RULING, 2026-08-03: **CORRECT THE RECORDED REASON. LEAVE THE VERDICT.**
+
+**Appended, not merged. §10 above stands, and §8 remains byte-unchanged.** This subsection exists
+because §10 as first written carried only *half* of what the repaired numbers support, and half of it
+reads as exoneration.
+
+**`NONE-BEATS-ABLATION` STANDS AS THE OUTCOME AND IS NOT REOPENED.** What is corrected is the *reason
+on record*, which as written implies the spatial arms failed something the ablation passed. **On the
+repaired basis that reading is false.**
+
+**The repaired treatment (100 epochs, `eb3ced3`), on its face:**
+
+| arm | coverage | distance from nominal 0.90 | rmse | skill |
+|---|---|---|---|---|
+| `car` | 0.94920 | **0.0492** | 0.63941 | +0.35693 |
+| `gp` | 0.96503 | 0.0650 | 0.65540 | +0.34018 |
+| `none` *(selected)* | **0.95089** | **0.0509** | 0.79471 | +0.20237 |
+
+- **All three arms are outside [0.87, 0.93].** Not two.
+- **`car` is CLOSER to nominal than the selected `none`** — 0.0492 against 0.0509.
+- **Both spatial arms beat the selected arm on RMSE**, by 19.5 % and 17.5 %.
+
+> **THE HONEST STATEMENT IS THEREFORE NOT "the spatial priors are miscalibrated." IT IS: _NO ARM IS
+> CALIBRATED AT 100 EPOCHS, AND THE FALLBACK WAS RETAINED WITHOUT BEING TESTED._**
+
+**BOTH HALVES, BECAUSE EITHER ALONE MISLEADS.**
+
+1. **The loop bound did NOT change WHICH arm was selected.** Hold the ablation to the same gate and it
+   fails too; the outcome becomes *"no arm is admissible"*, which selects no spatial prior either.
+   The verdict is not an artifact of the exemption, and nobody should read this as a discovered error
+   in the result.
+2. **The loop bound DID change WHAT THE SELECTION MEANS.** The arm that won **won by default**, and it
+   **fails the same gate it was used to disqualify the others with** (0.95089). "The ablation beat the
+   spatial priors" and "nothing was calibrated and the ablation was never asked" are different claims,
+   and only the second is supported.
+
+**NO CODE CHANGE. THE LOOP AT `run_p12_minispike.jl:249` IS NOT TOUCHED.** Widening it to
+`(:car, :gp, :none)` *after seeing that `:none` fails it* would be changing the procedure because of
+the result — the move this phase has refused at every previous opportunity. **The loop stays wrong and
+documented as wrong.** Any change is a v2.1 proposal, written as a proposal, not applied here.
+
+**NO RE-DERIVATION OF THE TOLERANCE.** Re-examining the [0.87, 0.93] band itself was offered to the
+user and **declined**, on the ground that it changes a rule after the numbers are known. Same
+discipline as §7.4(b).
+
+### §10.2 THE PRE-DECLARATION'S PREMISE WAS REMOVED BY `f039729` — RECORDED HERE, NOT THERE
+
+**`12-16-PREDECLARATION.md` IS UNTOUCHED AND STAYS UNTOUCHED.** It was written before the fact and
+does not get edited after it. The supersession is recorded here instead.
+
+**§1 of that document reads:**
+
+> *"that second branch is **live**, not hypothetical: the D-13 ablation's measured skill on
+> latent-field recovery is **−0.15084**, i.e. worse than predicting a constant zero."*
+
+**On the repaired basis that same quantity is `+0.20237`** — better than predicting a constant zero,
+not worse. **The branch §1 called "live, not hypothetical" had its factual premise removed** by
+`f039729`, the repair of the smoothness-permutation defect. The sign flip is not marginal and is not
+confined to the ablation: `car` −0.00383 → +0.35693, `gp` −0.10810 → +0.34018, `none` −0.15084 →
++0.20237. **Every arm crossed zero.**
+
+**CORROBORATED INDEPENDENTLY, BY A DIFFERENT ROUTE.** 12-16 measured the ablation beating
+`prior_only_floor` by **+0.19195 nats/region** (`12-16-SUMMARY.md:48`), against the pre-registered
+`P12_STAGE2_LOGSCORE_MIN` = 0.02. That sits right beside the **+0.20237** skill figure. **Two
+different statistics, computed by two different runners on two different quantities, agree that the
+ablation is informative** — which is worth more than either number alone, because the pre-declaration's
+whole concern was that a model could be *calibrated because uninformative*.
+
+**What §1 was built to guard against therefore did not occur.** The document is not thereby wrong: it
+pre-committed a discriminator against a branch that turned out not to be taken, which is what
+pre-declaration is *for*. **It is superseded in its premise, not in its judgement.**
+
+### §10.3 **MANUSCRIPT-LEVEL NAMED LIMITATION — not a phase-internal note**
+
+**FLAGGED EXPLICITLY FOR PICKUP WITH THE v2.0 NAMED LIMITS AND HONESTY ITEMS.** This does not belong
+buried in a phase verdict, and it is not a housekeeping remark. The item, in the form it should travel:
+
+> **The spatial-prior comparison selected its ablation arm by default rather than on merit. At 100
+> epochs no arm — neither spatial prior nor the neutralized ablation — met the pre-registered coverage
+> band of 0.90 ± 0.03; both spatial arms were more accurate than the selected arm (RMSE lower by
+> 19.5 % and 17.5 %) and one was closer to nominal coverage. The selection rule tested admissibility
+> only over the two spatial arms, so the ablation was never held to the criterion that disqualified
+> them. This did not change which arm was selected — held to the same gate, no arm qualifies — but it
+> means the result must be read as "no arm was calibrated at this scale", NOT as "the ablation
+> outperformed the spatial priors".**
+
+Full technical account: `12-STAGE1-VERDICT.md` §7.6.

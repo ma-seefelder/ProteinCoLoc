@@ -853,6 +853,22 @@ establishes is that the ablation's exemption is a **choice that was never record
 therefore that any write-up saying the ablation "was not required to be calibrated" is describing a
 loop bound, not a decision anyone can be pointed at.
 
+#### §7.6.1 RULED ON, appended 2026-08-03: CORRECT THE RECORDED REASON, LEAVE THE VERDICT
+
+**A user ruling was taken on §7.6 with the repaired numbers in hand.** `NONE-BEATS-ABLATION` **stands
+as the outcome and is not reopened**; what is corrected is the *reason on record*. The loop at
+`run_p12_minispike.jl:249` is **not** to be changed — widening it after seeing that `:none` fails it
+would be changing the procedure because of the result — and the [0.87, 0.93] band is **not** to be
+re-derived, which the user was offered and declined.
+
+**The corrected reason, in one sentence:** *no arm is calibrated at 100 epochs, and the fallback was
+retained without being tested* — **not** "the spatial priors are miscalibrated". On the repaired
+treatment all three arms sit outside the band, `car` is **closer** to nominal than the selected `none`
+(0.0492 vs 0.0509), and both spatial arms beat the selected arm on RMSE by 19.5 % and 17.5 %.
+
+**Recorded as a MANUSCRIPT-LEVEL named limitation**, not a phase-internal note. Full text, both halves
+of the effect, and the `12-16-PREDECLARATION.md` supersession: `12-D13-AUTHORISATION.md` §10.1-§10.3.
+
 ## §8 Routing consequences of PROCEED
 
 - `p12_stage1_verdict()` now returns `:proceed`, so `p12_require_proceed` admits **12-17, 12-18,
