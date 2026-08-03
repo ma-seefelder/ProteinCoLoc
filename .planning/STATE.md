@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Phase 12 context gathered
-last_updated: "2026-07-27T14:06:54.610Z"
-last_activity: 2026-07-29 -- Phase 13 COMPLETE, all 16 plans (13-14 report written; gate passed 6/6 on simulated ground truth, both real fixtures OOD-flagged, allowance UNSPENT)
+stopped_at: Phase 14 context gathered
+last_updated: "2026-08-03T15:19:57.682Z"
+last_activity: "2026-08-03 -- Completed quick task 260803-jm5: ROADMAP Phase 12 amended to CLOSED NEGATIVE (matches 12-VERIFICATION.md). Phase 11 also closed on disk (b0ff45f); Phase 12 verification written (35848a8)."
 progress:
   total_phases: 16
-  completed_phases: 10
-  total_plans: 80
-  completed_plans: 68
-  percent: 66
+  completed_phases: 11
+  total_plans: 101
+  completed_plans: 93
+  percent: 69
 ---
 
 # Project State
@@ -204,18 +204,22 @@ improvised.** Two descopes are defined; neither is ours:
   `p12_require_proceed` still **admits** 12-17/12-18/12-19/12-20. Nothing is mechanically blocked —
   but **12-17 is impossible as written** (`12-17:137` keys its 50,000-pair pool on `P12_CHOSEN_PRIOR`,
   which does not exist).
+
 - **12-14 Task 3 is the only executable producer of the D-13 deliverable, and it is keyed on
   `:descope`.** On `:proceed` it does nothing — it already ran as a no-op (`12-14-SUMMARY.md:31`), and
   re-running it changes nothing. **It has no branch for this state.**
+
 - **12-16 resolves its bundle by FILE EXISTENCE, not by the verdict** (`12-16-PLAN.md:77-81`):
   `p12_train_full_report.jld2` → `:full_two_arm`; else the ablation bundle recorded in
   `p12_ablation_report.jld2` → `:descope_ablation_only`; **else THROW**, because "a third, unhandled
   case is not permitted to fall through silently". **Neither file exists.** So the descope *consumer*
   is intact and runnable; only the *producer trigger* is mis-keyed.
+
 - **`12-CONTEXT.md:310-312` defines D-12 Stage 1 as the CAR-vs-GP mini-spike itself** — *"If neither
   does, descope before the full training run"* — which is verbatim what happened. **The implemented
   Stage-1 gate is a different measurement** (12-11's ridge borrowing probe) that already returned
   PROCEED. That divergence between the specified and the implemented gate is the root of the gap.
+
 - **`12-15-PLAN.md:137-139`** requires this outcome be *"carried into the Stage-2 verdict, not silently
   overwritten"*. The Stage-2 verdict lives in 12-16, which cannot produce one without a bundle.
 
@@ -277,6 +281,7 @@ assembled them in one place rather than discovering them:
 - **"spatial"** — no CAR or GP prior ever beat the neutralized ablation (`NONE-BEATS-ABLATION`, three
   runs). **The shipped deliverable is the ablation** — the same network with spatial borrowing off —
   carrying the `SpatialColocResult` type. No trained spatial arm exists at any scale.
+
 - **"calibrated per-region uncertainty"** — SBC calibration (SPAT-07) is deferred and never ran, and
   the one in-scope calibration-adjacent measurement **failed its own pre-registered band**: pooled
   leave-region-out coverage **0.9707** against [0.87, 0.93] (`12-16-SUMMARY.md:29`, *"SPAT-06 IS NOT
@@ -332,9 +337,11 @@ estimator of any kind* can clear it. The Phase-11 benchmark also reproduces (glo
 not live" — are untrue, which is why no verdict was written.
 
 **The two defensible readings** (both are in the record; this is why it is not an agent's call):
+
 - **A — the rule stands.** The ceiling is Tier 1 and in `P12_GATING_CONSTANTS`; reinterpreting a
   gate constant after seeing the number it failed is the "amend after the fact" pattern this project
   has already paid for twice. ⇒ run uninformative, allowance spent on the Stage-1 arm.
+
 - **B — the ceiling is mis-scaled for the unit.** `P12_STAGE1_RATIO_CEILING` carries a derivation
   *and* an explicit recorded warning that the unit it is applied to is not the unit it was derived
   for. **`P12_STAGE1_CONTROL_CEILING` carries no derivation anywhere in the pre-registration** — its
@@ -392,6 +399,7 @@ self-contradiction, six verifies that could not fail, and Δρ — the primary d
 test, key or verdict. **Gate 4's own fixes were then audited and had introduced 3 blockers and 11 concerns
 of their own, all fixed in the same session; that trend has still not broken.** The two decisions are now
 answered:
+
   1. **Δρ semantics — RESOLVED: ship all three maps.** `region_delta_rho` stays the primary named
      deliverable per `src/results.jl:181`, computed as the per-region MC difference mirroring
      `infer.jl:108`; `region_rho_sample` and `region_rho_control` are additionally exposed so a reader
@@ -403,6 +411,7 @@ answered:
      "12-09 (paired control draw)" and that was wrong: the Δρ\* truth is built at SCORING time from two
      independent prior draws (`harness.jl:124-136`), and a paired pool would have pushed datagen from a
      measured 65-80 min/50k to ~130-160 min against an append-only ceiling of 150.
+
   2. **Real-image SC3 arm — REPORTED, not gated, confirmed by a counted corpus audit.**
      `corpus/data/` is EMPTY: all 32 manifest rows have `bytes = 0`; the two `physical-primary` rows
      carry `sha256 = PENDING-FETCH` and are sealed for Phase 16, while the 30 CBS `simulated-secondary`
@@ -471,6 +480,7 @@ not M2.*
   `P13_REAL_REDUNDANCY_PAIR` **DROPPED** with no replacement; `P13_REAL_ANCHOR_MBAR` →
   **`0.4603 / 0.3815`, UNMASKED**. The masked `+0.8238 / −0.0338` are **forbidden** and appear
   nowhere in the arm, though they separate ten times better and no prior source forbids them.
+
 - **CHANGE B — the include-guard sentinel (DEF-12-03).** `consts.jl:100` guarded the whole Tier-1
   body on `:P13_DEV_SEED`, a name `spike/validation/p12_consts.jl:109` **must legitimately mirror**
   to assert seed disjointness. Re-pointed to **`:P13_DECLARED_DEVIATIONS`** at the body wrapper and
@@ -510,13 +520,16 @@ On the corrected pair **two claims this phase made do not survive**, and the thr
 `spike/test/test_p13_real.jl` assertions encoding them were **left FAILING rather than rewritten**,
 because rewriting a substrate expectation to match what was measured *after* the measurement is the
 act the amendment exists not to be:
+
 1. **The D-16 α-ladder no longer crosses zero** (`alpha_star_real` `nothing` / `nothing`, was
    0.875 / 0.625; `m-bar` stays positive on both fixtures). So *"negative induced μ is
    CONSTRUCTIBLE from real microscopy pixels via the D-16 mask-based reassignment"* — a sentence
    written for the manuscript — **is RETRACTED**; it was an artefact of segregating a target
    channel against a nuclear counterstain.
+
 2. **The D-05 coherence check that previously PASSED now DISAGREES**: contrast **0.09819** is inside
    `tau = 0.15` so the label rule assigns RANDOM, while the net's argmax says COLOC.
+
 3. **Consequence:** the abort moved to `runtests.jl:223`, masking **seven** Phase-13 files. All
    seven were run individually and pass (`test_p13_correction.jl` retains its 2 known deliberate
    misses).
@@ -547,18 +560,21 @@ real-substrate expectation.** Recorded verbatim, because the reasoning is the po
   correction COST the claim rather than revealing a new one** — the same register as the amendment
   taking the worse number. The converse is **not** asserted either; n = 2 cannot settle whether the
   negative regime is physically reachable, only that it is **not demonstrable on this substrate**.
+
 - **CORROBORATED BY TWO INDEPENDENT ROUTES**, both verified against the *Quick Tasks Completed*
   table in this file and against `spike/simulator/ghat.jl:84-91` at HEAD: **260725-vl8** (`151ad79`)
   **WITHDREW — did not invert** — the unqualified *"negative tail not physically reachable /
   PRIOR-ONLY"* claim; **260725-wb7** (`78dc37f`) found `neg_reachable` flipping to `true` on a masked
   reading of **−0.0338 ≈ 0** to be a **PREDICATE ARTEFACT rather than evidence**. Three routes, one
   direction — and that agreement is what makes this robust rather than one surprising measurement.
+
 - **The D-05 coherence disagreement stays RED on the same principle, and is recorded as an
   INFORMATIVE red.** Contrast **0.09819** inside `tau = 0.15` assigns RANDOM by the phase's own
   label rule while the net's argmax says COLOC — on fixtures flagged OOD at **4.198×** their own
   threshold, i.e. above the maximum of all 96,000 simulated acquisitions the null was fit on. A
   disagreement there is **close to what one should expect**; continued agreement would have been the
   surprising outcome.
+
 - **THE MASKING IS FIXED STRUCTURALLY, and re-ordering was rejected as a fix.** The documented house
   pattern (`runtests.jl`, *"THE CORRECTION ARM IS LAST, AND DELIBERATELY SO"*) **supports exactly ONE
   throwing file**; there are now two, so whichever ran first masked the other and re-ordering would
@@ -567,6 +583,7 @@ real-substrate expectation.** Recorded verbatim, because the reasoning is the po
   named-limit failures **still surface**; the suite **still exits non-zero**; and a known-red file
   that ever **starts passing fails loudly**, naming itself. Anything that is not a
   `Test.TestSetException` is **rethrown immediately** and never recorded as an expected red.
+
 - **MEASURED, one full-suite run each side, 2026-07-29.** BEFORE: aborts at `runtests.jl:223`,
   **4** Phase-13 file-level testsets report (703 pass / 3 fail), **7 files masked**, exit 1.
   AFTER: runs to completion, **11** Phase-13 file-level testsets report (**1,901 pass / 5 fail**)
@@ -576,6 +593,7 @@ real-substrate expectation.** Recorded verbatim, because the reasoning is the po
   keep it red BY DESIGN.** *Concurrency disclosed:* a live Phase-12 executor landed five commits
   (`986d518` … `406015e`) between the two runs, none touching any file under `spike/test/` or
   `spike/p13/`.
+
 - **NOTHING WAS RELAXED.** The five failing assertions (`test_p13_real.jl:226` ×1 and `:292` ×2;
   `test_p13_correction.jl:245` and `:246`) are **byte-unchanged** — not rewritten, not
   `@test_skip`-ed, not `@test_broken`-ed. No seed, bar, floor, band or allowance moved.
@@ -1232,12 +1250,9 @@ None yet.
 
 - [Phase 11 wave-3 post-merge gate, 2026-07-25]: **`SPEEDUP_GATE` (NPE-03) FAILS — median speedup 92.50× and 83.97× on two consecutive serial runs against the pre-registered `> 100.0×` bar** (`spike/test/test_npe.jl:230`, gate at `:74`). Reproducible, not noise. It is the ONLY remaining red in `spike/test/runtests.jl`; it was invisible until commit `b298c00` because a stale θ-arity assertion in `test_simulator.jl` aborted the suite four includes earlier (Phase 3 is now 70/70, Phase 5 SBC/BF/OOD and Phase 9 comparator all green). **Likely cause, NOT yet confirmed by measurement:** Phase-11 D-09 appended `chromatic_eps`, so the spike NPE now trains an **8-marginal** flow instead of 7 and the wider flow is a slower forward pass; confirming needs an A/B of the benchmark at `D_flow` 7 vs 8, which has not been run. **Scope: this does NOT invalidate the shipped >100× claim** — the shipped `amended_v2/grid_8` bundle still carries a 7-marginal flow (`NPE_D = 7`, unmoved per D-16) and its `Artifacts.toml` pin is byte-unchanged; the failing number comes from a spike-side net that is no longer the shipped one. **`SPEEDUP_GATE` was deliberately NOT lowered** — relaxing a pre-registered threshold after seeing it fail is the "amended twice, credibility spent" pattern of `07-GATE-AMENDMENT.md` §6.4. Two honest options, both user decisions, neither taken during execution: (a) confirm the 7-vs-8 hypothesis and record it as a named limit scoped to the research net, or (b) retire the legacy Phase-4 speedup gate explicitly as not meaningful against an 8-column prior. Must be carried into the Phase-11 report (plan 11-11). Full detail: `.planning/phases/11-registration-and-chromatic-uncertainty-as-latent/deferred-items.md`.
 
-
 - [Phase 4 `SPEEDUP_GATE` — 7-vs-8 A/B MEASURED, 2026-07-29, commit `ca994b9`]: **The "8-marginal flow" hypothesis recorded in the blocker above is FALSIFIED, on two independent grounds. No threshold, test or gate was touched.** **(1) The premise does not hold.** `speedup_report` loads `DEFAULT_NPE_MODEL = spike/npe/trained_npe.jld2`, whose persisted flow is **`q.d = 7`, `d_in = 128`**. That file last changed in `200e971` (the Phase-5 retrain); Phase 11 never touched it. The 8-marginal net (`q.d = 8`, `d_in = 129`) exists only in `p11_research_npe.jld2`, which the benchmark never loads. The failing gate has been timing a **7-marginal** flow all along. **(2) The width effect was measured anyway, and is ~16x too small to matter.** Interleaved, order-rotated, 9 reps at the gate's own `bench_N = 50` / `bench_seconds = 0.4`, CPU-only at 1 thread: `real7` (the actual gate model) median **97.04** [82.77 .. 110.09]; `fresh7` = `build_estimator(128, 7)` median **96.05** [87.18 .. 111.19]; `fresh8` = `build_estimator(128, 8)` median **94.27** [82.42 .. 109.13]. The 8th marginal costs **1.67%** of forward-pass latency (5.208 -> 5.295 ms), i.e. **1.78 speedup points**, against a **28.8-point** run-to-run spread. The arms' ranges OVERLAP and their per-rep ordering swaps repeatedly, so the width effect is not resolvable above machine noise and cannot move a 100x bar. **What the data DOES show:** the benchmark sits **ON** the bar rather than far below it — every arm, D=8 included, clears 100 in its best repetition, and the gate model needs 4.962 ms to clear 100 while measuring 5.178 ms (**1.04x**). Pass/fail is being decided by concurrent machine load (3 julia processes at start and end, observed varying 2-4 mid-run as peer agents started and finished; the sub-88 reps are the 4-process ones). That also explains the recorded drift 92.50 -> 83.97 -> 84.44 -> 89.77 -> 68.35 on this **unchanged** model, and answers the third question left open in `.planning/phases/13-three-hypothesis-amortized-bayes-factor/deferred-items.md`. **SCOPE CORRECTION THE USER SHOULD SEE:** the existing scope note states the failing number comes from "a spike-side net that is no longer the shipped one". On the width axis that is **not** the case — `src/amortized/architecture.jl:169-175` (`NPE_D = 7`, dstar 64, depth 3, width 256, coupling 10, flow 2/128) plus `summary_dim(8) = 2*8^2 = 128` make the shipped `grid_8` **topology identical** to the benchmarked one, and `trained_npe.jld2`'s stored metadata matches it field for field. The shortfall is therefore **not** insulated from the shipped >100x claim by the width argument. (Weights were NOT compared: the shipped `grid_8` artifact is a lazy remote pin and was deliberately not fetched.) **THE DECISION REMAINS THE USER'S and is NOT taken here.** Options (a) and (b) in the blocker above both rested on the now-falsified 8-column premise, so a third option is on the table: treat >100x as a claim whose measurement needs a **quiet-machine, pre-registered protocol** — the bar was derived on an unloaded machine and is being scored on a shared one. Reproduce with `julia --project=spike --threads=1 spike/npe/flow_width_ab.jl`; artifact `spike/npe/flow_width_ab.jld2` (carries per-rep speedups, latencies, and the julia-process counts).
 
-
 - [Phase 4 `SPEEDUP_GATE` — **PAUSED, NOT RETIRED** (user ruling), 2026-07-29, commit `a494247`]: **The user has ruled: pause the gate's execution, do not retire it.** Rationale: a wall-clock benchmark only makes sense once development is finished, and must then be measured properly; until then the measurement is deferred. **PAUSED vs RETIRED is the entire point and is deliberate** — retiring spends pre-registration credibility this project cannot afford to spend a third time (`07-GATE-AMENDMENT.md` §6.4, "amended twice, credibility spent"); pausing spends none, because the threshold stands as the record and only the measurement is deferred. **What changed:** in `spike/test/test_npe.jl` SC3, the single assertion `sr.median_speedup > SPEEDUP_GATE` is now `@test_skip` rather than `@test`, tagged with the greppable marker **`DEFERRED-NPE-03-WALLCLOCK`** (grep that marker rather than a line number — the explanatory block shifts line numbers below it). **`SPEEDUP_GATE = 100.0` is BYTE-UNCHANGED at `:74`**, the assertion expression is unweakened and still present in source, and nothing was commented out or deleted — re-arming is a one-word edit (`@test_skip` -> `@test`). The RMSE half of the D-08 joint condition is deliberately **left live** (it is an accuracy claim, not wall-clock dependent, so a real accuracy regression still fails the suite). **The Phase-11 "8-marginal flow" hypothesis in the blocker above is FALSIFIED AT THE ROOT** and the entry is retained unedited because how long it was believed is itself part of the record: the benchmark never loaded that net at all (`trained_npe.jld2` is `q.d = 7`, `d_in = 128`, last changed in `200e971`, untouched by Phase 11; the 8-marginal net lives only in `p11_research_npe.jld2`). **NEW FINDING — only one side of the ratio is benchmarked.** `BenchmarkTools` IS used, but only on the denominator (`_time_npe_pair` -> `@belapsed`, minimum of many samples). The numerator `t_advi` is a **single un-replicated `time_ns()`** per pair (`spike/baseline/run_advi.jl:136-137`) frozen into `advi_artifact.jld2` on 2026-07-01 under that machine's then-current load, and never re-measured. A ratio of a benchmarked denominator to a one-shot numerator cannot be tightened by re-running the testset — which is a second, independent reason the number is unreliable, on top of concurrent-load sensitivity. **DEFERRED OBLIGATION (must be re-run, not dropped):** at the END of v2.0 development, on a QUIET machine (no concurrent julia processes), with proper benchmarking tooling on **both** sides of the ratio (re-measure `t_advi` under `BenchmarkTools` instead of reusing the frozen one-shot), re-arm the assertion against the **unchanged** bar of 100.0 and report the outcome. A failure under those conditions would be a real result about the >100x claim and must be reported as one. **SUITE EFFECT (the reason this was worth doing) — CONFIRMED BY RUN:** with the gate paused, `julia --project=spike --threads=1 spike/test/runtests.jl` no longer aborts at Phase 4, and **the previously-masked phases now EXECUTE and are GREEN**: Phase 4 **149 pass / 1 broken** (the broken is exactly the one `@test_skip`; SC3 itself is 8 pass / 1 broken, so the live joint-RMSE half still passes), Phase 5 SBC **28/28**, Phase 5 BF **17/17**, Phase 5 OOD **27/27**, Phase 9 comparator **45/45**, and the Phase-12 block runs in full (Tier-1 pre-registration 143/143, CNN estimator surface 1141/1141, decoupling 24/24, all 10 `P12-SUITE-RAN` markers printed). **The suite still exits 1**, but for a DIFFERENT and newly-unmasked reason recorded in its own entry below (`test_p13_consts.jl`, P13_DEV_SEED include-guard collision) — that abort is at `runtests.jl:220` and is NOT caused by this pause, NOT caused by Phase-4 code, and was simply invisible behind the Phase-4 abort until now.
-
 
 - **[Phase 13 — `test_p13_consts.jl` ABORTS THE SUITE: `P13_DEV_SEED` include-guard collision, NEWLY UNMASKED, OPEN, 2026-07-29]**: **A pre-existing defect that was invisible behind the Phase-4 `SPEEDUP_GATE` abort and surfaced the moment that gate was paused (`a494247`). It is NOT caused by the pause, and NOT a Phase-4 problem.** In a full-suite run `test_p13_consts.jl` reports **22 pass / 1 fail / 114 error**, the errors all `UndefVarError` on Phase-13 constants (`P13_DECLARED_DEVIATIONS`, `P13_TAU`, …), and the thrown testset aborts `runtests.jl:220` — which masks the remaining **eight** Phase-13 includes (`test_p13_labels` … `test_p13_correction`, lines 221-239). **MECHANISM, fully traced:** (1) `runtests.jl:174` includes `test_p12_suite.jl` FIRST — deliberately, so Phase 12 cannot be masked by anyone else's abort; (2) that chain reaches `test_p12_consts.jl:42`, which **unconditionally** does `include(validation/p12_consts.jl)`; (3) `spike/validation/p12_consts.jl:109` defines `const P13_DEV_SEED = 0x0000_0000_0B13_DE71` — a deliberate **MIRROR** of Phase 13's seed, held so Phase 12 can assert stream disjointness; (4) at `runtests.jl:220`, `test_p13_consts.jl:42`'s guard `isdefined(@__MODULE__, :P13_DEV_SEED) || include(".../p13/consts.jl")` sees that mirrored symbol already present in the shared `Main` and therefore **SKIPS the include entirely**; (5) `spike/p13/consts.jl` wraps its whole body in `if !isdefined(@__MODULE__, :P13_DEV_SEED)` (lines 100-731), so **none** of the ~114 Tier-1 constants are ever defined. The guard symbol is thus a name Phase 12 legitimately owns a copy of, which makes it useless as a "have I loaded Phase 13's consts?" sentinel. **THIS EXACT BUG CLASS IS ALREADY DOCUMENTED IN-REPO, IN THE MIRROR DIRECTION:** `spike/p13/preconditions.jl:121-135` records that `p13/consts.jl` reserves the name `P11_DEV_SEED`, that this breaks a naive guard "in the suite while the standalone run passes", and repairs it locally in that one file. The same hazard has now recurred with `P13_DEV_SEED`, so the local repair did not generalise. **WHY IT WAS INVISIBLE:** per-file runs pass (nothing has defined the mirror yet, so the include fires normally), and the practice STATE.md prescribes for Phase 13 is exactly per-file runs — so both the per-file signal and the previously-aborted suite hid it. **NOT FIXED HERE, DELIBERATELY:** it sits in Phase-12 and Phase-13 files that a live Phase-13 executor owns, the fix is a design choice between at least three options (guard on a symbol Phase 12 does NOT mirror, e.g. `P13_DECLARED_DEVIATIONS`; load Phase-13 consts into their own module instead of `Main`; or have `p12_consts.jl` stop shadowing foreign seed names), and choosing among them is not this measurement task's call. **Consequence for verification:** a full-suite green is still NOT available as a Phase-13 signal, now for this reason rather than the Phase-4 one; per-file runs remain the working gate for Phase 13.
 
@@ -1246,11 +1261,13 @@ None yet.
 - **[Phase 13 — WRONG CHANNEL PAIR: THE PRECONDITION WAS MISSED. 13-16 HAS ALREADY RUN. BLOCKED ON A NEW USER DECISION, 2026-07-29]** The blocker above says the correction "MUST be corrected before Phase 13 executes". **It was not, and Phase 13 executed to completion.** `spike/p13/consts.jl:552-553` still read `P13_REAL_CHANNEL_PAIR = (1, 2)` / `P13_REAL_REDUNDANCY_PAIR = (1, 3)` at the moment `2112bed` ran, and `spike/p13/run_p13_realimage.jl` consumes `P13_REAL_CHANNEL_PAIR` at ten sites (`:724`, `:734-735`, `:797`, `:830-852`). **So the real-image arm as shipped scores the DAPI/Hoechst nuclear counterstain against green, not the two target proteins.** Cause: the orchestrator dispatched 13-16 without reading this Blockers section, and the user's authorisation to correct arrived after 13-16 and 13-14 had both completed. Not an executor defect — **13-15 and 13-16 BOTH detected the problem independently and correctly declined to fix it**: `13-16-SUMMARY.md:276-279` names `c1` as the counterstain and records that "choosing a new channel pair" after the fixtures had been measured would be the wrong act, so it named the limit rather than editing a frozen constant. That was the right call under the pre-registration as it stood.
   **THE USER'S AUTHORISATION (received 2026-07-29, NOT YET APPLIED — nothing has been hand-patched):** correct to `P13_REAL_CHANNEL_PAIR = (2, 3)`; DROP `P13_REAL_REDUNDANCY_PAIR` entirely (with `c1` excluded and only three channels there is no second pair); use the **UNMASKED** values **0.4603** (positive) / **0.3815** (negative), because the net was trained on unmasked summaries and masking would push the real images out of distribution — the masked `+0.8238 / −0.0338` figures are the trap and must not be used however much better they separate; and document the whole thing openly as a **pre-registration amendment**, stating explicitly that correcting a factual mis-designation of the physical object is a *different act* from relaxing a bar that proved inconvenient. The honest consequence stands and must not be softened: unmasked, the fixtures barely separate (0.4603 vs 0.3815), so the corrected arm is **weak** evidence. Correcting the pair makes it honest, not strong.
   **WHY THIS IS STOPPED RATHER THAN DONE — three decisions the authorisation does not cover, because it was written on the assumption the correction would land BEFORE 13-16 ran:**
+
   1. **Does 13-16 RE-RUN, or are its numbers superseded in place?** The authorisation asks this only about 13-15. 13-16 is the plan that actually consumed the wrong constant.
   2. **Does Phase 13 REOPEN?** It is marked ALL 16 PLANS COMPLETE, `13-VERIFICATION.md` is written (`gaps_found`, no blocking gaps), and ROADMAP is ticked across all sixteen plans (`48fb808`, `a0efd7e`).
   3. **The real arm's HEADLINE NUMBER CHANGES.** The reported binding limit is the OOD flag at density 417.2974 vs ID threshold 167.5446 (**2.491×**) — measured on `(1,2)`. `13-16-SUMMARY.md:143` already records that a *different* channel pair lands at 607.57 (**3.63×**). So `13-REPORT.md`'s central real-image claim is pair-dependent and would need revision, not just a constant swap.
   **WHAT IS NOT AFFECTED:** 13-12's amended gate (6/6, AUC 0.990169 / 0.988262, ECE 0.0119808 / 0.012886) and 13-13's α-ladder are **SIMULATED** arms that never touch `P13_REAL_CHANNEL_PAIR`. The phase's gating verdict is untouched by this. Only the qualitative real-image arm (13-15, 13-16) and the sections of `13-REPORT.md` that quote it are in scope.
   **CONSTRAINT ON WHOEVER PICKS THIS UP:** STATE.md is explicit that a hand-patch was started and deliberately reverted — the change spans `must_have`s and verify criteria, several of which currently make **reproducing the wrong numbers a pass condition**. It needs a planner revision with the plan-checker, not spot edits. `consts.jl` remains BYTE-UNCHANGED (blob `70fe66df`, two commits in its whole history, `c42cc8e` and `bfba6ac`, neither postdating a result) and `P13_ITERATION_ALLOWANCE` remains 1 of 1 UNSPENT.
+
 - **[Phase 13 — CHANNEL-PAIR AMENDMENT WRITTEN AND PLANNED; ONE DECISION ESCALATED, 2026-07-29]**
   The two channel-pair blockers above are now answered by a planning artifact rather than a
   hand-patch. **Nothing executable was touched: no `.jl` file was edited, nothing was run, and
@@ -1407,9 +1424,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T18:42:41.392Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-spatial-colocalization-map/12-CONTEXT.md
+Last session: 2026-08-03T15:19:57.673Z
+Stopped at: Phase 14 context gathered
+Resume file: .planning/phases/14-decision-and-abstention-layer/14-CONTEXT.md
 Resume action: continue the ACTIVE phase — Phase 7, plan 07-08, wave 6 of 8. Phase 8 remains COMPLETE.
 NOTE: plan 07-09 (wave 7, the 32x32 grid) is `autonomous: false` and carries a long training run —
 it MUST NOT be started without explicit human authorization. Separately, before Phase 16: run `bootstrap_anchor_hashes()` (corpus/anchor_rows.jl)
