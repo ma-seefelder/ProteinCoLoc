@@ -34,8 +34,12 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
-Phase: 12 (spatial-colocalization-map) — **RESUMED. Stage-1 gate ADJUDICATED 2026-07-31; waves 7-12
-executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)
+Phase: 12 (spatial-colocalization-map) — ~~**RESUMED. Stage-1 gate ADJUDICATED 2026-07-31; waves 7-12
+executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)~~
+**SUPERSEDED 2026-08-03: EXECUTION IS OVER — 16 of 20 plans complete, and the remaining four are
+FORECLOSED by rulings on the record, not pending.** `12-VERIFICATION.md` exists (`gaps_found`); the
+phase **did not achieve its stated goal**, and what remains is a bookkeeping scope-closure ruling, not
+work. Struck through rather than deleted. See the dated section below.
 
 Phase: 11 (registration-and-chromatic-uncertainty-as-latent) — **CLOSED 2026-07-27,
 negative-but-useful. NOT active; nothing pending.** Restored 2026-08-03 (this line had been lost to
@@ -242,6 +246,61 @@ arm". The 100-epoch re-run **was** a documented iteration on the mini-spike arm 
 reading, and the honest reading is that **it should be counted as SPENT**; it was not a threshold
 relaxation. **This is the user's call, not an executor's**, and it does not block the ruling either
 way.
+
+---
+
+## ⛔ 2026-08-03 — PHASE 12 HAS NO DISPATCHABLE WORK LEFT. A SCOPE-CLOSURE RULING IS REQUIRED.
+
+**ADDITIVE ENTRY. Nothing above or below is edited.** An `execute-phase 12` run was dispatched on
+2026-08-03 and **dispatched no executors**, deliberately. This records why, so the same run is not
+attempted again in the belief that it was merely interrupted.
+
+**`12-VERIFICATION.md` was produced** (status `gaps_found`, 8/9 must-haves; 6 verified, 2 accepted by
+the recorded v2.1 deferral rulings, 1 failed). It is the first phase-level verification this phase has
+had.
+
+**THE FOUR REMAINING PLANS ARE FORECLOSED — BY RULINGS ALREADY ON THE RECORD, NOT BY ANY NEW
+DECISION.** `init.execute-phase` reports 5 incomplete plans. None is dispatchable:
+
+| plan | requirement | why not dispatchable |
+|---|---|---|
+| **12-11** | SPAT-02 | **Complete in fact.** All three artifacts on disk and `12-STAGE1-VERDICT.md` reads `VERDICT: PROCEED` (`ee78cfe`). Only its SUMMARY frontmatter still says `status: blocked` — **stale, and left byte-unchanged** rather than edited, per this phase's append-never-overwrite discipline. It is what makes the SDK count 5 rather than 4. |
+| **12-17** | SPAT-03, SPAT-04 | **Impossible as written, verified on disk:** it keys its 50,000-pair pool on `P12_CHOSEN_PRIOR`, which does not exist and is *asserted absent* at `spike/validation/p12_consts.jl:798`. Dispatching it throws. Superseded by the 2026-07-31 descope. |
+| **12-18** | SPAT-07 | **DEFERRED TO v2.1** by user ruling (`12-D13-AUTHORISATION.md` §9). |
+| **12-19** | SPAT-06 real arm | **Hard-blocked:** `12-19-PLAN.md:202` resolves and hash-verifies **both bundles** from `p12_train_full_report.jld2`, which only 12-17 produces and which does not exist. |
+| **12-20** | SPAT-08, SPAT-09 | SPAT-08 **DEFERRED TO v2.1** by user ruling (§7). |
+
+**THE HEADLINE, AND IT IS A NEGATIVE: THE PHASE DID NOT ACHIEVE ITS STATED GOAL.** Two of the three
+things the goal sentence promises are false on the record, and both were already known — verification
+assembled them in one place rather than discovering them:
+
+- **"spatial"** — no CAR or GP prior ever beat the neutralized ablation (`NONE-BEATS-ABLATION`, three
+  runs). **The shipped deliverable is the ablation** — the same network with spatial borrowing off —
+  carrying the `SpatialColocResult` type. No trained spatial arm exists at any scale.
+- **"calibrated per-region uncertainty"** — SBC calibration (SPAT-07) is deferred and never ran, and
+  the one in-scope calibration-adjacent measurement **failed its own pre-registered band**: pooled
+  leave-region-out coverage **0.9707** against [0.87, 0.93] (`12-16-SUMMARY.md:29`, *"SPAT-06 IS NOT
+  MET"*). Read this beside `12-D13-AUTHORISATION.md` §10.1 — **no arm met that band**, and the
+  selected arm was never tested against it.
+
+**WHAT WAS DELIVERED AND STANDS:** SPAT-01, SPAT-02, SPAT-05 and SPAT-09, plus `p12_coloc_map` — a
+per-region Δρ map **with** per-region uncertainty, which is strictly more than `LocalColocMap` offers
+today. **At spike scale (10,000 pairs), not the 50,000-pair version**, per §4.
+
+**HARD CONSTRAINTS RE-VERIFIED INDEPENDENTLY AND ALL HOLD:** `src/` untouched since `ca02b0e`
+(2026-07-25, *before* Phase 12 began); `spike/Project.toml` / `Manifest.toml` unchanged since Phase 9;
+all three sentinels (`P12_CHOSEN_PRIOR`, `P12_N_LOW`, `P12_K_PROD`) still absent.
+
+**THE RULING NEEDED IS BOOKKEEPING, NOT SCIENCE — and it is NOT taken by an executor.** Every
+scientific question here is closed; §10.5 records "document only" and declined even the no-compute
+option. What is open is only how the phase is **recorded**: SPAT-03, SPAT-04 and SPAT-06 are **not
+delivered** and, unlike SPAT-07/08, **carry no v2.1 deferral ruling**. Phase 12 must not be marked
+complete against 9 requirements while 5 are undelivered. **ROADMAP.md still shows all of
+SPAT-01..SPAT-09 as `Pending` and Phase 12's plan list as `TBD`** — neither was touched by this run.
+
+**NOTHING WAS RUN, RE-RUN, TUNED OR RELAXED.** No compute; no threshold moved; `p12_consts.jl`,
+`src/`, every `*-VERDICT.md` and `12-D13-AUTHORISATION.md` byte-unchanged. The `for`-loop admissibility
+bound at `run_p12_minispike.jl:249` is **left wrong and documented as wrong**, per §10.1.
 
 ---
 
