@@ -7,6 +7,7 @@ v2.0 proves and (conditionally) ships amortized simulation-based inference for c
 ## Phases
 
 **Phase Numbering:**
+
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
@@ -18,15 +19,19 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: NPE Training + ADVI Benchmark + Ablation** - NPE for ρ_true and Δρ at >100x ADVI speedup, summary-statistic ablation gated on per-parameter RMSE (completed 2026-07-01)
 - [x] **Phase 5: Validation Bundle (SBC + Amortized BF + OOD)** - The publishable trifecta off one simulate→infer harness: calibration proof, amortized log-BF, honest misspecification flag
  (completed 2026-07-02)
+
 - [x] **Phase 6: Reproducible Demo + Go/No-Go Memo** - Seeded end-to-end `demo.jl`, decoupling proof, 2-3 page Go/No-Go decision memo
  (completed 2026-07-03)
+
 - [ ] **Phase 7: Productionization (conditional on Go)** - Integrate amortized inference into `src/` behind a coexisting backend contract with user-definable `num_patches`
 
 **v2.0 feature expansion (Phases 8–16) — all downstream of a Phase-6 Go:**
+
 - [x] **Phase 8: External Physical Ground-Truth Corpus** - Non-circular validation anchors (physical 100%-coloc + segregated constructs); CBS ingested as labelled-simulated; versioned data contract (completed 2026-07-21)
 - [x] **Phase 9: Cross-Method Comparator Harness** - Costes/Manders/Pearson/Spearman + Tapqir bridge on shared inputs; "knows when the classics are wrong" — parallelizable now
 - [x] **Phase 10: Manuscript Skeleton + Related-Work Positioning** - Compiling Typst skeleton, explicit Tapqir/Costes/Manders delta, figure specs — parallelizable now
  (completed 2026-07-02)
+
 - [x] **Phase 11: Registration + Chromatic Uncertainty as Latent** - Promote dx/dy (+ chromatic warp) to inferred θ; posterior widens honestly under registration uncertainty — **CLOSED NEGATIVE-BUT-USEFUL 2026-07-27**: registration at ≤3 px is not inferable from the 8×8 patch summary at any coloc level, AND does not need to be (Δρ RMSE flat in λ, ratio 1.0003). SC1g gate MIS-SPECIFIED, not failed. Plans 11-08…11-11 SUPERSEDED. See `11-CLOSURE.md`
 - [x] **Phase 12: Spatial Colocalization Map (GP/CAR)** - Lattice prior over the correlation grid → amortized per-region Δρ map + uncertainty (descope-to-v2.1 candidate) — **CLOSED NEGATIVE 2026-08-03: THE GOAL WAS NOT ACHIEVED.** No spatial prior (CAR or GP) ever beat the neutralized ablation: `NONE-BEATS-ABLATION` fired in three independent mini-spike runs, so the shipped deliverable IS the ablation — the *same* network with spatial borrowing switched off — wearing the `SpatialColocResult` type, and **no trained spatial arm exists at any scale**. SPAT-06 was measured and FAILED its pre-registered band: pooled leave-region-out coverage **0.9707** against **[0.87, 0.93]**. SPAT-07 and SPAT-08 are DEFERRED TO v2.1 by recorded user rulings dated 2026-07-31 — not skipped, not forgotten. See `12-VERIFICATION.md`
 - [ ] **Phase 13: Three-Hypothesis Amortized Bayes Factor** - Evidence network extended to coloc/random/exclusion; replaces KDE+quadgk BF
@@ -37,45 +42,57 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Environment + Smoke Gate
+
 **Goal**: A reproducible, isolated spike environment exists and the pre-1.0 NeuralEstimators + Flux stack is proven to work on this machine — the highest-risk unknown is retired before any other investment
 **Depends on**: Nothing (first phase)
 **Requirements**: ENV-01, ENV-02, ENV-03, ENV-04
 **Success Criteria** (what must be TRUE):
+
   1. `spike/` activates its own `Project.toml` with the main package available read-only via `Pkg.develop`; main `Project.toml`/`Manifest.toml` and `src/` are untouched
   2. `spike/00_smoke.jl` trains a `PosteriorEstimator` (NormalisingFlow) on a 1-parameter Gaussian and runs `sampleposterior` green, CPU-only with no forced CUDA import
   3. `spike/Manifest.toml` is pinned and committed with exact NeuralEstimators/Flux versions as a reproducibility artifact; the green smoke test is the hard gate for all later phases
   4. A stack-decision note records NeuralEstimators.jl as default and BayesFlow (PythonCall) as fallback only
+
 **Plans**: 4 plans
+
 - [x] 01-01-PLAN.md - Reconcile the dirty-root precondition; record an agreed frozen baseline ref (ENV-01)
 - [x] 01-02-PLAN.md - Minimal isolated spike env + green CPU-only NeuralEstimators/Flux NPE smoke gate (ENV-02)
 - [x] 01-03-PLAN.md - Pin + commit Manifest, pin Julia version, write stack-decision note (ENV-03, ENV-04)
 - [x] 01-04-PLAN.md - Pkg.develop coupling (include fallback) + decoupling proof vs baseline (ENV-01)
 
 ### Phase 2: Forward Simulator + Summary Contract
+
 **Goal**: A physics forward-simulator emits real `MultiChannelImage` pairs from θ that the *unmodified* existing summary functions ingest, with a prior provably consistent with the Turing model so every downstream comparison stays valid
 **Depends on**: Phase 1
 **Requirements**: SIM-01, SIM-02, SIM-03, SIM-04
 **Success Criteria** (what must be TRUE):
+
   1. `simulate_pair(θ) → MultiChannelImage` generates a 2-channel pair via correlated densities → Bernoulli thinning → PSF → 2×2 spillover → autofluorescence → sub-pixel shift → noise from θ = (ρ_true, spillover, autofluorescence, label efficiency, shift dx/dy, noise)
   2. `sample_prior()` and π(θ) mirror the existing Turing `@model` ranges (μ/ν/σ/τ), documented in `spike/NOTES.md`, so the ADVI benchmark and BF validation share one generative prior
   3. Output verifies as a valid `MultiChannelImage` so the existing `correlation()`/`patch()`/`_prepare_data()` apply unchanged (no `src/` edits)
   4. Plausibility plots confirm expected behavior: ρ_true ↑ → patch correlation ↑; spillover and sub-pixel shift visibly affect the pair
+
 **Plans**: 4 plans (4 waves — serial: env → simulator → calibration → validation)
+
 - [x] 02-01-PLAN.md - Extend spike env (StatsBase/Images/ImageFiltering/CairoMakie), re-freeze Manifest, establish the include() contract boundary, prove SIM-03 on a synthetic image (SIM-03)
 - [x] 02-02-PLAN.md - `simulate_pair` 7-stage forward physics pipeline; SIM-03 on real simulator output (SIM-01, SIM-03)
 - [x] 02-03-PLAN.md - Induced-μ calibration (sweep → monotone ĝ), `sample_prior` consistent with the Turing μ-prior, NOTES §3 evidence (SIM-02)
 - [x] 02-04-PLAN.md - SIM-04 quantitative plausibility gate (monotonicity + paired perturbation) + CairoMakie figures (SIM-04)
 
 ### Phase 3: Training-Data Pipeline
+
 **Goal**: A reproducible, resumable generator turns the prior + simulator + reused summary functions into cached standardized training vectors, with leak-free split discipline baked into the loader structurally
 **Depends on**: Phase 2
 **Requirements**: DATA-01, DATA-02, DATA-03
 **Success Criteria** (what must be TRUE):
+
   1. The generator maps θ~π → `simulate_pair` → existing summary functions → a fixed-dimension (8×8 = 64) standardized summary vector
   2. 50k–200k pairs write and reload from a version/hash-guarded JLD2 cache (BayesInteractomics pattern) under a Random123 seed; a changed simulator/prior auto-invalidates stale data
   3. Standardization statistics are fit on training folds only and applied to held-out folds — no standardization or parameter leakage across splits — enforced in the loader, not by per-script convention
   4. Leak-free k-fold cross-validation (e.g. 5-fold) is wired so reported NPE metrics are cross-validated, with a separate reserved set of ≥20 real-pipeline stacks held out solely for the ADVI benchmark
+
 **Plans**: 5 plans (5 waves — serial: env scaffold → generation core → cache/hash → leak-free loader → real-run gate)
+
 - [x] 03-01-PLAN.md — Wave-0 env: add JLD2/Random123, re-freeze Manifest, extend resolve-risk gate, scaffold test_data_pipeline.jl (DATA-02)
 - [x] 03-02-PLAN.md — DATA-01 generation core: 128-dim D-01 encode + D-02 augmented variant, Random123 keyed seeding, order/thread-independent generator (DATA-01)
 - [x] 03-03-PLAN.md — DATA-02 cache: sharded atomic JLD2, content-hash version guard, resume-by-skip, reserved holdout, N-parameterized scale-up (DATA-02)
@@ -83,16 +100,20 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 03-05-PLAN.md — Phase gate: real ≥50k generation run, cross-process thread-repro, full-suite green (DATA-02)
 
 ### Phase 4: NPE Training + ADVI Benchmark + Ablation
+
 **Goal**: A trained NPE infers both ρ_true and Δρ in a single forward pass, demonstrably >100x faster than per-dataset ADVI at comparable accuracy, with summary-statistic sufficiency measured rather than assumed
 **Depends on**: Phase 3
 **Requirements**: NPE-01, NPE-02, NPE-03, ABL-01, ABL-02
 **Success Criteria** (what must be TRUE):
+
   1. A `PosteriorEstimator` (summary net → NormalisingFlow) is trained to infer both ρ_true and Δρ and returns posteriors in a single forward pass for ≥20 held-out stacks
   2. NPE is benchmarked against real `colocalization()` ADVI on 20–30 stacks for RMSE and interval width, with metrics reported under leak-free k-fold cross-validation (per DATA-03)
   3. Measured NPE wall-clock is **>100x faster** than per-dataset ADVI **at comparable RMSE** (milliseconds vs minutes) — speedup is reported paired with accuracy, never alone
   4. The ablation scores **per-parameter RMSE** for minimal patch-correlation vs augmented (+ Manders/median/IQR moments) as a gating sufficiency diagnostic; a SBC-pass-but-high-RMSE outcome is treated as an insufficiency signal
   5. The chosen summary is justified by the ablation result, with its interaction with OOD detectability explicitly noted (couples to Phase 5)
+
 **Plans**: 7 plans (5 waves — W1 env scaffolds ∥ → W2 NPE train ∥ ADVI artifact → W3 benchmark → W4 ablation → W5 scaling/thread)
+
 - [x] 04-01-PLAN.md — Wave-0 spike env: add BenchmarkTools, re-freeze Manifest + resolve-risk gate, test_npe.jl SC1..SC5 scaffold + pre-registered consts + keyed holdout-repro gate (NPE-01)
 - [x] 04-02-PLAN.md — Isolated spike/baseline/ env (Turing/AdvancedVI + simulator deps) + read-only colocalization @model lift (NPE-02)
 - [x] 04-03-PLAN.md — NPE architecture + CPU-only fixed-data training + inference surface (ρ̂/Δρ MC-diff/interval/ghat); SC1 (NPE-01)
@@ -102,41 +123,53 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-07-PLAN.md — Scaling curves over N/imsize + CPU thread-count sweep characterization; SC3-scaling (NPE-03)
 
 ### Phase 5: Validation Bundle (SBC + Amortized BF + OOD)
+
 **Goal**: The publishable trifecta — calibration proof, amortized Bayes factor, and honest misspecification flag — built as sibling plans off one shared θ*~π→simulate→infer harness over the trained nets; the highest-scrutiny phase for scientific honesty
 **Depends on**: Phase 4
 **Requirements**: SBC-01, SBC-02, SBC-03, SBC-04, BF-01, BF-02, OOD-01, OOD-02
 **Success Criteria** (what must be TRUE):
+
   1. SBC produces per-parameter rank histograms over M (≈2000) draws with KS/χ² uniformity, a coverage curve, and ECE/MCE via the `_bin_calibration` pattern with a traffic-light verdict
   2. M and the pass/fail threshold are **pre-registered before running**, and the reported SBC number comes from a **fresh, never-tuned-against, independently-seeded held-out run** (guards "tune until calibrated" against data-snooping); calibration is reported "under the simulator" and explicitly paired with the OOD result
   3. A `RatioEstimator`/Evidence-Network (NRE-as-model-comparison over a binary model index m∈{0,1}; the l-POP loss does NOT exist in NeuralEstimators v0.2.1 and is honestly re-labeled as this standard-NRE reduction, l-POP a documented fallback only) produces an amortized log-BF in one forward pass and reproduces `compute_BayesFactor()` in the well-specified regime, on identical Δρ and prior, without quadgk/KDE/shuffle
   4. The OOD flag fires on misspecified inputs and stays quiet in-distribution, validated as a controlled ROC experiment over a misspecification grid with **positive AND summary-orthogonal negative controls** plus a posterior-predictive channel; the structural blind spot (discrepancies orthogonal to the fixed summary) is measured and named, not hidden
   5. All preprocessing (standardization, OOD covariance/flow) is frozen from the training split only; misspecified test images are fully external
+
 **Plans**: 4 plans (3 waves — W1 shared harness + pre-registration + SBC; W2 amortized BF ∥ OOD; W3 reported trifecta runs)
+
 - [x] 05-01-PLAN.md — Shared θ*~π→simulate→infer harness + pre-registered consts + SBC machinery (rank histograms 7θ+Δρ, KS/χ², coverage, ECE/MCE traffic-light) (SBC-01..04)
 - [x] 05-02-PLAN.md — Amortized Bayes factor: RatioEstimator model-index net + one-pass log-BF reproducing compute_BayesFactor over a held-out Δρ sweep (BF-01, BF-02)
 - [x] 05-03-PLAN.md — OOD/misspecification flag: Mahalanobis + PP channels, ROC over the 4-family positive grid + summary-orthogonal negative control (named blind spot) (OOD-01, OOD-02)
 - [x] 05-04-PLAN.md — Reported trifecta runs at locked pre-registered consts on the fresh reserved stream: run_sbc.jl (M=2000/L=999) + run_bf.jl (full Δρ sweep) + run_ood.jl (full 4-family grid), each gating on its thresholds (SBC-01..04, BF-01/02, OOD-01/02)
 
 ### Phase 6: Reproducible Demo + Go/No-Go Memo
+
 **Goal**: The spike closes with a falsifiable, reproducible verdict — a single seeded script chains every layer and a memo states the metrics and a concrete full-build-out decision
 **Depends on**: Phase 5
 **Requirements**: DEMO-01, DEMO-02, DEMO-03
 **Success Criteria** (what must be TRUE):
+
   1. `spike/demo.jl` chains the full pipeline reproducibly from a fixed Random123 seed, CPU-only with the pinned Manifest, and tabulates the success criteria
   2. The main repo and both manuscript pipelines are demonstrably untouched — `git status` on `src/`, `bayes.jl`, `colocalization.jl` is clean (decoupling proof)
   3. A 2–3-page Go/No-Go memo reports the metrics, frames SBC as "calibrated under the simulator" paired with the OOD result, and states a concrete full-build-out decision (hierarchy/3D/multi-channel)
+
 **Plans**: 2 plans (2 waves — W1 demo.jl two-tier runner + decoupling proof ; W2 Go/No-Go memo + memo-gate)
+
 - [x] 06-01-PLAN.md — Two-tier seeded demo.jl: fixture-scale NPE+BF+OOD chain proof (per-layer twin-run reproducibility) + git-status decoupling assertion + --full reported-gate dispatch (DEMO-01, DEMO-02)
 - [x] 06-02-PLAN.md — 2-3 page Go/No-Go memo (Clean Go, both number sets, falsification, ship-gate, Phase 8-16 DAG) + demo.jl memo-content gate (DEMO-03)
 
 ### Phase 7: Productionization (conditional on Go)
+
 **Goal**: On a Go decision from Phase 6, validated amortized inference is promoted into `src/` as a shipped feature coexisting with the existing Turing path — the only phase that edits `src/`
 **Depends on**: Phase 6 (a Go decision in the memo); does not start on a No-Go
 **Requirements**: PROD-01, PROD-02
 **Success Criteria** (what must be TRUE):
+
   1. `colocalization_amortized()` exists in `src/`, coexisting with the existing Turing/ADVI path behind a shared `_prepare_data` input + `CoLocResult` output contract, so `compute_BayesFactor()` keeps working unchanged
   2. `num_patches` (patch grid) is **user-definable** in the productionized API via an estimator registry keyed by grid, rather than retraining the network ad hoc (8×8 was the spike default)
+
 **Plans**: 11 plans (9 waves — W0 dep-surgery+resolve-gate+types ; W1 grid-param+registry ; W2 read-surfaces ; W3 training+persistence ; W4 gate-harness+GPU-smoke ; W5 8×8 ; W6 4×4 ∥ 16×16 ∥ sub-tile-map ; W7 32×32-conditional ; W8 public-API+release)
+
 - [x] 07-00-PLAN.md — Dep surgery (Turing→ext, CUDA weakdep) + co-resolution HARD gate + version 2.0.0 + D-02 type hierarchy (PROD-01)
 - [x] 07-01-PLAN.md — Grid-parametrize summary/encoder/loader/datagen + grid-keyed registry skeleton + train_and_register (PROD-02)
 - [x] 07-02-PLAN.md — Amortized read surfaces: NPE infer + NRE bf (+non-clamped baseline) + OOD (+PP re-enable) (PROD-01)
@@ -154,6 +187,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Execution Order:**
 Spike (Phases 1–7) executes in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7.
 v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstream of a Phase-6 **Go**:
+
 - Wave A {8, 9, 10} — no code dependency; parallelizable **now**, alongside Phases 5–7
 - Wave B: after Phase 7 (the AP1 API spine), run 11 ∥ 13 as parallel workstreams; 12 follows 11 (shared estimator/training code — serialized to avoid a merge collision)
 - Wave C {14, 15} — converge the features
@@ -179,14 +213,18 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
 
 ### Phase 8: External Physical Ground-Truth Corpus
+
 **Goal**: Assemble a non-circular validation corpus whose truth does not come from the model's own simulator, so v2.0's calibration can be checked against external reality rather than mere self-consistency
 **Depends on**: Nothing (parallelizable now, alongside Phases 5–7)
 **Requirements**: SC1, SC2, SC3 (local — ROADMAP success criteria; Requirements = TBD in REQUIREMENTS.md)
 **Success Criteria** (what must be TRUE):
+
   1. ≥1 physical 100%-coloc anchor (single-protein-two-channel / tandem fluorophore) and ≥1 segregated anchor (nuclear-vs-membrane) archived with provenance + content hashes
   2. The Colocalization Benchmark Source is ingested and explicitly flagged as simulated/secondary, never conflated with the physical anchors
   3. A versioned validation data contract + manifest (schema, provenance, split policy) is checked in
+
 **Plans**: 5 plans (5 waves — W1 config+test-scaffold+fixture ; W2 hash+fetch ; W3 manifest+guards+conversion ; W4 CBS ingestion+manifest.csv ; W5 physical-anchor human-verify pinning)
+
 - [x] 08-01-PLAN.md — Pre-declared config consts + scoped .gitignore + offline runtests.jl gate + synthetic two-channel TIFF fixture (SC1, SC3)
 - [x] 08-02-PLAN.md — SHA-256 content-hash utility + fetch_verified (D-05 skip-vs-abort asymmetry, atomic commit, timeout) (SC1, SC3)
 - [x] 08-03-PLAN.md — Manifest schema + D-06 tier guard + D-09 sealed-holdout guard + D-03 anchor predicate + content-addressed writer + read-only MultiChannelImage conversion (SC1, SC2, SC3)
@@ -194,19 +232,24 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 08-05-PLAN.md — Physical anchor pinning: positive tandem-FP + negative segregated construct, human-verified, archived sealed-holdout with provenance + SHA-256 (SC1) [autonomous:false]
 
 **Completion note (2026-07-21)** — Phase 8 COMPLETE; offline gate `julia --project=. corpus/test/runtests.jl` 217/217, `src/` untouched, `git ls-files corpus/data` empty. Three recorded deviations carried into Phase 16:
+
   - **D-01 substitution (human-accepted):** no open-licensed, non-environment-quenched tandem-FP dataset exists in any public archive (every deposited tandem-FP set is a quenched autophagy reporter, disqualified by Pitfall 2). POSITIVE anchor is instead TetraSpeck 100 nm multicolor beads (RegiSTORM sample data, Zenodo `10.5281/zenodo.5509861`, CC-BY-4.0) — the same physical particle emits in both channels, so coloc is by construction AND state-independent.
   - **D-02 preference unmet:** NEGATIVE anchor is "Light My Cells" (BioImage Archive `S-BIAD1047`, CC-BY-4.0, nucleus vs mitochondria). Cross-study/cross-archive (`ANCHORS_MATCHED=false`) — imaging-condition confounds between the anchors are NOT controlled; Phase 16 must report this limitation.
   - **Hashes pending:** the bootstrap fetch was deliberately not run (the positive anchor is a ~6.3 GB archive — an explicit human decision). Both anchors carry the explicit `PENDING-FETCH` sentinel; no digest was fabricated. Run `bootstrap_anchor_hashes()` when online and authorized and replace the sentinel BEFORE Phase 16 opens the sealed holdout.
 
 ### Phase 9: Cross-Method Comparator Harness
+
 **Goal**: A reproducible harness that runs the classical estimators and a Tapqir bridge on shared inputs, so v2.0 can be positioned as "knows when the classics are wrong," not merely "agrees with them"
 **Depends on**: Nothing (parallelizable now)
 **Requirements**: CMP-01, CMP-02, CMP-03, CMP-04, CMP-05, CMP-06, CMP-07, CMP-08, CMP-09
 **Success Criteria** (what must be TRUE):
+
   1. Costes-p, Manders M1/M2, Pearson, Spearman all run on one shared input and emit a per-method comparison table
   2. A Tapqir bridge reproduces a published Tapqir example as a sanity anchor
   3. The harness reuses the BayesInteractomics comparator/audit pattern and is seeded/reproducible
+
 **Plans**: 6 plans (4 waves: foundation -> {estimators, inputs, Tapqir} -> table/audit -> entry point + gate)
+
 - [x] 09-01-PLAN.md - Wave-0 foundation: promote DataFrames/CSV, pre-declare D-14 consts (config.jl), scaffold test_comparator.jl + resolve-risk gate (CMP-04, CMP-09)
 - [x] 09-02-PLAN.md - Classical estimator battery + seeded Costes block-scramble p-value (CMP-01, CMP-02)
 - [x] 09-03-PLAN.md - Seeded regime-labelled shared-input builder, input-source-agnostic (CMP-03)
@@ -215,14 +258,18 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 09-06-PLAN.md - Seeded run_comparator entry point + filled D-13 test gate (CMP-08, CMP-09)
 
 ### Phase 10: Manuscript Skeleton and Related-Work Positioning
+
 **Goal**: A compiling manuscript skeleton with related-work positioning drafted early — especially the explicit delta versus Tapqir/Costes/Manders — so experiments are shaped by the claims they must support
 **Depends on**: Nothing (parallelizable now)
 **Requirements**: TBD (claims derive from existing REQ outcomes; plans tag CONTEXT decisions D-01..D-12 + success criteria SC1/SC2/SC3)
 **Success Criteria** (what must be TRUE):
+
   1. A Typst skeleton compiles with section scaffolding and a claim table
   2. Related work drafts the Tapqir differentiation (amortization + SBC + registration-UQ + spatial map)
   3. Figure specifications enumerate the panels each later phase must deliver
+
 **Plans**: 5 plans (4 waves)
+
 - [x] 10-01-PLAN.md — Compiling venue-neutral Typst skeleton: main.typ + section stubs + seeded refs.bib + claim_table machinery + compile gate (D-01..D-05, D-11, D-12)
 - [x] 10-02-PLAN.md — Claim spine content: honestly-caveated claim table rows with per-row axis/phase/figure/status (D-06, D-07)
 - [x] 10-03-PLAN.md — Related-work matrix + four-axis Tapqir differentiation, ASSUMED cells verified vs eLife 73860 (D-08, D-09)
@@ -230,15 +277,19 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 - [x] 10-05-PLAN.md — Integration regression: content-asserting compile gate + final DoD (D-12)
 
 ### Phase 11: Registration and Chromatic Uncertainty as Latent
+
 **Goal**: Promote sub-pixel registration (and an optional chromatic warp) from a fixed simulator nuisance to an inferred latent, so the coloc posterior widens honestly under registration uncertainty instead of reporting false confidence
 **Depends on**: Phase 7
 **Requirements**: TBD
 **Success Criteria** (what must be TRUE):
 **OUTCOME 2026-07-27 — the goal is ANSWERED NEGATIVELY, with evidence, and the answer is more useful than the one the phase expected.** SC1 was *delivered* (θ extended to 8 columns at `ca02b0e`, research net trained), but SC2/SC3 rest on a premise the phase disproved: registration at ≤3 px carries no recoverable information in the 8×8 patch-correlation summary. Read each criterion below against that.
+
   1. dx/dy (+ optional 1-param chromatic warp) is added to θ (extending `spike/simulator/forward.jl` stage 6 + `prior.jl`) and the NPE is retrained on the extended prior — **DONE** (research net only; the shipped bundle was never retrained)
   2. Posterior width increases monotonically with injected registration uncertainty on a controlled sweep — **MOOT.** The width the data demands is *flat* in λ (Δρ RMSE 0.13334 → 0.13338, ratio 1.0003). A monotone increase would have been *dishonest* width, not honest width
   3. Deliberately mis-registered test images are handled without silent overconfidence — **SATISFIED, by a different route than planned.** There is no false confidence to correct: the posterior already reports approximately the right width (1.021) for a quantity whose correct width ratio is ~1.00. Registration must instead be calibrated externally (fiducial beads), which is standard microscopy practice
+
 **Plans**: 11 plans (9 waves — W1 pre-registration+golden ; W2 the D-11/D-12 single commit ; W3 regression+provenance ∥ research-net scaffold ; W4 pre-flight probe+Tier-2 ; W5 probe-verdict checkpoint ; W6 λ-hierarchical datagen+training ; W7 SC2 ladder ; W8 SC3 breakdown+attenuation ∥ real-image ; W9 report+docs)
+
 - [x] 11-01-PLAN.md — Tier-1 pre-registration consts, TOST/Wilson/Holm-direction stats, pre-edit golden fixture + PHASE11_BASE_SHA (D-01, D-04, D-07, D-08, D-10, D-14)
 - [x] 11-02-PLAN.md — THE D-11/D-12 SINGLE COMMIT: chromatic ε as an 8th θ column, single composed affine stage 6 in both simulators, θ-arity ripple through src/ and the root suite, named limit #8 with the pinned pre-ε sha (D-02, D-09, D-10, D-11, D-12, D-15)
 - [x] 11-03-PLAN.md — Exact-equality stage-6 regression vs the pre-edit golden, D-12 sha verification, the five §F20c decoupling commands, shipped-bundle load + colocalization_amortized regression (D-01, D-10, D-11, D-12, D-16)
@@ -260,17 +311,20 @@ correct as history and wrong as a specification, and a re-derived bar must be an
 test, not a "must exceed" threshold, because the true value of the gated quantity is ~1.00.
 
 ### Phase 12: Spatial Colocalization Map (GP/CAR)
+
 **Goal**: Replace exchangeable patch pooling with a spatial lattice prior over the correlation grid, producing an amortized per-region Δρ map with calibrated per-region uncertainty — the feature that makes v2.0 "spatial" and differentiates it from Tapqir
 **Depends on**: Phase 7 — the substantive dependency. ~~Phases 7, 11 (file overlap: both retrain/modify the shared PosteriorEstimator + simulator/training path — serialized to avoid a merge collision; spatial map trains on the registration-aware θ)~~ **VOID** per the 2026-07-27 premise audit (V-1, V-2, V-3): no registration-aware trained model exists (plans 11-08…11-11 were superseded by the diagnosis) and Δρ RMSE was measured flat in λ (ratio 1.0003), so there is nothing to train on and nothing gained; Phase 11 is closed, so there is no concurrent writer to serialize against. What DOES stand (K-1): Phase 11's composed affine stage 6 landed at `ca02b0e` and is this phase's baseline, which D-06's field application stacks on.
 **Requirements**: SPAT-01, SPAT-02, SPAT-03, SPAT-04, SPAT-05, SPAT-06, SPAT-07, SPAT-08, SPAT-09
 **Success Criteria** (what must be TRUE):
 **AMENDED** — SC1, SC2 and SC3 are superseded/scoped by `.planning/phases/12-spatial-colocalization-map/12-SC3-AMENDMENT.md` (D-02/D-09/D-10/D-11, frozen before any Phase-12 result). The original text below is retained and must be cited alongside any amended result.
 **OUTCOME 2026-08-03 — the goal is ANSWERED NEGATIVELY. `12-VERIFICATION.md`'s headline is "NO — the phase did not achieve its stated goal."** The per-region Δρ map mechanism was built and works, but the two other things the goal sentence promises are false on the record. Read each criterion below against that. This is not read as an execution failure: every outcome came from a pre-registered, executed measurement.
+
   1. A lattice prior (CAR vs. AbstractGPs, chosen by mini-spike) is placed over the `correlation()` grid with a CNN/DeepSet summary — **MECHANISM BUILT; NO ARM WAS EVER SELECTED.** Both prior arms are implemented as dense linear algebra rather than `AbstractGPs.jl` (per the pre-registered `12-SC3-AMENDMENT.md` §2) — `car_sigma` at `spike/simulator/p12_lattice.jl:125`, `gp_sigma` at `:153` — and the lean CNN summary net exists (`build_p12_summary_net` at `spike/npe/p12_architecture.jl:253`). But the "chosen by mini-spike" clause resolved to **neither arm**: `select_prior` returned `NONE-BEATS-ABLATION` in all three runs (unseeded 18-epoch, seeded 18-epoch control, seeded 100-epoch treatment)
   2. `coloc_map(...)` returns a Δρ map + uncertainty map, amortized in a forward pass — **DELIVERED.** `p12_coloc_map` (`spike/validation/p12_coverage.jl:990`) returns the per-region Δρ map together with per-region uncertainty, each of the sample and control stacks one amortized forward pass, verified structurally. **Named caveat that travels with it (`12-VERIFICATION.md` §SPAT-05):** the model behind it is the non-spatial D-13 ablation, not a trained spatial arm, and it exists at spike scale (10,000 pairs), not the 50,000-pair version
   3. The spatial (CAR) model beats independent pooling in coverage on ≥1 real image — **NOT MET, AND UNREACHABLE AS WRITTEN.** Two independent reasons: (i) there is **no spatial model to compare against** — see criterion 1; (ii) the real-image arm (**12-19**) **never ran**, hard-blocked on `p12_train_full_report.jld2`, confirmed absent on disk, which only the never-executed **12-17** produces. The reduced substitute that DID run (12-16, on simulated data, ablation against a prior-only floor) failed its own pre-registered band — `12-16-SUMMARY.md`'s own words: **"SPAT-06 IS NOT MET: pooled leave-region-out coverage 0.9707 lies outside [0.87, 0.93]."** Not a boundary call: the interval on the independent unit is [0.9675, 0.9738], clear of the band by ≈ 0.037
   *(Highest effort-risk phase; the natural descope-to-v2.1 candidate if amortization stalls.)*
 **Plans**: 20 plans exist and are committed. **16 executed (12-01 … 12-16); 12-17 … 12-20 are FORECLOSED and NEVER RAN.**
+
 - [x] 12-01-PLAN.md — Freeze the Tier-1 Phase-12 pre-registration before a single Phase-12 number exists, and wire the Phase-12 test surface into `spike/test/runtests.jl` at the one position where it can actually run (SPAT-09)
 - [x] 12-02-PLAN.md — Freeze the amended success criteria before any Phase-12 number can influence their wording, and mint the nine SPAT requirement IDs the ROADMAP had left unassigned — produced `12-SC3-AMENDMENT.md` (SPAT-09)
 - [x] 12-03-PLAN.md — The lattice machinery: CAR and GP covariance arms, the D-05 per-cell rescale, the lag-1 reparametrization of the correlation length, the orthonormal DCT-II basis — `car_sigma` at `spike/simulator/p12_lattice.jl:125`, `gp_sigma` at `:153` (SPAT-01, SPAT-04)
@@ -342,15 +396,19 @@ rulings already on the record, not pending. `12-VERIFICATION.md` explicitly does
 measurement.
 
 ### Phase 13: Three-Hypothesis Amortized Bayes Factor
+
 **Goal**: Extend the amortized evidence network from two- to three-way model comparison — colocalized / random / mutually-exclusive — so segregation becomes a first-class testable hypothesis, replacing the fragile KDE+quadgk Bayes factor
 **Depends on**: Phases 7, 11 (D-02: the three-way evidence net trains on Phase 11's registration-aware frozen `zt` and inherits its uncertainty conditioning input — execution blocks on Phase 11's research net existing; the original entry named Phase 7 only)
 **Requirements**: TBD
 **Success Criteria** (what must be TRUE):
 **AMENDED** — SC1, SC2 and SC3 are superseded/scoped by `.planning/phases/13-three-hypothesis-amortized-bayes-factor/13-SC2-AMENDMENT.md` (D-12/D-15, frozen before any Phase-13 result). The original text below is retained and must be cited alongside any amended result.
+
   1. A 3-way `RatioEstimator`/evidence network emits a log-BF simplex over {coloc, random, exclusion} in one forward pass (see amendment section 4)
   2. It reproduces `compute_BayesFactor()` (`src/bayes.jl:109`) in the overlapping 2-way regime without quadgk/KDE (see amendment sections 1-3)
   3. The exclusion hypothesis is validated on segregated ground-truth inputs (see amendment section 5 — three arms; the simulator ground truth gates, the alpha series and the `test/test_images/` check do not)
+
 **Plans**: 17 plans (10 waves — W1 pre-registration ∥ SC2 amendment ; W2 labels ∥ α-series ∥ τ-probe code ; W3 two-head net ∥ real-image ingestion ; W4 D-07 closed-form verification ; W5 result type + suite wiring ; W6 Phase-11 preconditions ∥ τ-probe run [BLOCKED] ; W7 datagen + training [BLOCKED] ; W8 reported gate ∥ α-series run ∥ real-image run [BLOCKED] ; W9 phase report [BLOCKED] ; W10 D-15 channel-pair amendment + include-guard fix + real-arm re-run)
+
 - [x] 13-01-PLAN.md — Tier-1 pre-registration consts (seeds, τ probe spec, D-07 design + bars, gate floors, ECE band, α ladder) + literal-assertion test (D-01, D-04, D-05, D-06, D-07, D-09, D-10, D-12, D-13, D-14, D-15, D-16)
 - [x] 13-02-PLAN.md — 13-SC2-AMENDMENT.md frozen before any result (two outcome-independent defects) + ROADMAP annotation (D-12, D-02, D-08, D-09, D-13, D-15)
 - [x] 13-03-PLAN.md — Three-way label surface: two-factor cut on ρ_sample level × control contrast, head_targets, measure_head_log_odds (D-05, D-07, D-08, D-11)
@@ -368,17 +426,21 @@ measurement.
 - [x] 13-15-PLAN.md — D-15 (AMENDED) real-image ingestion from `test/test_images/`: P13_REPO_ROOT/real_tif/load_real, ghat-anchor regression, derived grid truncation, the real α-ladder, and the five D-15 testsets (ingestion, real ladder, anti-snooping, read-only, not-a-gate) + A14 falsifier — Phase-11-INDEPENDENT (D-15, D-16, D-01, D-04)
 - [x] 13-16-PLAN.md — REPORTED real-image qualitative check: λ sweep with every log-BF printed beside its OOD verdict, Phase-13-vs-shipped OOD comparison, real α-ladder through the net, naming correction + target-substitution record, seal intact (D-15, D-16, D-03, D-08, D-01, D-04) — REPORTED, NOT GATED (`P13_REAL_IS_GATED = false`, zero `@test` lines, no threshold on any real-image quantity). Descriptive verdict RANDOM on both unmodified pairs at every λ rung in both read directions, coherent with the D-05 label rule (contrast ±0.1156, inside the measured τ = 0.15 dead zone). **Both fixtures flagged out-of-distribution by both detectors** — Phase-13 net 417.30 vs its own ID threshold 167.54 (2.49×), shipped reference 433.69 vs 179.14 (2.42×), reproducing the frozen constants exactly; **A12 outcome: agreement**, so the registration-aware basis did not move real microscopy back inside the training distribution. `alpha_star_real` = 0.875 (positive) / 0.625 (negative), never averaged with 13-13's `:simulated` arm. n = 2 specimens, no colocalization ground-truth label, so behaviour and never correctness. Seal intact, `consts.jl` byte-unchanged, allowance UNSPENT **[SUPERSEDED 2026-07-29 by `13-D15-AMENDMENT.md`: every figure in this bullet — `417.30 vs 167.54 (2.49×)`, `433.69 vs 179.14 (2.42×)`, `alpha_star_real 0.875 / 0.625`, contrast ±0.1156, "RANDOM on both unmodified pairs" — was measured on the pre-registered pairs `(1,2)` and `(1,3)`, BOTH of which contain `c1`, the DAPI/Hoechst nuclear counterstain (`test/runtests.jl:105`), so neither measured colocalization. The operative pair is the amended `(2,3)` green/red and the redundancy arm is DROPPED — once `c1` is excluded and the fixtures carry three channels, no second pair exists. The amended figures are measured by plan 13-17 and will be printed beside these. **No gating threshold moved and the phase's only gating arm cannot see this change** — `run_three_way_gate.jl` contains zero references to either pair constant. The record above is retained, not rewritten.]** **[AMENDED FIGURES, MEASURED BY 13-17 ON THE OPERATIVE `(2,3)` PAIR, printed beside their superseded `(1,2)` counterparts per `13-D15-AMENDMENT.md` §9: OOD **703.30 vs 167.54 (4.198×)** on `(2,3)` against **417.30 vs 167.54 (2.49×)** on `(1,2)`; shipped **948.97 vs 179.14 (5.297×)** on `(2,3)` against **433.69 vs 179.14 (2.42×)** on `(1,2)`; headline `log BF(C:R)` **+5.70311 / −8.65723** on `(2,3)` against **−0.4658 / −3.9432** on `(1,2)`, so the descriptive verdict is **COLOC (positive as sample) / RANDOM (negative as sample)** on `(2,3)` against **RANDOM / RANDOM** on `(1,2)`; `alpha_star_real` **`nothing` / `nothing`** on `(2,3)` against **0.875 / 0.625** on `(1,2)`; D-05 contrast **0.09819** on `(2,3)` against **0.11562** on `(1,2)`, both INSIDE τ = 0.15 — so on the corrected pair the label rule and the net's argmax now DISAGREE. `A12 = agreement` on both pairs. The redundancy arm no longer exists.]**
 - [x] 13-17-PLAN.md — D-15 channel-pair amendment: correct the real arm from the DAPI counterstain to the c2/c3 green/red target pair, drop the redundancy arm, re-run 13-16 on the corrected substrate, and answer in the report whether the conclusion changes (D-15, D-16, D-01, D-04). **Buys no evidence**: unmasked, the corrected fixtures separate by 0.0788 against 0.0811 before — marginally *worse* — and the masked read of the same corrected pair, which separates them by 0.8576 and which `ghat.jl` itself calls the sharper separator, is FORBIDDEN because `patch_summary` applies no Otsu mask and the net was trained unmasked. It deletes an arm rather than adding one. **Mechanism RULED 2026-07-29: M1, amend in place** — `13-D15-AMENDMENT.md` §7 — so the plan carries **TWO separately disclosed changes to `spike/p13/consts.jl` in ONE edit** (§0.4). **CHANGE A** is the channel pair above. **CHANGE B** is the include-guard sentinel: `consts.jl:100` guards the whole Tier-1 body on `:P13_DEV_SEED`, which `spike/validation/p12_consts.jl:109` legitimately MIRRORS to assert seed disjointness, so a full-suite run skips the body and `runtests.jl:220` dies with 114 `UndefVarError`s (DEF-12-03). Re-pointed to `P13_DECLARED_DEVIATIONS` at **both ends plus six sibling callers**; `p12_consts.jl` is NOT touched and its mirror is correct. The two ride together because the byte-lock breaks either way: all three runners assert `h.consts_sha == p13_consts_sha()` against the 13-11 net, so the sha has to be re-derived regardless — the guard fix therefore costs **zero additional pre-registration**. The guard is re-derived as a **named, dated pre/post-amendment literal pair asserted on BOTH sides** (strictly stronger than the single equality it replaces; no widened `||` that would accept future drift), and the guard fix lands **before** the re-run so the suite can verify it. **No threshold moves; no seed literal changes; the gate result is untouched.** The **28 other poisoned include guards** the same sweep found are DOCUMENTED with remedies in `.planning/CONVENTIONS.md` C-01 and deliberately NOT fixed. **OUTCOME (2026-07-29): BOTH CHANGES LANDED IN ONE EDIT AND ARE DISCLOSED SEPARATELY** (`13-REPORT.md` §13, §14.6 CHANGE A, §14.7 CHANGE B). CHANGE B verified by targeted reproduction — **22 pass / 1 fail / 114 `UndefVarError` before, 137 pass / 0 error after**, under the exact condition the suite creates; the §5B.5 `UInt32`/`UInt64` redefinition knock-on was exercised and is a **non-event**; no seed edited; `p12_consts.jl` byte-unchanged; **DEF-12-03 closed by reference**. The `consts_sha` guard is re-derived as the named `P13_CONSTS_SHA` pre/post pair asserted on both sides at all three sites, with **no disjunction and no guard deleted**; `gate_report.jld2` / `alpha_report.jld2` byte-unchanged and the two gate-arm runners changed in **no hunk** other than that one. **The re-run answers the conclusion question: the numbers moved, one verdict moved, THE CONCLUSION IS UNCHANGED** — and the binding OOD limit got **worse** (4.198× against 2.491×), so the correction is reported as a correction and never as a rescue. **TWO CLAIMS ARE RETRACTED**: the α-ladder **no longer crosses zero** on the operative pair (`alpha_star_real` `nothing` / `nothing`), so *"negative induced μ is constructible from real microscopy pixels"* does **not** hold there; and the D-05 coherence check that previously *passed* now **disagrees**. The three `test_p13_real.jl` assertions encoding those claims are **left FAILING rather than rewritten**, which moves the suite abort to `runtests.jl:223` and masks seven Phase-13 files — all seven were therefore run individually and pass (correction retains its 2 known deliberate misses). **Whether to accept the new misses as named limits, amend the D-16 real-substrate expectation, or re-order the harness, is ESCALATED for a pre-registration ruling and NOT resolved in execution.** `P13_ITERATION_ALLOWANCE` remains **1 of 1 UNSPENT**
+
 **Report:** `.planning/phases/13-three-hypothesis-amortized-bayes-factor/13-REPORT.md`
 **Verdict:** The amended simulator gate (the one gating arm) **cleared all six pre-registered criteria on one run** — per-class one-vs-random AUC 0.990169 (coloc) / 0.988262 (exclusion) against the frozen floor 0.90, per-head ECE 0.0119808 / 0.012886 green against the frozen band 0.05, 0 empty bins, neither head vacuous. The D-04 iteration trigger did not fire and `P13_ITERATION_ALLOWANCE` remains 1 of 1, UNSPENT. The α-graded series and the real-image qualitative check are reported and are not gates; the report's `## Scope of evidence` header carries the standing of all three arms and the four named limits. **[AMENDED 2026-07-29, THE REAL-IMAGE CLAUSE ONLY: the real arm as reported by 13-16 read the DAPI counterstain, is SUPERSEDED by `13-D15-AMENDMENT.md`, and was re-measured on the c2/c3 pair by plan 13-17 with the redundancy arm dropped. **That re-run is DONE: the verdict moved to COLOC / RANDOM, the OOD limit worsened to 4.198× / 5.297×, and THE CONCLUSION IS UNCHANGED — qualitative, n = 2, unlabelled, OOD-bound. Two D-16 real-substrate claims are RETRACTED (§14.8).** **The gate verdict in the sentences above is untouched and cannot be reached by that amendment** — it is a simulator-ground-truth result, no threshold moved, and `P13_ITERATION_ALLOWANCE` is neither spent nor spendable on a real-image observation.]**
 
 ### Phase 14: Decision and Abstention Layer
+
 **Goal**: Turn calibrated posteriors + the 3-way BF into an actionable batch decision {coloc / not / ABSTAIN} at a controlled Bayesian FDR, abstaining exactly when the tool should be silent
 **Depends on**: Phases 11, 12, 13
 **Requirements**: TBD
 **Success Criteria** (what must be TRUE):
+
   1. `decide_coloc(...)` emits calibrated calls at a user-set Bayesian FDR across a batch, using conformal sets (ConformalPrediction.jl) + decision-risk
   2. Abstention triggers on OOD ∨ cross-method disagreement ∨ ambiguous conformal set
   3. A monotone risk-coverage curve shows abstention concentrates on hard/OOD cases
+
 **Plans**: 14 plans in 8 waves (0-7)
 > **SC1 and SC2 are AMENDED for this phase** — SC1 by D-02 (`ConformalPrediction.jl` is NOT added;
 > conformal sets met in substance, hand-rolled, because the library breaks the running byte-frozen
@@ -390,39 +452,70 @@ measurement.
 > gitignored `spike/data/cache/p13/` pool).
 
 Plans:
+**Wave 0** *(the pre-registration freeze — must be committed before any result-producing commit)*
+
 - [ ] 14-01-PLAN.md — Wave 0: freeze the Tier-1 pre-registration (`spike/p14/consts.jl`) and assert it; opens with a blocking decision checkpoint on the five undERIVED bars
+
+**Wave 1** *(blocked on Wave 0 completion)*
+
 - [ ] 14-02-PLAN.md — Wave 1: τ loaded with four-way provenance asserted, sha-pinned, divergence asserted (D-07)
 - [ ] 14-03-PLAN.md — Wave 1: `test_p14_decoupling.jl` — env/src/corpus guards plus the SC2-c, SC2-d, withdrawn-figure and forbidden-seed source greps
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 14-04-PLAN.md — Wave 2: three-class posterior (anti-permutation fixture) + the running-MEAN Bayesian-FDR prefix rule
 - [ ] 14-05-PLAN.md — Wave 2: hand-rolled split conformal (LAC, order statistic) + the D-05 asymmetric fusion with D-06's three-valued OOD
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 14-06-PLAN.md — Wave 3: `P14Result` / `P14BatchDecision` — the honesty commitments as machine-readable fields
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 14-07-PLAN.md — Wave 4: `decide_coloc` — abstain-then-sort, `src/`-shaped signature, built in `spike/` and NOT shipped (D-01)
 - [ ] 14-08-PLAN.md — Wave 4: unstratified draw pools + the OOD density null on the Phase-13 basis
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 14-09-PLAN.md — Wave 5: `run_p14_conformal.jl` (SC1-d) + the shared evaluation pool
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 14-10-PLAN.md — Wave 6: `run_p14_fdr_check.jl` (SC1-b gated, SC1-c reported-not-gated)
 - [ ] 14-11-PLAN.md — Wave 6: `run_p14_riskcoverage.jl` (SC3-a/b/c)
 - [ ] 14-12-PLAN.md — Wave 6: `run_p14_ood_arm.jl` (SC3-d)
 - [ ] 14-13-PLAN.md — Wave 6: `run_p14_real_images.jl` (SC1-f, D-03a six-TIFF illustration + corpus record)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 14-14-PLAN.md — Wave 7: `14-REPORT.md` + blocking human ratification of the honesty items
 
 ### Phase 15: Calibration Operating Envelope and CI Gate
+
 **Goal**: Map the tool's domain of applicability by adversarially sweeping nuisances until coverage breaks, prove the OOD flag fires before it does, and lock calibration into CI as a regression gate
 **Depends on**: Phases 11, 12
 **Requirements**: TBD
 **Success Criteria** (what must be TRUE):
+
   1. An adversarial sweep over spillover/PSF/autofluorescence/registration yields a domain-of-applicability map
   2. The OOD flag demonstrably fires before empirical coverage breaks ("OOD-before-break")
   3. An SBC/coverage regression test fails CI on calibration drift after a code change
+
 **Plans**: TBD
+
 - [ ] TBD (run /gsd:plan-phase 15 to break down)
 
 ### Phase 16: External Validation and Manuscript Assembly
+
 **Goal**: Close v2.0 with a blind external evaluation against the physical corpus and comparator harness, and assemble the reproducible manuscript package
 **Depends on**: Phases 8, 9, 10, 14, 15
 **Requirements**: TBD
 **Success Criteria** (what must be TRUE):
+
   1. v2.0 is blind-evaluated against the physical anchors (Phase 8) and comparator harness (Phase 9); results reported honestly, including the simulator-validated mid-range caveat
   2. All manuscript figures are assembled into the Phase-10 skeleton
   3. `run_v2.jl` reproduces the end-to-end result from a fixed seed; a Zenodo/DOI release is prepared
+
 **Plans**: TBD
+
 - [ ] TBD (run /gsd:plan-phase 16 to break down)
