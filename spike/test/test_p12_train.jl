@@ -217,6 +217,32 @@ const _P12TRAIN_CODE = _p12train_strip_comments(_P12TRAIN_SRC)
         # verdict state and pass or fail by accident.
         td = mktempdir()
 
+        # A pool path that IS PROVABLY ABSENT, and stays absent no matter what any other phase
+        # builds. THE TWO "past the guard" ASSERTIONS BELOW READ IT INSTEAD OF THE REAL CACHE.
+        #
+        # WHY, stated as the defect it repairs rather than as a preference. Both assertions
+        # distinguish "permitted by the guard" from "blocked by the guard" by the message of the
+        # error that comes NEXT -- `no COMPLETE pool`. That works only while the pool is MISSING,
+        # and NOTHING IN THIS REPOSITORY MAINTAINS THE ABSENCE OF A POOL. `88ddfe2` (the D-13
+        # ablation) built the `:none` pool at n = 10_000, and from that commit the `:none`
+        # assertion stopped testing the guard: the call sailed past the pool check, TRAINED A REAL
+        # NET FOR ~3.5 MINUTES, and then failed on an empty `derr`. No edit to this file or to
+        # `train_p12_npe.jl` was involved -- the subject of the assertion was removed by a commit
+        # in a different plan step that had no reason to look here.
+        #
+        # The `:car` sibling was still green ONLY because n = 10_000 `:car` had not been built
+        # yet; 12-17's production pool is specified to build exactly that. It was one commit from
+        # the same failure and is repaired in the same move rather than left to prove the point.
+        #
+        # `isdir` ALONE WOULD NOT HAVE SUFFICED as the absence: `p12_pool_dir` resolves through
+        # `open_or_invalidate`, which CREATES the directory it resolves (train_p12_npe.jl:356-359),
+        # so the real `:car` cache path exists as an EMPTY hash directory and only
+        # `p12_pool_complete` sees through it. Under `mktempdir()` the path is never created at
+        # all, so BOTH halves of the check fail and the assertion no longer depends on which of
+        # the two is doing the work.
+        absent_pool = joinpath(mktempdir(), "pool_that_is_never_created")
+        @test !isdir(absent_pool)
+
         # :absent -- a real spend is refused, and the message names both missing paths.
         @test_throws Exception train_p12_npe(arm = :car, epochs = 18, n = 10_000, verdict_dir = td)
         err = try
@@ -237,10 +263,11 @@ const _P12TRAIN_CODE = _p12train_strip_comments(_P12TRAIN_SRC)
         @test p12_stage1_verdict(; dir = td) === :descope
         @test_throws Exception train_p12_npe(arm = :car, epochs = 18, n = 10_000, verdict_dir = td)
         # `arm = :none` is permitted -- it gets PAST the guard and fails later, on the absent
-        # :none pool, which is a DIFFERENT error. Asserting the message is what distinguishes
+        # pool, which is a DIFFERENT error. Asserting the message is what distinguishes
         # "permitted by the guard" from "blocked by the guard".
         derr = try
-            train_p12_npe(arm = :none, epochs = 18, n = 10_000, verdict_dir = td)
+            train_p12_npe(arm = :none, epochs = 18, n = 10_000, verdict_dir = td,
+                          pool_dir = absent_pool)
             ""
         catch e
             sprint(showerror, e)
@@ -252,7 +279,8 @@ const _P12TRAIN_CODE = _p12train_strip_comments(_P12TRAIN_SRC)
         write(joinpath(td, "12-STAGE1-VERDICT.md"), "VERDICT: PROCEED\n")
         @test p12_stage1_verdict(; dir = td) === :proceed
         perr = try
-            train_p12_npe(arm = :car, epochs = 18, n = 10_000, verdict_dir = td)
+            train_p12_npe(arm = :car, epochs = 18, n = 10_000, verdict_dir = td,
+                          pool_dir = absent_pool)
             ""
         catch e
             sprint(showerror, e)
