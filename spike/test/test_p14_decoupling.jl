@@ -156,6 +156,131 @@ function _sealed_image_load_hits(body::AbstractString)
     return hits
 end
 
+# --- The per-file source table (the `test_p13_tau.jl:102-104` triple, generalized) ----------------
+# That file reads ONE unit under test as `TAU_SRC` / `TAU_LINES` / `TAU_CODE`, because it guards one
+# probe. Phase 14's integrity greps are LANE-WIDE, so the same triple is built once PER FILE and the
+# line index is carried with it -- a failure then reports `path:line: the offending code` rather than
+# a boolean, which is the difference between a report you can act on and one you have to reproduce.
+#
+# The `lines` here are the SAME comment-stripped lines `_p14_body` joins, so an index into `lines` is
+# meaningful for the positional SC2-c exemption below. It is NOT a line number in the file on disk.
+const _P14_TABLE = [begin
+                        raw = read(joinpath(P14_REPO_ROOT, p), String)
+                        lns = String[l for l in split(raw, '\n') if !startswith(strip(l), "#")]
+                        (path = p, lines = lns, code = join(lns, '\n'))
+                    end for p in _p14_sources()]
+
+_p14_entry(path::AbstractString) =
+    (i = findfirst(e -> e.path == path, _P14_TABLE); i === nothing ? nothing : _P14_TABLE[i])
+
+"Offending `path:index: line` strings for every comment-stripped line satisfying `pred`."
+function _p14_line_hits(pred)
+    hits = String[]
+    for e in _P14_TABLE, (i, ln) in enumerate(e.lines)
+        s = strip(ln)
+        isempty(s) && continue
+        pred(s) && push!(hits, "$(e.path):$i: $s")
+    end
+    return hits
+end
+
+# --- SC2-c: the D-06 anti-regression needles ------------------------------------------------------
+# D-06: the OOD input is THREE-VALUED -- fired / clear / not-checked. `src/amortized/local_map.jl`
+# states outright that "a `false` flag on a non-sentinel tile means NOT CHECKED, not in
+# distribution", and `_recorded_ood_threshold` (:93) returns `nothing` when the gate report is
+# absent, unreadable, or records a non-finite threshold. Reading a `false` flag as "in distribution"
+# is therefore a SILENT scientific failure: the tool speaks confidently in exactly the regime where
+# it has no evidence it should. Every spelling of that read is banned.
+#
+# Each needle is an ESCAPED regex, and that is also what keeps this file out of its own scan: in
+# `r"\.flag\s*==\s*false"` the characters following `.flag` are `\`, `s`, `*` -- not whitespace and
+# not `=` -- so the pattern cannot match its own declaration.
+const _SC2C_PATTERNS = (r"\.flag\s*==\s*false",
+                        r"\.flag\s*===\s*false",
+                        r"!\s*\w*\.flag",
+                        r"verdict\.flag\s*\?")
+
+"""
+The comment-stripped line range of `function p14_ood_state ... end` in a Phase-14 source, or
+`nothing` if this file does not define it. The closing `end` is located POSITIONALLY: the first
+later line whose stripped text is exactly `end` at the SAME indentation as the `function` line.
+
+The LONG form is required, and deliberately so: `p14_ood_state` is the ONE place allowed to inspect
+a raw flag, because deriving the three-valued state is its whole job. A short-form definition would
+be un-delimitable, so the exemption would have to be either a whole-file pass (which is not an
+exemption, it is a hole) or nothing at all. A missing `end` raises rather than returning `nothing`,
+so a malformed exemption fails loudly instead of silently protecting nothing.
+"""
+function _p14_ood_state_range(entry)
+    i0 = findfirst(l -> occursin("function p14_ood_state", l), entry.lines)
+    i0 === nothing && return nothing
+    indent = length(entry.lines[i0]) - length(lstrip(entry.lines[i0]))
+    for j in (i0 + 1):length(entry.lines)
+        l = entry.lines[j]
+        strip(l) == "end" || continue
+        (length(l) - length(lstrip(l))) == indent || continue
+        return i0:j
+    end
+    error("test_p14_decoupling.jl: `function p14_ood_state` was found in $(entry.path) but no " *
+          "matching `end` at the same indentation. The SC2-c exemption cannot be located, and an " *
+          "exemption that cannot be located must fail loudly rather than protect nothing.")
+end
+
+# --- SC2-d, the withdrawn figure, the forbidden seed, the helper bans ----------------------------
+# SC2-d. tau = 0.15 is defined on rho_true -- measured by a probe that stops at
+# `encode_d01(patch_summary(...))` and never standardizes -- while `patch_correlation` returns the
+# INDUCED MEAN PER-PATCH CORRELATION mu. Comparing mu to tau directly is a criterion applied in a
+# unit it was not derived for, which is one of the four recorded "the bar was wrong" families
+# (14-RESEARCH Pitfall 5; the same failure `P12_STAGE1_RATIO_CEILING` carries a recorded warning
+# about). `ghat` is the frozen, monotone, clamped map from mu to rho_true and is the ONLY in-repo
+# bridge between the two scales.
+const _PC_CALL       = "patch_" * "correlation("
+const _TAU_MENTIONS  = ("tau", "τ")
+const _GHAT_CALL     = "ghat("
+
+# THE WITHDRAWN FIGURE. D-03a withdraws "alpha >= 1/31 ~ 0.032": it was computed from the wrong n
+# (the corpus is partitioned dev = 14 / eval = 16 / sealed = 2, not "30 open") AND on rows that are
+# not physical truth (30 of 32 are `simulated-secondary`). This check exists so a corpus-derived
+# floor can never become an EXECUTABLE DEFAULT -- which would be the corpus silently calibrating the
+# hedge that D-03a just removed it from.
+#
+# THE EXEMPTION IS DELIBERATE AND NARROW: `p14_conformal_quantile`'s GENERAL feasibility expression
+# `1/(n + 1)`, computed from its own `n` argument, is permitted and expected. Only a HARD-CODED 31
+# or the decimal 0.032 is flagged. Needles assembled from fragments so this file passes its own scan.
+const _WITHDRAWN_FIGURE_NEEDLES = ("0." * "032", "1/" * "31", "1 / " * "31", "1/(30" * "+1)")
+
+# PITFALL 7. `spike/comparator/config.jl:56` sets `MASTER_SEED = 0x00000000_00C0FFEE`, which IS
+# `NPE_MASTER_SEED` in the forbidden-seed inventory. `costes_p` takes `master_seed` as its first
+# positional argument (`classical.jl:181`), so an executor copying the Phase-9 call site verbatim
+# would consume a forbidden stream. `test_p14_consts.jl` CANNOT catch this: it checks CONSTANTS, not
+# CALL SITES, and the constant it asserts disjoint is exactly the one that would be passed here.
+#
+# The banned call site, spelled out once so a reader can see exactly what is looked for -- and
+# spelled out HERE, in a comment, because the scan strips comments and would otherwise flag this
+# file for naming the thing it forbids:
+#
+#     costes_p(MASTER_SEED, idx, mci)     # FORBIDDEN -- pass P14_DEV_SEED as the first argument
+#
+# and likewise any `costes_p(COSTES...` spelling that reaches for the comparator's own salt.
+const _FORBIDDEN_COSTES_CALLS = ("costes_p(" * "MASTER_SEED", "costes_p(" * "COSTES")
+
+# No dependency may be added (D-02), so every shared helper is REUSED. A local re-implementation is
+# how two versions of one statistic silently diverge -- and `ghat` in particular is FROZEN
+# calibration, not a formula to be retyped.
+const _NO_REIMPLEMENT = ("roc_auc", "corspearman", "_bin_calibration", "three_way_label", "ghat")
+
+# D-07: alpha_FDR is a per-call USER parameter, alpha_conformal is a pre-registered miscoverage
+# level. They happen to share the value 0.10 at one grid point, which is exactly why neither may
+# ever be ASSIGNED from the other: the day one moves, a derived assignment moves the other silently
+# and the two stop being distinct quantities at all.
+const _ALPHA_CROSS_ASSIGN = (r"alpha_fdr\s*=\s*.*ALPHA_CONFORMAL"i,
+                             r"alpha_conformal\s*=\s*.*alpha_fdr"i)
+
+# The aggregate suite exits 1 early at the Phase-4 SPEEDUP_GATE, masking every later include block,
+# so a Phase-14 source that reached for runtests.jl would be wiring its evidence to a runner that
+# never reaches it. Per-file runs are the only reliable signal (14-PATTERNS §4.8).
+const _RUNTESTS_NEEDLE = "runtests" * ".jl"
+
 @testset "P14 decoupling: src/, deps, the sealed holdout and the phase's own greps (14-03)" verbose = true begin
 
     @testset "src/ is byte-unchanged (CLAUDE.md hard constraint, D-01)" begin
@@ -383,6 +508,127 @@ end
             end
         end
         @test p13_write_hits == String[]
+    end
+
+    @testset "SC2-c: no `false` OOD flag is read as in-distribution (D-06)" begin
+        # See `_SC2C_PATTERNS` above for why this is a scientific failure rather than a style one.
+        # The scan is lane-wide and the exemption is POSITIONAL: only the body of `p14_ood_state`
+        # may inspect a raw flag, because turning a raw flag into the three-valued state is that
+        # function's entire job.
+        sc2c_hits = String[]
+        for e in _P14_TABLE
+            exempt = 0:-1
+            if e.path == "spike/p14/fuse.jl"
+                r = _p14_ood_state_range(e)
+                r === nothing || (exempt = r)
+            end
+            for (i, ln) in enumerate(e.lines)
+                i in exempt && continue
+                s = strip(ln)
+                isempty(s) && continue
+                any(p -> occursin(p, s), _SC2C_PATTERNS) && push!(sc2c_hits, "$(e.path):$i: $s")
+            end
+        end
+        @test sc2c_hits == String[]
+
+        # THE POSITIVE HALF, so the guard cannot be satisfied VACUOUSLY by a file that simply never
+        # mentions the three-valued state. `fuse.jl` lands in wave 2; this arms itself then.
+        _fuse = _p14_entry("spike/p14/fuse.jl")
+        if _fuse === nothing
+            @info "spike/p14/fuse.jl does not exist yet (wave 2) — the positive `:not_checked` " *
+                  "assertion arms itself when it lands"
+        else
+            @test occursin(":not_checked", _fuse.code)
+            # The long form is REQUIRED so the exemption above is delimitable at all.
+            @test occursin("function p14_ood_state", _fuse.code)
+            @test _p14_ood_state_range(_fuse) !== nothing
+        end
+    end
+
+    @testset "SC2-d: every classical statistic compared to tau passes through ghat" begin
+        # PER-LINE, not whole-file: the question is whether THIS comparison was rescaled, and a
+        # `ghat` call somewhere else in the file answers a different question.
+        unit_hits = _p14_line_hits(s -> occursin(_PC_CALL, s) &&
+                                        any(t -> occursin(t, s), _TAU_MENTIONS) &&
+                                        !occursin(_GHAT_CALL, s))
+        @test unit_hits == String[]
+
+        # THE POSITIVE HALF, scoped to `decide.jl` rather than to the lane: a lane-wide `occursin`
+        # would be satisfied by THIS file's own needles, which is not evidence about anything.
+        _decide = _p14_entry("spike/p14/decide.jl")
+        if _decide === nothing
+            @info "spike/p14/decide.jl does not exist yet (wave 2) — the positive " *
+                  "ghat-wrapping assertion arms itself when it lands"
+        else
+            @test occursin("ghat(patch_correlation(", _decide.code)
+            # And the basis is RECORDED on the result, so the rescaling is auditable rather than
+            # implicit (14-RESEARCH §D.5).
+            @test occursin(":ghat_rho_true_scale", _decide.code)
+        end
+    end
+
+    @testset "the WITHDRAWN corpus-derived alpha floor is not an executable default (D-03a)" begin
+        # 0.032 and 1/31 are withdrawn figures, not merely superseded ones -- see the note at
+        # `_WITHDRAWN_FIGURE_NEEDLES`. The general `1/(n + 1)` feasibility expression is exempt.
+        figure_hits = _p14_line_hits(s -> any(n -> occursin(n, s), _WITHDRAWN_FIGURE_NEEDLES))
+        @test figure_hits == String[]
+    end
+
+    @testset "costes_p never consumes the comparator MASTER_SEED (Pitfall 7)" begin
+        seed_hits = _p14_line_hits(s -> any(n -> occursin(n, s), _FORBIDDEN_COSTES_CALLS))
+        @test seed_hits == String[]
+
+        # THE POSITIVE HALF: once the composition point exists, EVERY `costes_p(` call site must
+        # name the Phase-14 dev stream on the same line. Scoped to `decide.jl`, and collecting the
+        # offending call sites rather than a boolean.
+        _decide = _p14_entry("spike/p14/decide.jl")
+        if _decide === nothing
+            @info "spike/p14/decide.jl does not exist yet (wave 2) — the positive " *
+                  "P14_DEV_SEED-at-every-costes-call-site assertion arms itself when it lands"
+        else
+            bad = String[]
+            for (i, ln) in enumerate(_decide.lines)
+                s = strip(ln)
+                occursin("costes_p(", s) || continue
+                occursin("P14_DEV_SEED", s) || push!(bad, "spike/p14/decide.jl:$i: $s")
+            end
+            @test bad == String[]
+        end
+    end
+
+    @testset "shared helpers are REUSED, never re-implemented (D-02)" begin
+        reimpl_hits = String[]
+        for name in _NO_REIMPLEMENT
+            needle = "function " * name
+            append!(reimpl_hits, _p14_line_hits(s -> occursin(needle, s)))
+        end
+        @test reimpl_hits == String[]
+
+        # The positive twin (`test_p13_tau.jl:275-315`): a ban alone is satisfied by never using
+        # the helper at all, which is not what "reuse" means.
+        _rc = _p14_entry("spike/p14/run_p14_riskcoverage.jl")
+        if _rc === nothing
+            @info "spike/p14/run_p14_riskcoverage.jl does not exist yet (SC3-a/b/c) — the " *
+                  "positive roc_auc / corspearman reuse assertions arm themselves when it lands"
+        else
+            @test occursin("roc_auc(", _rc.code)
+            @test occursin("corspearman", _rc.code)
+        end
+    end
+
+    @testset "the two alphas are never derived from one another (D-07)" begin
+        alpha_hits = _p14_line_hits(s -> any(p -> occursin(p, s), _ALPHA_CROSS_ASSIGN))
+        @test alpha_hits == String[]
+    end
+
+    @testset "the aggregate suite is NOT a Phase-14 gate" begin
+        # THIS TESTSET'S NAME IS DELIBERATELY PARAPHRASED, and the first run is why: a `@testset`
+        # title is a STRING IN CODE, not a comment, so naming the runner in the title made this
+        # very check report itself as the lane's only offender. Recorded rather than quietly
+        # renamed -- it is the cheapest available demonstration that the scan is live and that
+        # comment-stripping is not the same thing as string-stripping.
+        runner_hits = _p14_line_hits(s -> occursin(_RUNTESTS_NEEDLE, s))
+        @test runner_hits == String[]
     end
 
     @testset "decoupling checks ran CPU-only" begin
