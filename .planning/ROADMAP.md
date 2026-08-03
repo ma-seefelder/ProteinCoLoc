@@ -379,8 +379,31 @@ measurement.
   1. `decide_coloc(...)` emits calibrated calls at a user-set Bayesian FDR across a batch, using conformal sets (ConformalPrediction.jl) + decision-risk
   2. Abstention triggers on OOD ∨ cross-method disagreement ∨ ambiguous conformal set
   3. A monotone risk-coverage curve shows abstention concentrates on hard/OOD cases
-**Plans**: TBD
-- [ ] TBD (run /gsd:plan-phase 14 to break down)
+**Plans**: 14 plans in 8 waves (0-7)
+> **SC1 and SC2 are AMENDED for this phase** — SC1 by D-02 (`ConformalPrediction.jl` is NOT added;
+> conformal sets met in substance, hand-rolled, because the library breaks the running byte-frozen
+> environment guard) and SC2 by D-05 (ASYMMETRIC fusion, not the literal `∨`: cross-method
+> disagreement ALONE DECIDES and is recorded as a named field, because the literal OR would silence
+> the tool exactly where Phase 9 says it should speak). Any citation of a Phase-14 result must cite
+> the original wording above alongside the amendment. See `14-CONTEXT.md` D-02 and D-05.
+> **Execute on the MAIN working tree — no git worktrees** (the OOD null fit needs the ~50 MB
+> gitignored `spike/data/cache/p13/` pool).
+
+Plans:
+- [ ] 14-01-PLAN.md — Wave 0: freeze the Tier-1 pre-registration (`spike/p14/consts.jl`) and assert it; opens with a blocking decision checkpoint on the five undERIVED bars
+- [ ] 14-02-PLAN.md — Wave 1: τ loaded with four-way provenance asserted, sha-pinned, divergence asserted (D-07)
+- [ ] 14-03-PLAN.md — Wave 1: `test_p14_decoupling.jl` — env/src/corpus guards plus the SC2-c, SC2-d, withdrawn-figure and forbidden-seed source greps
+- [ ] 14-04-PLAN.md — Wave 2: three-class posterior (anti-permutation fixture) + the running-MEAN Bayesian-FDR prefix rule
+- [ ] 14-05-PLAN.md — Wave 2: hand-rolled split conformal (LAC, order statistic) + the D-05 asymmetric fusion with D-06's three-valued OOD
+- [ ] 14-06-PLAN.md — Wave 3: `P14Result` / `P14BatchDecision` — the honesty commitments as machine-readable fields
+- [ ] 14-07-PLAN.md — Wave 4: `decide_coloc` — abstain-then-sort, `src/`-shaped signature, built in `spike/` and NOT shipped (D-01)
+- [ ] 14-08-PLAN.md — Wave 4: unstratified draw pools + the OOD density null on the Phase-13 basis
+- [ ] 14-09-PLAN.md — Wave 5: `run_p14_conformal.jl` (SC1-d) + the shared evaluation pool
+- [ ] 14-10-PLAN.md — Wave 6: `run_p14_fdr_check.jl` (SC1-b gated, SC1-c reported-not-gated)
+- [ ] 14-11-PLAN.md — Wave 6: `run_p14_riskcoverage.jl` (SC3-a/b/c)
+- [ ] 14-12-PLAN.md — Wave 6: `run_p14_ood_arm.jl` (SC3-d)
+- [ ] 14-13-PLAN.md — Wave 6: `run_p14_real_images.jl` (SC1-f, D-03a six-TIFF illustration + corpus record)
+- [ ] 14-14-PLAN.md — Wave 7: `14-REPORT.md` + blocking human ratification of the honesty items
 
 ### Phase 15: Calibration Operating Envelope and CI Gate
 **Goal**: Map the tool's domain of applicability by adversarially sweeping nuisances until coverage breaks, prove the OOD flag fires before it does, and lock calibration into CI as a regression gate
