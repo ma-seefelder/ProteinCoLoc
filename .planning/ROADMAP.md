@@ -317,10 +317,24 @@ TESTED.* At 100 epochs all three arms lie outside [0.87, 0.93], `car` is closer 
 selected `none` (0.0492 against 0.0509), and both spatial arms beat the selected arm on RMSE — the arm
 that won **won by default** and was never held to the criterion that disqualified the others.
 
-**Phase 12 will remain `partial` to the SDK permanently, BY DESIGN.** Five requirements — SPAT-03,
-SPAT-04 and SPAT-06 undelivered at the scope the goal sentence means; SPAT-07 and SPAT-08 deferred to
-v2.1 — will never be marked delivered, and the 12-11 frontmatter staleness will never be repaired. **The
-phase must not be marked complete against 9 requirements.**
+**The `[x]` above means CLOSED, NOT SUCCEEDED — and the distinction is the whole point of this
+block.** Phase 12 is finished in the only sense that matters operationally: nothing further will run,
+all four remaining plans are foreclosed, and no measurement will be repeated. It is *not* finished in
+the sense the goal sentence promises. **Five of nine requirements were never delivered** — SPAT-03,
+SPAT-04 and SPAT-06 undelivered at the scope the goal means; SPAT-07 and SPAT-08 deferred to v2.1 —
+and they will never be marked delivered. The 12-11 frontmatter staleness will never be repaired.
+
+**A tally that counts this phase toward "13/16 complete" is counting a closed negative as a
+success.** Any milestone summary, progress report or manuscript claim that leans on the phase count
+must carry the qualifier, because the count alone cannot. **Phase 12 delivered 4 of 9 requirements
+and answered its own goal question NO.**
+
+*(Recorded 2026-08-03, superseding this block's original prediction that the phase would read
+`partial` to the SDK permanently. That prediction was wrong: the SDK derives phase status from the
+roadmap checkbox, not from plan/summary counts, so ticking `[x]` moved it straight to `complete` and
+unblocked Phase 15. The checkbox is correct — the phase IS closed — and the prose is corrected here
+rather than the checkbox reverted, since an unticked box misread the phase as unstarted, which is the
+drift this amendment existed to end.)*
 
 **Re-running `/gsd:execute-phase 12` is NOT indicated.** All four remaining plans are foreclosed by
 rulings already on the record, not pending. `12-VERIFICATION.md` explicitly does not recommend executing
