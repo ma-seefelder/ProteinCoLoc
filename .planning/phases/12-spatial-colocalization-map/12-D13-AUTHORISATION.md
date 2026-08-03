@@ -347,3 +347,81 @@ buried in a phase verdict, and it is not a housekeeping remark. The item, in the
 > outperformed the spatial priors".**
 
 Full technical account: `12-STAGE1-VERDICT.md` §7.6.
+
+### §10.4 THE COVERAGE **DIRECTION** IN §8 IS A WRONG-BASIS ARTIFACT — and it is the THIRD finding this one repair inverted
+
+**Appended 2026-08-03. §8 REMAINS BYTE-UNCHANGED, INCLUDING THE SENTENCE THIS SUBSECTION FALSIFIES.**
+That is deliberate and it is the same rule as §10: the false sentence is the evidence, and a record
+that quietly acquires the right direction teaches nothing about how it acquired the wrong one.
+
+**§8:167-169 reads:**
+
+> *"Coverage crossed the band [0.87, 0.93] without landing in it — all three arms over-cover at 18
+> epochs, all three **under**-cover at 100. **On this evidence admissibility tracks training duration,
+> not the prior.**"*
+
+**ON THE REPAIRED BASIS, NOTHING UNDER-COVERS AND NOTHING CROSSES.**
+
+| | `car` | `gp` | `none` | all vs. band |
+|---|---|---|---|---|
+| 18 epochs (repaired control, `75e3b6d`) | 0.99855 | 1.00000 | 0.98694 | **all above 0.93** |
+| 100 epochs (repaired treatment, `eb3ced3`) | **0.94920** | **0.96503** | **0.95089** | **all above 0.93** |
+
+**All three arms over-cover at BOTH epoch counts. The band is approached FROM ABOVE and never
+crossed.** The intervals are too *wide* at 18 epochs and still too *wide* at 100 — just less so.
+
+**WHAT THIS COSTS, NAMED PRECISELY RATHER THAN LEFT TO BE INFERRED.**
+
+- **SURVIVES:** *"never both calibrated and better — **as gated**"*. That claim rests on the
+  admissibility outcome, which is unchanged.
+- **DOES NOT SURVIVE IN THE FORM WRITTEN:** *"admissibility tracks training duration, not the
+  prior."* **Its evidence was the crossing.** An overshoot — too wide, then too narrow — is what makes
+  a gate look like it is tracking something other than calibration, and is what makes *"more training
+  is not the answer"* follow. **There is no overshoot.** A monotone approach from above that stops
+  short is instead the ordinary signature of a model that has **not trained long enough**.
+
+**SO THIS REMOVES ONE OF THE TWO SUPPORTS FOR "UNDER-TRAINING IS ELIMINATED". THE OTHER IS UNTOUCHED,
+AND BOTH ARE STATED HERE WITHOUT BEING RECONCILED.**
+
+- **Removed:** the coverage-direction argument above.
+- **Standing:** early stopping fired at **56 / 99 / 36** epochs against a 100-epoch budget
+  (`12-MINISPIKE-VERDICT.md:238`, `12-15-RERUN-VERDICT.md:253`) — training halted on its own before
+  the budget in all three arms.
+- **AND THAT SUPPORT IS NOW CONFIRMED BASIS-INDEPENDENT BY EXECUTION.** The repaired 100-epoch run
+  reproduced the stopping epochs **exactly — 56, 99 and 36** (`treatment_100ep.log`, arms in order).
+  This is the direct confirmation of §7.4(a)'s claim that the defect never reached the trained
+  bundles: **training consumes θ as stored and never reconstructs a field**, so the permutation could
+  not touch it. The early-stopping evidence is therefore genuinely untainted, unlike the coverage
+  evidence beside it.
+- **NOT ADJUDICATED HERE:** `gp` stopping at **99 of 100** is not obviously convergence, and a
+  patience of 5 on a still-descending curve is a weak stopping criterion. Whether that leaves
+  "under-training eliminated" standing is **not decided in this subsection** and is a user question.
+
+**NO COMPUTE WAS RUN FOR THIS SUBSECTION AND NO REMEDY IS PROPOSED.** In particular this is **not** a
+recommendation to train longer. The epoch count is the one knob whose effect on the gate has already
+been observed, so choosing it now would be selecting a hyperparameter to pass a calibration gate —
+the hunt §8 itself refused, and the refusal binds harder with better evidence, not less.
+
+**THE COUNT, PUT IN ONE PLACE SO ITS SIZE IS VISIBLE.** `f039729` — a single unreversed permutation in
+one scoring function — inverted **three separate stated findings** of this phase:
+
+| # | the finding as stated | on the repaired basis |
+|---|---|---|
+| 1 | every arm has **negative** skill; "no arm learned the field at all" | **all three positive**; −0.004/−0.108/−0.151 → +0.357/+0.340/+0.202 |
+| 2 | the spatial arms were disqualified on coverage **that the ablation met** | **no arm meets it**; the ablation was never tested (§10.1) |
+| 3 | all three **under**-cover at 100 epochs; the band was crossed | **all three over-cover**; the band is never crossed |
+
+**They are three faces of one defect, not three unrelated corrections**, and a reader who meets them
+separately will never see the size of it. Each was invisible to structural verification for the same
+reason: **a permutation is orthogonal**, so cardinality, pooling identities, disjointness, budget
+reconciliation and even Parseval energy all survive it intact (§7.1, §7.4(a)).
+
+**MANUSCRIPT-LEVEL, alongside §10.3.** The item as it should travel:
+
+> **A single scoring-basis defect inverted three of this phase's stated findings — the sign of every
+> skill measurement, which arms failed the calibration gate, and the direction of the coverage miss.
+> All three passed every structural check the phase could make, because the defect was an orthogonal
+> permutation and structural checks are invariant to it. The corrected reading is that no arm was
+> calibrated at this scale, that coverage was converging toward nominal from above rather than
+> overshooting, and that one of the two arguments for having ruled out under-training does not
+> survive.**
