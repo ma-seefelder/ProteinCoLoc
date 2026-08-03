@@ -1044,7 +1044,7 @@ Offline gate `julia --project=. corpus/test/runtests.jl` → 217/217, ZERO netwo
 untouched; `git ls-files corpus/data` empty. NOTE: this Current Position was previously clobbered by a
 parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
 
-Last activity: 2026-07-27 -- Phase 13 execution started
+Last activity: 2026-08-03 -- Completed quick task 260803-jm5: ROADMAP Phase 12 amended to CLOSED NEGATIVE (matches 12-VERIFICATION.md). Phase 11 also closed on disk (b0ff45f); Phase 12 verification written (35848a8).
 
 Progress: [█████░░░░░] 56% of phases (9/16); 51/53 plans
 
@@ -1394,6 +1394,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260725-vl8 | Real-anchor diagnostic measures MASKED as well as unmasked; the unqualified "negative tail not physically reachable / PRIOR-ONLY" claim in `ghat.jl` is WITHDRAWN (not inverted) | 2026-07-25 | 151ad79 | [260725-vl8-fix-the-real-anchor-diagnostic-in-spike-](./quick/260725-vl8-fix-the-real-anchor-diagnostic-in-spike-/) |
 | 260725-wb7 | Real-anchor measured on the COLOC pair c2/c3 (green/red), not c1/c2 — `c1` is the DAPI counterstain (`test/runtests.jl:105`). Pair is now a named parameter. Masked: positive **+0.8238**, negative **−0.0338** (superseding 0.3292 / 0.2481). Withdrawal of the PRIOR-ONLY claim STANDS — `neg_reachable` flips to `true` on a value ≈ 0, which is a predicate artifact, not evidence | 2026-07-25 | 78dc37f | [260725-wb7-correct-the-real-anchor-diagnostic-chann](./quick/260725-wb7-correct-the-real-anchor-diagnostic-chann/) |
+| 260803-jm5 | ROADMAP Phase 12 amended to **CLOSED NEGATIVE** to match `12-VERIFICATION.md` (`status: gaps_found`, 8/9, 1 FAILED). Doc-only, `.planning/ROADMAP.md` the sole file touched. Records: goal NOT achieved; `NONE-BEATS-ABLATION` ×3 so the shipped deliverable IS the ablation and no trained spatial arm exists; SPAT-06 measured **0.9707** outside **[0.87, 0.93]**; SPAT-07/SPAT-08 deferred to v2.1 (2026-07-31 rulings); real 20-plan list with 12-17/12-19 FORECLOSED and 12-18/12-20 DEFERRED. 12-11's stale `status: blocked` frontmatter documented in the roadmap and left **byte-unchanged** (why the SDK counts 5 not 4). §10.5 carried verbatim as a named limit; the three refused re-tune moves named; phase stays `partial` **by design** and re-running execute-phase 12 is NOT indicated | 2026-08-03 | d860461 | [260803-jm5-amend-roadmap-md-phase-12-to-closed-nega](./quick/260803-jm5-amend-roadmap-md-phase-12-to-closed-nega/) |
 
 ## Deferred Items
 
