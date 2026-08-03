@@ -243,3 +243,49 @@ The plan's Wave-0 success criteria are **not** met and are not claimed to be met
 incomplete by design: the pre-registration cannot be frozen until it is ruled.
 
 **No plan in any later Phase-14 wave may run until Task 0 is ruled and the freeze commit exists.**
+
+---
+---
+
+# APPENDED 2026-08-03 — TASK 0 RULED. THE CHECKPOINT IS RESOLVED.
+
+**Nothing above this line is edited.** The blocked record is preserved verbatim as the evidence that
+the five bars were put to the user *before* any Phase-14 file existed. What follows is appended, per
+the project's append-never-overwrite discipline (14-CONTEXT §Specific Ideas).
+
+## The ruling, verbatim
+
+> The Task-0 blocking checkpoint is RESOLVED. The user ruled **accept-as-proposed**. Freeze exactly
+> these values:
+>
+> - `P14_SKILL_FLOOR      = 0.60`
+> - `P14_SPEARMAN_FLOOR   = 0.95`
+> - `P14_COVERAGE_FLOOR   = 0.20`
+> - `P14_AUC_HARD_FLOOR   = 0.80`
+> - `P14_OOD_MARGIN_FLOOR = 0.50`
+>
+> Also ruled in the same freeze: `P14_ALPHA_CONFORMAL = 0.10`, and `P14_N_CAL = P14_N_EVAL = 2000`.
+>
+> NOT ruled here and must follow the plan as written: τ (inherited by loading with provenance
+> asserted, D-07), α_FDR (per-call user parameter), and the SC1-b / SC1-d bands (derived by formula).
+>
+> Record in `consts.jl`, at the point of definition, that these five bars are `[ASSUMED]` —
+> pre-registered by explicit user ruling on 2026-08-03 without an analytic derivation, frozen BEFORE
+> any Phase-14 result existed. State plainly in the same comment that if a bar is missed, the result
+> is REPORTED and NOT re-tuned — matching the Phase-11 and Phase-12 precedent. Do not soften that.
+
+**Option selected: `accept-as-proposed`.** No proposed value was changed, so no value carries a
+"USER RULING replaced the proposal" note — but the *act of ruling* is itself recorded as a dated
+`USER RULING` in `spike/p14/consts.jl`, because "the user ratified these five" is the fact that
+distinguishes them from five numbers an agent picked.
+
+**Consequences carried into Task 1:**
+
+- `report-only` was NOT selected, so `14-VALIDATION.md`'s SC3-a..d rows stay **GATED** and neither
+  that file nor the ROADMAP is touched by this plan.
+- The ruling adds one clause the proposal did not contain: **a missed bar is REPORTED, never
+  re-tuned.** That is stronger than the plan's own wording and is written into the constants file as
+  binding text, not as commentary.
+- `P14_ITERATION_ALLOWANCE` still concerns conformal coverage only. It cannot be spent on any of
+  these five, and the file says so.
+
