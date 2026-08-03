@@ -713,6 +713,320 @@ _p14_channel_pair(m::MultiChannelImage, channels::AbstractVector{<:Integer}) =
                                        Matrix{Float64}(m.data[channels[2]])]);
               name = m.name)
 
+# --- The batch path: ABSTAIN FIRST, THEN SORT -----------------------------------------------------
+
+"""
+    _p14_rule_at_prior(recs, qhat, prior, alpha_fdr, allow_unchecked_ood, n_total) -> NamedTuple
+
+The WHOLE rule -- posterior, hedge, fusion, abstention partition, FDR prefix -- at one class
+prior.
+
+Factored out so the headline run and every rung of the prior-sensitivity curve go through **one
+code path**. A sweep written as a second, simpler loop would keep agreeing with the headline right
+up until the day it stopped, and nothing would say which of the two was wrong.
+
+The prior enters in more places than the null posterior: it moves the class posterior, hence the
+conformal set (hence the abstention), hence the amortized call (hence the cross-method
+disagreement), hence the fusion. All of it is recomputed here; only the OOD state and the two
+CLASSICAL verdicts are carried, because those are the only quantities in the rule that do not
+depend on the prior at all.
+"""
+function _p14_rule_at_prior(recs, qhat::Real, prior::NamedTuple, alpha_fdr::Real,
+                            allow_unchecked_ood::Bool, n_total::Integer)
+    ps    = [p14_class_posterior(r.lbf, prior) for r in recs]
+    calls = [_p14_amortized_call(p) for p in ps]
+    csets = [p14_conformal_set(p, qhat) for p in ps]
+    dis   = [_p14_recall_disagreement(recs[i].cm, calls[i]) for i in eachindex(recs)]
+    acts  = [p14_fuse(; ood_state = recs[i].ood, conformal_status = csets[i].status,
+                        disagree = dis[i], allow_unchecked_ood = allow_unchecked_ood)
+             for i in eachindex(recs)]
+
+    # STEP A -- ABSTAIN FIRST. The partition happens before anything is sorted.
+    decided_idx = [i for i in eachindex(acts) if acts[i].action === :decide]
+    # STEP B -- THEN SORT, over the DECIDED SUBSET ONLY.
+    v = [p14_null_posterior(ps[i]) for i in decided_idx]
+    fdr = p14_fdr_over_decided(v, alpha_fdr; n_total = n_total)
+    return (ps = ps, calls = calls, csets = csets, disagree = dis, acts = acts,
+            decided_idx = decided_idx, v = v, fdr = fdr)
+end
+
+"""
+    _p14_reason_counts(results) -> NamedTuple
+
+How many items each trigger silenced, keyed in the frozen `p14_abstain_reasons()` order.
+
+Built by ENUMERATING the closed reason set rather than by collecting whatever turned up, so a
+reason that stopped being reachable shows up as an absent key and a reason that is not in the set
+cannot appear at all. The batch constructor then derives `n_abstained` from this ledger, which
+turns the identity `n_decided + n_abstained == n_total` into a real check that every silenced item
+was explained.
+"""
+function _p14_reason_counts(results)
+    counts = Dict{Symbol, Int}()
+    for r in results
+        r.decision === :abstain || continue
+        counts[r.abstain_reason] = get(counts, r.abstain_reason, 0) + 1
+    end
+    ks = Tuple(k for k in p14_abstain_reasons() if haskey(counts, k))
+    return NamedTuple{ks}(Tuple(counts[k] for k in ks))
+end
+
+"""
+    _p14_prior_at(prior, pi_c) -> NamedTuple
+
+The measured class prior with its coloc mass replaced by `pi_c`, the other two renormalised IN
+THEIR MEASURED RATIO.
+
+The sweep asks "what if the batch's coloc prevalence were different", not "what if the whole class
+structure were different", so the exclusion-to-random ratio the simulator realized is held fixed
+and only the coloc mass moves. Rebuilding the two remaining masses in equal parts instead would
+silently sweep two things at once and the curve would answer a question nobody asked.
+"""
+function _p14_prior_at(prior::NamedTuple, pi_c::Real)
+    (0.0 < pi_c < 1.0) || throw(ArgumentError(
+        "_p14_prior_at: the swept coloc mass must lie strictly inside (0,1); got $pi_c."))
+    rest = prior.random + prior.exclusion
+    rest > 0 || throw(ArgumentError(
+        "_p14_prior_at: the measured non-coloc mass is $rest; the ratio it is renormalised in " *
+        "is not defined."))
+    s = 1.0 - pi_c
+    return (coloc = Float64(pi_c),
+            random = s * prior.random / rest,
+            exclusion = s * prior.exclusion / rest)
+end
+
+"""
+    decide_coloc(bundle, pairs, ood_nulls, qhat; alpha_fdr, prior = bundle.prior,
+                 allow_unchecked_ood = false, pi_grid = P14_PI_COLOC_GRID, idx_offset = 0,
+                 meta = NamedTuple()) -> P14BatchDecision
+
+The batch entry point the phase is named for: `{coloc / not_coloc / ABSTAIN}` over a batch at a
+**user-set** Bayesian FDR, with the decided fraction and the prior-sensitivity curve as required
+output rather than optional extras.
+
+`pairs` is a vector of NamedTuples carrying `Zs` and `Zc` (required) and any of `lambda`, `mci_s`,
+`mci_c`, `idx` and `local_map_uncontrolled` (optional). An unknown key throws rather than being
+ignored, because a misspelled `mci_s` would silently disable the cross-method channel and the
+resulting `disagree_any = false` reads as agreement.
+
+`alpha_fdr` is a REQUIRED keyword. SC1 calls it *"a user-set Bayesian FDR"*, so it is a per-call
+user parameter: it never defaults to a constant of the pre-registration and is never derived from
+the conformal miscoverage level, which is a different quantity that happens to share a value at
+one grid point of the pre-registered sweep (D-07).
+
+# ABSTAIN FIRST, THEN FDR-SORT THE SURVIVORS. The order is the point.
+
+ 1. every pair is decided individually;
+ 2. **the batch is partitioned into decided and abstained, and the reason ledger is tallied;**
+ 3. **only then** are the survivors' null posteriors sorted and cut by the prefix rule;
+ 4. the accepted positions are mapped back to ORIGINAL batch indices and asserted non-abstaining
+    -- an off-by-one there is silent and would report the wrong items as discoveries;
+ 5. the decided calls are FINALISED: an accepted item is `:coloc`, a decided-but-not-accepted item
+    is `:not_coloc`. The results are REBUILT, not mutated, and each carries its provisional call in
+    `meta.provisional_decision` so a divergence between the argmax and the rule is auditable rather
+    than silent.
+
+## Assumption A2 -- why abstaining first needs no selective-inference correction
+
+The controlled quantity is `E[FDP | data]`. The rejection set `R` is a deterministic function of
+the observed data -- the abstention filter and the sort are both data-measurable -- so `R` is
+sigma(data)-measurable and pulls straight out of the conditional expectation:
+
+    E[FDP | data] = (1/|R|) * sum over i in R of P(H0_i | data) = (1/|R|) * sum over i in R of v_i
+
+and that holds **for ANY data-dependent selection of `R`**, including one that filtered on OOD
+status or conformal ambiguity. Unlike frequentist FDR, where a data-dependent pre-selection is a
+genuine selective-inference problem requiring correction, the Bayesian posterior quantity is
+immune because the conditioning has already happened.
+
+This is a two-line derivation stated as such, not a quoted theorem. **It is load-bearing** -- it
+is the entire justification for abstain-then-sort and for the decided-subset scope -- so the
+report must STATE it explicitly and let a referee check it, rather than assert it and be believed.
+
+## Why the REVERSE order is wrong, recorded so it is not re-derived
+
+Sorting the whole batch and then abstaining from some of the ACCEPTED items removes items from a
+set whose running mean was computed over all of them, changing both the numerator and the
+denominator in an uncontrolled way; the residual accepted set can then have a running mean that
+EXCEEDS the level. Abstaining first also improves the premise, because it routes away precisely
+the items whose posteriors are least likely to be right.
+
+# The honest claim, and the mandatory companion number
+
+> The posterior expected false discovery proportion is controlled at the user-set level **over the
+> DECIDED subset only** -- the batch minus abstentions. It is **not** controlled over the whole
+> batch: an abstained item is neither a discovery nor a non-discovery and appears in neither the
+> numerator nor the denominator. The guarantee is conditional on the model (calibrated posteriors
+> and a correct class prior) and is a posterior expectation, not a frequentist long-run rate.
+
+A rule that abstains on most of a batch hits any level trivially, so the DECIDED FRACTION travels
+with the level as one quantity. `p14_headline` emits both in a single string; quote that rather
+than assembling a sentence.
+
+# The prior-sensitivity curve is REQUIRED output
+
+`v_i` depends on the class prior, and the default prior is the **SIMULATOR's** class mix, not any
+real batch's prevalence. A batch that is 90 % coloc makes every `v_i` too large and the rule too
+conservative; a batch that is 1 % coloc makes them too small and **the FDR claim FALSE**. So the
+whole rule is re-run at every rung of the pre-registered grid and the curve is a field of the
+result. Empirical-Bayes estimation of the prior from the batch is deliberately NOT offered as a
+default: it is a second estimated quantity with its own failure modes, and estimating the prior
+from the same batch the guarantee is quoted over would make that guarantee CIRCULAR.
+
+The grid is pre-registered, and `P14BatchDecision` pins the curve to it, so passing a different
+`pi_grid` fails loudly at construction rather than quietly producing an off-grid curve.
+
+# Returns
+
+A `P14BatchDecision` whose `fdr_scope` is always `:decided_subset_only`. Read `p14_headline(b)`
+for the one line that may never be split, `b.pi_sensitivity` for the curve, `b.results` for the
+finalised per-pair results, and `p14_named_limits()` for the eight items that travel with any
+quoted number.
+"""
+function decide_coloc(bundle::NamedTuple, pairs::AbstractVector, ood_nulls, qhat::Real;
+                      alpha_fdr::Real,
+                      prior::NamedTuple = bundle.prior,
+                      allow_unchecked_ood::Bool = false,
+                      pi_grid = P14_PI_COLOC_GRID,
+                      idx_offset::Integer = 0,
+                      costes_seed = P14_DEV_SEED,
+                      meta::NamedTuple = NamedTuple())
+    # --- validation first --------------------------------------------------------------------
+    0.0 < alpha_fdr < 1.0 || throw(ArgumentError(
+        "decide_coloc: `alpha_fdr` must lie strictly inside (0,1); got $alpha_fdr. It is a " *
+        "per-call USER parameter (SC1), never a constant of the pre-registration and never " *
+        "derived from the conformal miscoverage level."))
+    n_total = length(pairs)
+    n_total > 0 || throw(ArgumentError(
+        "decide_coloc: the batch is empty. A decided fraction over an empty batch is not a " *
+        "number, and the fraction is not optional."))
+    for (i, q) in enumerate(pairs)
+        q isa NamedTuple || throw(ArgumentError(
+            "decide_coloc: item $i of `pairs` must be a NamedTuple carrying at least " *
+            "$(P14_PAIR_REQUIRED_KEYS); got $(typeof(q))."))
+        for k in P14_PAIR_REQUIRED_KEYS
+            haskey(q, k) || throw(ArgumentError(
+                "decide_coloc: item $i of `pairs` is missing the required key `$k`."))
+        end
+        for k in keys(q)
+            (k in P14_PAIR_REQUIRED_KEYS || k in P14_PAIR_OPTIONAL_KEYS) || throw(ArgumentError(
+                "decide_coloc: item $i of `pairs` carries the unknown key `$k`; the permitted " *
+                "keys are $(P14_PAIR_REQUIRED_KEYS) and $(P14_PAIR_OPTIONAL_KEYS). An ignored " *
+                "misspelling would silently disable a channel, and a disabled cross-method " *
+                "channel reports `disagree_any = false`, which reads as AGREEMENT."))
+        end
+    end
+
+    # 1. EVERY PAIR IS DECIDED INDIVIDUALLY.
+    provisional = P14Result[
+        p14_decide_one(bundle, q.Zs, q.Zc, ood_nulls, qhat;
+                       lambda = get(q, :lambda, P13_PHASE11_REFERENCE_LAMBDA),
+                       idx = get(q, :idx, idx_offset + i),
+                       mci_s = get(q, :mci_s, nothing), mci_c = get(q, :mci_c, nothing),
+                       prior = prior, allow_unchecked_ood = allow_unchecked_ood,
+                       local_map_uncontrolled = get(q, :local_map_uncontrolled, nothing),
+                       costes_seed = costes_seed)
+        for (i, q) in enumerate(pairs)]
+
+    # The rule inputs that do NOT depend on the prior, read back off the results themselves --
+    # which also proves a result carries enough to reproduce the rule that produced it.
+    recs = [(lbf = log_bf_vs_random(r), ood = ood_state(r), cm = cross_method(r))
+            for r in provisional]
+
+    # 2-3. ABSTAIN FIRST, THEN SORT -- through the same code path the sensitivity curve uses.
+    run = _p14_rule_at_prior(recs, qhat, prior, alpha_fdr, allow_unchecked_ood, n_total)
+
+    # THE TWO PATHS MUST AGREE. `p14_decide_one` and `_p14_rule_at_prior` compute the same fusion
+    # from the same inputs; a divergence means one of them drifted, and it would be invisible in
+    # the output because both produce a perfectly well-formed batch.
+    for i in eachindex(provisional)
+        @assert (provisional[i].decision === :abstain) == (run.acts[i].action === :abstain) "decide_coloc: item $i is $(provisional[i].decision) on the per-pair path but $(run.acts[i].action) on the batch path; the two computations of the D-05 fusion have drifted apart"
+    end
+
+    # 4. BACK TO ORIGINAL BATCH INDICES. `fdr.accepted` holds positions into the DECIDED SUBSET,
+    #    never into the batch, so the mapping is explicit and then asserted.
+    accepted_original = [run.decided_idx[j] for j in run.fdr.accepted]
+    @assert all(i -> provisional[i].decision !== :abstain, accepted_original) "decide_coloc: an ABSTAINED item reached the accepted set; the decided-subset index mapping is off and the wrong items would be reported as discoveries"
+    @assert length(accepted_original) == run.fdr.k_star "decide_coloc: the mapped accepted set holds $(length(accepted_original)) items but k_star is $(run.fdr.k_star)"
+
+    # 5. FINALISE. Rebuilt, never mutated -- the type is immutable and that is deliberate.
+    acc = Set(accepted_original)
+    results = P14Result[_p14_finalise(provisional[i], i in acc) for i in eachindex(provisional)]
+
+    # 6. The REQUIRED prior-sensitivity curve, every rung a full re-run of the whole rule.
+    sens = [begin
+                sr = _p14_rule_at_prior(recs, qhat, _p14_prior_at(prior, pc), alpha_fdr,
+                                        allow_unchecked_ood, n_total)
+                (pi_coloc = pc, k_star = sr.fdr.k_star, fdp = sr.fdr.fdp,
+                 n_accepted = length(sr.fdr.accepted), n_decided = sr.fdr.n_decided,
+                 decided_fraction = sr.fdr.decided_fraction)
+            end
+            for pc in pi_grid]
+
+    return p14_batch_decision(results;
+        alpha_fdr = alpha_fdr,
+        fdr = run.fdr,
+        n_total = n_total,
+        abstain_reason_counts = _p14_reason_counts(results),
+        class_prior_used = prior,
+        class_prior_source = _p14_prior_source(prior, bundle),
+        pi_sensitivity = sens,
+        conformal = p14_hedge_diagnostics([r.conformal for r in results], qhat),
+        meta = merge(meta, (accepted_batch_indices = accepted_original,
+                            decided_batch_indices = run.decided_idx,
+                            allow_unchecked_ood = allow_unchecked_ood,
+                            idx_offset = Int(idx_offset),
+                            ood_channels_wired = (:density,),
+                            ood_channels_not_wired = (:pp, :noise),
+                            named_limits = p14_named_limits(),
+                            provenance = p14_provenance_record(bundle.prov))))
+end
+
+"""
+    _p14_finalise(r, accepted) -> P14Result
+
+Rebuild one per-pair result with its FINAL decision: `:coloc` when the batch rule accepted it,
+`:not_coloc` when the rule decided but did not accept it, and `:abstain` untouched.
+
+**A discovery is defined by the rule, not by the argmax.** The two agree in the overwhelming
+majority of cases -- a low null posterior is what makes an item both the argmax coloc call and an
+accepted one -- but at a permissive level they can part company, and when they do the RULE is
+authoritative, because the controlled quantity is a property of the accepted set. The provisional
+call is kept in `meta.provisional_decision` so the disagreement is visible rather than erased.
+
+Rebuilt rather than mutated: `P14Result` is immutable, its constructor is where every invariant of
+the type is enforced, and going through it again is what proves the finalised object is still a
+legal one.
+"""
+function _p14_finalise(r::P14Result, accepted::Bool)
+    r.decision === :abstain && return r
+    final = accepted ? :coloc : :not_coloc
+    final === r.decision && r.meta isa NamedTuple && haskey(r.meta, :provisional_decision) &&
+        return r
+    return P14Result(r.three_way, r.class_posterior, r.null_posterior, r.null_split,
+                     final, nothing, r.ood_state, r.conformal, r.cross_method,
+                     r.local_map_uncontrolled,
+                     merge(r.meta, (provisional_decision = r.decision,
+                                    accepted_by_fdr_rule = accepted,
+                                    decision_is_provisional_on_the_coloc_side = false)))
+end
+
+"""
+    _p14_prior_source(prior, bundle) -> Symbol
+
+`:measured_pi_class_masses` when the prior in use IS the measured class mix of the prior the net
+was trained under, `:caller_supplied` otherwise.
+
+Compared BY NAME rather than by object identity, so a caller who rebuilt the same three masses in
+a different key order is correctly recorded as having used the measured prior; the label is about
+which NUMBERS were used, not about which object was passed.
+"""
+function _p14_prior_source(prior::NamedTuple, bundle::NamedTuple)
+    m = bundle.prior
+    same = prior.coloc == m.coloc && prior.random == m.random && prior.exclusion == m.exclusion
+    return same ? :measured_pi_class_masses : :caller_supplied
+end
+
 # --- Script entry point ---------------------------------------------------------------------------
 # Including this file does NOTHING. Running it prints what was inherited and nothing else: no
 # training, no simulation, no figure, no artifact, and no random stream consumed.
