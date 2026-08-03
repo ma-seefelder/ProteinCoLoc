@@ -81,7 +81,20 @@ Equal-probability fixtures cannot catch it; the fixture must be unequal.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| *(populated by gsd-planner — every task must map to at least one SC row above)* | | | | | | | | ❌ W0 | ⬜ pending |
+| *(populated at the close of Wave 1 — see note below)* | | | | | | | | ❌ W0 | ⬜ pending |
+
+**Bookkeeping note (added 2026-08-03, post plan-check).** This table and the `nyquist_compliant` /
+`wave_0_complete` frontmatter flags are **deliberately still placeholders**. The substance they stand
+for is already satisfied and was verified by the plan-checker against the plans themselves: every task
+carries a `<verify>` block, every plan carries a `validates:` field, the `validates:` fields
+collectively cover **every** SC row in the table above, no three consecutive tasks run without an
+automated verify, no watch-mode flags appear, and `runtests.jl` is never used as a gate.
+
+What is missing is only the transcription of per-task IDs into this table, which cannot be accurate
+until the Wave-0/Wave-1 files exist on disk. **Owner:** the executor closing Wave 1 (plans `14-01` and
+`14-03`) populates this table from the plans' `validates:` fields and flips `nyquist_compliant: true`
+and `wave_0_complete: true`. Do not flip either flag before `test_p14_consts.jl`,
+`test_p14_provenance.jl` and `test_p14_decoupling.jl` all exit 0.
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

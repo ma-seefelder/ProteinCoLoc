@@ -1445,7 +1445,19 @@ end
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED — resolutions appended 2026-08-03 during `/bm:plan-phase 14`)
+
+> **Resolution index.** All five questions below were carried into planning and resolved there. The
+> original question text is left unedited (corrections are appended, never overwritten); each
+> resolution names the plan that carries it.
+>
+> | Q | Resolution | Carried by |
+> |---|---|---|
+> | Q1 — are the SC3 bars acceptable, or should the user rule them? | **Escalated, not decided.** `14-01` opens with a **blocking** decision checkpoint (`autonomous: false`) offering: accept as proposed / user sets them / freeze as REPORTED-NOT-GATED. They may be ruled **before** the freeze commit and never after. | `14-01-PLAN.md` |
+> | Q2 — corpus: report the absence, or fetch? | **Neither, as originally framed.** Superseded by **D-03a**: the corpus holds no unsealed physical truth (30/32 rows are `simulated-secondary`; the 2 `physical-primary` rows are Phase 16's sealed holdout) and its bytes are unfetched *by design*. The real-data check uses the **six committed microscopy TIFFs**, reported as an illustration, not a coverage claim. **No fetch is planned.** The `α ≥ 1/31 ≈ 0.032` figure is withdrawn. | `14-13-PLAN.md`, `14-CONTEXT.md` D-03a |
+> | Q3 — default the class prior, or force the caller to supply one? | **Default to the measured `h.meta.pi_class_masses`** (measured, not chosen), exposed as a keyword, with the prior-sensitivity curve a **required** output rather than an option. | `14-04`, `14-06`, `14-07` |
+> | Q4 — whose `CalibrationMeta` does the Phase-14 result carry? | **Carry Phase 13's forward unchanged**, and record Phase-14 conformal coverage as its own separate field, so no second differently-sourced ECE can be conflated with the gated one. | `14-07-PLAN.md` |
+> | Q5 — is a `P14_ITERATION_ALLOWANCE` needed, and what is its trigger? | **Yes — `P14_ITERATION_ALLOWANCE = 1`** with exactly one pre-declared trigger, frozen in `spike/p14/consts.jl` and explicitly never spendable on relaxing a bar after a result. | `14-01-PLAN.md` |
 
 1. **Are the four SC3 bars (A3) acceptable to the user, or should they be ruled?**
    - What we know: this project treats every bar as a pre-registration matter and has recorded four
