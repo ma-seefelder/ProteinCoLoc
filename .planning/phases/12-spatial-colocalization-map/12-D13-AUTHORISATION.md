@@ -425,3 +425,58 @@ reconciliation and even Parseval energy all survive it intact (§7.1, §7.4(a)).
 > calibrated at this scale, that coverage was converging toward nominal from above rather than
 > overshooting, and that one of the two arguments for having ruled out under-training does not
 > survive.**
+
+### §10.5 USER RULING, 2026-08-03: **DOCUMENT ONLY.** The under-training question is CLOSED AS OPEN — not deferred
+
+**This subsection CLOSES §10.4 and supersedes its final paragraph.** §10.4 ended by calling the
+status of "under-training eliminated" *"a user question"*. **It was put to the user and answered.**
+That sentence stays where it is — the record is append-only — but it must no longer be read as work
+awaiting someone. **Nothing here is pending.**
+
+**THREE OPTIONS WERE OFFERED. THE USER CHOSE THE FIRST.**
+
+1. **Document only.** ← **CHOSEN**
+2. One pre-declared longer training run.
+3. A no-compute examination of the early-stopping traces.
+
+**Option 3 was declined as well as option 2.** So there is no cheap follow-up sitting in reserve
+either: **the traces are not to be examined, and this is not a first step toward anything.**
+
+**THE RESULTING CLAIM, IN THE EXACT FORM IT IS TO APPEAR IN THE MANUSCRIPT:**
+
+> **"We cannot exclude that longer training would have brought the spatial arms into the coverage
+> band."**
+
+**That sentence is a NAMED LIMIT OF v2.0, not a caveat.** It is weaker than what §8 claimed. It is
+recorded here in final form so that nobody has to re-derive it later, under time pressure, from a
+chain of appended corrections.
+
+**THE TRADE, RECORDED EXPLICITLY BECAUSE SOMEONE WILL ASK WHY THIS WAS NOT SIMPLY TESTED.**
+
+Testing it is **not** a matter of raising the epoch budget. **Early stopping had already fired inside
+the existing 100-epoch budget — at 56, 99 and 36 epochs, with a patience of 5.** Training longer would
+therefore have required **relaxing the early-stopping criterion itself**: moving a modelling constant
+**with the result already known and with the direction of the desired change already visible**. That
+is the same move as widening the admissibility loop after seeing `:none` fail it (§10.1), and as
+re-deriving the coverage band after seeing the arms miss it (§10.1) — both of which this phase also
+refused.
+
+> **THE USER ACCEPTED A WEAKER NEGATIVE RATHER THAN CHANGE A MODELLING CONSTANT AFTER SEEING THE
+> NUMBERS. That is the trade, and it was made deliberately.** A stronger claim was available at the
+> price of a tuned criterion, and the price was judged too high.
+
+**THE TENSION IS THE LIMIT, AND IT IS LEFT STANDING ON PURPOSE. IT IS NOT ADJUDICATED HERE AND NO
+ADJUDICATION IS PROPOSED.** Both facts, side by side, neither resolved:
+
+| | |
+|---|---|
+| **Points toward under-training** | Coverage approaches the band **monotonically from above** and stops short — 0.99855/1.00000/0.98694 at 18 epochs, 0.94920/0.96503/0.95089 at 100. Too wide at both. Nothing overshoots. |
+| **Points against under-training** | **Early stopping fired on its own** at 56/99/36 of a 100-epoch budget, in all three arms — and this evidence is **basis-independent**, confirmed by the repaired run reproducing those epochs exactly. |
+
+**Neither is dismissed. `gp` halting at 99 of 100 is not obviously convergence, and a patience of 5 on
+a still-descending validation curve is a weak criterion — and that observation is recorded WITHOUT a
+recommendation attached, because the user declined the examination that would settle it.**
+
+**So the honest state is not "we established that the model was trained enough" and not "we suspect it
+was not". It is: THE EVIDENCE POINTS BOTH WAYS AND WE STOPPED RATHER THAN MOVE A CONSTANT TO SETTLE
+IT.** That is a permanent property of the v2.0 record, not an open task.
