@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: ready_to_plan
-stopped_at: Phase 14 complete (14/14) — ready to discuss Phase 15
-last_updated: 2026-08-04T16:20:54.182Z
+stopped_at: Phase 15 context gathered
+last_updated: "2026-08-04T17:33:51.569Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 16
@@ -34,8 +34,8 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
-Phase: 15
-Plan: Not started
+Phase: 15 (calibration-operating-envelope-and-ci-gate) — EXECUTING
+Plan: 1 of 9
 committed at `d57e39c`, but plan 14-14 stops at its blocking `checkpoint:human-verify` on the honesty
 items — the A2 derivation's presentation, the framing of the five judgement-call bars, and how the
 FAILED SC3-d gate is recorded. Nothing was self-approved. Phase-14 verdict as measured: SC1-b, SC1-d,
