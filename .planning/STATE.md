@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: in-progress
-stopped_at: Phase 15 context gathered
-last_updated: "2026-08-04T13:19:24.462Z"
+status: ready_to_plan
+stopped_at: Phase 14 complete (14/14) — ready to discuss Phase 15
+last_updated: 2026-08-04T16:20:54.182Z
 last_activity: 2026-08-04
 progress:
   total_phases: 16
@@ -34,8 +34,8 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
-Phase: 14 (decision-and-abstention-layer) — PAUSED AT A BLOCKING HUMAN CHECKPOINT
-Plan: 13 of 14 complete + 14-14 PAUSED (14-01…14-13 done, all waves run; `14-REPORT.md` written and
+Phase: 15
+Plan: Not started
 committed at `d57e39c`, but plan 14-14 stops at its blocking `checkpoint:human-verify` on the honesty
 items — the A2 derivation's presentation, the framing of the five judgement-call bars, and how the
 FAILED SC3-d gate is recorded. Nothing was self-approved. Phase-14 verdict as measured: SC1-b, SC1-d,
@@ -1094,7 +1094,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 
 **Velocity:**
 
-- Total plans completed: 22
+- Total plans completed: 36
 - Average duration: - min
 - Total execution time: 0.0 hours
 
@@ -1107,6 +1107,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 | 03 | 5 | - | - |
 | 04 | 7 | - | - |
 | 06 | 2 | - | - |
+| 14 | 14 | - | - |
 
 **Recent Trend:**
 

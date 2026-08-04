@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 11: Registration + Chromatic Uncertainty as Latent** - Promote dx/dy (+ chromatic warp) to inferred θ; posterior widens honestly under registration uncertainty — **CLOSED NEGATIVE-BUT-USEFUL 2026-07-27**: registration at ≤3 px is not inferable from the 8×8 patch summary at any coloc level, AND does not need to be (Δρ RMSE flat in λ, ratio 1.0003). SC1g gate MIS-SPECIFIED, not failed. Plans 11-08…11-11 SUPERSEDED. See `11-CLOSURE.md`
 - [x] **Phase 12: Spatial Colocalization Map (GP/CAR)** - Lattice prior over the correlation grid → amortized per-region Δρ map + uncertainty (descope-to-v2.1 candidate) — **CLOSED NEGATIVE 2026-08-03: THE GOAL WAS NOT ACHIEVED.** No spatial prior (CAR or GP) ever beat the neutralized ablation: `NONE-BEATS-ABLATION` fired in three independent mini-spike runs, so the shipped deliverable IS the ablation — the *same* network with spatial borrowing switched off — wearing the `SpatialColocResult` type, and **no trained spatial arm exists at any scale**. SPAT-06 was measured and FAILED its pre-registered band: pooled leave-region-out coverage **0.9707** against **[0.87, 0.93]**. SPAT-07 and SPAT-08 are DEFERRED TO v2.1 by recorded user rulings dated 2026-07-31 — not skipped, not forgotten. See `12-VERIFICATION.md`
 - [ ] **Phase 13: Three-Hypothesis Amortized Bayes Factor** - Evidence network extended to coloc/random/exclusion; replaces KDE+quadgk BF
-- [ ] **Phase 14: Decision + Abstention Layer** - {coloc/not/ABSTAIN} at controlled Bayesian FDR; abstains on OOD/disagreement/ambiguity
+- [x] **Phase 14: Decision + Abstention Layer** - {coloc/not/ABSTAIN} at controlled Bayesian FDR; abstains on OOD/disagreement/ambiguity (**CLOSED NEGATIVE-BUT-USEFUL** 2026-08-04 — SC1/SC2 met as AMENDED, SC3-a/b/c PASS, **SC3-d FAILED at margin −0.129 vs the frozen floor 0.50 and was NOT re-tuned**; scoped to the density-only wiring per `14-SC3D-RULING.md`. Never quote this `[x]` without the ruling.)
 - [ ] **Phase 15: Calibration Operating Envelope + CI Gate** - Adversarial nuisance sweep → domain-of-applicability; OOD-before-break; SBC regression gate in CI
 - [ ] **Phase 16: External Validation + Manuscript Assembly** - Blind eval vs physical corpus + comparators; figures assembled; one-command repro + Zenodo
 
@@ -208,7 +208,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 11. Registration + Chromatic Uncertainty as Latent | 6/11 | In Progress|  |
 | 12. Spatial Colocalization Map (GP/CAR) | 11/20 | In Progress|  |
 | 13. Three-Hypothesis Amortized Bayes Factor | 16/17 | In Progress| 13-16: real-image arm REPORTED — **all its figures SUPERSEDED**, measured on the DAPI-counterstain pair (RANDOM on both pairs, both OOD-flagged 2.49x/2.42x, agreement). 13-17 corrected the operative pair to c2/c3 green/red per `13-D15-AMENDMENT.md`, **dropped** the redundancy arm (no second pair exists) and **re-ran the arm once**: on the amended pair the verdict is **COLOC / RANDOM** (was RANDOM / RANDOM) and both fixtures are OOD-flagged **4.198x / 5.297x — WORSE than the superseded 2.49x / 2.42x**. **The CONCLUSION is unchanged**: qualitative, n = 2, unlabelled, OOD-bound. **The gating arm is unaffected and no threshold moved**; D-04 allowance unspent |
-| 14. Decision + Abstention Layer | 13/14 | In Progress|  |
+| 14. Decision + Abstention Layer | 14/14 | Complete    | 2026-08-04 |
 | 15. Calibration Operating Envelope + CI Gate | 0/9 | Planned | - |
 | 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
 
@@ -488,7 +488,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 14-14-PLAN.md — Wave 7: `14-REPORT.md` + blocking human ratification of the honesty items
+- [x] 14-14-PLAN.md — Wave 7: `14-REPORT.md` + blocking human ratification of the honesty items
 
 ### Phase 15: Calibration Operating Envelope and CI Gate
 
