@@ -157,21 +157,45 @@ const P15FAM_NEW_AXES = (
         # PART 2 — what is NOT true, MEASURED rather than assumed. The stream state after a
         # generator call is NOT level-invariant: stage 7's `Poisson(GAIN·intensity)` consumes a
         # rate-dependent number of rng values, and the override is precisely a change of rate.
-        # This assertion exists so the false claim ("identical rng consumption across levels")
+        # These assertions exist so the false claim ("identical rng consumption across levels")
         # cannot silently re-enter, and so the sweep runner (15-05) treats the divergence as a
         # known property rather than discovering it in a report.
-        for (axis, _) in P15FAM_NEW_AXES
-            gen = P15Fam.P15_FAMILIES[axis]
-            post = map(0:P15Fam.P15_RUNGS) do k
-                r = p15fam_rng(P15FAM_STREAM_SEED)
-                gen(r, θ; imsize = P15FAM_IMSIZE, level = k, G = P15FAM_G)
-                rand(r, UInt64)          # the stream state the NEXT draw of an M-draw arm would see
-            end
-            @test any(k -> post[k + 1] != post[1], 1:P15Fam.P15_RUNGS)
-            @info "post-generator stream state by rung (matched pairs end after draw 1)" axis =
-                axis rung0 = post[1] diverges_at =
-                findall(k -> post[k + 1] != post[1], 1:P15Fam.P15_RUNGS)
+        #
+        # THE FOUR CONSECUTIVE WORDS ARE DELIBERATE. Philox4x buffers four `UInt64` per counter
+        # block, so comparing a single post-draw would miss nothing in principle but reads as if it
+        # might; four makes the comparison obviously insensitive to buffer position.
+        "The first four words the NEXT draw of an M-draw arm would see, per rung 0..R."
+        post_words(gen, θ) = map(0:P15Fam.P15_RUNGS) do k
+            r = p15fam_rng(P15FAM_STREAM_SEED)
+            gen(r, θ; imsize = P15FAM_IMSIZE, level = k, G = P15FAM_G)
+            [rand(r, UInt64) for _ in 1:4]
         end
+        diverging_rungs(post) = findall(k -> post[k + 1] != post[1], 1:P15Fam.P15_RUNGS)
+
+        # `registration` and `autofluorescence` diverge at EVERY rung. MEASURED over six fixture
+        # θ (this one and five others): 5 of 5 rungs, every time. Both move the rate over the whole
+        # frame — the shift changes every pixel's intensity, the offset adds up to 0.8 to it.
+        for axis in (:registration, :autofluorescence)
+            post = post_words(P15Fam.P15_FAMILIES[axis], θ)
+            @info "post-generator stream state by rung (matched pairs end after draw 1)" axis =
+                axis diverging_rungs = string(diverging_rungs(post))
+            @test diverging_rungs(post) == collect(1:P15Fam.P15_RUNGS)
+        end
+
+        # `spillover` is θ-DEPENDENT and is therefore REPORTED, NOT ASSERTED at this θ. It perturbs
+        # only channel 1 (`ch1 .+= θ.spillover .* ch2`), so whether the Poisson consumption count
+        # actually changes depends on where the resulting rates sit. MEASURED across six fixture θ:
+        # 0, 1, 2 and 5 of 5 rungs diverged. Asserting either invariance or divergence here would
+        # be asserting a coincidence of one θ.
+        post_a = post_words(P15Fam.P15_FAMILIES.spillover, θ)
+        @info "post-generator stream state by rung — spillover is θ-dependent, reported not asserted" diverging_rungs =
+            string(diverging_rungs(post_a))
+
+        # But the CLAIM "identical rng consumption across levels" must be falsified for all three
+        # axes, not only two — so the diverging case is SHOWN on a second fixture θ (measured 5 of
+        # 5), rather than left as an assurance that it can happen.
+        θ_b = ProteinCoLoc.sample_prior(p15fam_rng(P15FAM_THETA_SEED + 1))
+        @test !isempty(diverging_rungs(post_words(P15Fam.P15_FAMILIES.spillover, θ_b)))
     end
 
     # =========================================================================================
@@ -213,8 +237,10 @@ const P15FAM_NEW_AXES = (
             mad = acc[axis] ./ nrep
             # Reported in the log: these ARE the ladders' effective magnitudes, and they belong in
             # the domain map's honesty section, not only in a passing assertion.
+            # `string(...)`: the logger elides long vectors, and a ladder reported as "0.2471,
+            # 0.26147, ⋮" is not reported.
             @info "ladder effective magnitude (mean |Δ| from rung 0, $(nrep) prior draws)" axis =
-                axis mad = round.(mad; digits = 5)
+                axis mad = join(round.(mad; digits = 5), ", ")
             @test all(k -> mad[k] < mad[k + 1], 1:(P15Fam.P15_RUNGS - 1))
         end
     end
