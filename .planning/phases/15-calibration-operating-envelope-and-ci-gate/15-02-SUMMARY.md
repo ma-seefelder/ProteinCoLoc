@@ -224,6 +224,14 @@ Advisory only — recorded, not gating. The blocker it implies is tracked below.
 - **SHA-pinning the three third-party actions is recorded as a pre-v2.0-release hardening item**
   (threat T-15-06). Major tags are mutable refs.
 
+## Self-Check: PASSED
+
+- All three claimed files exist on disk: `.github/workflows/headless-smoke.yml`,
+  `15-CI-BASELINE.md`, `15-02-SUMMARY.md`.
+- All six claimed commits are present in `git log`: `c5ff0f3`, `02689e6`, `738684b`, `9fbd861`,
+  `1f729c3`, `b2648b0`.
+- STATE.md and ROADMAP.md were NOT modified — the orchestrator owns those writes.
+
 ---
 *Phase: 15-calibration-operating-envelope-and-ci-gate*
 *Completed: 2026-08-04*
