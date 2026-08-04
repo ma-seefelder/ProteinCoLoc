@@ -44,8 +44,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # no second blind set. Phase 13 hit this exact problem and resolved it the same way
 # (`spike/p13/real_images.jl:65-73`): THE SANCTIONED SUBSTITUTE IS THE SIX COMMITTED MICROSCOPY
 # TIFFS UNDER test/test_images/, adopted precisely so that Phase 16's blind evaluation stays blind.
-# Task 2 of this plan appends the METADATA-ONLY availability record that says all of that with
-# numbers computed from the manifest rather than copied from prose.
+#
+# THE AVAILABILITY RECORD IS METADATA ONLY, AND IT IS COMPUTED. This runner reads the tier, split
+# and byte columns of the committed provenance manifest -- a text file whose whole purpose is
+# provenance -- and NOTHING ELSE. It opens no image row, lists no directory of image bytes, and
+# neither calls nor names the sole reachable accessor for the sealed rows. That is the narrower
+# property `spike/test/test_p14_decoupling.jl` grants the files on its metadata allowlist, and
+# being on that allowlist is a DECISION rather than a fix. Every count in the record -- the tier
+# breakdown, the split partition, the byte accounting -- is derived from the file, so a manifest
+# that changed would change the record instead of silently outliving it. The record says
+# UNFETCHED BY DESIGN rather than missing, because the bytes were never expected to be in a
+# checkout, and it says the D-03 bound is ABSENT NOT MERELY LOOSE, because `loose` would invite a
+# reader to discount a weak bound where in fact there is none.
 #
 # THE WITHDRAWN FIGURE APPEARS NOWHERE. D-03's corpus-derived miscoverage floor -- the ratio one
 # over thirty-one, roughly three per cent -- is WITHDRAWN, not merely superseded: it was computed
@@ -95,6 +105,12 @@ using JLD2
 using Statistics
 using Dates
 using SHA
+# THE MANIFEST IS A COMMITTED TEXT FILE AND IS READ AS METADATA ONLY. `CSV` and `DataFrames` are
+# both among the frozen sixteen, so this adds no dependency and forces no `Pkg.resolve` (D-02).
+# A hand-rolled comma split would be WRONG here as well as unnecessary: two rows of the manifest
+# carry quoted fields containing commas, and splitting on the delimiter shears them.
+using CSV
+using DataFrames
 
 # --- Guarded includes, in dependency order --------------------------------------------------------
 # THE ORDER IS 14-09's, COPIED RATHER THAN REDERIVED. `decide.jl` pulls the SHIPPED
@@ -176,6 +192,37 @@ if !isdefined(@__MODULE__, :P14_REAL_RUNNER_LOADED)
     """
     const P14_REAL_PREDICTED_BEHAVIOUR =
         "ABSTAIN on both specimens (13-REPORT limit D: density 703.30 vs threshold 167.54, 4.198x)"
+
+    """
+    The provenance manifest, read as METADATA ONLY.
+
+    This runner is on the `_P14_CORPUS_METADATA_ALLOWED` allowlist of
+    `spike/test/test_p14_decoupling.jl`, and that allowlist grants a NARROWER property, not a pass:
+    metadata yes, the sealed image directory NEVER -- neither spelled as a path nor reached through
+    a constant nor opened by the sole reachable accessor. Adding a file to that allowlist is a
+    DECISION, not a fix. The manifest itself is a committed text file whose entire purpose is
+    provenance; reading its tier, split and byte columns opens no image.
+    """
+    const P14_MANIFEST_PATH = joinpath(P14_REPO_ROOT, "corpus", "manifest.csv")
+
+    """
+    The ignore file whose rules are the EVIDENCE that the image bytes are unfetched BY DESIGN
+    rather than lost.
+
+    The matching lines and their line numbers are read at RUN TIME rather than transcribed, because
+    a transcribed line number goes stale the first time an unrelated rule is inserted above it --
+    and this one already had: 14-CONTEXT D-03a cites a line range that no longer holds.
+    """
+    const P14_GITIGNORE_PATH = joinpath(P14_REPO_ROOT, ".gitignore")
+
+    "The needle the ignore-rule evidence is selected by. Deliberately the ROOT name and nothing more."
+    const P14_MANIFEST_ROOT_TOKEN = "corpus"
+
+    "The two tier labels the record reports by name, so a renamed tier shows up as a zero count."
+    const P14_TIER_LABELS = ("simulated-secondary", "physical-primary")
+
+    "The three split labels, likewise. `sealed_holdout` is Phase 16's, and is never read here."
+    const P14_SPLIT_LABELS = ("dev", "eval", "sealed_holdout")
 
     # Declared UNCONDITIONALLY at the foot of the block, so it is the sentinel and nothing else can
     # make this body skip.
@@ -312,6 +359,194 @@ function _p14_real_row(r::P14Result)
             cross_method      = cm_flat)
 end
 
+"""
+    _p14_gitignore_evidence() -> NamedTuple
+
+The ignore rules that keep the downloaded image bytes out of git, read at RUN TIME with their line
+numbers, as `(available, line_numbers, lines, note)`.
+
+**Computed, never transcribed.** 14-CONTEXT D-03a cites a line range for these rules that no longer
+holds -- unrelated rules were inserted above them -- which is exactly the failure mode a quoted
+line number has. Selecting the lines by the manifest's own root name means the record moves with
+the file instead of drifting away from it, and a reader gets the rule text itself rather than a
+pointer that may or may not still land on it.
+
+This is the evidence for the word BY DESIGN in `corpus_status`. Without it, "the bytes are not on
+disk" is a claim; with it, the reason is on the record and checkable.
+"""
+function _p14_gitignore_evidence()
+    isfile(P14_GITIGNORE_PATH) || return (
+        available = false, line_numbers = Int[], lines = String[],
+        note = "no ignore file was found at $(P14_GITIGNORE_PATH); the by-design reading rests " *
+               "on the manifest's own byte accounting alone")
+    nums = Int[]
+    lns  = String[]
+    for (i, ln) in enumerate(eachline(P14_GITIGNORE_PATH))
+        occursin(P14_MANIFEST_ROOT_TOKEN, ln) || continue
+        push!(nums, i)
+        push!(lns, rstrip(ln))
+    end
+    return (available = !isempty(nums), line_numbers = nums, lines = lns,
+            note = "the ignore rules were located by name at run time, not transcribed from a " *
+                   "cited line range; the range 14-CONTEXT D-03a quotes has since drifted")
+end
+
+"""
+    _p14_manifest_metadata() -> NamedTuple
+
+The provenance manifest's tier, split and byte accounting, COMPUTED FROM THE FILE.
+
+# Metadata only, and what that excludes
+
+Three columns are read -- `tier`, `split`, `bytes` -- from a committed text file. No image row is
+opened, no directory under the manifest's root is listed, and the sole reachable accessor for the
+sealed rows is neither called nor named. The narrower allowlisted property
+`spike/test/test_p14_decoupling.jl` grants this runner is exactly that one.
+
+# Why every count is derived rather than written down
+
+The tier and split breakdowns are the whole substance of D-03a's first claim, and a hard-coded
+"30 / 2" would keep reading correctly on the day the manifest changed and the claim stopped being
+true. Deriving them means the record changes with the file. The two tier labels and the three split
+labels ARE named -- so a renamed label shows up as a zero count rather than vanishing from a
+collected set -- and the per-label counts are then asserted to exhaust the table.
+
+`CSV.read` is used rather than a comma split because two rows carry quoted fields containing
+commas; splitting on the delimiter shears them and silently mis-assigns every later column.
+"""
+function _p14_manifest_metadata()
+    isfile(P14_MANIFEST_PATH) || error(
+        "run_p14_real_images: the provenance manifest is absent at $(P14_MANIFEST_PATH). It is a " *
+        "COMMITTED text file, so its absence means this is not the shipped tree -- and the SC1-f " *
+        "availability record must be computed from it rather than asserted from prose.")
+    df = CSV.read(P14_MANIFEST_PATH, DataFrame; comment = "#")
+    for col in (:tier, :split, :bytes)
+        hasproperty(df, col) || error(
+            "run_p14_real_images: the manifest carries no `$col` column. The availability record " *
+            "is computed from the file; a schema drift must fail BY NAME rather than produce a " *
+            "record about columns that are not there.")
+    end
+
+    tiers  = String.(df.tier)
+    splits = String.(df.split)
+    bytes  = Int.(df.bytes)
+    n_rows = length(tiers)
+
+    tier_breakdown  = [(tier = t,  n = count(==(t), tiers))  for t in P14_TIER_LABELS]
+    split_breakdown = [(split = s, n = count(==(s), splits)) for s in P14_SPLIT_LABELS]
+    @assert sum(r.n for r in tier_breakdown) == n_rows "run_p14_real_images: the named tier labels $(P14_TIER_LABELS) account for $(sum(r.n for r in tier_breakdown)) of $n_rows manifest rows; a row in an unnamed tier would be invisible in the breakdown"
+    @assert sum(r.n for r in split_breakdown) == n_rows "run_p14_real_images: the named split labels $(P14_SPLIT_LABELS) account for $(sum(r.n for r in split_breakdown)) of $n_rows manifest rows"
+
+    is_physical = tiers .== "physical-primary"
+    is_sealed   = splits .== "sealed_holdout"
+    has_bytes   = bytes .> 0
+
+    return (n_rows = n_rows,
+            tier_breakdown = tier_breakdown,
+            split_breakdown = split_breakdown,
+            n_simulated_secondary = count(==("simulated-secondary"), tiers),
+            n_physical_primary = count(is_physical),
+            n_dev = count(==("dev"), splits),
+            n_eval = count(==("eval"), splits),
+            n_sealed_holdout = count(is_sealed),
+            images_available = count(has_bytes),
+            bytes_total = sum(bytes),
+            n_physical_unsealed_with_bytes = count(is_physical .& (.!is_sealed) .& has_bytes),
+            n_physical_sealed = count(is_physical .& is_sealed),
+            path = P14_MANIFEST_PATH,
+            sha256 = _p14_real_digest(P14_MANIFEST_PATH))
+end
+
+"""
+    _p14_corpus_record() -> NamedTuple
+
+The SC1-f availability record: what the provenance manifest holds, why none of it is read here, and
+what that costs the claim.
+
+# The four sentences this record exists to make un-droppable
+
+**UNFETCHED, NOT GONE.** Every row records zero bytes and the ignore rules keep downloaded image
+bytes out of git, so the data was never expected to be in a checkout. Reporting it as missing would
+be false in the direction that flatters this phase -- it would make an unmade decision look like an
+unavoidable circumstance. A fetch is a licence and bandwidth decision, explicitly a human one, and
+out of Phase-14 scope.
+
+**NO UNSEALED PHYSICAL TRUTH.** The overwhelming majority of rows are `simulated-secondary` -- the
+CBS benchmark, i.e. another simulator -- and every `physical-primary` row is Phase 16's sealed
+holdout. So even a completed fetch would not have produced the physical check D-03 wanted.
+
+**THE SEALED HOLDOUT IS NOT READ.** Not in a script, not in a test, not behind a flag. There is no
+second blind set, so reading one row would irreversibly burn the evaluation it exists for.
+
+**THE MISSING BOUND IS ABSENT, NOT LOOSE.** `d03_bound_status = :absent_not_loose`, in those words,
+because "loose" implies a weak bound exists and a reader may discount it accordingly. Nothing here
+bounds the real-data behaviour at all; the six committed TIFFs illustrate it.
+"""
+function _p14_corpus_record()
+    m  = _p14_manifest_metadata()
+    gi = _p14_gitignore_evidence()
+
+    return (manifest_metadata = m,
+            gitignore_evidence = gi,
+            corpus_images_available = m.images_available,
+            corpus_status = :unfetched_by_design,
+            corpus_status_note =
+                "UNFETCHED BY DESIGN. Every one of the $(m.n_rows) manifest rows records zero " *
+                "bytes (total $(m.bytes_total)), and the ignore rules recorded verbatim in " *
+                "`gitignore_evidence` keep downloaded image bytes out of git while " *
+                "`fetch.jl` beside the manifest is the fetcher. The data is therefore " *
+                "unfetched: it was never expected to be present in a checkout, and it has not " *
+                "been deleted or lost. Fetching it is a licence and bandwidth decision, " *
+                "explicitly flagged as a human one, and it is OUT OF PHASE-14 SCOPE. The byte " *
+                "accounting above is COMPUTED from the manifest; the sealed image directory is " *
+                "never listed, opened or named by this runner.",
+            tier_breakdown = m.tier_breakdown,
+            split_breakdown = m.split_breakdown,
+            physical_truth_available = m.n_physical_unsealed_with_bytes > 0,
+            physical_truth_note =
+                "The only $(m.n_physical_primary) `physical-primary` rows are Phase 16's sealed " *
+                "holdout ($(m.n_physical_sealed) of them), and they are NOT read here -- not in " *
+                "a script, not in a test, not behind a flag. There is no second blind set, so " *
+                "consuming one would irreversibly burn the blind evaluation on the very " *
+                "hypothesis it exists to evaluate. The remaining " *
+                "$(m.n_simulated_secondary) rows are `simulated-secondary` (the CBS benchmark, " *
+                "i.e. another simulator) and are not physical ground truth either, so a " *
+                "completed fetch would still not have produced the physical check D-03 wanted.",
+            substitution_record =
+                (from = "the provenance manifest's physical-primary anchors, both of which are " *
+                        "`split = sealed_holdout` and reserved for the Phase-16 blind evaluation",
+                 to = "the six committed microscopy TIFFs under " * P14_REAL_SUBSTRATE_ROOT,
+                 precedent = "spike/p13/real_images.jl:71,145",
+                 amendment = ".planning/phases/13-three-hypothesis-amortized-bayes-factor/" *
+                             "13-D15-AMENDMENT.md",
+                 rationale = "precisely so that Phase 16's blind corpus stays blind",
+                 decision = "D-03a, which supersedes D-03's corpus half and not its simulator half",
+                 sealed_holdout_read = false,
+                 metadata_only = true),
+            withdrawn_figure_note =
+                "WITHDRAWN, NOT MERELY SUPERSEDED. D-03 recorded a miscoverage floor derived " *
+                "from the manifest -- the ratio of one to thirty-one, roughly three per cent -- " *
+                "and it must not appear in any Phase-14 artifact or report. It was computed from " *
+                "the wrong n (the manifest is partitioned dev = $(m.n_dev) / eval = $(m.n_eval) " *
+                "/ sealed_holdout = $(m.n_sealed_holdout), not `30 open`) AND on rows that are " *
+                "not physical truth ($(m.n_simulated_secondary) of $(m.n_rows) are " *
+                "`simulated-secondary`). The numeral is banned from Phase-14 executable code by " *
+                "`spike/test/test_p14_decoupling.jl`, so it is written here in prose rather " *
+                "than as a literal -- which is also why a reader will not find it as a number " *
+                "anywhere in this artifact.",
+            d03_bound_status = :absent_not_loose,
+            d03_bound_note =
+                "The bounding evidence D-03 intended is UNAVAILABLE, so the bound is ABSENT, NOT " *
+                "MERELY LOOSE. Those are the words, and the difference matters: `loose` invites " *
+                "a reader to discount a weak bound, whereas nothing in this phase bounds the " *
+                "layer's behaviour on real microscopy at all. The conformal guarantee remains " *
+                "SIMULATOR-DERIVED and inherits the simulator's misspecification in full; the " *
+                "six committed TIFFs ILLUSTRATE the behaviour and bound nothing.",
+            corpus_metadata_only = true,
+            corpus_images_opened = 0,
+            sealed_holdout_read = false)
+end
+
 # =============================================================================================
 # The reported run
 # =============================================================================================
@@ -353,6 +588,14 @@ function main(; channels = P13_REAL_CHANNEL_PAIR,
         test_untracked = readchomp(Cmd(`git status --porcelain -- test`; dir = P14_REPO_ROOT))
         @assert isempty(src_untracked) "D-01 decoupling breach: an UNTRACKED file appeared under src/ ($(src_untracked)) -- a diff against HEAD cannot see it, and shipping the decision layer by stealth is precisely what D-01 forbids"
         @assert isempty(test_untracked) "T-14-45: the fixture tree under test/ is not clean before the run ($(test_untracked)). The six TIFFs are READ-ONLY INPUT; a dirty tree means this is not the shipped substrate."
+        # T-14-04, asserted on BOTH sides of the metadata read: the provenance tree is byte-
+        # unchanged and untracked-clean. A metadata read cannot dirty it, which is precisely why
+        # an assertion here is cheap and why its failure would mean something other than a read
+        # happened.
+        prov_clean     = success(Cmd(`git diff --quiet HEAD -- corpus`; dir = P14_REPO_ROOT))
+        prov_untracked = readchomp(Cmd(`git status --porcelain -- corpus`; dir = P14_REPO_ROOT))
+        @assert prov_clean "T-14-04: the provenance tree is not byte-unchanged against HEAD before the run; this runner reads its manifest as METADATA ONLY and may not run against a modified one"
+        @assert isempty(prov_untracked) "T-14-04: an untracked file appeared in the provenance tree ($(prov_untracked)); a fetch or a stray write would make the availability record describe something other than the committed manifest"
     end
 
     # --- 1. THE STRUCTURAL READ-ONLY DIGEST, BEFORE ANY FILE IS OPENED -----------------------
@@ -411,7 +654,7 @@ function main(; channels = P13_REAL_CHANNEL_PAIR,
     # `real_tif` validates the condition and the channel index against the pre-registration and
     # raises naming the expected absolute path if a fixture is missing, so the failure says WHICH
     # file rather than surfacing a bare SystemError from inside the image loader.
-    verbose && println("[1/5] asserting and digesting the six committed TIFFs …")
+    verbose && println("[1/6] asserting and digesting the six committed TIFFs …")
     files = NamedTuple[]
     for cond in P13_REAL_CONDITIONS, ch in P14_REAL_ALL_CHANNELS
         p = real_tif(cond, ch)
@@ -429,7 +672,7 @@ function main(; channels = P13_REAL_CHANNEL_PAIR,
     # src": no byte of src/ is edited by this phase and the decision layer is NOT shipped in v2.0.
     # `allow_unchecked_ood = false` is the D-06 default and is passed EXPLICITLY, because the whole
     # reading depends on it: with it true a :not_checked specimen would DECIDE rather than abstain.
-    verbose && println("[2/5] loading both conditions and deciding at the LOADED q-hat …")
+    verbose && println("[2/6] loading both conditions and deciding at the LOADED q-hat …")
     results = P14Result[]
     unit_rows = NamedTuple[]
     for (i, u) in enumerate(P14_REAL_UNITS)
@@ -478,16 +721,30 @@ function main(; channels = P13_REAL_CHANNEL_PAIR,
     observed = Symbol[decision(r) for r in results]
     prediction_held = all(d -> d === :abstain, observed)
 
-    # --- 8. THE READ-ONLY PROOF, RE-TAKEN -----------------------------------------------------
+    # --- 8. THE CORPUS AVAILABILITY RECORD, METADATA ONLY -------------------------------------
+    # Computed from the committed manifest text, never copied from prose and never hard-coded, so
+    # the record changes if the manifest does. No image row is opened; the sealed holdout is not
+    # read -- not in a script, not in a test, not behind a flag.
+    verbose && println("[3/6] computing the corpus availability record (METADATA ONLY) …")
+    corpus = _p14_corpus_record()
+
+    # --- 9. THE READ-ONLY PROOF, RE-TAKEN -----------------------------------------------------
     digest_after = verify_real_readonly_digest()
 
-    # --- 9. PERSIST THE REPORT, BEFORE ANY TABLE IS PRINTED -----------------------------------
-    verbose && println("[3/5] persisting the SC1-f report (BEFORE anything is printed) …")
+    # --- 10. PERSIST THE REPORT, BEFORE ANY TABLE IS PRINTED ----------------------------------
+    verbose && println("[4/6] persisting the SC1-f report (BEFORE anything is printed) …")
     consts_path = joinpath(@__DIR__, "consts.jl")
     _p14_real_save_report(report_path,
         ("images", "decision_units", "predicted_behaviour", "prediction_held", "observed_decisions",
          "is_coverage_claim", "illustration_note", "readonly_digest_before",
-         "readonly_digest_after", "substrate_root", "provenance");
+         "readonly_digest_after", "substrate_root", "provenance",
+         # --- the availability record: every key of it REQUIRED, so a report that dropped the
+         #     honest account of what was NOT read is never written at all.
+         "corpus_images_available", "corpus_status", "corpus_status_note", "tier_breakdown",
+         "split_breakdown", "physical_truth_available", "substitution_record",
+         "withdrawn_figure_note", "d03_bound_status");
+        # --- THE AVAILABILITY RECORD, splatted in so it CANNOT be dropped ---
+        corpus...,
         # --- WHAT THIS IS NOT. Required keys, so a report that failed to say so is never written.
         is_coverage_claim = false,
         illustration_note =
@@ -583,9 +840,9 @@ function main(; channels = P13_REAL_CHANNEL_PAIR,
         generated = string(Dates.now(Dates.UTC)) * "Z")
     verbose && println("      persisted (before anything is printed) -> $report_path")
 
-    # --- 10. THE SIX-ROW TABLE, PRINTED AFTER THE ARTIFACT IS ON DISK -------------------------
+    # --- 11. THE SIX-ROW TABLE, PRINTED AFTER THE ARTIFACT IS ON DISK -------------------------
     if verbose
-        println("[4/5] the six committed TIFFs")
+        println("[5/6] the six committed TIFFs")
         println("\n", "-"^78)
         println("SC1-f: THE DECISION LAYER ON THE SIX COMMITTED MICROSCOPY TIFFS (D-03a)")
         println("  substrate = $P14_REAL_SUBSTRATE_ROOT   operative pair = $chans")
@@ -606,7 +863,40 @@ function main(; channels = P13_REAL_CHANNEL_PAIR,
                     "$(row.cross_method.costes_p_sample)   basis = $(row.cross_method.basis)")
         end
         println()
-        println("[5/5] the prediction and its outcome, side by side")
+        println("[6/6] the availability record -- METADATA ONLY, no image row was opened")
+        println("  manifest             = $(corpus.manifest_metadata.path)")
+        println("  rows                 = $(corpus.manifest_metadata.n_rows)   " *
+                "sha256 = $(corpus.manifest_metadata.sha256)")
+        println("  TIER BREAKDOWN (computed from the file, never hard-coded)")
+        for r in corpus.tier_breakdown
+            println("    $(rpad(r.tier, 22)) $(r.n)")
+        end
+        println("  SPLIT BREAKDOWN")
+        for r in corpus.split_breakdown
+            println("    $(rpad(r.split, 22)) $(r.n)")
+        end
+        println("  images available     = $(corpus.corpus_images_available)   " *
+                "total bytes = $(corpus.manifest_metadata.bytes_total)")
+        println("  status               = $(corpus.corpus_status)")
+        println("  physical truth available = $(corpus.physical_truth_available)")
+        println("  sealed holdout read  = $(corpus.sealed_holdout_read)   " *
+                "images opened = $(corpus.corpus_images_opened)")
+        println("  D-03 bound status    = $(corpus.d03_bound_status)")
+        println("  IGNORE-RULE EVIDENCE (located at run time, not transcribed)")
+        if corpus.gitignore_evidence.available
+            for (n, l) in zip(corpus.gitignore_evidence.line_numbers,
+                              corpus.gitignore_evidence.lines)
+                println("    .gitignore:$(rpad(n, 5)) $l")
+            end
+        else
+            println("    $(corpus.gitignore_evidence.note)")
+        end
+        println("  UNFETCHED, NOT MISSING. The bytes were never expected to be in a checkout; a")
+        println("  fetch is a human licence-and-bandwidth decision and is out of Phase-14 scope.")
+        println("  THE MISSING D-03 BOUND IS ABSENT, NOT MERELY LOOSE.")
+        println("  THE WITHDRAWN D-03 FIGURE IS RECORDED AS WITHDRAWN AND APPEARS AS NO NUMERAL.")
+        println()
+        println("THE PREDICTION AND ITS OUTCOME, SIDE BY SIDE")
         println("  PREDICTED : $P14_REAL_PREDICTED_BEHAVIOUR")
         println("  OBSERVED  : $observed")
         println("  HELD      : $prediction_held")
@@ -634,7 +924,7 @@ function main(; channels = P13_REAL_CHANNEL_PAIR,
         reported || println("SMOKE MODE: these numbers are NOT the reported record.")
     end
 
-    # --- 11. THE STRUCTURAL ASSERTIONS, LAST --------------------------------------------------
+    # --- 12. THE STRUCTURAL ASSERTIONS, LAST --------------------------------------------------
     # PERSISTED FIRST, PRINTED SECOND, ASSERTED THIRD. There is no THRESHOLD to assert -- SC1-f has
     # none -- but the read-only discipline is a property this run must not have broken, and it is
     # checked after the artifact is safely on disk so the evidence survives the failure.
@@ -651,7 +941,7 @@ function main(; channels = P13_REAL_CHANNEL_PAIR,
     """
 
     return (images = images, decision_units = unit_rows, results = results,
-            observed_decisions = observed, prediction_held = prediction_held,
+            corpus = corpus, observed_decisions = observed, prediction_held = prediction_held,
             is_coverage_claim = false, qhat = qh.qhat, reported = reported,
             readonly_digest = digest_after, report_path = report_path,
             elapsed_s = time() - t_start)
