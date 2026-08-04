@@ -1,0 +1,196 @@
+# ---------------------------------------------------------------------------------------
+# full-scale calibration (slow tier)
+#
+# THE SLOW TIER of the D-08 two-tier calibration gate. The fast tier (`ci.yml`) makes SC3's
+# claim — "an SBC/coverage regression test fails CI on calibration drift" — LITERALLY true by
+# asserting a deterministic fixture at M = 8. THIS tier is what makes it MEAN something: it runs
+# the SBC/coverage arm at REPORTED scale, where an ECE carries calibration information at all.
+#
+# (a) TRIGGER DISCIPLINE — a required D-08 deliverable, not a nicety.
+#     This workflow runs on `release: [published]` and on manual `workflow_dispatch`. There is
+#     DELIBERATELY NO nightly or weekly trigger. That is a decision, not an oversight: a recurring
+#     job consumes Actions minutes continuously and needs a failure-routing policy — who is paged,
+#     what a red run on a quiet week means, who is allowed to close it — and no such policy exists
+#     for this repository yet. Adding the trigger without the policy produces a job that goes red,
+#     is ignored, and trains everyone to ignore it. Recorded here as a DEFERRED idea so the next
+#     reader knows it was weighed.
+#
+# (b) HOW YOU KNOW THIS TIER IS STILL ALIVE.
+#     The evidence is the path of the LAST SUCCESSFUL RUN'S UPLOADED REPORT: the `slow-report`
+#     artifact containing `slow_calibration_report.jld2`. A dispatch-only workflow that nobody
+#     dispatches is SILENTLY DEAD — indistinguishable from a healthy one at a glance — and that
+#     silent death is the exact failure mode D-08 names. If the newest `slow-report` artifact
+#     predates the newest change to the inference path, this tier is not gating anything.
+#     The first dispatch attempt and its outcome are recorded in
+#     `.planning/phases/15-calibration-operating-envelope-and-ci-gate/15-CI-EVIDENCE.md`.
+#
+# (c) WHAT THIS TIER DELIBERATELY DOES NOT RUN — read before "fixing" it.
+#     It runs the reported-scale SBC arm ONLY. It does NOT run the 7-axis envelope sweep.
+#     GitHub-hosted `ubuntu-latest` runners are 4-CORE and a job is capped at 6 HOURS
+#     (15-CI-BASELINE.md §2 observed the 4-core runner directly). The sweep is ~8.5 h AT 32
+#     THREADS, so on 4 cores it is multiples of the cap: porting it here guarantees a timeout on a
+#     job that has already burned hours of billed minutes. The sweep is a ONE-OFF LOCAL RUN whose
+#     artifact is a committed report, exactly like `gate-8x8-amended.md`.
+#     Anyone tempted to "fix" that by fanning this job out over the seven axes should read this
+#     paragraph first: the fan-out does not shrink the total work, it multiplies the fixed
+#     ~15-minute cold-cache overhead by seven and still runs each axis on 4 cores.
+#
+# (d) THE ONE EXTERNALLY-INFLUENCED VALUE.
+#     `sweep_m` is the only value anyone outside the repository can influence in this phase. It
+#     reaches Julia THROUGH THE ENVIRONMENT (`P15_SLOW_M`) and is never interpolated into a shell
+#     command line; `test/gate/run_slow_calibration.jl` parses it with `tryparse` and hard-bounds
+#     it to 100:5000 BEFORE the package is loaded (T-15-07 unbounded compute, T-15-05 script
+#     injection). On the release trigger the input is absent, the variable is the empty string, and
+#     the script falls back to the pre-registered `P15_SWEEP_M` — the intended default.
+#
+# ENVIRONMENT RECIPE — COPIED, NOT RE-DERIVED.
+# The apt list, the Julia pin, the instantiate step and the `xvfb-run` prefix all come from
+# `.github/workflows/headless-smoke.yml` and its measured baseline in
+# `.planning/phases/15-calibration-operating-envelope-and-ci-gate/15-CI-BASELINE.md`
+# (runs 30935050140 / 30936970798 / 30937534659). A change to the apt list belongs in
+# `headless-smoke.yml` first, gets proven by a green run there, and only then propagates here.
+#
+# KNOWN-GATED, STATED RATHER THAN HIDDEN.
+# `run_slow_calibration.jl` resolves the shipped net through `ProteinCoLoc.estimator_for(8)`.
+# `Artifacts.toml` points `grid_8` at a `v2.0.0` GitHub release that DOES NOT EXIST — the asset URL
+# and the pkg.julialang.org mirror both return HTTP 404, and only v1.0.1 and v1.0.0.compiled are
+# published (15-CI-BASELINE.md §5). Until that release is published this job CANNOT go green, for a
+# reason that has nothing to do with calibration. It is deliberately left blocking: making the step
+# non-fatal here would turn a true statement about a broken shipping path into a green badge.
+#
+# SECURITY POSTURE.
+# Workflow-level `permissions: contents: read` only. Neither trigger runs contributor-controlled
+# content against a write-scoped token — the privileged fork-trigger variant is deliberately absent
+# from this file, as it is from `ci.yml`. No value from the event payload is interpolated into any
+# `run:` block. The third-party actions are pinned to MAJOR TAGS, which are mutable refs;
+# SHA-pinning them is a recorded pre-v2.0-release hardening item (15-CI-BASELINE.md §6, T-15-06).
+# ---------------------------------------------------------------------------------------
+name: full-scale calibration (slow tier)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      sweep_m:
+        description: 'SBC draws (M). Integer in 100..5000; empty uses the pre-registered P15_SWEEP_M.'
+        default: '1000'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  full-sbc:
+    name: reported-scale SBC on the shipped grid-8 net
+    runs-on: ubuntu-latest
+
+    # BUDGET. The 6 h GitHub-hosted job cap is the hard ceiling; 350 min leaves ~10 min of slack
+    # for the runner's own setup and the artifact upload. What that number is and is NOT:
+    #
+    #   • It is a DENIAL-OF-SERVICE BACKSTOP on the `sweep_m` input, not a promise that every
+    #     admissible M finishes. At the top of the admissible range (M = 5000) on 4 cores the arm
+    #     does not fit inside the cap at all, and this timeout is what stops it burning six hours
+    #     to find that out.
+    #   • It is NOT derived from a completed full-scale dispatch run. As of 15-08 no such run
+    #     exists: `workflow_dispatch` requires the workflow file to be present on the DEFAULT
+    #     branch, and this file is not on `main` yet (see 15-CI-EVIDENCE.md for the observed
+    #     refusal). The first dispatch after this lands on `main` is the measurement, and this
+    #     number is the one to revisit then — not the calibration bars.
+    #
+    # The estimate it IS built from, with every step labelled:
+    #   measured, 15-CI-BASELINE.md §2: fixed overhead 15 m 21 s cold / ~1 m warm on ubuntu-latest.
+    #   measured locally (15-08, this machine, 32 threads, Julia 1.12.6, M = 100 over the F5
+    #     image-size mixture): 1.066 s/draw, i.e. 1.78 min for M = 100. Scaled linearly, M = 1000
+    #     is ~18 min at 32 threads. (This per-draw figure still carries the arm's one-off compile
+    #     cost spread over only 100 draws, so it is an UPPER bound on the marginal draw cost; the
+    #     reconciled cost model's 0.656 s/draw is the large-M asymptote.)
+    #   EXTRAPOLATED (not measured): a 4-core runner is 4-6x slower on the simulate-dominated part,
+    #     giving ~70-105 min for M = 1000, i.e. ~85-120 min end to end on a cold cache.
+    # 350 is therefore ~3x headroom over the DEFAULT M and a hard stop for anything larger.
+    timeout-minutes: 350
+
+    # `ubuntu-latest` is 4-core (15-CI-BASELINE.md §2, observed). Pinned explicitly because a
+    # single-threaded arm is ~13x slower than the 32-thread reference the cost model is written
+    # against — that is a budget error, not a style choice. `P15_SWEEP_MIN_THREADS = 16` is the
+    # sweep's floor and 4 is below it; the script prints that fact. It costs WALL-CLOCK ONLY: the
+    # rank table rides the counter-based Philox stream and is thread-count independent.
+    env:
+      JULIA_NUM_THREADS: '4'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Must run BEFORE any Julia step: GLMakie's precompilation itself touches the GL stack, and
+      # `src/ProteinCoLoc.jl:28` imports GLMakie unconditionally at module load. This list is
+      # byte-identical to the one recorded as working in 15-CI-BASELINE.md §3 (zero iterations
+      # required; proven sufficient, not proven minimal).
+      - name: Install OpenGL/X system libraries and xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xorg-dev \
+            mesa-utils \
+            xvfb \
+            libgl1 \
+            freeglut3-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxext-dev
+
+      # Pinned EXACTLY to the manifest's `julia_version`. Never '1', 'lts' or 'min': a different
+      # minor makes the committed manifest unusable.
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12.6'
+          show-versioninfo: true
+
+      # Defaults kept, in particular `cache-artifacts: true`, so the 5.75 MB `grid_8` artifact is
+      # cached. Measured worth: `Pkg.instantiate()` is 11 m 41 s cold vs 3 s warm (~230x), and
+      # package load 2 m 28 s cold vs 14 s warm. Do not disable. Default scoping is retained —
+      # widening `cache-name` across a trust boundary is a cache-poisoning vector (T-15-08).
+      - uses: julia-actions/cache@v3
+
+      # D-08a: install from the COMMITTED MANIFEST, never by resolving. Instantiate is the ONLY
+      # package-manager verb in this workflow.
+      - name: Install from the committed manifest
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      # `xvfb-run -a` is LOAD-BEARING on every step that loads the package, measured rather than
+      # assumed: an explicit control step without the prefix died in run 30937534659 with
+      # `GLFW.GLFWError(65550, "X11: The DISPLAY environment variable is missing")` inside GLFW's
+      # `__init__` (15-CI-BASELINE.md §4).
+      #
+      # THE INPUT CROSSES INTO THIS STEP THROUGH `env:` AND NOWHERE ELSE. It is not part of the
+      # command line, so no quoting, escaping or shell metacharacter in it can change what runs;
+      # the script reads it with `tryparse` and rejects anything outside 100:5000 before loading
+      # the package (T-15-05, T-15-07).
+      - name: Reported-scale SBC and coverage
+        env:
+          P15_SLOW_M: ${{ inputs.sweep_m }}
+        run: xvfb-run -a julia --project=. --threads=auto test/gate/run_slow_calibration.jl --out slow-report
+
+      # `if: always()` so a FAILING run still leaves its evidence. The report is this tier's
+      # aliveness evidence (see the header); losing it on the runs that matter most would be
+      # exactly backwards.
+      - name: Upload the run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slow-report
+          path: slow-report/
+          if-no-files-found: warn
+
+      - name: What a red run means
+        if: failure()
+        run: |
+          echo "A red SLOW tier means one of three things, and they are not interchangeable:"
+          echo "  1. the shipped net is MISCALIBRATED at reported scale (exit 1) — the finding"
+          echo "     this tier exists to produce;"
+          echo "  2. the grid_8 artifact could not be resolved — a broken SHIPPING path, not a"
+          echo "     calibration result (see 15-CI-BASELINE.md section 5);"
+          echo "  3. the anchor block is unreadable (exit 4) — a wiring defect."
+          echo "Read the step log before concluding anything. Do NOT re-bless the fast-tier golden:"
+          echo "it is not consulted here. See .planning/phases/15-calibration-operating-envelope-and-ci-gate/15-REBLESS.md"
