@@ -1337,9 +1337,20 @@ end
 
 ---
 
-## Open Questions
+## Open Questions (ALL FOUR RESOLVED 2026-08-04 — rulings in `15-CONTEXT.md` AMENDMENTS)
 
-1. **The D-10 `grid_16` contrast — the only planning blocker that needs a user ruling.**
+> **Resolution index.** All four were ruled by the user before planning; each ruling is recorded as
+> an appended amendment in `15-CONTEXT.md` and is threaded through the plans. This section is kept
+> as the record of what was open and why — not as live work.
+>
+> | # | Question | Resolved by | Ruling |
+> |---|---|---|---|
+> | 1 | `grid_16` contrast | **D-10a** | **DROPPED** — option (i). Envelope is `amended_v2/grid_8` only; the drop is carried as a named limit. *(Correction to the finding below: `training_imsize_provenance` is not `recorded = false`, it is ABSENT from `npe_16.jld2`'s meta `(:grid, :n_pairs, :use_gpu)` entirely — verified directly. Same consequence, no field to inspect.)* |
+> | 2 | `background` prior boundary | **D-02a** | **Pure-offset generator written** — a SEVENTH axis whose `level` maps onto the simulator's autofluorescence offset. Existing `background` reclassified out-of-model-only. D-03 now holds on every in-prior axis. |
+> | 3 | `P15_ECE_MARGIN` form | **D-04a** | **`q95 − E`** — ~5% per-rung false-break rate, ≈1.75 expected false breaks over 35 axis×rung tests. The map is therefore read PER AXIS, not per rung. |
+> | 4 | Tighten `[compat]` | **D-08a** | **NO** — `[compat]` left untouched; CI uses `Pkg.instantiate()` from the committed manifest so the co-resolution gate's exact pins are what CI gets. |
+
+1. **The D-10 `grid_16` contrast — the only planning blocker that needs a user ruling.** *(RESOLVED — D-10a: dropped.)*
    - *What we know:* `artifacts/grid_16/npe_16.jld2` exists but reports `recorded = false` training
      provenance; `run_gate` refuses (`:provenance_mismatch`) under the amended pre-registration; there
      is no `amended_v2/grid_16`; and retraining is forbidden (07-GATE-AMENDMENT §6.4, and D-10 itself
