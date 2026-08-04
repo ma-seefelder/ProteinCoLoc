@@ -209,7 +209,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 12. Spatial Colocalization Map (GP/CAR) | 11/20 | In Progress|  |
 | 13. Three-Hypothesis Amortized Bayes Factor | 16/17 | In Progress| 13-16: real-image arm REPORTED — **all its figures SUPERSEDED**, measured on the DAPI-counterstain pair (RANDOM on both pairs, both OOD-flagged 2.49x/2.42x, agreement). 13-17 corrected the operative pair to c2/c3 green/red per `13-D15-AMENDMENT.md`, **dropped** the redundancy arm (no second pair exists) and **re-ran the arm once**: on the amended pair the verdict is **COLOC / RANDOM** (was RANDOM / RANDOM) and both fixtures are OOD-flagged **4.198x / 5.297x — WORSE than the superseded 2.49x / 2.42x**. **The CONCLUSION is unchanged**: qualitative, n = 2, unlabelled, OOD-bound. **The gating arm is unaffected and no threshold moved**; D-04 allowance unspent |
 | 14. Decision + Abstention Layer | 11/14 | In Progress|  |
-| 15. Calibration Operating Envelope + CI Gate | 0/TBD | Not started | - |
+| 15. Calibration Operating Envelope + CI Gate | 0/9 | Planned | - |
 | 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
 
 ### Phase 8: External Physical Ground-Truth Corpus
@@ -494,16 +494,45 @@ Plans:
 
 **Goal**: Map the tool's domain of applicability by adversarially sweeping nuisances until coverage breaks, prove the OOD flag fires before it does, and lock calibration into CI as a regression gate
 **Depends on**: Phases 11, 12
-**Requirements**: TBD
+**Requirements**: D-01..D-14 plus amendments D-02a, D-04a, D-08a, D-10a (`15-CONTEXT.md` decisions — no REQ IDs were minted for this phase; the decision set IS the requirement set)
 **Success Criteria** (what must be TRUE):
+> **SC1 is EXTENDED and SC2's evidential form is FIXED by `15-CONTEXT.md`.** SC1 by D-02/D-02a — all four
+> named axes are swept, and `texture`, `noise` and a pure-offset `autofluorescence` axis are ADDED, each
+> typed by mechanism (in-prior extrapolation vs out-of-model misspecification). SC2 by D-06 — the verdict
+> is THREE-valued per axis (PROTECTIVE / LATE / SILENT-BUT-SAFE) and passes iff no axis is LATE. Any
+> citation of a Phase-15 result must cite the original wording below alongside the amendment.
+> **This phase MEASURES a frozen shipped net** (`artifacts/amended_v2/grid_8`); `07-GATE-AMENDMENT.md`
+> §6.4 blocks iterating the current gate, and nothing here retrains, retunes or reships anything.
 
   1. An adversarial sweep over spillover/PSF/autofluorescence/registration yields a domain-of-applicability map
   2. The OOD flag demonstrably fires before empirical coverage breaks ("OOD-before-break")
   3. An SBC/coverage regression test fails CI on calibration drift after a code change
 
-**Plans**: TBD
+**Plans**: 9 plans in 5 waves (W1 pre-registration + headless-CI proof ; W2 generators ∥ break/SC2 rules ; W3 sweep arm ∥ fast-tier golden ; W4 the one reported sweep ∥ slow tier + observed-red evidence ; W5 the domain map)
 
-- [ ] TBD (run /gsd:plan-phase 15 to break down)
+**Wave 1** *(the pre-registration freeze — `p15_consts.jl` gates everything downstream, because an undetected seed collision invalidates every number the phase produces)*
+
+- [ ] 15-01-PLAN.md — Two-tier `test/gate/p15_consts.jl`: a fresh key-distinct `PROD_SEED_P15` with an asserted-and-firing disjointness guard, the frozen ladders/bars/mechanism typing, D-13's degenerate readings, the frozen-file SHA-256 pins, and the runtests wiring (D-01, D-03, D-04a, D-05, D-07, D-10a, D-11, D-12, D-13)
+- [ ] 15-02-PLAN.md — The isolated headless-load proof workflow: OpenGL/xvfb + `Pkg.instantiate()` on `ubuntu-latest`, retiring the highest-risk CI unknown before anything is built on it (D-08, D-08a) [autonomous:false]
+
+**Wave 2** *(blocked on 15-01)*
+
+- [ ] 15-03-PLAN.md — `test/gate/p15_misspec.jl`: the `spillover`, `registration` and pure-offset `autofluorescence` generators plus a LOCAL `P15_FAMILIES` merge, with rung-0 byte-identity, matched-pairs rng and `OOD_FAMILIES` immutability all asserted (D-02, D-02a, D-03)
+- [ ] 15-04-PLAN.md — `test/gate/p15_envelope.jl`: the rung-0-anchored ECE break criterion, the columns-1-and-8 reduction, the three-valued per-axis SC2 verdict, the measured-baseline fire-rate rule, and the `mce` / detector-retuning source guards (D-04, D-04a, D-05, D-06, D-07, D-14)
+
+**Wave 3** *(blocked on Wave 2 / on 15-01 + 15-02)*
+
+- [ ] 15-05-PLAN.md — `run_gate.jl --envelope`: orchestration only over the existing `sbc_gate` / `gate_ood_roc`, with `seed_gate_global!` wired in, thread and wall-clock budget guards, and a fixture-scale end-to-end proof (D-01, D-02a, D-05, D-10, D-11, D-13)
+- [ ] 15-06-PLAN.md — `test/gate/ci_golden.jl` + the fast-tier workflow + the `--rebless` refusal and the append-only guard that makes a silent regeneration fail the suite (D-08, D-08a, D-09)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 15-07-PLAN.md — The ONE reported run: pre-flight reconciliation, the rung-0 anchor measured at the sweep's own M and appended as Tier-2, then 7 axes × 5 rungs at M = 1000 → `envelope_report_8.jld2` (D-04a, D-05, D-06, D-07, D-10, D-11, D-13) [autonomous:false]
+- [ ] 15-08-PLAN.md — The slow tier with its trigger discipline recorded in-file, and the evidence SC3 actually needs: the fast gate OBSERVED going red on induced drift, and recovering (D-08, D-08a, D-09) [autonomous:false]
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 15-09-PLAN.md — `15-ENVELOPE.md`: the mechanism-typed domain map read per axis, the three-valued SC2 verdicts, the SC1/SC2/SC3 answers against the amended wording, and every named limit — including the untested grid-dependence (D-02, D-04a, D-05, D-06, D-10a, D-13, D-14) [autonomous:false]
 
 ### Phase 16: External Validation and Manuscript Assembly
 
