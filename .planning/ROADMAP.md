@@ -209,7 +209,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 12. Spatial Colocalization Map (GP/CAR) | 11/20 | In Progress|  |
 | 13. Three-Hypothesis Amortized Bayes Factor | 16/17 | In Progress| 13-16: real-image arm REPORTED — **all its figures SUPERSEDED**, measured on the DAPI-counterstain pair (RANDOM on both pairs, both OOD-flagged 2.49x/2.42x, agreement). 13-17 corrected the operative pair to c2/c3 green/red per `13-D15-AMENDMENT.md`, **dropped** the redundancy arm (no second pair exists) and **re-ran the arm once**: on the amended pair the verdict is **COLOC / RANDOM** (was RANDOM / RANDOM) and both fixtures are OOD-flagged **4.198x / 5.297x — WORSE than the superseded 2.49x / 2.42x**. **The CONCLUSION is unchanged**: qualitative, n = 2, unlabelled, OOD-bound. **The gating arm is unaffected and no threshold moved**; D-04 allowance unspent |
 | 14. Decision + Abstention Layer | 14/14 | Complete    | 2026-08-04 |
-| 15. Calibration Operating Envelope + CI Gate | 1/9 | In Progress|  |
+| 15. Calibration Operating Envelope + CI Gate | 4/9 | In Progress|  |
 | 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
 
 ### Phase 8: External Physical Ground-Truth Corpus
@@ -517,13 +517,13 @@ Plans:
 
 **Wave 2** *(blocked on 15-01)*
 
-- [ ] 15-03-PLAN.md — `test/gate/p15_misspec.jl`: the `spillover`, `registration` and pure-offset `autofluorescence` generators plus a LOCAL `P15_FAMILIES` merge, with rung-0 byte-identity, matched-pairs rng and `OOD_FAMILIES` immutability all asserted (D-02, D-02a, D-03)
-- [ ] 15-04-PLAN.md — `test/gate/p15_envelope.jl`: the rung-0-anchored ECE break criterion, the columns-1-and-8 reduction, the three-valued per-axis SC2 verdict, the measured-baseline fire-rate rule, and the `mce` / detector-retuning source guards (D-04, D-04a, D-05, D-06, D-07, D-14)
+- [x] 15-03-PLAN.md — `test/gate/p15_misspec.jl`: the `spillover`, `registration` and pure-offset `autofluorescence` generators plus a LOCAL `P15_FAMILIES` merge, with rung-0 byte-identity, matched-pairs rng and `OOD_FAMILIES` immutability all asserted (D-02, D-02a, D-03)
+- [x] 15-04-PLAN.md — `test/gate/p15_envelope.jl`: the rung-0-anchored ECE break criterion, the columns-1-and-8 reduction, the three-valued per-axis SC2 verdict, the measured-baseline fire-rate rule, and the `mce` / detector-retuning source guards (D-04, D-04a, D-05, D-06, D-07, D-14)
 
 **Wave 3** *(blocked on Wave 2 / on 15-01 + 15-02)*
 
 - [ ] 15-05-PLAN.md — `run_gate.jl --envelope`: orchestration only over the existing `sbc_gate` / `gate_ood_roc`, with `seed_gate_global!` wired in, thread and wall-clock budget guards, and a fixture-scale end-to-end proof (D-01, D-02a, D-05, D-10, D-11, D-13)
-- [ ] 15-06-PLAN.md — `test/gate/ci_golden.jl` + the fast-tier workflow + the `--rebless` refusal and the append-only guard that makes a silent regeneration fail the suite (D-08, D-08a, D-09)
+- [x] 15-06-PLAN.md — `test/gate/ci_golden.jl` + the fast-tier workflow + the `--rebless` refusal and the append-only guard that makes a silent regeneration fail the suite (D-08, D-08a, D-09)
 
 **Wave 4** *(blocked on Wave 3)*
 
