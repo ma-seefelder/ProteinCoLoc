@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Phase 14 context gathered
-last_updated: "2026-08-04T09:37:48.829Z"
+stopped_at: Phase 15 context gathered
+last_updated: "2026-08-04T10:02:46.304Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 16
   completed_phases: 11
   total_plans: 115
-  completed_plans: 103
+  completed_plans: 104
   percent: 69
 ---
 
@@ -35,7 +35,7 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
 Phase: 14 (decision-and-abstention-layer) — EXECUTING
-Plan: 10 of 14 complete (14-01…14-10; wave 6 in progress — SC1-b MET at all four
+Plan: 11 of 14 complete (14-01…14-10; wave 6 in progress — SC1-b MET at all four
 pre-registered levels, SC1-c reported and prior-sensitive)
 executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)~~
 **SUPERSEDED 2026-08-03: EXECUTION IS OVER — 16 of 20 plans complete, and the remaining four are
@@ -1133,6 +1133,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 | Phase 07 P07-08 | 55min | 2 tasks | 4 files |
 | Phase 14 P09 | 35m | 2 tasks | 3 files |
 | Phase 14 P10 | 25m | 2 tasks | 1 files |
+| Phase 14 P11 | 35 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -1430,9 +1431,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T09:37:03.763Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-decision-and-abstention-layer/14-CONTEXT.md
+Last session: 2026-08-04T10:02:46.294Z
+Stopped at: Phase 15 context gathered
+Resume file: .planning/phases/15-calibration-operating-envelope-and-ci-gate/15-CONTEXT.md
 Resume action: continue the ACTIVE phase — Phase 7, plan 07-08, wave 6 of 8. Phase 8 remains COMPLETE.
 NOTE: plan 07-09 (wave 7, the 32x32 grid) is `autonomous: false` and carries a long training run —
 it MUST NOT be started without explicit human authorization. Separately, before Phase 16: run `bootstrap_anchor_hashes()` (corpus/anchor_rows.jl)
