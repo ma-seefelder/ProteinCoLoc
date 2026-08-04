@@ -25,7 +25,7 @@ tech-stack:
   patterns: ["every number loaded via JLD2.load and pasted, never retyped", "artifact sha256 recorded beside every section", "named limits enumerated from code", "amendment quoted beside the original wording", "the failed gate stated at the same volume as the passes", "a sensitivity strip that gates nothing, with its verdict at the frozen bar PINNED by assertion to the gated runner's own persisted flag"]
 key-files:
   created:
-    - ".planning/phases/14-decision-and-abstention-layer/14-REPORT.md (781 lines at Task 1; 992 after the checkpoint rulings were applied)"
+    - ".planning/phases/14-decision-and-abstention-layer/14-REPORT.md (781 lines at Task 1; 996 after the checkpoint rulings were applied)"
     - "spike/p14/run_p14_bar_sensitivity.jl (the READ-ONLY verdict-sensitivity strip; gates nothing)"
   modified:
     - ".planning/phases/14-decision-and-abstention-layer/14-REPORT.md (§3 tally note, §6 strip + SC3-d disposition, §8 limit B, §9 items 8–9, §10 runner list and pass counts)"
@@ -43,7 +43,7 @@ and this plan stopped there — nothing was self-approved and no user response w
 user has now answered, and this summary records those answers verbatim and what changed as a result.
 Task 2 is **RESOLVED**; the plan is **complete**.
 
-`14-REPORT.md` was 781 lines at Task 1 and is **992 lines** after the two rulings were applied. Every
+`14-REPORT.md` was 781 lines at Task 1 and is **996 lines** after the two rulings were applied. Every
 number in it was loaded out of a `.jld2` artifact with `JLD2.load` and pasted; no value was retyped
 from a plan summary, from memory, or from a ruling document. Every section names the artifact it was
 read from and every artifact's sha256 is recorded at the top.
@@ -340,7 +340,7 @@ Markdown file under `.planning/`, one runner under `spike/p14/`, and that runner
 
 ## Self-Check: PASSED
 
-- `.planning/phases/14-decision-and-abstention-layer/14-REPORT.md` — FOUND (992 lines)
+- `.planning/phases/14-decision-and-abstention-layer/14-REPORT.md` — FOUND (996 lines)
 - `.planning/phases/14-decision-and-abstention-layer/14-SC3D-RULING.md` — FOUND
 - `spike/p14/run_p14_bar_sensitivity.jl` — FOUND
 - `spike/p14/p14_bar_sensitivity.jld2` — FOUND (gitignored, regenerable)
