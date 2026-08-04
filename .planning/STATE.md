@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: ready_to_plan
 stopped_at: Phase 15 context gathered
-last_updated: "2026-08-04T17:33:51.569Z"
+last_updated: "2026-08-04T18:29:28.506Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 16
   completed_phases: 12
   total_plans: 124
-  completed_plans: 107
+  completed_plans: 106
   percent: 75
 ---
 
@@ -1426,6 +1426,7 @@ None yet.
 - **↑ RESOLVED 2026-07-31 by the user ruling recorded in `## ✅ RESOLVED 2026-07-31 (wave 8)` above: DESCOPE ONTO THE D-13 ABLATION.** Option (i) of the three listed above was taken; option (ii) was executed first as one pre-declared run and came back negative, which is what licensed (i). The entry above supersedes two claims made in this bullet: **(1) "ALL THREE ARMS HAVE NEGATIVE SKILL" does NOT survive a re-seed** — at the same 18 epochs with only the init changed, `:car` reaches skill **+0.08629**; the robust claim is instead *no spatial arm is ever both calibrated and better than the ablation*. **(2) The disqualification at the converged budget is a CALIBRATION disqualification, not an accuracy one** — at 100 epochs both spatial arms BEAT the ablation on RMSE (by 12.95 % and 4.01 %) and were rejected solely on coverage. This bullet is retained unedited as the record of the halt. **A NEW BLOCKER IS OPEN**: the Stage-2 descope has no executable route (12-14 Task 3 is keyed on `:descope`, the Stage-1 verdict is `:proceed`, and 12-16 is specified to throw with neither bundle present) — see the section above; it needs a user decision.
 - SC3-d (14-12) is the first Phase-14 gate NOT MET. Do NOT wire the noise OOD channel or relax P14_OOD_MARGIN_FLOOR to clear it -- both would author the experiment after seeing its result. P14_ITERATION_ALLOWANCE's one trigger is the conformal coverage band, which 14-09 measured ABOVE the band.
 - Phase 14 plan 14-14 PAUSED at a blocking checkpoint:human-verify -- three honesty items need the user's ruling (A2 derivation presentation, judgement-call bar framing, how the FAILED SC3-d gate is recorded). No bar may be relaxed; spike/p14/consts.jl is byte-unchanged.
+- [15-02, external/human-only] The GitHub release `v2.0.0` that `Artifacts.toml` points `grid_8` at does not exist. `gh release list` shows only v1.0.1 and v1.0.0.compiled; both the asset URL and the pkg.julialang.org mirror return HTTP 404. The amended_v2 net exists only in the git-ignored local `artifacts/amended_v2/grid_8/`, so `estimator_for(8)` cannot resolve on any clean clone or CI runner. All three headless-smoke CI runs are RED at step 8 for this reason only (steps 1-7 pass; A4 and A5 are both CONFIRMED). RESOLUTION (human, irreversible, deliberately not automated): publish a `v2.0.0` release with `grid_8.tar.gz` built from `artifacts/amended_v2/grid_8/`, sha256 `17162904...`, unpacked tree-sha1 `90e6b63a...`. Until then 15-06 and 15-08 can be written and locally verified but cannot be proven green in CI. Evidence: .planning/phases/15-calibration-operating-envelope-and-ci-gate/15-CI-BASELINE.md; runs 30935050140 / 30936970798 / 30937534659.
 
 ### Quick Tasks Completed
 
