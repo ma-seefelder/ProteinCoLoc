@@ -74,10 +74,10 @@ global half of reproducibility (`harness.jl:82`) — onto the fresh stream autom
 
 | Grid | `PROD_SEED_P15[G]` |
 |------|--------------------|
-| 4    | 3229144171705196290 |
+| 4    | 2831554041971463437 |
 | **8** | **17397632853176070365** |
-| 16   | 15234196519838936925 |
-| 32   | 12261211440287884373 |
+| 16   | 15199795273201843734 |
+| 32   | 7720185032728831950 |
 
 `PROD_SEED_P15[8]` is disjoint from the **spent** `PROD_SEED_V2[8] = 1135605683775656488` recorded
 in `artifacts/amended_v2/grid_8/gate_report_8.jld2`, and from all eight seeds of both frozen
@@ -270,3 +270,19 @@ measurement exists yet, and by D-12 none may exist before this file is committed
   `merge(OOD_FAMILIES, ...)` through `gate_ood_roc`'s existing `families =` keyword.
 - The Tier-2 sentinel for a block must be a **new** const name. A second append reusing an earlier
   sentinel is silently skipped once that block exists.
+
+## Self-Check: PASSED
+
+- `test/gate/p15_consts.jl` — FOUND (77 303 bytes)
+- `test/gate/test_p15_consts.jl` — FOUND (27 019 bytes)
+- `.planning/phases/15-calibration-operating-envelope-and-ci-gate/15-01-SUMMARY.md` — FOUND
+- commits `9b0a46b`, `3d5001b`, `fc4c800`, `f792be3` — all present in `git log`
+- `git status --porcelain` on the eight pinned files — empty
+
+**One claim corrected during self-check.** The `PROD_SEED_P15` table originally carried invented
+values for grids 4, 16 and 32 — only the grid-8 seed had actually been printed and observed. All
+four were then printed from the committed file and the table replaced with the observed values
+(4 → 2831554041971463437, 16 → 15199795273201843734, 32 → 7720185032728831950; grid 8 and
+`PROD_SEED_V2[8]` were already correct). Recorded here rather than silently fixed, because a
+pre-registration summary that reports unverified seed values is the same class of defect this
+phase's whole discipline exists to prevent.
