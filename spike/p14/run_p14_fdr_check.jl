@@ -402,6 +402,164 @@ function _p14_fdr_row(nt::NamedTuple)
 end
 
 # =============================================================================================
+# The prior-sensitivity sweep (SC1-c) -- REPORTED, NOT GATED
+# =============================================================================================
+
+"""
+    _p14_fdr_recs(pool) -> Vector{NamedTuple}
+
+Rebuild the rule inputs that `_p14_rule_at_prior` consumes, from the persisted pool columns.
+
+Three fields, and each is exactly what the sweep needs:
+
+- `lbf`: the evidence triple, rebuilt BY NAME from the two stored log Bayes factors with the D-08
+  structural zero on the reference class. The evidence does not depend on the prior, which is why
+  14-09 stored it -- so the sweep re-derives the posterior at another prior without re-running the
+  net at all.
+- `ood`: the three-valued OOD state. It does not depend on the prior either, so it is carried.
+- `cm`: the cross-method record. The shared pool was drawn WITHOUT images -- `p14_draw_pool` yields
+  summary vectors, not `MultiChannelImage`s -- so the classical channels were never consulted and
+  the record is the explicit `:not_computed` one, carrying its note. **Never a bare `false`:** a
+  `disagree_any = false` with no note reads as "the classics were consulted and concurred", which
+  is not what happened.
+"""
+function _p14_fdr_recs(pool::NamedTuple)
+    cm = _p14_no_cross_method(
+        "the shared evaluation pool carries summary vectors, not image pairs, so no classical " *
+        "comparison was made for any item in it; this is NOT agreement with the classics")
+    return [(lbf = (coloc = pool.logbf_coloc[i], random = 0.0,
+                    exclusion = pool.logbf_exclusion[i]),
+             ood = pool.ood_state[i],
+             cm  = cm)
+            for i in 1:pool.n]
+end
+
+"""
+    _p14_fdr_assert_reconstruction(recs, pool, prior, qhat) -> NamedTuple
+
+Prove that re-running the WHOLE rule from the rebuilt inputs at the pool's OWN prior reproduces the
+pool, before any swept rung is believed.
+
+**This is what makes the sweep a re-run rather than a second experiment.** The sweep goes through
+`_p14_rule_at_prior`, the same code path `decide_coloc` uses; the SC1-b table above goes through the
+recorded per-item fields. Those are two routes to one set of numbers, and a sweep that quietly
+disagreed with the table at the very rung where they should coincide would keep producing a
+perfectly well-formed curve with nothing saying which route was wrong. Four things are pinned: the
+three class posteriors, the composite null, the conformal status, and the abstain/decide partition.
+
+Returns the realized maximum deviations, so the artifact records HOW exactly the two agree rather
+than merely that an assertion passed.
+"""
+function _p14_fdr_assert_reconstruction(recs, pool::NamedTuple, prior::NamedTuple, qhat::Real)
+    run = _p14_rule_at_prior(recs, qhat, prior, first(P14_ALPHA_FDR_GRID), false, pool.n)
+    dev_post = 0.0
+    dev_null = 0.0
+    for i in 1:pool.n
+        p = run.ps[i]
+        dev_post = max(dev_post, abs(p.coloc - pool.p_coloc[i]),
+                                 abs(p.random - pool.post_random[i]),
+                                 abs(p.exclusion - pool.post_exclusion[i]))
+        dev_null = max(dev_null, abs(p14_null_posterior(p) - pool.v[i]))
+        @assert run.csets[i].status === pool.conformal_status[i] "run_p14_fdr_check: item $i re-runs to conformal status $(run.csets[i].status) but the pool recorded $(pool.conformal_status[i]); the sweep is not reproducing the run it sweeps around"
+        @assert (run.acts[i].action === :abstain) == (pool.decision[i] === :abstain) "run_p14_fdr_check: item $i re-runs to action $(run.acts[i].action) but the pool recorded decision $(pool.decision[i]); the abstain/decide partition has drifted between the two routes"
+    end
+    @assert dev_post < P14_FDR_SUM_TOL "run_p14_fdr_check: the re-run class posterior deviates from the pool by up to $dev_post (tolerance $(P14_FDR_SUM_TOL)); the prior sweep would be sweeping around a different point from the one SC1-b was measured at"
+    @assert dev_null < P14_FDR_SUM_TOL "run_p14_fdr_check: the re-run composite null deviates from the pool by up to $dev_null (tolerance $(P14_FDR_SUM_TOL))"
+    return (max_abs_dev_posterior = dev_post, max_abs_dev_null = dev_null,
+            n_decided = run.fdr.n_decided)
+end
+
+"""
+    _p14_fdr_claims() -> NamedTuple
+
+The honesty block, written INTO the artifact as string keys so it travels WITH the numbers and
+cannot be dropped by a report writer.
+
+Every one of these is a sentence a reader of a bare FDR number would otherwise have to be told by
+someone who remembered to tell them. A `.jld2` that carries the number and not the scope is a
+repudiation hole (T-14-33), which is why these are REQUIRED keys of the save rather than optional
+extras.
+"""
+function _p14_fdr_claims()
+    return (
+        fdr_claim =
+            "The posterior expected false discovery proportion is controlled at alpha_FDR over " *
+            "the DECIDED SUBSET ONLY -- the batch minus abstentions. It is NOT controlled over " *
+            "the whole batch: an abstained item is neither a discovery nor a non-discovery and " *
+            "appears in neither the numerator nor the denominator. The guarantee is conditional " *
+            "on the model -- calibrated posteriors and a correct class prior -- and is a " *
+            "POSTERIOR EXPECTATION, not a frequentist long-run rate. A rule that abstains on " *
+            "most of a batch meets any level trivially, so the level and the decided fraction " *
+            "are ONE quantity and are never quoted apart.",
+
+        assumption_a2_statement =
+            "ASSUMPTION A2, as a derivation a referee can check in two lines rather than an " *
+            "assertion to be believed. (1) The controlled quantity is E[FDP | data] = (1/|R|) * " *
+            "sum over i in R of P(H0_i | data), where R is the rejection set. (2) R is a " *
+            "DETERMINISTIC FUNCTION OF THE OBSERVED DATA -- both the abstention filter and the " *
+            "prefix sort are computed from the data alone -- hence R is sigma(data)-measurable " *
+            "and pulls straight out of the conditional expectation, so the identity holds for " *
+            "ANY data-dependent selection of R, including one that filtered on OOD status or " *
+            "conformal ambiguity. Unlike the frequentist case, where a data-dependent " *
+            "pre-selection is a genuine selective-inference problem requiring correction, the " *
+            "Bayesian posterior quantity is immune because the conditioning has already happened. " *
+            "This is LOAD-BEARING: it is the entire justification for abstain-then-sort and for " *
+            "the decided-subset scope.",
+
+        ordering_note =
+            "ABSTAIN FIRST, THEN SORT. The reverse order -- sort the whole batch, then abstain " *
+            "from some of the accepted items -- is WRONG and is recorded here so it is not " *
+            "re-derived: removing items from a set whose running mean was computed over all of " *
+            "them changes both the numerator and the denominator in an uncontrolled way, so the " *
+            "residual accepted set's running mean can EXCEED the level. Abstaining first also " *
+            "improves the premise, because it routes away precisely the items whose posteriors " *
+            "are least likely to be right.",
+
+        independence_note =
+            "NO INDEPENDENCE ACROSS THE BATCH IS ASSUMED. E[sum of 1{H0_i}] = sum of v_i follows " *
+            "from LINEARITY OF EXPECTATION alone, which holds whether or not the items are " *
+            "independent. This is the standard reviewer question about a batch-level error rate " *
+            "and the answer is clean; it is recorded here so the answer travels with the number " *
+            "instead of having to be reconstructed.",
+
+        prior_note =
+            "THE PRIOR IS THE SIMULATOR'S CLASS MIX, NOT ANY REAL BATCH'S PREVALENCE. " *
+            "pi_class_masses is the realized class mix of the prior draws the evidence net was " *
+            "trained under -- measured, never chosen -- and every null posterior v_i depends on " *
+            "it. A batch that is 90 % coloc makes every v_i too large, so the rule is merely too " *
+            "conservative; a batch that is 1 % coloc makes them too small and THE FDR CLAIM IS " *
+            "THEN FALSE. The pi-sensitivity table is the honest answer to that and is the reason " *
+            "it is required output rather than an optional extra. Empirical-Bayes estimation of " *
+            "the prior from the batch is DELIBERATELY NOT the default: estimating the prior from " *
+            "the same batch the guarantee is quoted over would make that guarantee CIRCULAR, and " *
+            "it would add a second estimated quantity with its own failure modes.",
+
+        prior_atom_note =
+            "THE PRIOR CARRIES CLAMP ATOMS, AND THEY ARE ASYMMETRIC. The theta prior places " *
+            "roughly 4.85 % of its mass at the clamped endpoint rho = -0.99 against roughly " *
+            "1.91 % at rho = +0.99, a ratio of about 2.5 to 1 AGAINST the exclusion end. The " *
+            "measured pi_class_masses inherit those atoms, and in this phase the prior enters " *
+            "the PRIOR TERM of the class posterior directly -- a term Phase 13 never used, " *
+            "because Phase 13 published log Bayes factors and deliberately declined to introduce " *
+            "a prior at all. So an asymmetry that was inert upstream is load-bearing here. " *
+            "Recorded as a stated property of the prior, and as one more reason the " *
+            "pi-sensitivity table is required rather than optional.",
+
+        unit_note =
+            "FDR IS CONTROLLED PER IMAGE PAIR (D-04). One call, one pair, one decision, one " *
+            "entry in the batch the prefix rule sorts. A per-region or per-tile false discovery " *
+            "rate is OUT OF SCOPE and is not merely unimplemented: the per-tile map type carries " *
+            "no uncertainty field at all, and Phase 12 returned NO on calibrated per-tile " *
+            "uncertainty, so there is nothing to control against. A tile map may be DISPLAYED " *
+            "beside a decision; it is never FDR-controlled, and claiming otherwise would repeat " *
+            "the counting-a-closed-negative-as-a-success failure this project has already " *
+            "corrected once.",
+
+        amendment = P14_AMENDMENT_NOTICE,
+    )
+end
+
+# =============================================================================================
 # The reported run
 # =============================================================================================
 
@@ -499,7 +657,7 @@ function main(; pool_path = P14_FDR_EVAL_POOL_PATH,
     end
 
     # --- 3. THE SECTION-E.1 SANITY ASSERTION, ON EVERY ITEM ----------------------------------
-    verbose && println("[1/4] checking the composite-null partition on every item …")
+    verbose && println("[1/5] checking the composite-null partition on every item …")
     sanity = _p14_fdr_partition_sanity(pool)
     verbose && println("      max |sum(p) - 1| = $(sanity.max_abs_dev_sum_to_one)   " *
                        "max |p_random + p_exclusion - v| = $(sanity.max_abs_dev_null_pooling)")
@@ -508,7 +666,7 @@ function main(; pool_path = P14_FDR_EVAL_POOL_PATH,
     # The recorded per-item fused action IS the partition: `p14_decide_one` wrote `:abstain` when
     # the D-05 fusion abstained and an evidence call otherwise. Reading it back rather than
     # recomputing it is what makes SC1-b a measurement ON the shared pool rather than beside it.
-    verbose && println("[2/4] partitioning the pool -- ABSTAIN FIRST, then sort …")
+    verbose && println("[2/5] partitioning the pool -- ABSTAIN FIRST, then sort …")
     decided_idx = [i for i in 1:n_eval if pool.decision[i] !== :abstain]
     n_decided   = length(decided_idx)
     abstained   = n_eval - n_decided
@@ -523,7 +681,7 @@ function main(; pool_path = P14_FDR_EVAL_POOL_PATH,
     v_decided = pool.v[decided_idx]
 
     # --- 5. THE SWEEP OVER THE FROZEN LEVELS -------------------------------------------------
-    verbose && println("[3/4] sweeping the frozen alpha grid …")
+    verbose && println("[3/5] sweeping the frozen alpha grid …")
     rows = P14FDRRow[]
     for alpha in P14_ALPHA_FDR_GRID
         # `p14_fdr_over_decided` REQUIRES `n_total`, so a row without a decided fraction is
@@ -587,12 +745,60 @@ function main(; pool_path = P14_FDR_EVAL_POOL_PATH,
     offenders = [r for r in rows if r.exceeds_upper_band]
     sc1b_met  = isempty(offenders)
 
-    # --- 6. PERSIST THE REPORT, BEFORE THE HEADLINE AND BEFORE THE ASSERTION -----------------
-    verbose && println("[4/4] persisting the SC1-b report (BEFORE any verdict) …")
+    # --- 6. THE PRIOR-SENSITIVITY SWEEP (SC1-c) -- REPORTED, NOT GATED -----------------------
+    # There is NO BAR anywhere below and there is not meant to be one. SC1-c's failure condition
+    # is FAILING TO REPORT IT; a threshold attached here would quietly convert a diagnostic into
+    # a gate, which is the thing the pre-registration forbids.
+    verbose && println("[4/5] re-running the whole rule at every rung of the frozen prior grid …")
+    recs  = _p14_fdr_recs(pool)
+    recon = _p14_fdr_assert_reconstruction(recs, pool, bundle.prior, pool.qhat)
+    @assert recon.n_decided == n_decided "run_p14_fdr_check: the re-run decides $(recon.n_decided) items while the recorded partition decides $n_decided"
+    verbose && println("      reconstruction verified: max |dp| = $(recon.max_abs_dev_posterior), " *
+                       "max |dv| = $(recon.max_abs_dev_null), decided $(recon.n_decided)")
+
+    pi_rows = NamedTuple[]
+    for pi_c in P14_PI_COLOC_GRID
+        # The coloc mass is replaced and the other two are renormalised IN THEIR MEASURED RATIO,
+        # so the sweep asks "what if this batch's coloc prevalence were different" rather than
+        # "what if the whole class structure were different" -- two questions, and only one of
+        # them was asked.
+        prior_c = _p14_prior_at(bundle.prior, pi_c)
+        for alpha in P14_ALPHA_FDR_GRID
+            # THROUGH THE SAME CODE PATH the headline run uses. The prior moves the class
+            # posterior, hence the conformal set, hence the abstention, hence the amortized call
+            # and the fusion -- so every rung is a full re-run and `n_decided` is free to move.
+            sr = _p14_rule_at_prior(recs, pool.qhat, prior_c, alpha, false, n_eval)
+            acc_orig = [sr.decided_idx[j] for j in sr.fdr.accepted]
+            @assert length(acc_orig) == sr.fdr.k_star "run_p14_fdr_check: the swept accepted set at pi_c = $pi_c, alpha = $alpha holds $(length(acc_orig)) items but k_star is $(sr.fdr.k_star)"
+            n_false_c = count(i -> pool.true_class[i] !== :coloc, acc_orig)
+            push!(pi_rows, (pi_coloc         = Float64(pi_c),
+                            alpha            = Float64(alpha),
+                            k_star           = Int(sr.fdr.k_star),
+                            predicted_fdp    = Float64(sr.fdr.fdp),
+                            realized_fdp     = sr.fdr.k_star == 0 ? NaN :
+                                               n_false_c / sr.fdr.k_star,
+                            n_decided        = Int(sr.fdr.n_decided),
+                            decided_fraction = Float64(sr.fdr.decided_fraction)))
+        end
+    end
+    @assert length(pi_rows) == length(P14_PI_COLOC_GRID) * length(P14_ALPHA_FDR_GRID) "run_p14_fdr_check: the sensitivity table has $(length(pi_rows)) rows for a $(length(P14_PI_COLOC_GRID)) x $(length(P14_ALPHA_FDR_GRID)) grid"
+    pi_sensitivity = [NamedTuple{(:pi_coloc, :alpha, :k_star, :predicted_fdp, :realized_fdp,
+                                  :n_decided, :decided_fraction),
+                                 Tuple{Float64, Float64, Int, Float64, Float64, Int, Float64}}(r)
+                      for r in pi_rows]
+
+    # --- 7. PERSIST THE REPORT, BEFORE THE HEADLINE AND BEFORE THE ASSERTION -----------------
+    verbose && println("[5/5] persisting the SC1-b / SC1-c report (BEFORE any verdict) …")
     consts_path = joinpath(@__DIR__, "consts.jl")
     _p14_fdr_save_report(report_path,
         ("alpha_table", "fdr_scope", "sc1b_met", "n_eval", "n_decided", "decided_fraction",
-         "amendment", "guarantee_basis");
+         "amendment", "guarantee_basis", "pi_sensitivity", "pi_sensitivity_gated",
+         "fdr_claim", "assumption_a2_statement", "ordering_note", "independence_note",
+         "prior_note", "prior_atom_note", "unit_note");
+        # --- the honesty block, splatted in so it CANNOT be dropped: every one of its keys is
+        #     also a REQUIRED key of the integrity check above, so an artifact missing one is
+        #     never written at all (T-14-33).
+        _p14_fdr_claims()...,
         # --- the measurement ---
         alpha_table = rows,
         alpha_table_keys = collect(P14_FDR_ROW_KEYS),
@@ -602,6 +808,11 @@ function main(; pool_path = P14_FDR_EVAL_POOL_PATH,
         abstain_reason_counts = NamedTuple{Tuple(keys(reasons))}(Tuple(values(reasons))),
         # --- the scope label, machine-readable, so no reader can take this for batch-wide control
         fdr_scope = :decided_subset_only,
+        # --- SC1-c: REPORTED, NOT GATED. The flag is persisted rather than left to prose so a
+        #     later reader cannot mistake the table for a criterion that was met.
+        pi_sensitivity = pi_sensitivity,
+        pi_sensitivity_gated = false,
+        pi_sensitivity_reconstruction = recon,
         # --- the section-E.1 sanity numbers, recorded rather than merely asserted ---
         max_abs_dev_sum_to_one = sanity.max_abs_dev_sum_to_one,
         max_abs_dev_null_pooling = sanity.max_abs_dev_null_pooling,
@@ -619,8 +830,10 @@ function main(; pool_path = P14_FDR_EVAL_POOL_PATH,
         # --- what the numbers actually rest on ---
         guarantee_basis = :simulator_derived_held_out_draws,
         named_limits = p14_named_limits(),
-        amendment = P14_AMENDMENT_NOTICE,
+        # `amendment` is NOT repeated here: it is one of the honesty keys splatted in above, so
+        # there is exactly one spelling of it and it cannot drift from the others.
         # --- provenance ---
+        named_limits_count = length(p14_named_limits()),
         provenance = p14_provenance_record(bundle.prov),
         eval_pool_path = pool.path,
         eval_pool_sha = p14_blob_sha(pool.path),
@@ -678,6 +891,23 @@ function main(; pool_path = P14_FDR_EVAL_POOL_PATH,
                     rpad(round(r.mean_p_exclusion; digits = 6), 12), "  share random/exclusion = ",
                     round(r.share_random; digits = 4), " / ", round(r.share_exclusion; digits = 4))
         end
+        println()
+        println("  SC1-c PRIOR SENSITIVITY -- REPORTED, NOT GATED -- NO BAR IS ATTACHED TO THIS")
+        println("  TABLE. Failing to report it is the failure; nothing here can be missed.")
+        println("  frozen grid P14_PI_COLOC_GRID = $P14_PI_COLOC_GRID")
+        println("    pi_coloc  alpha     k*     n_decided(frac)  predicted     realized")
+        for r in pi_sensitivity
+            println("    ", rpad(r.pi_coloc, 9), " ", rpad(r.alpha, 8), "  ", rpad(r.k_star, 6),
+                    " ", rpad(string(r.n_decided, "(", round(r.decided_fraction; digits = 4), ")"), 16),
+                    " ", rpad(round(r.predicted_fdp; digits = 6), 12),
+                    " ", round(r.realized_fdp; digits = 6))
+        end
+        println()
+        println("  THE HONESTY BLOCK IS PERSISTED INSIDE THE ARTIFACT, as the string keys")
+        println("  fdr_claim, assumption_a2_statement, ordering_note, independence_note,")
+        println("  prior_note, prior_atom_note, unit_note and amendment, so it travels with the")
+        println("  numbers rather than depending on a report writer's memory.")
+        println("  unit: ", _p14_fdr_claims().unit_note)
         println()
         println("  decided $n_decided / $n_eval   abstained $abstained   reasons: $reasons")
         println("  guarantee basis        = simulator-derived held-out draws; both the predicted")
