@@ -25,6 +25,15 @@
 # the exact-string co-resolution gate, so the manifest — not the compat range — is the contract
 # here. `[compat]` is left untouched on purpose.
 #
+# MEASURED STATUS (first run, 2026-08-04, run 30935050140)
+# (a) and (b) are CONFIRMED on ubuntu-24.04. (c) FAILS, and the failure is real, not a workflow
+# defect: `Artifacts.toml` points `grid_8` at a `v2.0.0` release asset that DOES NOT EXIST — the
+# repository has no `v2.0.0` release, and both the GitHub asset URL and the Julia package server
+# mirror return HTTP 404. So the shipped net is not fetchable from a clean clone by anyone. This
+# step is deliberately LEFT FAILING rather than softened: the red run is an accurate report of a
+# genuinely broken shipping path, and any workflow that consumes `estimator_for(8)` is blocked on
+# publishing that release. See 15-CI-BASELINE.md for the evidence.
+#
 # THIS FILE IS THE ENVIRONMENT RECIPE
 # The two-tier calibration CI copies its apt list, its Julia pin and its xvfb prefix from this
 # workflow. A change to the apt list belongs in THIS file first, gets proven by a green run here,
