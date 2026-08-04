@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: ready_to_plan
-stopped_at: Phase 15 context gathered
-last_updated: "2026-08-04T18:29:28.506Z"
+stopped_at: Phase 16 context gathered
+last_updated: "2026-08-04T18:29:48.928Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 16
   completed_phases: 12
   total_plans: 124
-  completed_plans: 106
+  completed_plans: 109
   percent: 75
 ---
 
@@ -1447,9 +1447,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T13:19:03.011Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-calibration-operating-envelope-and-ci-gate/15-CONTEXT.md
+Last session: 2026-08-04T18:29:48.916Z
+Stopped at: Phase 16 context gathered
+Resume file: .planning/phases/16-external-validation-and-manuscript-assembly/16-CONTEXT.md
 Resume action: continue the ACTIVE phase — Phase 7, plan 07-08, wave 6 of 8. Phase 8 remains COMPLETE.
 NOTE: plan 07-09 (wave 7, the 32x32 grid) is `autonomous: false` and carries a long training run —
 it MUST NOT be started without explicit human authorization. Separately, before Phase 16: run `bootstrap_anchor_hashes()` (corpus/anchor_rows.jl)
