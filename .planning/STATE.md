@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: milestone
 status: in-progress
 stopped_at: Phase 15 context gathered
-last_updated: "2026-08-04T12:54:58.814Z"
+last_updated: "2026-08-04T13:19:24.462Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 16
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 124
-  completed_plans: 106
-  percent: 69
+  completed_plans: 107
+  percent: 75
 ---
 
 # Project State
@@ -34,9 +34,14 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
-Phase: 14 (decision-and-abstention-layer) — EXECUTING
-Plan: 13 of 14 complete (14-01…14-10; wave 6 in progress — SC1-b MET at all four
-pre-registered levels, SC1-c reported and prior-sensitive)
+Phase: 14 (decision-and-abstention-layer) — PAUSED AT A BLOCKING HUMAN CHECKPOINT
+Plan: 13 of 14 complete + 14-14 PAUSED (14-01…14-13 done, all waves run; `14-REPORT.md` written and
+committed at `d57e39c`, but plan 14-14 stops at its blocking `checkpoint:human-verify` on the honesty
+items — the A2 derivation's presentation, the framing of the five judgement-call bars, and how the
+FAILED SC3-d gate is recorded. Nothing was self-approved. Phase-14 verdict as measured: SC1-b, SC1-d,
+SC1-f, SC3-a/b/c PASS; SC1-c reported-not-gated; **SC3-d NOT MET at −0.129 against a floor of 0.50**,
+carried entirely by the `noise` family the unwired `(:pp, :noise)` OOD channel exists for. Every gated
+number is a well-specified-regime number; the D-03 real-data bound is ABSENT, not loose.)
 executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)~~
 **SUPERSEDED 2026-08-03: EXECUTION IS OVER — 16 of 20 plans complete, and the remaining four are
 FORECLOSED by rulings on the record, not pending.** `12-VERIFICATION.md` exists (`gaps_found`); the
@@ -1419,6 +1424,7 @@ None yet.
 
 - **↑ RESOLVED 2026-07-31 by the user ruling recorded in `## ✅ RESOLVED 2026-07-31 (wave 8)` above: DESCOPE ONTO THE D-13 ABLATION.** Option (i) of the three listed above was taken; option (ii) was executed first as one pre-declared run and came back negative, which is what licensed (i). The entry above supersedes two claims made in this bullet: **(1) "ALL THREE ARMS HAVE NEGATIVE SKILL" does NOT survive a re-seed** — at the same 18 epochs with only the init changed, `:car` reaches skill **+0.08629**; the robust claim is instead *no spatial arm is ever both calibrated and better than the ablation*. **(2) The disqualification at the converged budget is a CALIBRATION disqualification, not an accuracy one** — at 100 epochs both spatial arms BEAT the ablation on RMSE (by 12.95 % and 4.01 %) and were rejected solely on coverage. This bullet is retained unedited as the record of the halt. **A NEW BLOCKER IS OPEN**: the Stage-2 descope has no executable route (12-14 Task 3 is keyed on `:descope`, the Stage-1 verdict is `:proceed`, and 12-16 is specified to throw with neither bundle present) — see the section above; it needs a user decision.
 - SC3-d (14-12) is the first Phase-14 gate NOT MET. Do NOT wire the noise OOD channel or relax P14_OOD_MARGIN_FLOOR to clear it -- both would author the experiment after seeing its result. P14_ITERATION_ALLOWANCE's one trigger is the conformal coverage band, which 14-09 measured ABOVE the band.
+- Phase 14 plan 14-14 PAUSED at a blocking checkpoint:human-verify -- three honesty items need the user's ruling (A2 derivation presentation, judgement-call bar framing, how the FAILED SC3-d gate is recorded). No bar may be relaxed; spike/p14/consts.jl is byte-unchanged.
 
 ### Quick Tasks Completed
 
@@ -1439,7 +1445,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T12:54:37.308Z
+Last session: 2026-08-04T13:19:03.011Z
 Stopped at: Phase 15 context gathered
 Resume file: .planning/phases/15-calibration-operating-envelope-and-ci-gate/15-CONTEXT.md
 Resume action: continue the ACTIVE phase — Phase 7, plan 07-08, wave 6 of 8. Phase 8 remains COMPLETE.
