@@ -68,6 +68,13 @@
 name: full-scale calibration (slow tier)
 
 on:
+  # TEMPORARY, NEVER MERGED — exists only on the throwaway branch `gsd/p15-ci-slow` so that
+  # GitHub's own workflow parser sees this file at all, and so the `${{ inputs.sweep_m }}`
+  # expression is exercised in a NON-dispatch context (which is what the `release` trigger is).
+  # `workflow_dispatch` cannot be used for that: it requires the file to be on the DEFAULT branch,
+  # and this file is not on `main`. Reverted immediately after the run; see 15-CI-EVIDENCE.md.
+  push:
+    branches: [gsd/p15-ci-slow]
   release:
     types: [published]
   workflow_dispatch:
