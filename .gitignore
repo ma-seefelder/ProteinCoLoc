@@ -439,6 +439,14 @@ spike/validation/sbc_report.jld2
 spike/validation/bf_report.jld2
 spike/validation/ood_report.jld2
 
+# Phase-14 (14-09 and the wave-6 runners) REPORTED-run artifacts — regenerable from
+# run_p14_*.jl at the LOCKED consts on the reserved counters in spike/p14/consts.jl. The
+# committed deliverables are the run scripts; the .jld2 reports and the shared evaluation
+# pool are reproducible outputs (every reported number recorded verbatim in the phase
+# SUMMARY files). The `_smoke` variants a non-reported run redirects to are covered too —
+# they are load-checks and must never be mistaken for a verdict.
+spike/p14/*.jld2
+
 # Phase-13 (13-11) training side effects: NeuralEstimators writes optimiser + train-state
 # BSONs into the run's `savepath` alongside the loss history. The optimiser state is ~9 MB of
 # machine state that is redundant with the persisted net, so it stays out of git…
