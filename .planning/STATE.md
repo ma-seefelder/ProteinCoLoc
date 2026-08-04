@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: in-progress
 stopped_at: Phase 14 context gathered
-last_updated: "2026-08-04T09:16:59.485Z"
+last_updated: "2026-08-04T09:37:48.829Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 16
   completed_phases: 11
   total_plans: 115
-  completed_plans: 102
+  completed_plans: 103
   percent: 69
 ---
 
@@ -35,7 +35,8 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
 Phase: 14 (decision-and-abstention-layer) — EXECUTING
-Plan: 9 of 14 complete (14-01…14-09; wave 5 done, SC1-d measured and PASSING)
+Plan: 10 of 14 complete (14-01…14-10; wave 6 in progress — SC1-b MET at all four
+pre-registered levels, SC1-c reported and prior-sensitive)
 executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)~~
 **SUPERSEDED 2026-08-03: EXECUTION IS OVER — 16 of 20 plans complete, and the remaining four are
 FORECLOSED by rulings on the record, not pending.** `12-VERIFICATION.md` exists (`gaps_found`); the
@@ -1065,7 +1066,7 @@ parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
 
 Last activity: 2026-08-04
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 90%
 
 ## Resolved (2026-07-03): 07-00 CO-RESOLUTION GATE — GREEN
 
@@ -1131,6 +1132,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 | Phase 7 P6 | 40min | 3 tasks | 4 files |
 | Phase 07 P07-08 | 55min | 2 tasks | 4 files |
 | Phase 14 P09 | 35m | 2 tasks | 3 files |
+| Phase 14 P10 | 25m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -1185,6 +1187,7 @@ Recent decisions affecting current work:
 - [Phase 08-05]: Hash discipline (T-08-16) — `sha256` uses a deliberately NON-hex `"PENDING-FETCH"` sentinel rather than an empty string (an empty hash is indistinguishable from an unfilled CBS row and could be silently accepted downstream), with `is_real_sha256`/`is_pending_hash` making "real 64-hex digest OR sentinel, never in between" a testable invariant. The bootstrap fetch was DELIBERATELY not executed — the positive anchor is a ~6.3 GB archive, so the bulk download stays an explicit human decision. `bootstrap_anchor_hashes()` is implemented and must be run online+authorized BEFORE Phase 16. No digest was fabricated.
 - [Phase 08-05]: `finalized_manifest()` (corpus/anchor_rows.jl) SUPERSEDES the 08-04 placeholder `committed_manifest()`; `anchor_rows()` is parameterized on sha256/bytes so the pending path and the post-bootstrap path are the SAME code path and both are covered by the offline gate. All anchors remain `physical-primary` + `sealed_holdout`, reachable ONLY via `open_sealed_holdout(; reason)` (D-09) — asserted.
 - [Phase ?]: 14-09: SC1-d PASSES -- realized split-conformal coverage 0.9115 (1823/2000) vs the derived band 0.8799; q-hat 0.4498; iteration_trigger_fired=false so P14_ITERATION_ALLOWANCE stays unspent. Qualifier: ambiguous rate is exactly 0.0, so coverage comes from classifier accuracy not set-valued caution; the guarantee is simulator-derived (D-03a: the intended real-data bound is ABSENT, not merely loose).
+- [Phase ?]: 14-10: SC1-b MET — realized FDP inside the binomial 95% band of the rule's own predicted value at all four levels of P14_ALPHA_FDR_GRID, decided fraction 0.888 (1776/2000) at every level. SC1-c REPORTED, not gated: the guarantee is genuinely prior-sensitive — at pi_coloc = 0.70 the realized FDP is 0.347 against a predicted 0.200, so an FDR number may never be quoted without the prior it assumed. Accepted null mass is ~all random, ~0 exclusion.
 
 ### Roadmap Evolution
 
@@ -1427,7 +1430,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T09:16:50.231Z
+Last session: 2026-08-04T09:37:03.763Z
 Stopped at: Phase 14 context gathered
 Resume file: .planning/phases/14-decision-and-abstention-layer/14-CONTEXT.md
 Resume action: continue the ACTIVE phase — Phase 7, plan 07-08, wave 6 of 8. Phase 8 remains COMPLETE.
