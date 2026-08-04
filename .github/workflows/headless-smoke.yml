@@ -1,0 +1,148 @@
+# ---------------------------------------------------------------------------------------
+# headless load smoke
+#
+# WHY THIS EXISTS
+# `src/ProteinCoLoc.jl:28` does `import GLMakie` unconditionally at module load. GLMakie is an
+# OpenGL backend, so a headless GitHub-hosted runner cannot evaluate `using ProteinCoLoc` at all
+# without the OpenGL/X system libraries installed first and without an X server surrogate (xvfb)
+# wrapping the Julia process. That makes the headless load the precondition for EVERY CI job this
+# repository will ever have, not a detail of one of them.
+#
+# WHAT IT ASSERTS — AND WHAT IT DELIBERATELY DOES NOT
+# This job is intentionally narrow. It asserts three mechanical facts:
+#   (a) the package LOADS on a headless runner;
+#   (b) the installed NeuralEstimators/Flux versions are exactly the ones the committed
+#       Manifest.toml pins, which is what `test/runtests.jl`'s co-resolution hard gate demands as
+#       exact strings while `Project.toml [compat]` permits a wider range;
+#   (c) the shipped `grid_8` bundle resolves through the package's own hash-verified artifact path
+#       on a machine with no in-repo `artifacts/` tree.
+# It asserts NOTHING scientific. No calibration number, no gate verdict, no SBC. Those belong to
+# the two-tier calibration CI.
+#
+# INSTALL PATH
+# Installation is `Pkg.instantiate()` against the committed Manifest.toml: it installs the pinned
+# tree-hashes and resolves nothing. A re-resolving install could satisfy `[compat]` and still fail
+# the exact-string co-resolution gate, so the manifest — not the compat range — is the contract
+# here. `[compat]` is left untouched on purpose.
+#
+# MEASURED STATUS (first run, 2026-08-04, run 30935050140)
+# (a) and (b) are CONFIRMED on ubuntu-24.04. (c) FAILS, and the failure is real, not a workflow
+# defect: `Artifacts.toml` points `grid_8` at a `v2.0.0` release asset that DOES NOT EXIST — the
+# repository has no `v2.0.0` release, and both the GitHub asset URL and the Julia package server
+# mirror return HTTP 404. So the shipped net is not fetchable from a clean clone by anyone. This
+# step is deliberately LEFT FAILING rather than softened: the red run is an accurate report of a
+# genuinely broken shipping path, and any workflow that consumes `estimator_for(8)` is blocked on
+# publishing that release. See 15-CI-BASELINE.md for the evidence.
+#
+# THIS FILE IS THE ENVIRONMENT RECIPE
+# The two-tier calibration CI copies its apt list, its Julia pin and its xvfb prefix from this
+# workflow. A change to the apt list belongs in THIS file first, gets proven by a green run here,
+# and only then propagates. The measured baseline (run URLs, cold/warm durations, the versions the
+# install actually produced) lives in
+# `.planning/phases/15-calibration-operating-envelope-and-ci-gate/15-CI-BASELINE.md`.
+#
+# SECURITY POSTURE
+# Workflow-level `permissions: contents: read` only. Triggers are `push` and `workflow_dispatch`.
+# The privileged fork-trigger variant of `pull_request` — the one that runs contributor-controlled
+# content against the BASE repository's write-scoped token — is deliberately not used anywhere in
+# this file, and the Task-1 verification asserts its absence by string. No `github.event.*` value
+# is interpolated into any shell step.
+# ---------------------------------------------------------------------------------------
+name: headless load smoke
+
+# The `paths` filter INCLUDES this workflow's own path, so committing or amending this file
+# triggers its own proof run, while ordinary source pushes cost no Actions minutes.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/headless-smoke.yml'
+      - 'Project.toml'
+      - 'Manifest.toml'
+      - 'src/ProteinCoLoc.jl'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: headless-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  load:
+    name: load ProteinCoLoc headless
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Must run BEFORE any Julia step: GLMakie's precompilation itself touches the GL stack.
+      # This is the list Makie's own headless CI uses (MakieOrg/Makie.jl issue #1953).
+      - name: Install OpenGL/X system libraries and xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xorg-dev \
+            mesa-utils \
+            xvfb \
+            libgl1 \
+            freeglut3-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxext-dev
+
+      # Pinned EXACTLY to the manifest's `julia_version`. A different minor makes the committed
+      # manifest unusable and turns the version gate into a lottery — never '1', 'lts' or 'min'.
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12.6'
+          show-versioninfo: true
+
+      # Defaults are kept, in particular `cache-artifacts: true`, so the 5.75 MB lazily
+      # downloaded `grid_8` Julia artifact is cached for later tiers.
+      - uses: julia-actions/cache@v3
+
+      - name: Install from the committed manifest
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      # Research assumption A5: the highest-risk CI unknown. Either confirmed or refuted here.
+      - name: Load the package headless
+        run: xvfb-run -a julia --project=. -e 'using ProteinCoLoc; println("ProteinCoLoc loaded")'
+
+      # `xvfb-run` above is LOAD-BEARING, measured rather than assumed: a control step running the
+      # identical load WITHOUT the prefix was executed in run 30937534659 and died with
+      # `GLFW.GLFWError(65550, "X11: The DISPLAY environment variable is missing")` /
+      # `glfwInit failed` inside GLFW's `__init__`. The control was removed once measured. Do not
+      # drop the prefix from any step that loads this package.
+
+      # Research assumption A4, and the same assertion `test/runtests.jl` makes. Both versions are
+      # printed either way, so the log records what the install actually produced even on failure.
+      - name: Assert the manifest-pinned versions (co-resolution gate)
+        run: |
+          julia --project=. -e '
+            using Pkg
+            deps = Pkg.dependencies()
+            function installed(name)
+                for (_, info) in deps
+                    info.name == name && return info.version
+                end
+                return nothing
+            end
+            ne = installed("NeuralEstimators")
+            fl = installed("Flux")
+            println("NeuralEstimators = ", ne)
+            println("Flux = ", fl)
+            ne === nothing && error("NeuralEstimators is not an installed dependency")
+            fl === nothing && error("Flux is not an installed dependency")
+            string(ne) == "0.2.1"   || error("NeuralEstimators is $(ne), expected exactly 0.2.1")
+            string(fl) == "0.16.10" || error("Flux is $(fl), expected exactly 0.16.10")
+            println("co-resolution assertion OK")
+          '
+
+      # `artifacts/` is git-ignored, so on a runner this exercises the lazy download plus the
+      # `_verify_tree_sha1` / `ensure_artifact_installed` integrity path — never a bare download.
+      - name: Resolve the shipped grid_8 bundle through the hash-verified path
+        run: |
+          xvfb-run -a julia --project=. -e 'using ProteinCoLoc; b = ProteinCoLoc.estimator_for(8); println("grid_8 bundle resolved: ", b.grid)'
