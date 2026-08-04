@@ -1,0 +1,148 @@
+# ---------------------------------------------------------------------------------------
+# calibration golden (fast tier)
+#
+# THE FAST TIER of the D-08 two-tier calibration gate. It runs the deterministic,
+# fixture-scale D-09 golden (`test/gate/ci_golden.jl`) on every push to `main` and every pull
+# request, plus the append-only guard that keeps the golden from being silently regenerated
+# (`test/gate/test_p15_golden.jl`).
+#
+# WHAT IT PROVES, AND WHAT IT DOES NOT.
+# It detects **CHANGE**, not miscalibration. The golden runs at `P15_GOLDEN_M = 8` draws, where
+# the ECE null mean is ~0.12 — an order of magnitude above any miscalibration worth detecting —
+# so the numbers it asserts carry no calibration information. What they carry is a bit-level
+# fingerprint of the whole inference path: the resolved net, the summary chain, the standardizers,
+# the flow forward pass and the draw order. MISCALIBRATION IS DETECTED BY `calibration-slow.yml`
+# at reported scale. Any claim that this per-push job proves calibration oversells SC3.
+#
+# RE-BLESSING THE GOLDEN is governed by
+# `.planning/phases/15-calibration-operating-envelope-and-ci-gate/15-REBLESS.md`, and is NEVER
+# done merely to make this workflow green. A red golden is the gate working.
+#
+# ENVIRONMENT RECIPE — COPIED, NOT RE-DERIVED.
+# The apt list, the Julia pin, the instantiate step and the `xvfb-run` prefix all come from
+# `.github/workflows/headless-smoke.yml` and its measured baseline in
+# `.planning/phases/15-calibration-operating-envelope-and-ci-gate/15-CI-BASELINE.md`
+# (runs 30935050140 / 30936970798 / 30937534659). A change to the apt list belongs in
+# `headless-smoke.yml` first, gets proven by a green run there, and only then propagates here.
+#
+# KNOWN-GATED, STATED RATHER THAN HIDDEN.
+# `test/gate/ci_golden.jl` resolves the shipped net through `ProteinCoLoc.estimator_for(8)`.
+# `Artifacts.toml` points `grid_8` at a `v2.0.0` GitHub release that DOES NOT EXIST — the asset
+# URL and the pkg.julialang.org mirror both return HTTP 404, and `gh release list` shows only
+# v1.0.1 and v1.0.0.compiled (15-CI-BASELINE.md §5). Until that release is published this job
+# CANNOT go green, for a reason that has nothing to do with the golden. It is deliberately left
+# blocking: `continue-on-error` here would turn a true statement about a broken shipping path
+# into a green badge.
+#
+# SECURITY POSTURE.
+# Workflow-level `permissions: contents: read` only. The trigger is the ordinary `pull_request`.
+# Its privileged fork-trigger variant — the one that runs contributor-controlled content against
+# the BASE repository's write-scoped token — is deliberately not used anywhere in this file, and
+# the plan's verify asserts its absence by string (T-15-04). NO VALUE FROM THE
+# GITHUB EVENT PAYLOAD is interpolated into any `run:` block — that is the script-injection vector
+# (T-15-05), and its absence is asserted by string in the plan's verify. The third-party actions are
+# pinned to MAJOR TAGS, which are mutable refs; SHA-pinning them is a recorded pre-v2.0-release
+# hardening item (15-CI-BASELINE.md §6, threat T-15-06).
+# ---------------------------------------------------------------------------------------
+name: calibration golden (fast tier)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calibration-golden:
+    name: D-09 calibration golden
+    runs-on: ubuntu-latest
+
+    # BUDGET, DERIVED FROM A MEASUREMENT — a timeout is not a guess.
+    # Measured cold-cache fixed overhead (15-CI-BASELINE.md §2, run 30935050140):
+    #   checkout 4 s + apt 20 s + setup-julia 9 s + cache restore 1 s + instantiate 11 m 41 s
+    #   + one package load 2 m 28 s + cache save 11 s = 15 m 21 s total job wall-clock.
+    # This job loads the package TWICE (once per script) instead of once, and adds the two script
+    # runs on top. Their runner cost is NOT yet measured (this job is gated on the missing v2.0.0
+    # release — see the header); locally, warm, `ci_golden.jl` is 48 s and `test_p15_golden.jl` is
+    # 70 s wall-clock end to end, package load included. Budgeting ~3 min each on a cold runner
+    # gives ~21 min. Doubled for headroom and rounded up: 45.
+    # Warm-cache runs land near 3-4 min; the cold number is what a timeout must cover.
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Must run BEFORE any Julia step: GLMakie's precompilation itself touches the GL stack, and
+      # `src/ProteinCoLoc.jl:28` imports GLMakie unconditionally at module load. This list is
+      # byte-identical to the one recorded as working in 15-CI-BASELINE.md §3 (zero iterations
+      # required; proven sufficient, not proven minimal).
+      - name: Install OpenGL/X system libraries and xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xorg-dev \
+            mesa-utils \
+            xvfb \
+            libgl1 \
+            freeglut3-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxext-dev
+
+      # Pinned EXACTLY to the manifest's `julia_version`. Never '1', 'lts' or 'min': a different
+      # minor makes the committed manifest unusable. It is also load-bearing for the golden
+      # itself — `Random.seed!` stream semantics are not a cross-version contract, so a bit-exact
+      # rank digest is a Julia-patch assertion. Bumping this version is a LEGITIMATE re-bless
+      # reason and must be named as such (15-REBLESS.md §1).
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12.6'
+          show-versioninfo: true
+
+      # Defaults kept, in particular `cache-artifacts: true`, so the 5.75 MB `grid_8` artifact is
+      # cached. Measured worth: `Pkg.instantiate()` is 11 m 41 s cold vs 3 s warm (~230x), and
+      # package load 2 m 28 s cold vs 14 s warm. Do not disable. Default scoping is retained —
+      # widening `cache-name` across a trust boundary is a cache-poisoning vector (T-15-08).
+      - uses: julia-actions/cache@v3
+
+      # D-08a: install from the COMMITTED MANIFEST, never by resolving.
+      # `test/runtests.jl:32-49` asserts the EXACT strings "0.2.1" (NeuralEstimators) and "0.16.10"
+      # (Flux), while `Project.toml [compat]` permits a wider range — so a resolve could satisfy
+      # `[compat]` and still fail the gate. Instantiating from the manifest makes the pinned
+      # versions what CI actually gets. `[compat]` is deliberately NOT tightened to "=0.2.1" /
+      # "=0.16.10": that would block downstream co-installation of an AGPL package others may
+      # depend on. Instantiate is the ONLY package-manager verb in this workflow: adding,
+      # resolving and the full test entry point are all absent by design, the last because it
+      # builds a sandbox environment that re-resolves. The full 1550-line suite belongs to the
+      # slow tier and to local runs.
+      - name: Install from the committed manifest
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      # `xvfb-run -a` is LOAD-BEARING on every step that loads the package, measured rather than
+      # assumed: an explicit control step without the prefix died in run 30937534659 with
+      # `GLFW.GLFWError(65550, "X11: The DISPLAY environment variable is missing")` inside GLFW's
+      # `__init__` (15-CI-BASELINE.md §4). Both steps below load ProteinCoLoc.
+      - name: D-09 calibration golden
+        run: xvfb-run -a julia --project=. --threads=auto test/gate/ci_golden.jl
+
+      # Runs the append-only guard in CI and not only locally: a golden that can be silently
+      # regenerated is a rubber stamp, so the control that prevents it must run where the golden
+      # does. Also re-asserts the --rebless refusal and the append-never-edit property.
+      - name: Golden re-bless discipline and append-only guard
+        run: xvfb-run -a julia --project=. --threads=auto test/gate/test_p15_golden.jl
+
+      - name: What a red run means
+        if: failure()
+        run: |
+          echo "a red golden is the gate working; do not re-bless to make this green"
+          echo "Read .planning/phases/15-calibration-operating-envelope-and-ci-gate/15-REBLESS.md"
+          echo "before changing anything in test/gate/p15_consts.jl."

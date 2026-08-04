@@ -1140,3 +1140,38 @@ if !isdefined(@__MODULE__, :SBC_M)
     @assert P15_SWEEP_MIN_THREADS >= 16
     @assert P15_SWEEP_WALLCLOCK_CEILING_HOURS > 8.5     # the 7-axis prediction it must cover
 end
+
+# =========================================================================================
+# TIER 2 / block 1 --- the D-09 fast-gate golden. INITIAL BLESSING, plan 15-06.
+# =========================================================================================
+# APPENDED at the end of the file. Nothing above it was touched (D-09).
+# REASON: initial blessing, plan 15-06 (no golden existed; the fast tier had nothing to
+#         assert against).
+# Measured by `julia --project=. --threads=auto test/gate/ci_golden.jl`
+# on Julia 1.12.6, against the grid_8 bundle resolved via artifact_store.
+# WHAT IT ASSERTS: change, NOT calibration — see P15_GOLDEN_HONESTY and the header of
+# `ci_golden.jl`. Re-blessing is governed by .planning/phases/15-calibration-operating-envelope-and-ci-gate/15-REBLESS.md.
+if !isdefined(@__MODULE__, :P15_GOLDEN_RANK_DIGEST)
+    # `string(hash(ranks))` over the M×8 integer rank table. NO tolerance, by design.
+    const P15_GOLDEN_RANK_DIGEST   = "16474472849656815117"
+    # The `grid_8` git-tree-sha1 pinned in Artifacts.toml — a net swap fails here FIRST.
+    const P15_GOLDEN_ARTIFACT_HASH = "90e6b63a8a234d067b407fefd7914f2ae4845448"
+    # The same identity recomputed FROM THE BYTES — mode-independent, so it does not
+    # depend on which of the three resolution paths served them (see `p15_golden_net`).
+    const P15_GOLDEN_NET_CONTENT_DIGEST = "6609019769512177939"
+    # The eight per-column ECEs, asserted within P15_GOLDEN_ECE_TOL. At M = 8 these carry
+    # NO calibration information; they are a numeric fingerprint. Order = SBC_PARAM_LABELS.
+    const P15_GOLDEN_ECE           = [
+        0.09868421052631574,
+        0.09210526315789466,
+        0.07894736842105268,
+        0.23684210526315785,
+        0.09868421052631571,
+        0.07894736842105268,
+        0.0789473684210526,
+        0.18421052631578944]
+    # A bit-exact golden is a JULIA-PATCH assertion too: `Random.seed!` stream semantics
+    # are not a cross-version contract. A patch bump is a LEGITIMATE re-bless reason.
+    const P15_GOLDEN_JULIA_VERSION = "1.12.6"
+    const P15_GOLDEN_BLESSED_ON    = "2026-08-04"
+end
