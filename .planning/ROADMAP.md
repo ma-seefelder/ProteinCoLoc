@@ -208,7 +208,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 11. Registration + Chromatic Uncertainty as Latent | 6/11 | In Progress|  |
 | 12. Spatial Colocalization Map (GP/CAR) | 11/20 | In Progress|  |
 | 13. Three-Hypothesis Amortized Bayes Factor | 16/17 | In Progress| 13-16: real-image arm REPORTED — **all its figures SUPERSEDED**, measured on the DAPI-counterstain pair (RANDOM on both pairs, both OOD-flagged 2.49x/2.42x, agreement). 13-17 corrected the operative pair to c2/c3 green/red per `13-D15-AMENDMENT.md`, **dropped** the redundancy arm (no second pair exists) and **re-ran the arm once**: on the amended pair the verdict is **COLOC / RANDOM** (was RANDOM / RANDOM) and both fixtures are OOD-flagged **4.198x / 5.297x — WORSE than the superseded 2.49x / 2.42x**. **The CONCLUSION is unchanged**: qualitative, n = 2, unlabelled, OOD-bound. **The gating arm is unaffected and no threshold moved**; D-04 allowance unspent |
-| 14. Decision + Abstention Layer | 12/14 | In Progress|  |
+| 14. Decision + Abstention Layer | 13/14 | In Progress|  |
 | 15. Calibration Operating Envelope + CI Gate | 0/9 | Planned | - |
 | 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
 
@@ -484,7 +484,7 @@ Plans:
 - [x] 14-10-PLAN.md — Wave 6: `run_p14_fdr_check.jl` (SC1-b gated, SC1-c reported-not-gated)
 - [x] 14-11-PLAN.md — Wave 6: `run_p14_riskcoverage.jl` (SC3-a/b/c)
 - [x] 14-12-PLAN.md — Wave 6: `run_p14_ood_arm.jl` (SC3-d)
-- [ ] 14-13-PLAN.md — Wave 6: `run_p14_real_images.jl` (SC1-f, D-03a six-TIFF illustration + corpus record)
+- [x] 14-13-PLAN.md — Wave 6: `run_p14_real_images.jl` (SC1-f, D-03a six-TIFF illustration + corpus record)
 
 **Wave 7** *(blocked on Wave 6 completion)*
 

@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: in-progress
 stopped_at: Phase 15 context gathered
-last_updated: "2026-08-04T12:36:14.505Z"
+last_updated: "2026-08-04T12:54:58.814Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 16
   completed_phases: 11
   total_plans: 124
-  completed_plans: 105
+  completed_plans: 106
   percent: 69
 ---
 
@@ -35,7 +35,7 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
 Phase: 14 (decision-and-abstention-layer) — EXECUTING
-Plan: 12 of 14 complete (14-01…14-10; wave 6 in progress — SC1-b MET at all four
+Plan: 13 of 14 complete (14-01…14-10; wave 6 in progress — SC1-b MET at all four
 pre-registered levels, SC1-c reported and prior-sensitive)
 executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)~~
 **SUPERSEDED 2026-08-03: EXECUTION IS OVER — 16 of 20 plans complete, and the remaining four are
@@ -1135,6 +1135,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 | Phase 14 P10 | 25m | 2 tasks | 1 files |
 | Phase 14 P11 | 35 min | 2 tasks | 1 files |
 | Phase 14 P12 | 160m | 2 tasks | 1 files |
+| Phase 14 P13 | 50m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -1193,6 +1194,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 14-11: SC3-a/b/c all MET on the shared 2000-item pool (skill 0.9017 vs floor 0.60, spearman 0.9702 vs 0.95, AUC_hard 0.9117 vs 0.80); all four bars recorded in-artifact as judgement calls with no derivation; coverage floor frozen in a6c8258 before the runner existed; every number is a well-specified-regime number
 - [Phase ?]: 14-12: SC3-d NOT MET -- gated minimum-over-families abstain-rate margin -0.129 vs frozen P14_OOD_MARGIN_FLOOR 0.50 (texture +0.870, background +0.860, optics +0.258, noise -0.129)
 - [Phase ?]: 14-12: the wired density OOD channel is BLIND to misspec_noise at the strongest rung (0/1000 flagged); channels_not_wired = (:pp, :noise), so the family that slips past is the one the missing channel is for
+- [Phase ?]: 14-13 (SC1-f, D-03a): the decision layer ABSTAINS (:ood_fired, density 703.2995 vs threshold 167.5446) on BOTH committed specimens -- the designed behaviour, and the pre-stated prediction held. Reported as an ILLUSTRATION, never a coverage claim.
+- [Phase ?]: 14-13: the provenance corpus is recorded :unfetched_by_design (0 image bytes; 30 simulated-secondary / 2 physical-primary = the untouched Phase-16 sealed holdout; dev 14 / eval 16 / sealed 2, all COMPUTED from the manifest), and the D-03 real-data bound is ABSENT, NOT MERELY LOOSE.
 
 ### Roadmap Evolution
 
@@ -1436,7 +1439,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T12:36:05.175Z
+Last session: 2026-08-04T12:54:37.308Z
 Stopped at: Phase 15 context gathered
 Resume file: .planning/phases/15-calibration-operating-envelope-and-ci-gate/15-CONTEXT.md
 Resume action: continue the ACTIVE phase — Phase 7, plan 07-08, wave 6 of 8. Phase 8 remains COMPLETE.
