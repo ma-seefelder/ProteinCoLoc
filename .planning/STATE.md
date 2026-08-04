@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: milestone
 status: in-progress
 stopped_at: Phase 15 context gathered
-last_updated: "2026-08-04T10:02:46.304Z"
+last_updated: "2026-08-04T10:02:53.068Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 16
@@ -1189,6 +1189,7 @@ Recent decisions affecting current work:
 - [Phase 08-05]: `finalized_manifest()` (corpus/anchor_rows.jl) SUPERSEDES the 08-04 placeholder `committed_manifest()`; `anchor_rows()` is parameterized on sha256/bytes so the pending path and the post-bootstrap path are the SAME code path and both are covered by the offline gate. All anchors remain `physical-primary` + `sealed_holdout`, reachable ONLY via `open_sealed_holdout(; reason)` (D-09) — asserted.
 - [Phase ?]: 14-09: SC1-d PASSES -- realized split-conformal coverage 0.9115 (1823/2000) vs the derived band 0.8799; q-hat 0.4498; iteration_trigger_fired=false so P14_ITERATION_ALLOWANCE stays unspent. Qualifier: ambiguous rate is exactly 0.0, so coverage comes from classifier accuracy not set-valued caution; the guarantee is simulator-derived (D-03a: the intended real-data bound is ABSENT, not merely loose).
 - [Phase ?]: 14-10: SC1-b MET — realized FDP inside the binomial 95% band of the rule's own predicted value at all four levels of P14_ALPHA_FDR_GRID, decided fraction 0.888 (1776/2000) at every level. SC1-c REPORTED, not gated: the guarantee is genuinely prior-sensitive — at pi_coloc = 0.70 the realized FDP is 0.347 against a predicted 0.200, so an FDR number may never be quoted without the prior it assumed. Accepted null mass is ~all random, ~0 exclusion.
+- [Phase ?]: 14-11: SC3-a/b/c all MET on the shared 2000-item pool (skill 0.9017 vs floor 0.60, spearman 0.9702 vs 0.95, AUC_hard 0.9117 vs 0.80); all four bars recorded in-artifact as judgement calls with no derivation; coverage floor frozen in a6c8258 before the runner existed; every number is a well-specified-regime number
 
 ### Roadmap Evolution
 
