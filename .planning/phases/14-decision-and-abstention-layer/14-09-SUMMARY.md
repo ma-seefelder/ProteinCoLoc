@@ -149,6 +149,20 @@ the shared eval pool). The only commit this plan added is the `.gitignore` devia
 - **Files modified:** `.gitignore`
 - **Commit:** `c2da70b`
 
+**2. [Rule 1 - Bug] STATE.md plan pointer was stale and the SDK increment compounded it**
+
+- **Found during:** state updates
+- **Issue:** `.planning/STATE.md` read `Plan: 1 of 14` for phase 14 while nine `14-*-SUMMARY.md`
+  files exist on disk; `bm-sdk query state.advance-plan` is a naive increment and advanced it to
+  `2 of 14`, which is still wrong. `roadmap.update-plan-progress` independently reported
+  `summary_count: 9`.
+- **Fix:** Set the pointer to `9 of 14 complete (14-01…14-09; wave 5 done, SC1-d measured and
+  PASSING)`. Verified against the diff that nothing else on that line was clobbered — the dangling
+  struck-through fragment on the following line is pre-existing in the committed file, not damage
+  from this run.
+- **Files modified:** `.planning/STATE.md`
+- **Commit:** `c1c8a23`
+
 ### Not a deviation, recorded for the next executor
 
 A smoke run at `n = 120` tripped `p14_assert_unstratified` with "THE DRAW IS CLASS-BALANCED". This
