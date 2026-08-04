@@ -149,7 +149,12 @@ Rows are `14-VALIDATION.md`'s SC → validation map in its own order. **No row i
 | **Prior re-derivation** | `pi_class_masses` is re-derivable, not taken on trust | re-derived masses match to the fixture's MC error | re-derived; the reported prior in use is `class_prior_used = (exclusion = 0.31272, random = 0.47073, coloc = 0.21655)` and is carried in every artifact | **PASS** | `test_p14_posterior.jl`; every artifact → `class_prior_used` | same |
 
 **Tally: 17 PASS, 1 REPORTED-NOT-GATED, 1 FAIL.** The FAIL is SC3-d and it is stated at the same
-volume as the passes, in §6 and in §8.
+volume as the passes, in §6 and in §8. Its disposition was **ruled by the user on 2026-08-04**
+(`14-SC3D-RULING.md`, commit `f4934a9`): the row is recorded FAILED and **scoped to the density-only
+wiring**, not recorded as a limit of the shipped OOD flag. The ruling's six required statements are
+implemented in §6, *The SC3-d disposition*. §6 also carries a **verdict-sensitivity strip** — a
+read-only table of what each SC3 verdict would have been at other bar values, added on the same
+day's ruling about how the judgement-call bars are presented. **No bar was changed.**
 
 ---
 
@@ -421,6 +426,101 @@ independent of the machinery under audit, that the bar measures something other 
 No such evidence exists for any of the five bars here, so none of them moves, and **the SC3-d
 shortfall below is reported, not re-tuned.**
 
+### Verdict sensitivity — what each verdict would have been at a different bar (NO BAR WAS CHANGED)
+
+**Read this framing before the tables.** **No bar was changed, and none can be.** The frozen values
+in `spike/p14/consts.jl` — byte-unchanged against HEAD, re-asserted at the moment this strip was
+computed — are the **only** values that gate anything in Phase 14, and every verdict reported
+anywhere in this document is the verdict at those frozen values. The rungs below are
+**hypothetical**. They exist so that a reader can see whether a conclusion **hinges on an underived
+number or is robust to it**, which is the actual defence against a judgement-call bar. **This is
+presentation, not relaxation.** It is the user's ruling of 2026-08-04 on how the five bars are
+framed, and it changes nothing measured: nothing was re-simulated, nothing re-trained, and the four
+gated statistics were **loaded** from the artifacts above and compared against a sweep.
+
+*Source: `p14_bar_sensitivity.jld2`, written by `spike/p14/run_p14_bar_sensitivity.jl` — a runner
+that gates nothing (`gates_nothing = true`, `no_bar_changed = true`,
+`recomputed_anything_gated = false`) and reads the frozen bars from `consts.jl` by name. Its verdict
+at each frozen rung is **pinned by assertion** to the `sc3a_met` / `sc3b_met` / `sc3c_met` /
+`sc3d_met` flags the gated runners persisted, so the strip cannot be scoring under a different rule
+from the one Phase 14 was scored under.*
+
+**What a one-sided bar's sensitivity actually is, said plainly rather than dressed up.** Every SC3
+gate has the form `statistic ≥ bar`, so the bar value at which the verdict flips **is** the measured
+statistic, by construction. The informative content of the strip is therefore the **distance from
+the frozen bar to that flip point** — the room the verdict had. It is not new evidence and must not
+be quoted as any.
+
+`*` marks the frozen bar. `MET` / `NOT` is the verdict that hypothetical bar would have produced.
+
+| Gate | Measured | 0.30 | 0.40 | 0.50 | 0.60 | 0.70 | 0.80 | 0.85 | 0.90 | 0.91 | 0.95 | Frozen → verdict | Flips at | Distance |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **SC3-a** selective skill | 0.9017 | MET | MET | MET | **MET\*** | MET | MET | MET | MET | NOT | NOT | `P14_SKILL_FLOOR = 0.60` → **MET** | 0.9017 | **+0.3017** |
+
+| Gate | Measured | 0.80 | 0.85 | 0.90 | 0.93 | 0.95 | 0.96 | 0.97 | 0.98 | 0.99 | 1.00 | Frozen → verdict | Flips at | Distance |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **SC3-b** Spearman | 0.9702 | MET | MET | MET | MET | **MET\*** | MET | MET | NOT | NOT | NOT | `P14_SPEARMAN_FLOOR = 0.95` → **MET** | 0.9702 | **+0.0202** |
+
+| Gate | Measured | 0.60 | 0.70 | 0.75 | 0.80 | 0.85 | 0.90 | 0.91 | 0.92 | 0.95 | 0.99 | Frozen → verdict | Flips at | Distance |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **SC3-c** `AUC_hard` | 0.9117 | MET | MET | MET | **MET\*** | MET | MET | MET | NOT | NOT | NOT | `P14_AUC_HARD_FLOOR = 0.80` → **MET** | 0.9117 | **+0.1117** |
+
+| Gate | Measured | 0.00 | 0.05 | 0.10 | 0.20 | 0.30 | 0.40 | 0.50 | 0.60 | 0.70 | 0.80 | Frozen → verdict | Flips at | Distance |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **SC3-d** abstain margin | −0.1290 | NOT | NOT | NOT | NOT | NOT | NOT | **NOT\*** | NOT | NOT | NOT | `P14_OOD_MARGIN_FLOOR = 0.50` → **NOT MET** | −0.1290 | **−0.6290** |
+
+**What the strip says, row by row.**
+
+- **SC3-a and SC3-c are far from any boundary.** Skill would have passed a bar anywhere up to 0.90 —
+  half the admissible range above the frozen 0.60 — and `AUC_hard` up to 0.91. Neither verdict hinges
+  on the choice of its underived number; a referee substituting a different-but-reasonable floor gets
+  the same answer.
+- **SC3-b is the one PASS with modest room, and this is the honest place to say so.** The Spearman
+  clears the frozen 0.95 by **0.0202**. A floor of 0.98 — not an unreasonable number for a
+  monotone-trend criterion — would have turned SC3-b red. The verdict is real, but it is not robust
+  to a materially stricter choice, and any citation of SC3-b should carry that.
+- **SC3-d does not fail marginally, and no bar choice rescues it.** The measured margin is
+  **negative**: the `noise` arm abstains *less* than the in-distribution arm. It fails at **every**
+  rung of the sweep including **0.00** — i.e. it would fail a bar that asked only for "not worse than
+  in-distribution". Nothing about the frozen 0.50 produced this result, and lowering it would not
+  have avoided it. (Why it fails, and the scope of that failure, is the next subsection.)
+
+**`P14_COVERAGE_FLOOR` is different in kind, and is treated differently.** It is not a pass/fail bar:
+it is the coverage at which the raw risk-coverage curve is **truncated** before SC3-b's Spearman is
+taken. Its sensitivity is therefore a genuine **re-derivation** of the statistic at other
+truncations, computed from the raw full-range curve that `p14_riskcoverage_report.jld2` already
+persists (`curve_coverage`, `curve_selective_risk`). It **was** computable from the persisted
+artifact; nothing here is fabricated. The re-derivation is **pinned by assertion** at the frozen
+truncation to the persisted `spearman` (agreement to < 1e-12) and to `spearman_n_points = 1601`
+before any other rung is reported, so every other row is produced by the same computation SC3-b was
+scored with.
+
+| Truncation | Curve points in range | Re-derived Spearman | vs the frozen `P14_SPEARMAN_FLOOR = 0.95` |
+|---|---|---|---|
+| 0.02 | 1961 | 0.9368 | **NOT MET** |
+| 0.05 | 1901 | 0.9427 | **NOT MET** |
+| 0.10 | 1801 | 0.9523 | MET |
+| 0.15 | 1701 | 0.9616 | MET |
+| **0.20 \*** (frozen) | **1601** | **0.9702** | **MET** |
+| 0.25 | 1501 | 0.9780 | MET |
+| 0.30 | 1401 | 0.9846 | MET |
+| 0.40 | 1201 | 0.9927 | MET |
+| 0.50 | 1001 | 0.9919 | MET |
+| 0.60 | 801 | 0.9977 | MET |
+| 0.70 | 601 | 0.9989 | MET |
+
+**And this row is the one a referee should look at hardest, so it is stated without hedging.** The
+Spearman is **monotonically increasing in the truncation** across the whole sweep bar one inversion
+(0.40 → 0.50), which is exactly what the coverage floor's stated rationale predicts: the lower the
+truncation, the more of the one-item-denominator region enters the correlation, and that region is
+sampling noise. **SC3-b would have been NOT MET at a floor of 0.05 or 0.02**, and it is MET at every
+floor from 0.10 upward. The frozen 0.20 is therefore **inside the passing region but not at its
+edge** — one rung of margin below it (0.15, 0.10) and every rung above it also pass. A reader is
+entitled to ask whether 0.20 was chosen to land there; the answer is on the record and checkable:
+`P14_COVERAGE_FLOOR` was frozen in `a6c825867dbc786f7c3927df6760295ee0930c77`, a commit that contains
+no Phase-14 result of any kind, so it could not have been. That is the whole value of the
+pre-registration, and this table is what makes the value legible rather than asserted.
+
 ### SC3-d — NOT MET
 
 *Source: `p14_ood_arm_report.jld2`. Five matched arms of n = 1000 at `P14_OOD_COUNTER = 3`; one
@@ -503,6 +603,80 @@ here (`iteration_allowance_applies_here = false`). (2) Relaxing `P14_OOD_MARGIN_
 an acceptance-criterion grep proves no family is defined in the runner. Arms are matched item by item
 — identical θ, λ, image size and stream position, differing only in which generator produced the
 pixels.
+
+### The SC3-d disposition — ruled by the user on 2026-08-04
+
+*Binding record: `.planning/phases/14-decision-and-abstention-layer/14-SC3D-RULING.md`, committed
+`f4934a9`. The ruling answers the `resume-signal`'s question — "if any SC row FAILED, say how you
+want it recorded" — and it is reproduced in force here.*
+
+**Phase 14 closes NEGATIVE-BUT-USEFUL on this row. SC3-d is recorded as a named limit SCOPED TO THE
+DENSITY-ONLY WIRING — not as a limit of the shipped OOD flag.** The six points below are the ruling's
+own instruction for how this row must be stated, and each is implemented rather than summarized.
+
+**1. The failure, unsoftened.** **SC3-d FAILED.** Margin **−0.129** against the frozen floor
+**0.50**; `sc3d_met = false`; weakest family `:noise` with **0 of 1000** items flagged at the
+strongest existing rung against an in-distribution abstain rate of 0.129. The abstain-rate table
+above stands unchanged, the per-family margins stand unchanged, and no bar was relaxed, re-derived,
+re-scoped or swapped for a neighbouring statistic. The verdict-sensitivity strip above shows the
+failure is not a boundary effect: the margin is negative, so **no** non-negative bar would have
+passed it.
+
+**2. The scope, stated immediately beside the failure.** The measurement was taken on a
+**density-only** detector: `ood_channels_wired = (:density,)`, `ood_channels_not_wired = (:pp,
+:noise)` (`spike/p14/decide.jl:583-584`, `:979-980`; `spike/p14/pools.jl:487,506,563-564`;
+`decide.jl:286,293` switches the posterior-predictive channel off with `with_pp = false`). **One of
+the shipped flag's three channels.** The shipped **fused** detector attains **AUC 1.0 on the same
+`noise` family** — read from `artifacts/amended_v2/grid_8/gate_report_8.jld2`, key **`report[:ood]`**,
+loaded programmatically by `spike/p14/run_p14_bar_sensitivity.jl` and persisted to
+`p14_bar_sensitivity.jld2` (`gate8_density_auc`, `gate8_noise_auc`, `gate8_fused_auc`). Four
+misspecification levels per family; `levels = 4`, `n = 200`, `id_threshold = 179.1367781263274`,
+`fused_threshold = 7.128118439466407`:
+
+| Family | `density_auc` (**what Phase 14 wired**) | `noise_auc` | `fused_auc` (**shipped**) |
+|---|---|---|---|
+| `texture` | 1.0 / 1.0 / 1.0 / 0.99475 | 1.0 / 1.0 / 1.0 / 1.0 | 1.0 / 1.0 / 1.0 / 1.0 |
+| **`noise`** | **0.0 / 0.0 / 0.0 / 0.0** | 1.0 / 1.0 / 1.0 / 1.0 | **1.0 / 1.0 / 1.0 / 1.0** |
+| `optics` | 0.58 / 0.6755 / 0.656875 / 0.66975 | 1.0 / 1.0 / 1.0 / 1.0 | 1.0 / 1.0 / 1.0 / 1.0 |
+| `background` | 0.55925 / 0.95875 / 0.0 / 0.960125 | 1.0 / 1.0 / 1.0 / 1.0 | 1.0 / 1.0 / **0.0** / 1.0 |
+
+The density channel is **exactly blind** to the `noise` family — AUC 0.0 at every level, i.e. worse
+than chance. That is the *by-design* blind spot the noise channel exists to close:
+`test/gate/misspec.jl:32-33` states the reported detector is the OR-fused density∨noise pair because
+*"the image-noise channel closes the detector-noise blind spot of a correlation-only summary."* **The
+scope is DENSITY-ONLY, not NOISE-FAMILY-ONLY**: `optics` shows the same effect more mildly — density
+0.58–0.66975 against a fused 1.0 — and its 0.387 abstain rate above is consistent with that. The
+limit is a property of the **wiring**, not of one family.
+
+**3. The honest one-line form, quoted from the ruling.** **"the Phase-14 decision layer's abstention
+is blind to detector-noise misspecification because it wires one of the shipped flag's three
+channels — not because the shipped flag is blind to it."**
+
+**4. What is NOT claimed, stated explicitly.** **The fused detector's SC3-d margin is UNMEASURED.**
+Phase 14 never ran the fused detector through `decide_coloc`, so it is **unknown** whether SC3-d would
+pass with all channels wired, and **this report does not assert that it would**
+(`fused_sc3d_margin_measured = false` is persisted in `p14_bar_sensitivity.jld2`). What *is* known is
+that the channel SC3-d needed was present in the shipped artifact and absent from the decision layer.
+**Phase 15 tests the fused detector independently** — its OOD arm runs `gate_ood_roc`, i.e. the fused
+density∨noise pair, and sweeps a `noise` axis (Phase 15 **D-02 / D-06 / D-07**). Phase 15's
+three-valued verdict for that axis is the number that settles it, not anything in this report.
+
+**5. `P14_ITERATION_ALLOWANCE` is UNSPENT, and why.** The allowance is 1 and its **single**
+pre-declared trigger is *conformal coverage falling below the SC1-d band*. That trigger **did not
+fire**: SC1-d measured **0.9115** against a band of **0.8798753882025019** — above, not below
+(`iteration_allowance_applies_here = false`, `iteration_trigger_fired = false`). The allowance is
+therefore unavailable here and remains unspent. It could not have been spent on SC3-d in any case:
+`P14_ITERATION_TRIGGER` says in terms that it is *never* spent on relaxing a bar after a result and
+specifically never on any member of `P14_JUDGEMENT_CALL_BARS`.
+
+**6. The two rejected alternatives, recorded with their reasons, so the refusal to re-wire is visible
+as a choice rather than an omission.**
+
+| Rejected alternative | Reason on the record |
+|---|---|
+| **Route SC3-d to Phase 15 as a pre-registered rebuild with a fresh bar** | Phase 15's OOD arm runs `gate_ood_roc` — the **fused** density∨noise detector — so a fresh bar there would measure a *differently equipped* detector and answer a different question. It would also collide with Phase 15's **D-14**, which lists "add a detector channel for the failing mechanism" under Deferred and forbids it as an in-phase response. |
+| **Re-wire `(:pp, :noise)` into the Phase-14 decision layer and re-measure SC3-d** | It would very likely clear the bar — on the AUC table above, near-certainly — **and that is precisely why it is refused.** Improving the instrument after seeing the result, in order to pass a frozen bar, is the pattern this project has already had to correct four times (`.planning/STATE.md`, the four-amendments observation). |
+| *(also rejected)* **Record SC3-d as a general limit of the OOD flag** | Factually too pessimistic and falsifiable by opening the shipped gate report: `fam_best_auc[:noise] = 1.0`, `fused_auc[:noise] = 1.0` at all four levels. The limit belongs to the wiring, not to the flag. |
 
 ---
 
@@ -640,6 +814,10 @@ scores the conformal quantile is taken over are all outputs of that checkpoint.
 `:clear` means **one** channel says clear, not three. This cuts both ways and is recorded as such: it
 is not an excuse for the SC3-d shortfall, because the layer as measured is the layer as it exists —
 but a reader comparing this margin to a three-channel detector's is not comparing like with like.
+**Per the user's SC3-d ruling of 2026-08-04 this is the limit SC3-d's failure is scoped to** — see
+§6, *The SC3-d disposition*, for the loaded `density_auc` / `noise_auc` / `fused_auc` table from
+`artifacts/amended_v2/grid_8/gate_report_8.jld2 → report[:ood]` that measures it, and for the
+explicit statement that the **fused** detector's SC3-d margin is **unmeasured**.
 
 **C. The τ probe ran on a dirty tree.** `provenance.probe_repo_dirty_at_run = true`, inherited from
 Phase 13 and **surfaced rather than asserted away**. τ = 0.15 itself is four-way agreed
@@ -694,6 +872,20 @@ has already corrected once.
    to the artifact would otherwise see a mismatch and suspect an edit. The sha256 of the raw file,
    `4e8ee4be102ccbadd526d01302d1587279884e26bddfc9157336e03086d86ca5`, is the unambiguous digest and
    agrees everywhere.
+8. **A PROTECTIVE prediction for Phase 15's `noise` axis, recorded BEFORE that phase runs.** *Owner:
+   Phase 15 (D-02 / D-06 / D-07).* Phase 15 sweeps a `noise` axis on the **fused** detector and
+   assigns it PROTECTIVE / LATE / SILENT-BUT-SAFE. On the AUC evidence in §6 —
+   `gate_report_8.jld2 → report[:ood]`, `noise_auc[:noise] = 1.0` and `fused_auc[:noise] = 1.0` at all
+   four levels — **PROTECTIVE is expected.** This is written down *now*, from the SC3-d ruling of
+   2026-08-04, so that a `LATE` outcome there would be a genuine surprise with recorded evidence
+   against it, rather than a result read after the fact.
+9. **`fused_auc[:background]` drops to 0.0 at level 3 while `noise_auc[:background]` is 1.0 there —
+   flagged, not diagnosed.** *Owner: Phase 15, before the `background` and the new pure-offset
+   autofluorescence axes (D-02a) are read.* Evidence: the §6 scope table, and
+   `fire_rate[:background] = [1.0, 1.0, 0.0, 1.0]` in the same artifact. The z-score OR-fusion is
+   **not monotone in its channels**, so a fused AUC below its best channel is possible — but a clean
+   **zero** exactly at one rung, with 1.0 either side of it, is worth a look before that family is
+   reported. **Not diagnosed here; recorded so it is not discovered inside a reported run.**
 
 ---
 
@@ -713,7 +905,7 @@ was performed per-file.
 |---|---|---|---|
 | `spike/test/test_p14_consts.jl` | P14 Tier-1 pre-registration (D-07) | 273 / 273 | 0 |
 | `spike/test/test_p14_decoupling.jl` | P14 decoupling: `src/`, deps, the sealed holdout and the phase's own greps | 51 / 51 | 0 |
-| `spike/test/test_p14_provenance.jl` | P14 tau provenance (D-07) | 77 / 77 | 0 |
+| `spike/test/test_p14_provenance.jl` | P14 tau provenance (D-07) | **78 / 78** (was 77 before the sensitivity runner landed — see below) | 0 |
 | `spike/test/test_p14_posterior.jl` | P14 three-class posterior (D-04, class order, prior re-derivation) | 48 / 48 | 0 |
 | `spike/test/test_p14_fdr.jl` | P14 Bayesian-FDR prefix rule (SC1-a) | 55 / 55 | 0 |
 | `spike/test/test_p14_conformal.jl` | P14 hand-rolled split conformal (SC1-e, D-02) | 83 / 83 | 0 |
@@ -721,13 +913,22 @@ was performed per-file.
 | `spike/test/test_p14_result.jl` | P14 result and batch types (D-01, D-04, D-05, D-06) | 121 / 121 | 0 |
 | `spike/test/test_p14_decide.jl` | P14 decide: the composed pipeline, abstain-first, at fixture scale | 146 / 146 | 0 |
 | `spike/test/test_p14_pools.jl` | P14 pools: unstratified draws, the Phase-13 basis null, and D-06 end to end | 102 / 102 | 0 |
-| **Total** | | **1178 / 1178** | **all 0** |
+| **Total** | | **1179 / 1179** | **all 0** |
 
 ```bash
 for f in consts decoupling provenance posterior fdr conformal fuse result decide pools; do
   julia --project=spike spike/test/test_p14_$f.jl || echo "FAILED: $f"
 done
 ```
+
+**Why the provenance count moved from 77 to 78, recorded rather than quietly restated.** The first
+assembly of this report measured 77. `test_p14_provenance.jl:73` builds `P14_LANE_FILES` by
+**globbing** `spike/p14/*.jl` rather than by an enumerated list, precisely so that a file added in a
+later wave is scanned automatically instead of needing the list edited — the comment there says so.
+Adding `spike/p14/run_p14_bar_sensitivity.jl` (the verdict-sensitivity strip, §6) therefore adds
+**exactly one** assertion: the lane-wide guard that no Phase-14 source writes τ as a hardcoded
+literal, now applied to the new file, which passes. **No test changed, no test was added by hand, and
+the delta is +1 by construction.**
 
 ### The four reported runners
 
@@ -738,6 +939,20 @@ julia --project=spike -t auto spike/p14/run_p14_riskcoverage.jl  # SC3-a/b/c; co
 julia --project=spike -t auto spike/p14/run_p14_ood_arm.jl       # SC3-d; needs the ~52 MB gitignored spike/data/cache/p13 pool (3947.5 s)
 julia --project=spike -t auto spike/p14/run_p14_real_images.jl   # SC1-f; read-only on the six committed TIFFs (22.7 s)
 ```
+
+**And one runner that is NOT a reported runner and gates nothing** — the verdict-sensitivity strip of
+§6, added on the user's 2026-08-04 ruling about how the judgement-call bars are presented:
+
+```bash
+julia --project=spike spike/p14/run_p14_bar_sensitivity.jl       # §6 strip; READ-ONLY, gates nothing; writes p14_bar_sensitivity.jld2 (6.2 s)
+```
+
+It re-simulates nothing and re-measures nothing: it loads the already-measured `skill`, `spearman`,
+`auc_hard` and SC3-d `margin` and compares them against a sweep of hypothetical bar values, re-derives
+SC3-b's Spearman at alternative truncations of the persisted raw curve (pinned to the persisted value
+at the frozen truncation), and reads `report[:ood]` out of the shipped
+`artifacts/amended_v2/grid_8/gate_report_8.jld2` **read-only**. It asserts, before computing anything,
+that `spike/p14/consts.jl` is byte-unchanged against HEAD.
 
 **Order matters:** `run_p14_conformal.jl` produces `p14_eval_pool.jld2`, the shared n = 2000
 evaluation set that the FDR and risk-coverage runners **consume rather than redraw**, so the three
