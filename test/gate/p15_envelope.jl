@@ -313,3 +313,135 @@ function p15_report_only(row)
             vacuous                = _f(:vacuous),
             realised_imsize_counts = _f(:realised_imsize_counts))
 end
+
+# =============================================================================================
+# SC2 — the OOD crossing rule (D-07) and the THREE-VALUED per-axis verdict (D-06)
+# =============================================================================================
+
+"""
+    p15_ood_rung(fire_rates, id_fire_rate; margin = P15_OOD_FIRE_MARGIN) -> Int or nothing
+
+The first rung index `k` with `fire_rates[k] > id_fire_rate + margin`, else `nothing`.
+
+**THE BASELINE IS THE MEASURED ONE, NEVER THE DESIGN VALUE (D-07).** `gate_ood_roc` returns
+`id_fire_rate = mean(id_fused .> fused_thr)` — what this net, on this stream, actually does on
+in-distribution images. Both alternatives were rejected before any rung existed:
+
+  * **"ANY IMAGE FIRES"** is not a rule. The detector's in-distribution operating quantile is 0.95
+    (`src/amortized/ood.jl:61`), so about 5 % of IN-DISTRIBUTION images fire BY CONSTRUCTION.
+    An any-image rule therefore trips at rung 1 on every axis and proves nothing at all.
+  * **A CHOSEN FIXED RATE** (50 %, say) would be an underived bar — exactly the Stage-1-ceiling
+    pattern this project has already had to adjudicate, and the reason `p15_consts.jl` requires
+    every bar to carry its derivation next to it.
+
+The margin is binomial design arithmetic frozen in the pre-registration:
+`P15_OOD_FIRE_MARGIN = q95(Binomial(P15_OOD_N_POS, 0.05))/P15_OOD_N_POS - 0.05 = 0.025`, derived
+at load time by `_p15_binom_quantile` rather than typed.
+"""
+function p15_ood_rung(fire_rates::AbstractVector{<:Real}, id_fire_rate::Real;
+                      margin::Real = P15_OOD_FIRE_MARGIN)
+    thr = float(id_fire_rate) + float(margin)
+    return findfirst(>(thr), fire_rates)
+end
+
+"""
+    p15_axis_verdict(L_break, L_ood) -> Symbol
+
+The SC2 verdict for ONE axis, drawn from `P15_SC2_STATES`. Three-valued, and pre-registered
+before any rung existed (D-06):
+
+  * `:protective`      — the flag fires AT OR BEFORE the rung where coverage breaks.
+  * `:late`            — coverage breaks while the flag is still quiet. **THIS IS THE FAILURE SC2
+                         EXISTS TO CATCH.** It includes the case where the flag never fires at all
+                         while coverage did break.
+  * `:silent_but_safe` — coverage never breaks within the swept ladder, so no warning was owed.
+
+**WHY THE THIRD STATE EXISTS.** "The flag never fired" has two OPPOSITE meanings — working
+correctly where nothing was wrong, versus failing to warn where something was — and a two-valued
+pass/fail collapses them. Collapsing them is what would force a fifth after-the-fact amendment on
+this milestone, so the third state is declared before results exist rather than discovered after.
+
+**THE ASYMMETRY THAT MOTIVATES IT.** Spillover, registration and autofluorescence are IN-PRIOR
+axes (`P15_AXIS_MECHANISM`): the detector's null was fitted on in-distribution data that already
+CONTAINS them, so it may correctly never fire on them. Scoring that as a failure would penalise
+the detector for being right.
+"""
+function p15_axis_verdict(L_break, L_ood)
+    L_break === nothing && return :silent_but_safe
+    (L_ood !== nothing && L_ood <= L_break) && return :protective
+    return :late
+end
+
+"""
+    p15_sc2_pass(verdicts) -> Bool
+
+`true` iff no axis is `:late`. `verdicts` may be a Dict, a NamedTuple or any iterable of symbols.
+
+**WHAT A LATE AXIS LICENSES, AND WHAT IT DOES NOT (D-14).** A LATE axis is reported as a NAMED
+LIMIT — "the OOD flag does not protect against X" — and the phase CLOSES on it. That is a real,
+publishable finding on the Phase-11/12 negative-but-useful precedent. Two responses are
+EXPLICITLY FORBIDDEN: lowering the detector's in-distribution operating quantile until the flag
+fires early enough (that is tuning a detector until it passes its own gate), and building a new
+detector channel for the failing mechanism (that is new capability, with its own phase). No
+retuning, no retraining.
+"""
+p15_sc2_pass(verdicts) = !any(==(:late), values(verdicts))
+
+"""
+    p15_axis_verdicts(break_by_axis, ood_by_axis) -> NamedTuple
+
+Assemble the whole SC2 result over `P15_AXES`. `break_by_axis` and `ood_by_axis` map each axis to
+its `L_break` / `L_ood` (`nothing` where there was no crossing); every axis in `P15_AXES` must be
+present in both, because a missing key would silently read as "no break" and turn an INCOMPLETE
+sweep into an `:unbounded_envelope` conclusion.
+
+Each axis record carries its MECHANISM LABEL (`P15_AXIS_MECHANISM`) and its PRIOR BOUNDARY RUNG
+(`P15_PRIOR_BOUNDARY_RUNG`), so the domain map reads as two overlaid stories rather than one
+number: an IN-PRIOR axis that breaks is a TRAINING failure — the net saw those theta and still
+miscalibrates — while an OUT-OF-MODEL axis that breaks is a SCOPE limit, expected and honest, and
+precisely what the flag exists for. A boundary rung of `nothing` means "this axis has no prior
+support to mark", never "unmeasured".
+
+`degenerate` attaches D-13's two PRE-DECLARED readings mechanically instead of leaving them to be
+recognised by eye:
+  * `:empty_envelope`     — every axis breaks at rung 1. The tool has no usable operating range at
+    the swept resolution. A reportable negative, not a phase failure, and it does NOT license
+    widening the margin, lowering M or re-anchoring the threshold.
+  * `:unbounded_envelope` — no axis breaks at any rung. The envelope exceeds the swept range; the
+    honest report is the BOUND, not a wider search. This is the ONLY case in which
+    `P15_ITERATION_ALLOWANCE` may be spent.
+  * `nothing`             — neither.
+"""
+function p15_axis_verdicts(break_by_axis, ood_by_axis)
+    missing_break = [a for a in P15_AXES if !haskey(break_by_axis, a)]
+    missing_ood   = [a for a in P15_AXES if !haskey(ood_by_axis, a)]
+    isempty(missing_break) || error("p15_axis_verdicts: no L_break for axes $(missing_break); " *
+        "a missing axis would read as 'no break' and fake an unbounded envelope.")
+    isempty(missing_ood) || error("p15_axis_verdicts: no L_ood for axes $(missing_ood); " *
+        "a missing axis would read as 'flag never fired' and fake a LATE verdict.")
+
+    per_axis = Dict{Symbol,NamedTuple}()
+    verdicts = Dict{Symbol,Symbol}()
+    for axis in P15_AXES
+        lb = break_by_axis[axis]
+        lo = ood_by_axis[axis]
+        v  = p15_axis_verdict(lb, lo)
+        v in P15_SC2_STATES || error("p15_axis_verdicts: verdict $v for $axis is outside the " *
+            "pre-registered P15_SC2_STATES $(P15_SC2_STATES).")
+        verdicts[axis] = v
+        per_axis[axis] = (axis                = axis,
+                          verdict             = v,
+                          L_break             = lb,
+                          L_ood               = lo,
+                          mechanism           = P15_AXIS_MECHANISM[axis],
+                          prior_boundary_rung = P15_PRIOR_BOUNDARY_RUNG[axis])
+    end
+
+    breaks     = [break_by_axis[a] for a in P15_AXES]
+    degenerate = all(b -> b == 1, breaks)         ? :empty_envelope :
+                 all(b -> b === nothing, breaks)  ? :unbounded_envelope : nothing
+
+    return (axes = per_axis, verdicts = verdicts,
+            sc2_pass = p15_sc2_pass(verdicts), degenerate = degenerate)
+end
+
