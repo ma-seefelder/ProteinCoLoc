@@ -152,6 +152,27 @@ if !isdefined(@__MODULE__, :P14_RC_RUNNER_LOADED)
     """
     const P14_RC_CONF_TOL = 1e-12
 
+    """
+    The magnitude below which the selective-skill DENOMINATOR counts as degenerate.
+
+    NOT A BAR AND NOT A THRESHOLD ON A RESULT: a division guard. `skill` normalizes between the
+    random and the oracle reference curves, so its denominator is `AURC_random - AURC_oracle`. If
+    the two references coincide -- which happens when every item is correct, or every item is
+    wrong, so that ordering the batch cannot change anything -- the ratio is 0/0 and the honest
+    answer is `NaN` WITH A NOTE, never a number produced by dividing by something near zero.
+    """
+    const P14_RC_SKILL_DENOM_TOL = 1e-12
+
+    """
+    The commit that FROZE the four SC3 bars and the coverage floor, in `spike/p14/consts.jl`.
+
+    Recorded as a literal string, and it is the one literal in this file that SHOULD be one: it is
+    an audit pointer, not a value anything is scored against. That commit contains no Phase-14
+    result of any kind, which is the evidence -- checkable by any reader with `git show` -- that
+    `P14_COVERAGE_FLOOR` was not chosen after seeing where this curve becomes monotone.
+    """
+    const P14_RC_FREEZE_COMMIT = "a6c825867dbc786f7c3927df6760295ee0930c77"
+
     # Declared UNCONDITIONALLY at the foot of the block, so it is the sentinel and nothing else can
     # make this body skip.
     const P14_RC_RUNNER_LOADED = true
@@ -408,6 +429,96 @@ function _p14_rc_load_pool(path::AbstractString; reported::Bool = true)
 end
 
 """
+    _p14_rc_claims() -> NamedTuple
+
+The honesty block, written INTO the artifact as string keys so it travels WITH the numbers and
+cannot be dropped by a report writer.
+
+Every one of these is a sentence a reader of a bare SC3 number would otherwise have to be told by
+someone who remembered to tell them. A `.jld2` that carries the number and not the scope is a
+repudiation hole (T-14-32, T-14-33), which is why these are REQUIRED keys of the save rather than
+optional extras: an artifact missing one is never written at all.
+"""
+function _p14_rc_claims()
+    return (
+        bars_note =
+            "THESE FLOORS HAVE NO DERIVATION. They were frozen in `spike/p14/consts.jl` in " *
+            "commit $(P14_RC_FREEZE_COMMIT), which precedes every result-producing Phase-14 " *
+            "commit, and they may never be relaxed after a result. Every one of them is tagged " *
+            "[ASSUMED] in 14-RESEARCH section C.3; Assumptions Log A3 names all five as " *
+            "judgement calls. Only two carry any stated reasoning at all -- the selective-skill " *
+            "statistic is NORMALIZED between the random and oracle curves so that the bar is " *
+            "immune to the base error rate (the normalization is derived, the floor is not), and " *
+            "the coverage floor has a recorded reason but not a derivation of its specific " *
+            "value. This project has recorded four separate cases of an underived bar measuring " *
+            "something other than what it named (SC1g's component-vs-total, the n=2-against-271 " *
+            "real arm, the Wald-labelled-Wilson sizing, and the Phase-12 Stage-1 control " *
+            "ceiling), and the count is now high enough that `we pre-registered it' no longer " *
+            "settles an argument on its own. THE LICENSING STANDARD FOR ANY AMENDMENT is " *
+            "evidence, INDEPENDENT OF THE MACHINERY UNDER AUDIT, that the bar measures something " *
+            "other than what it names. A shortfall is REPORTED, not re-tuned.",
+
+        coverage_floor_rationale =
+            "WHY A COVERAGE FLOOR EXISTS AT ALL (14-RESEARCH section C.2 item 1): the empirical " *
+            "risk-coverage curve is a step function whose denominator is the NUMBER OF SELECTED " *
+            "ITEMS, so at coverage k/n a single hard item moves the selective risk by 1/k. At " *
+            "the left edge the denominator is one item and the risk is exactly 0 or 1. A " *
+            "monotone-trend statistic computed there would be measuring sampling noise. That " *
+            "reason is real; it does NOT derive the specific floor, which remains a judgement " *
+            "call, and the RAW curve over the FULL range is persisted and plotted so a reader " *
+            "can see precisely the region the statistic excludes and judge the exclusion.",
+
+        forbidden_action =
+            "TWO MOVES ARE NOT AVAILABLE HERE, AND THEY ARE NAMED SO THAT DOING EITHER WOULD BE " *
+            "A VISIBLE BREACH RATHER THAN A JUDGEMENT CALL. (1) MONOTONIZING THE CURVE -- " *
+            "replacing the measured selective risk by a running maximum or an isotonic fit and " *
+            "then reporting the trend statistic on it -- would manufacture the very property " *
+            "SC3-b tests. (2) RE-CHOOSING THE COVERAGE FLOOR after seeing where the curve " *
+            "becomes monotone would be invisible in the resulting number and total in the claim. " *
+            "The floor was frozen in $(P14_RC_FREEZE_COMMIT), a commit containing no Phase-14 " *
+            "result, and `coverage_floor_frozen_before_run` records that. Relaxing any of the " *
+            "four bars after this result is a pre-registration breach; P14_ITERATION_ALLOWANCE " *
+            "has exactly ONE pre-declared trigger and it is the conformal coverage band, none of " *
+            "these three gates.",
+
+        assumption_a1_note =
+            "ASSUMPTION A1, as a one-line derivation rather than a quoted theorem. Let " *
+            "R(c) = E[loss | kappa >= t(c)] be the population selective risk at coverage c, where " *
+            "t(c) is the confidence quantile. Lowering the threshold from t(c) to t(c') with " *
+            "c' > c admits exactly the items with kappa in [t(c'), t(c)), so R(c') is the " *
+            "coverage-weighted average of R(c) and the conditional risk of that admitted shell. " *
+            "R is therefore non-decreasing in coverage IF AND ONLY IF the shell's conditional " *
+            "risk is at least R(c) for every shell -- i.e. iff the confidence score is monotone " *
+            "in conditional risk. That is the assumption, it is a property of the SCORE and not " *
+            "of the estimator, and it can fail on a real head. The EMPIRICAL curve additionally " *
+            "carries the finite-sample noise described in coverage_floor_rationale, which is why " *
+            "SC3-b is a rank-correlation statistic on a declared range and NEVER a pointwise " *
+            "monotonicity assertion.",
+
+        circularity_note =
+            "EVERY NUMBER IN SC1 AND SC3 IS A WELL-SPECIFIED-REGIME NUMBER (14-RESEARCH section " *
+            "C.4; D-03 / D-03a). The risk-coverage curve, the conformal quantile and the FDR " *
+            "check are all computed on draws from the SAME simulator the evidence net was " *
+            "trained on, so the training joint and the evaluation joint are EQUAL BY " *
+            "CONSTRUCTION. These numbers therefore say that the arithmetic, the ordering and the " *
+            "calibration are consistent with each other; they do NOT say that any of them " *
+            "survives real microscopy, and they inherit the simulator's misspecification in " *
+            "full. The bounding evidence D-03 intended -- a held-out real-data arm that would " *
+            "bound how far this degrades -- is ABSENT, NOT MERELY LOOSE.",
+
+        hard_note =
+            "SC3-c IS NOT CIRCULAR, AND THIS IS WHY. `hard_i` is defined as `argmax_y " *
+            "p-hat(y | Z_i) != true_class_i` -- the argmax call WOULD HAVE BEEN WRONG -- scored " *
+            "against the SIMULATOR'S TRUE LABEL, which exists for every item. It is NOT defined " *
+            "against the abstention, the conformal set, or anything else the decision layer " *
+            "produces. A definition of `hard` that referred to the layer's own output would make " *
+            "the AUC a measurement of the layer against itself.",
+
+        amendment = P14_AMENDMENT_NOTICE,
+    )
+end
+
+"""
     p14_rc_figure(curve, oracle, rnd, base_error; path) -> String
 
 The measured risk-coverage curve with BOTH reference curves, over the FULL coverage range, the
@@ -552,7 +663,7 @@ function main(; pool_path = P14_RC_EVAL_POOL_PATH,
     # column 14-09 wrote, rather than read off that column. `p14_confidence` is the same function
     # the LAC hedge and the fusion consult, so the curve below is swept over the SAME ordering the
     # conformal layer cuts -- not a second, incidentally-similar score.
-    verbose && println("[1/6] recomputing kappa by name and pinning it to the persisted column …")
+    verbose && println("[1/7] recomputing kappa by name and pinning it to the persisted column …")
     posteriors = [(coloc = pool.p_coloc[i], random = pool.p_random[i],
                    exclusion = pool.p_exclusion[i]) for i in 1:n_eval]
     kappa = [p14_confidence(p) for p in posteriors]
@@ -571,7 +682,7 @@ function main(; pool_path = P14_RC_EVAL_POOL_PATH,
                        "base error rate = $base_error")
 
     # --- 4. THE MEASURED CURVE, OVER THE FULL RANGE ------------------------------------------
-    verbose && println("[2/6] sweeping the descending unique kappa thresholds …")
+    verbose && println("[2/7] sweeping the descending unique kappa thresholds …")
     curve = _p14_rc_curve(kappa, loss)
     @assert last(curve.coverage) == 1.0 "run_p14_riskcoverage: the measured curve does not reach full coverage; the descending sweep did not include the smallest attained kappa"
     @assert abs(last(curve.selective_risk) - base_error) < P14_RC_CONF_TOL "run_p14_riskcoverage: at full coverage the selective risk must BE the base error rate; got $(last(curve.selective_risk)) against $base_error"
@@ -582,7 +693,7 @@ function main(; pool_path = P14_RC_EVAL_POOL_PATH,
     # Normalizing between BOTH references is what makes SC3-a immune to the base error rate: a
     # near-perfect classifier and a mediocre one produce very different raw AURCs, and a bar on the
     # raw number would mostly be measuring how easy the batch was.
-    verbose && println("[3/6] building the oracle and random reference curves …")
+    verbose && println("[3/7] building the oracle and random reference curves …")
     oracle_ord = sortperm(loss)                       # stable: every correct item first
     oracle = _p14_rc_order_curve(loss, oracle_ord)
     # A RECORDED shuffle, not an unseeded one. The permutation is a reproducible function of the
@@ -603,7 +714,7 @@ function main(; pool_path = P14_RC_EVAL_POOL_PATH,
     cov_min_ref = minimum(oracle.coverage)
     @assert abs(cov_min_measured - cov_min_ref) <= span_tol "run_p14_riskcoverage: the measured curve starts at coverage $cov_min_measured while the reference curves start at $cov_min_ref; the three AURCs would be integrals over different intervals and their difference would not be a skill"
 
-    verbose && println("[4/6] integrating the three curves (trapezoidal, against coverage) …")
+    verbose && println("[4/7] integrating the three curves (trapezoidal, against coverage) …")
     aurc        = _p14_rc_aurc(curve.coverage, curve.selective_risk)
     aurc_oracle = _p14_rc_aurc(oracle.coverage, oracle.selective_risk)
     aurc_random = _p14_rc_aurc(rnd.coverage, rnd.selective_risk)
@@ -612,18 +723,99 @@ function main(; pool_path = P14_RC_EVAL_POOL_PATH,
     verbose && println("      AURC = $aurc   oracle = $aurc_oracle   random = $aurc_random   " *
                        "E-AURC = $e_aurc")
 
-    # --- 6. THE FIGURE, RENDERED BEFORE ANY GATE IS EVALUATED --------------------------------
-    verbose && println("[5/6] rendering the risk-coverage figure (BEFORE any verdict) …")
+    # --- 6. THE THREE STATISTICS (SC3-a, SC3-b, SC3-c) ---------------------------------------
+    verbose && println("[5/7] computing the three pre-registered statistics …")
+
+    # S1 -- SELECTIVE SKILL (SC3-a). Normalized between BOTH references on the SAME data, so the
+    # base error rate cannot carry the bar. THE DEGENERATE DENOMINATOR IS GUARDED BEFORE THE
+    # DIVISION: if the two references coincide, ordering the batch cannot change anything and the
+    # honest answer is NaN with a note, never a number obtained by dividing by something near zero.
+    skill_denominator = aurc_random - aurc_oracle
+    skill_degenerate  = abs(skill_denominator) <= P14_RC_SKILL_DENOM_TOL
+    skill = skill_degenerate ? NaN : (aurc_random - aurc) / skill_denominator
+    skill_note = skill_degenerate ?
+        ("DEGENERATE: AURC_random and AURC_oracle agree to within $(P14_RC_SKILL_DENOM_TOL), so " *
+         "the normalizing denominator is zero and no skill is defined. This happens when every " *
+         "item is correct or every item is wrong, i.e. when ordering the batch cannot change " *
+         "anything. Recorded as NaN rather than divided through.") :
+        ("skill = (AURC_random - AURC) / (AURC_random - AURC_oracle), both references computed " *
+         "on the SAME items as the measured curve.")
+
+    # S2 -- MONOTONE TREND, STATED HONESTLY (SC3-b). A Spearman rank correlation on the
+    # PRE-REGISTERED coverage range, NEVER a pointwise monotonicity assertion. The raw full-range
+    # curve is persisted alongside so the excluded region is visible.
+    in_range = [(c >= P14_COVERAGE_FLOOR) & (c <= 1.0) for c in curve.coverage]
+    coverage_sub = curve.coverage[in_range]
+    risk_sub     = curve.selective_risk[in_range]
+    n_in_range   = length(coverage_sub)
+    @assert n_in_range >= 2 "run_p14_riskcoverage: only $n_in_range curve points fall inside the pre-registered coverage range, so no rank correlation can be computed there. The floor is FROZEN and is not the thing to move."
+    spearman = StatsBase.corspearman(coverage_sub, risk_sub)
+
+    # S3 -- ABSTENTION CONCENTRATES ON HARD CASES (SC3-c). `hard` is the argmax call being WRONG
+    # against the SIMULATOR's true label, so it is the loss vector already computed -- there is
+    # exactly one of it, because two definitions could only create a way for them to disagree. The
+    # abstention score is 1 - kappa (higher = more likely to be routed away), matching `roc_auc`'s
+    # HIGHER-score-is-more-positive convention.
+    hard = [l == 1 for l in loss]
+    abstention_score = 1.0 .- kappa
+    n_hard = count(hard)
+    @assert n_hard > 0 "run_p14_riskcoverage: no item's argmax call is wrong, so SC3-c has an empty positive arm and no AUC exists. That is not a pass."
+    @assert n_hard < n_eval "run_p14_riskcoverage: every item's argmax call is wrong, so SC3-c has an empty negative arm and no AUC exists"
+    auc_hard = p14_rc_auc(abstention_score[.!hard], abstention_score[hard])
+
+    verbose && println("      skill = $skill   spearman = $spearman   auc_hard = $auc_hard   " *
+                       "(points in range: $n_in_range, hard items: $n_hard)")
+
+    # --- 7. THE FIGURE, RENDERED BEFORE ANY GATE IS EVALUATED --------------------------------
+    verbose && println("[6/7] rendering the risk-coverage figure (BEFORE any verdict) …")
     figout = p14_rc_figure(curve, oracle, rnd, base_error; path = fig_path)
     verbose && println("      figure -> $figout")
 
-    # --- 7. PERSIST THE REPORT, BEFORE THE HEADLINE AND BEFORE ANY ASSERTION -----------------
-    verbose && println("[6/6] persisting the risk-coverage report (BEFORE any verdict) …")
+    # --- 8. PERSIST THE REPORT, BEFORE THE HEADLINE AND BEFORE ANY ASSERTION -----------------
+    verbose && println("[7/7] persisting the SC3-a/b/c report (BEFORE any verdict) …")
     consts_path = joinpath(@__DIR__, "consts.jl")
     _p14_rc_save_report(report_path,
         ("curve_coverage", "curve_selective_risk", "oracle_coverage", "oracle_selective_risk",
          "random_coverage", "random_selective_risk", "aurc", "aurc_oracle", "aurc_random",
-         "e_aurc", "base_error_rate", "n_eval", "shuffle_seed", "shuffle_counter", "provenance");
+         "e_aurc", "base_error_rate", "n_eval", "shuffle_seed", "shuffle_counter", "provenance",
+         "skill", "spearman", "auc_hard", "bars", "bars_are_judgement_calls", "bars_note",
+         "coverage_floor_frozen_before_run", "coverage_floor_rationale", "forbidden_action",
+         "assumption_a1_note", "circularity_note", "hard_note",
+         "spearman_range_lo", "spearman_range_hi", "spearman_n_points",
+         "sc3a_met", "sc3b_met", "sc3c_met");
+        # --- the honesty block, splatted in so it CANNOT be dropped: every one of its keys is
+        #     also a REQUIRED key of the integrity check above, so an artifact missing one is
+        #     never written at all (T-14-32, T-14-33).
+        _p14_rc_claims()...,
+        # --- S1: SELECTIVE SKILL (SC3-a, GATED) ---
+        skill = skill,
+        skill_denominator = skill_denominator,
+        skill_degenerate = skill_degenerate,
+        skill_note = skill_note,
+        sc3a_met = (!skill_degenerate) && (skill >= P14_SKILL_FLOOR),
+        # --- S2: MONOTONE TREND ON THE PRE-REGISTERED RANGE (SC3-b, GATED) ---
+        spearman = spearman,
+        spearman_range_lo = Float64(P14_COVERAGE_FLOOR),
+        spearman_range_hi = 1.0,
+        spearman_n_points = n_in_range,
+        spearman_coverage_used = coverage_sub,
+        spearman_selective_risk_used = risk_sub,
+        pointwise_monotonicity_asserted = false,
+        coverage_floor_frozen_before_run = true,
+        coverage_floor_freeze_commit = P14_RC_FREEZE_COMMIT,
+        sc3b_met = spearman >= P14_SPEARMAN_FLOOR,
+        # --- S3: ABSTENTION CONCENTRATES ON HARD CASES (SC3-c, GATED) ---
+        auc_hard = auc_hard,
+        hard = hard,
+        n_hard = n_hard,
+        abstention_score = abstention_score,
+        sc3c_met = auc_hard >= P14_AUC_HARD_FLOOR,
+        # --- THE FOUR-BAR HONESTY BLOCK, MACHINE-READABLE ---
+        bars = (skill_floor = Float64(P14_SKILL_FLOOR),
+                spearman_floor = Float64(P14_SPEARMAN_FLOOR),
+                coverage_floor = Float64(P14_COVERAGE_FLOOR),
+                auc_hard_floor = Float64(P14_AUC_HARD_FLOOR)),
+        bars_are_judgement_calls = true,
         # --- the RAW measured curve, over the FULL coverage range ---
         curve_coverage = curve.coverage,
         curve_selective_risk = curve.selective_risk,
@@ -679,7 +871,8 @@ function main(; pool_path = P14_RC_EVAL_POOL_PATH,
         guarantee_basis = :simulator_derived_held_out_draws,
         named_limits = p14_named_limits(),
         named_limits_count = length(p14_named_limits()),
-        amendment = P14_AMENDMENT_NOTICE,
+        # `amendment` is NOT repeated here: it is one of the honesty keys splatted in above, so
+        # there is exactly one spelling of it and it cannot drift from the others.
         # --- provenance ---
         n_eval = n_eval,
         provenance = p14_provenance_record(bundle.prov),
@@ -703,7 +896,10 @@ function main(; pool_path = P14_RC_EVAL_POOL_PATH,
         generated = string(Dates.now(Dates.UTC)) * "Z")
     verbose && println("      persisted (before any verdict) -> $report_path")
 
-    # --- 8. THE HEADLINE, PRINTED BEFORE ANY ASSERTION CAN THROW -----------------------------
+    # --- 9. THE HEADLINE, PRINTED BEFORE ANY ASSERTION CAN THROW -----------------------------
+    sc3a_met = (!skill_degenerate) && (skill >= P14_SKILL_FLOOR)
+    sc3b_met = spearman >= P14_SPEARMAN_FLOOR
+    sc3c_met = auc_hard >= P14_AUC_HARD_FLOOR
     if verbose
         println("\n", "-"^78)
         println("RISK-COVERAGE, RAW AND OVER THE FULL RANGE")
@@ -717,14 +913,88 @@ function main(; pool_path = P14_RC_EVAL_POOL_PATH,
         println("  E-AURC                 = $e_aurc")
         println("  oracle below measured  = $oracle_is_lower_envelope")
         println("  figure                 = $figout")
+        println()
+        println("THE THREE GATED STATISTICS -- EVERY BAR A JUDGEMENT CALL WITH NO DERIVATION")
+        println("  SC3-a selective skill  = $skill  $(sc3a_met ? ">=" : "<") P14_SKILL_FLOOR = $P14_SKILL_FLOOR   -> $(sc3a_met ? "MET" : "NOT MET")")
+        println("         $skill_note")
+        println("  SC3-b spearman         = $spearman  $(sc3b_met ? ">=" : "<") P14_SPEARMAN_FLOOR = $P14_SPEARMAN_FLOOR   -> $(sc3b_met ? "MET" : "NOT MET")")
+        println("         computed on coverage in [$(P14_COVERAGE_FLOOR), 1.0] -- $n_in_range of " *
+                "$(length(curve.coverage)) curve points. POINTWISE MONOTONICITY IS NOT ASSERTED.")
+        println("         the RAW full-range curve is persisted and plotted, down to coverage " *
+                "$(minimum(curve.coverage)).")
+        println("  SC3-c AUC_hard         = $auc_hard  $(sc3c_met ? ">=" : "<") P14_AUC_HARD_FLOOR = $P14_AUC_HARD_FLOOR   -> $(sc3c_met ? "MET" : "NOT MET")")
+        println("         $n_hard of $n_eval items are hard (argmax WOULD HAVE BEEN WRONG against")
+        println("         the SIMULATOR's true label -- not against the abstention, so not circular).")
+        println()
+        println("  THE BARS ARE JUDGEMENT CALLS WITH NO DERIVATION, frozen in")
+        println("  $(P14_RC_FREEZE_COMMIT) before this runner existed:")
+        println("    $(( skill_floor = P14_SKILL_FLOOR, spearman_floor = P14_SPEARMAN_FLOOR, coverage_floor = P14_COVERAGE_FLOOR, auc_hard_floor = P14_AUC_HARD_FLOOR ))")
+        println("  coverage_floor_frozen_before_run = true")
+        println("  THE HONESTY BLOCK IS PERSISTED INSIDE THE ARTIFACT, as the string keys")
+        println("  bars_note, coverage_floor_rationale, forbidden_action, assumption_a1_note,")
+        println("  hard_note, circularity_note and amendment, so it travels with the numbers")
+        println("  rather than depending on a report writer's memory.")
+        println("  circularity: ", _p14_rc_claims().circularity_note)
         println("  elapsed                = $(round(time() - t_start; digits = 1)) s")
         println("-"^78)
         reported || println("SMOKE MODE: no gate was asserted and these numbers are NOT a verdict.")
     end
 
+    # --- 10. THE ASSERTIONS, LAST -------------------------------------------------------------
+    # PERSISTED FIRST, PRINTED SECOND, ASSERTED THIRD. The artifact and the figure are already on
+    # disk, so a failing bar below leaves complete evidence of the failure behind it.
+    if reported
+        @assert sc3a_met """
+        SC3-a NOT MET. Selective skill = $skill against the frozen floor P14_SKILL_FLOOR =
+        $P14_SKILL_FLOOR (AURC = $aurc, oracle = $aurc_oracle, random = $aurc_random).
+        $skill_note
+
+        AN HONEST SHORTFALL IS A PHASE-14 FINDING. The floor is a JUDGEMENT CALL WITH NO
+        DERIVATION, and that is a reason to report it as such -- NOT a licence to relax it after
+        seeing this number. P14_ITERATION_ALLOWANCE has exactly ONE pre-declared trigger and it is
+        the conformal coverage band, not this:
+
+        $P14_ITERATION_TRIGGER
+
+        The full report was persisted BEFORE this assertion and is intact at:
+          $report_path
+        The figure is at:
+          $figout
+        """
+
+        @assert sc3b_met """
+        SC3-b NOT MET. corspearman(coverage, selective_risk) = $spearman on the PRE-REGISTERED
+        range coverage in [$(P14_COVERAGE_FLOOR), 1.0] ($n_in_range points), against the frozen
+        floor P14_SPEARMAN_FLOOR = $P14_SPEARMAN_FLOOR.
+
+        DO NOT MONOTONIZE THE CURVE AND DO NOT RE-CHOOSE THE COVERAGE FLOOR. Both are named in
+        the artifact's `forbidden_action` key precisely so that doing either would be a visible
+        breach rather than a judgement call. The floor was frozen in $(P14_RC_FREEZE_COMMIT), a
+        commit containing no Phase-14 result of any kind.
+
+        The full report was persisted BEFORE this assertion and is intact at:
+          $report_path
+        """
+
+        @assert sc3c_met """
+        SC3-c NOT MET. AUC_hard = $auc_hard against the frozen floor P14_AUC_HARD_FLOOR =
+        $P14_AUC_HARD_FLOOR, over $n_hard hard items in $n_eval.
+
+        `hard` is the argmax call being wrong against the SIMULATOR's true label, so this is a
+        direct measurement and not a circular one. A shortfall means the confidence score does not
+        rank would-have-been-wrong items highly, which is a FINDING about the score. The floor is
+        a judgement call with no derivation and may not be relaxed after this result.
+
+        The full report was persisted BEFORE this assertion and is intact at:
+          $report_path
+        """
+    end
+
     return (curve = curve, oracle = oracle, random = rnd,
             aurc = aurc, aurc_oracle = aurc_oracle, aurc_random = aurc_random,
             e_aurc = e_aurc, base_error_rate = base_error,
+            skill = skill, spearman = spearman, auc_hard = auc_hard,
+            sc3a_met = sc3a_met, sc3b_met = sc3b_met, sc3c_met = sc3c_met,
             n_eval = n_eval, reported = reported,
             report_path = report_path, figure_path = figout)
 end
