@@ -111,13 +111,11 @@ jobs:
       - name: Load the package headless
         run: xvfb-run -a julia --project=. -e 'using ProteinCoLoc; println("ProteinCoLoc loaded")'
 
-      # TEMPORARY CONTROL (removed once measured): is `xvfb-run` actually load-bearing, or does
-      # GLMakie fall back on a headless runner? Without this control, "we used xvfb and it worked"
-      # is a correlation, and the two later workflows would inherit a prefix nobody tested.
-      # `continue-on-error` so the control's outcome is recorded without gating the job.
-      - name: CONTROL - load WITHOUT xvfb-run
-        continue-on-error: true
-        run: julia --project=. -e 'using ProteinCoLoc; println("loaded without xvfb")'
+      # `xvfb-run` above is LOAD-BEARING, measured rather than assumed: a control step running the
+      # identical load WITHOUT the prefix was executed in run 30937534659 and died with
+      # `GLFW.GLFWError(65550, "X11: The DISPLAY environment variable is missing")` /
+      # `glfwInit failed` inside GLFW's `__init__`. The control was removed once measured. Do not
+      # drop the prefix from any step that loads this package.
 
       # Research assumption A4, and the same assertion `test/runtests.jl` makes. Both versions are
       # printed either way, so the log records what the install actually produced even on failure.
