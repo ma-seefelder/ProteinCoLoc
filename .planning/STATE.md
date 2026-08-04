@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: in-progress
 stopped_at: Phase 14 context gathered
-last_updated: "2026-08-03T18:16:35.135Z"
-last_activity: 2026-08-03
+last_updated: "2026-08-04T09:16:59.485Z"
+last_activity: 2026-08-04
 progress:
   total_phases: 16
   completed_phases: 11
   total_plans: 115
-  completed_plans: 93
+  completed_plans: 102
   percent: 69
 ---
 
@@ -35,7 +35,7 @@ summary redesign) deferred. Findings in `Skill("spike-findings-proteincoloc")`.
 Three phases are active concurrently. All lines are authoritative — do not overwrite one with another.
 
 Phase: 14 (decision-and-abstention-layer) — EXECUTING
-Plan: 1 of 14
+Plan: 9 of 14 complete (14-01…14-09; wave 5 done, SC1-d measured and PASSING)
 executing** (started 2026-07-29 from plan HEAD `79c66d0`; 12 of 20 plans complete, waves 1-6 run)~~
 **SUPERSEDED 2026-08-03: EXECUTION IS OVER — 16 of 20 plans complete, and the remaining four are
 FORECLOSED by rulings on the record, not pending.** `12-VERIFICATION.md` exists (`gaps_found`); the
@@ -1063,9 +1063,9 @@ Offline gate `julia --project=. corpus/test/runtests.jl` → 217/217, ZERO netwo
 untouched; `git ls-files corpus/data` empty. NOTE: this Current Position was previously clobbered by a
 parallel Phase-8 run — Phase 7, not Phase 8, is the active phase.
 
-Last activity: 2026-08-03
+Last activity: 2026-08-04
 
-Progress: [█████░░░░░] 56% of phases (9/16); 51/53 plans
+Progress: [█████████░] 89%
 
 ## Resolved (2026-07-03): 07-00 CO-RESOLUTION GATE — GREEN
 
@@ -1130,6 +1130,7 @@ spike/Project.toml + spike/Manifest.toml provably UNTOUCHED throughout.
 | Phase 07 P07-04 | 55min | 3 tasks | 7 files |
 | Phase 7 P6 | 40min | 3 tasks | 4 files |
 | Phase 07 P07-08 | 55min | 2 tasks | 4 files |
+| Phase 14 P09 | 35m | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -1183,6 +1184,7 @@ Recent decisions affecting current work:
 - [Phase 08-05]: D-02 DEVIATION — the matched-same-study preference is NOT satisfiable; no qualifying single-study deposit carrying both a same-particle positive and a segregated negative could be verified. The anchors are cross-study / cross-archive (`ANCHORS_MATCHED = false`). KNOWN LIMITATION: imaging-condition confounds (microscope, objective, exposure, detector, prep) between positive and negative are NOT controlled; Phase 16 must report this.
 - [Phase 08-05]: Hash discipline (T-08-16) — `sha256` uses a deliberately NON-hex `"PENDING-FETCH"` sentinel rather than an empty string (an empty hash is indistinguishable from an unfilled CBS row and could be silently accepted downstream), with `is_real_sha256`/`is_pending_hash` making "real 64-hex digest OR sentinel, never in between" a testable invariant. The bootstrap fetch was DELIBERATELY not executed — the positive anchor is a ~6.3 GB archive, so the bulk download stays an explicit human decision. `bootstrap_anchor_hashes()` is implemented and must be run online+authorized BEFORE Phase 16. No digest was fabricated.
 - [Phase 08-05]: `finalized_manifest()` (corpus/anchor_rows.jl) SUPERSEDES the 08-04 placeholder `committed_manifest()`; `anchor_rows()` is parameterized on sha256/bytes so the pending path and the post-bootstrap path are the SAME code path and both are covered by the offline gate. All anchors remain `physical-primary` + `sealed_holdout`, reachable ONLY via `open_sealed_holdout(; reason)` (D-09) — asserted.
+- [Phase ?]: 14-09: SC1-d PASSES -- realized split-conformal coverage 0.9115 (1823/2000) vs the derived band 0.8799; q-hat 0.4498; iteration_trigger_fired=false so P14_ITERATION_ALLOWANCE stays unspent. Qualifier: ambiguous rate is exactly 0.0, so coverage comes from classifier accuracy not set-valued caution; the guarantee is simulator-derived (D-03a: the intended real-data bound is ABSENT, not merely loose).
 
 ### Roadmap Evolution
 
@@ -1425,7 +1427,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-03T15:19:57.673Z
+Last session: 2026-08-04T09:16:50.231Z
 Stopped at: Phase 14 context gathered
 Resume file: .planning/phases/14-decision-and-abstention-layer/14-CONTEXT.md
 Resume action: continue the ACTIVE phase — Phase 7, plan 07-08, wave 6 of 8. Phase 8 remains COMPLETE.

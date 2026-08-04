@@ -208,7 +208,7 @@ v2.0 feature expansion (8–16) is a DAG, not a chain, and all of it is downstre
 | 11. Registration + Chromatic Uncertainty as Latent | 6/11 | In Progress|  |
 | 12. Spatial Colocalization Map (GP/CAR) | 11/20 | In Progress|  |
 | 13. Three-Hypothesis Amortized Bayes Factor | 16/17 | In Progress| 13-16: real-image arm REPORTED — **all its figures SUPERSEDED**, measured on the DAPI-counterstain pair (RANDOM on both pairs, both OOD-flagged 2.49x/2.42x, agreement). 13-17 corrected the operative pair to c2/c3 green/red per `13-D15-AMENDMENT.md`, **dropped** the redundancy arm (no second pair exists) and **re-ran the arm once**: on the amended pair the verdict is **COLOC / RANDOM** (was RANDOM / RANDOM) and both fixtures are OOD-flagged **4.198x / 5.297x — WORSE than the superseded 2.49x / 2.42x**. **The CONCLUSION is unchanged**: qualitative, n = 2, unlabelled, OOD-bound. **The gating arm is unaffected and no threshold moved**; D-04 allowance unspent |
-| 14. Decision + Abstention Layer | 8/14 | In Progress|  |
+| 14. Decision + Abstention Layer | 9/14 | In Progress|  |
 | 15. Calibration Operating Envelope + CI Gate | 0/TBD | Not started | - |
 | 16. External Validation + Manuscript Assembly | 0/TBD | Not started | - |
 
@@ -477,7 +477,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 14-09-PLAN.md — Wave 5: `run_p14_conformal.jl` (SC1-d) + the shared evaluation pool
+- [x] 14-09-PLAN.md — Wave 5: `run_p14_conformal.jl` (SC1-d) + the shared evaluation pool
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
