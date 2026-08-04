@@ -280,7 +280,9 @@ evidence that forced it.
   co-installation of an AGPL package others may depend on.
 
 - **Compute budget adopted from research (not a user ruling; recorded so the number is traceable):**
-  **M = 1000 per rung, 5 rungs per axis**, ≈ **7.3 h** for the full `grid_8` map. The cost model
+  **M = 1000 per rung, 5 rungs per axis**, ≈ **8.5 h** at 32 threads for the full `grid_8` map.
+  *(Research's figure was 7.3 h for SIX axes; D-02a's seventh axis adds ~71 min. Frozen ceiling
+  `P15_SWEEP_WALLCLOCK_CEILING_HOURS = 12.0` ⇒ ~1.41× headroom.)* The cost model
   reconciles the one observed gate run to within 5 % (predicted 29.4 min vs 30.9 min observed).
   M = 2000 costs 2× for a 1.27× resolution gain. **`JULIA_NUM_THREADS` is a budget factor, not an
   optimisation** — single-threaded is ~13× slower and must be set in every CI job and run script.

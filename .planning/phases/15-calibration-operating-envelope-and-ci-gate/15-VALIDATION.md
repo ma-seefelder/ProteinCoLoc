@@ -46,7 +46,7 @@ the CI job budget.
   committed reference.
 - **Max feedback latency:** 60 s for the quick command.
 
-**Explicitly NOT a sampling instrument:** the sweep itself (~7.3 h). It runs once, under its own
+**Explicitly NOT a sampling instrument:** the sweep itself (~8.5 h). It runs once, under its own
 budget ceiling, and is verified by artifact inspection — never re-run to check a code change.
 
 ---
