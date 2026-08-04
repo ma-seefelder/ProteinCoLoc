@@ -640,6 +640,17 @@ misspecification levels per family; `levels = 4`, `n = 200`, `id_threshold = 179
 | `optics` | 0.58 / 0.6755 / 0.656875 / 0.66975 | 1.0 / 1.0 / 1.0 / 1.0 | 1.0 / 1.0 / 1.0 / 1.0 |
 | `background` | 0.55925 / 0.95875 / 0.0 / 0.960125 | 1.0 / 1.0 / 1.0 / 1.0 | 1.0 / 1.0 / **0.0** / 1.0 |
 
+**Reproducibility caveat for THIS table, stated at the same volume as the numbers.**
+`artifacts/amended_v2/grid_8/gate_report_8.jld2` is the one artifact cited in this report that a
+reader **cannot** check from a clean clone. It is **not git-tracked** — `git ls-files` returns
+nothing for it and `.gitignore` matches it; the shipped bundle is **Release-hosted**, and
+`spike/test/test_p12_decoupling.jl` skips its own bundle assertion at runtime for exactly this
+reason, printing *"artifacts/amended_v2/grid_8 is not tracked in this checkout — skipping the
+executable shipped-bundle assertion (the bundle is Release-hosted)"*. Every other artifact cited in
+this report is a `.jld2` regenerable from a runner in this repository. This one must be fetched from
+the release before the table above can be independently verified. The file measured here is 522761
+bytes. Recorded rather than left for a reader to discover.
+
 The density channel is **exactly blind** to the `noise` family — AUC 0.0 at every level, i.e. worse
 than chance. That is the *by-design* blind spot the noise channel exists to close:
 `test/gate/misspec.jl:32-33` states the reported detector is the OR-fused density∨noise pair because
