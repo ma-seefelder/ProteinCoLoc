@@ -225,6 +225,71 @@ external evaluation itself (Phase 16); adding a new OOD detector channel (see De
   fires early enough (tuning a detector until it passes its own gate), and building a new detector
   channel for the failing mechanism (new capability, its own phase — see Deferred).
 
+### AMENDMENTS — appended 2026-08-04 after Phase-15 research (`15-RESEARCH.md`, `919be48`)
+
+**Additive block. Nothing above is edited.** Four findings from research were ruled by the user
+before planning. Each is recorded here as a correction to the decision it supersedes, with the
+evidence that forced it.
+
+- **D-10a (SUPERSEDES D-10's contrast half; D-10's reported-net half stands).** **The `grid_16`
+  contrast is DROPPED. The reported envelope is `amended_v2/grid_8` ONLY.**
+  Verified directly: `artifacts/grid_16/npe_16.jld2`'s `meta` is `(:grid, :n_pairs, :use_gpu)` —
+  `training_imsize_provenance` is **absent entirely**, not merely unrecorded, so
+  `SBC_REQUIRE_IMSIZE_PROVENANCE = true` rejects it and `run_gate` returns `:provenance_mismatch`
+  and runs no arm. It is a v1-era net (256², unbounded θ); bypassing the check would confound
+  **grid × imsize-regime × θ-space** in a single comparison, so the resulting number could not
+  answer the grid-dependence question the contrast exists to answer.
+  **Carry as a named limit, not a silent scope cut:** *grid-dependence of the operating envelope is
+  UNTESTED; the contrast was attempted and blocked by missing provenance on the only available
+  higher-dimension net.* Halves the compute budget.
+
+- **D-02a (EXTENDS D-02; the six axes and the mechanism typing are unchanged).** **A SEVENTH axis is
+  added: a pure-offset autofluorescence generator**, whose `level` maps directly onto the
+  simulator's autofluorescence offset parameter so its prior boundary is markable per D-03.
+  The existing `background` family is **reclassified as out-of-model ONLY** and keeps no boundary
+  rung. Evidence: `background`'s `level = 1` bleed is already **0.4 against a prior max of 0.1**, and
+  it composes a radial vignette and gradient the simulator has **no parameter for** — so it cannot
+  express "at the prior edge" in any units, and D-03 was unsatisfiable on it as written.
+  **D-03 now holds on every in-prior axis without exception**, which is why this route was chosen
+  over amending D-03 to "where markable".
+
+- **D-04a (SUPERSEDES D-04's ANCHOR, not its statistic).** **The ECE break threshold is anchored at
+  RUNG 0 measured at the sweep's own M on the Phase-15 stream — NOT at the shipped gate report's
+  ECE.** The margin above it is **`q95 − E[ECE₀]`** from the measured null.
+  **This is arithmetic, not preference.** Read from `artifacts/amended_v2/grid_8/gate_report_8.jld2`:
+  ρ_true ECE = **0.03713**, Δρ ECE = **0.00429**. The null distribution of ECE for a *perfectly
+  calibrated* net at M = 2000 has **E[ECE₀] ≈ 0.00751** (closed form ≈ `0.336/√M`). **Δρ's shipped
+  anchor sits BELOW its own null mean** — anchoring there would declare a break on ~90 % of
+  perfectly-calibrated rungs. That is D-04's own failure mode reappearing inside the anchor. Anchoring
+  at rung 0 at the sweep's M makes the noise floor **common-mode** and removes it.
+  **D-04's substance is unchanged:** ECE is still the break statistic, band and p-value are still
+  reported and still non-gating.
+  **`MCE` MUST NOT BE USED anywhere in this phase** — it is pinned at exactly **0.99 on all eight
+  columns** by empty reliability bins. It is an artifact, not a measurement.
+  **q95 was chosen over q99 knowing the cost:** ~5 % false-break rate ⇒ ≈1.5 expected false breaks
+  across ~30 axis×rung tests. **The map must therefore be read PER AXIS, not per rung** — state this
+  wherever the map is reported.
+
+- **D-08a (REFINES D-08; two-tier structure unchanged).** **CI installs via `Pkg.instantiate()` from
+  the committed `Manifest.toml`, not by resolving.** `[compat]` is left **untouched**.
+  Reason: `test/runtests.jl`'s co-resolution hard gate asserts `NeuralEstimators == "0.2.1"` and
+  `Flux == "0.16.10"` as **exact strings**, while `[compat]` permits a wider range — so a CI resolve
+  could satisfy `[compat]` and still fail the gate. Instantiating from the manifest makes the pinned
+  versions what CI actually gets.
+  Not chosen: hard-pinning `[compat]` to `"=0.2.1"`/`"=0.16.10"`, which would block downstream
+  co-installation of an AGPL package others may depend on.
+
+- **Compute budget adopted from research (not a user ruling; recorded so the number is traceable):**
+  **M = 1000 per rung, 5 rungs per axis**, ≈ **7.3 h** for the full `grid_8` map. The cost model
+  reconciles the one observed gate run to within 5 % (predicted 29.4 min vs 30.9 min observed).
+  M = 2000 costs 2× for a 1.27× resolution gain. **`JULIA_NUM_THREADS` is a budget factor, not an
+  optimisation** — single-threaded is ~13× slower and must be set in every CI job and run script.
+
+- **Implementation constraint found by research and binding on planning:** **do NOT append to
+  `OOD_FAMILIES`.** Mutating it would silently rewrite the shipped, *passed* OOD arm's `combined_auc`
+  and its pass conjunction. Use a local `P15_FAMILIES = merge(OOD_FAMILIES, ...)` passed through
+  `gate_ood_roc`'s existing `families =` keyword — zero-touch on the shipped gate.
+
 ### Claude's Discretion
 
 - Exact functional form of the `spillover` and `registration` misspecification generators, provided
