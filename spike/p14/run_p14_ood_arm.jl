@@ -313,6 +313,122 @@ function _p14_ood_arm_record(results)
                                 not_checked = count(==(:not_checked), states)))
 end
 
+"""
+    _p14_ood_claims(ref, families, level) -> NamedTuple
+
+The honesty block, written INTO the artifact as string keys so it travels WITH the numbers and
+cannot be dropped by a report writer.
+
+Every one of these is a sentence a reader of a bare SC3-d margin would otherwise have to be told by
+someone who remembered to tell them. A `.jld2` that carries the number and not the scope is a
+repudiation hole (T-14-39, T-14-27, T-14-40, T-14-02), which is why each of these is a REQUIRED key
+of the save rather than an optional extra: an artifact missing one is never written at all.
+"""
+function _p14_ood_claims(ref::NamedTuple, families, level::Integer)
+    fam_list = join(families, ", ")
+    return (
+        bar_note =
+            "P14_OOD_MARGIN_FLOOR = $(P14_OOD_MARGIN_FLOOR) IS A JUDGEMENT CALL WITH NO " *
+            "DERIVATION. Nothing derives an absolute abstain-rate margin of that size from the " *
+            "detector's operating characteristic, from the misspecification grid, or from " *
+            "anything else; it is a number a human chose as the level at which `abstention " *
+            "concentrates on OOD data' would count as demonstrated. It is the fifth member of " *
+            "P14_JUDGEMENT_CALL_BARS and is printed and persisted from that frozen tuple " *
+            "MECHANICALLY, so it cannot quietly stop being labelled one. It was frozen in " *
+            "`spike/p14/consts.jl` in a commit that precedes every result-producing Phase-14 " *
+            "commit, and it MAY NEVER BE RELAXED AFTER A RESULT. This project has recorded four " *
+            "separate cases of an underived bar measuring something other than what it named, so " *
+            "the licensing standard for amending one is EVIDENCE, INDEPENDENT OF THE MACHINERY " *
+            "UNDER AUDIT, that the bar measures something other than what it names. A shortfall " *
+            "is a PHASE-14 FINDING and is REPORTED, not re-tuned. P14_ITERATION_ALLOWANCE has " *
+            "exactly ONE pre-declared trigger and it is the split-conformal coverage band, which " *
+            "14-09 measured ABOVE the band, so the allowance is unspent and is not available here.",
+
+        channels_note =
+            "ONLY THE SUMMARY-DENSITY CHANNEL IS WIRED IN THIS LANE. channels_wired = " *
+            "$(ref.channels_wired), channels_not_wired = $(ref.channels_not_wired). The shipped " *
+            "flag is an OR-fusion over three channels; here a `:clear` means ONE channel says " *
+            "clear, not three, and a family the density channel happens to be blind to will show " *
+            "a small margin THAT THE UNWIRED CHANNELS MIGHT HAVE CAUGHT. That is recorded rather " *
+            "than papered over, and it cuts BOTH ways: it is not an excuse for a shortfall, " *
+            "because the layer as measured is the layer as it exists, but a reader comparing this " *
+            "number to a three-channel detector's is not comparing like with like.",
+
+        basis_note =
+            "THE NULL IS FITTED ON THE PHASE-13 NET'S OWN POOL ($(ref.pool_dir)), at the " *
+            "pre-registered in-distribution quantile $(ref.q), basis_provenance = " *
+            "$(ref.basis_provenance). PITFALL 4 is the reason: the shipped bundle at " *
+            "artifacts/amended_v2/grid_8/ood_nulls_8.jld2 rides the PHASE-7 standardizer while " *
+            "this net rides PHASE 11's, inherited and never re-fit, so scoring a " *
+            "Phase-11-standardized summary against a Phase-7-fitted Mahalanobis null would " *
+            "produce a number with NO INTERPRETATION -- not a wrong number, an uninterpretable " *
+            "one. THE SHIPPED BUNDLE WAS NOT READ BY THIS RUNNER AT ALL. If any runner ever reads " *
+            "it, it is a labelled COMPARISON REFERENCE and the two thresholds are NEVER fused. " *
+            "The operating point used here is additionally PINNED, by an executable assertion, to " *
+            "the one plan 14-09 recorded, so the two runners' abstain rates are decided against " *
+            "the same threshold rather than merely believed to be.",
+
+        misspecification_note =
+            "NO MISSPECIFICATION WAS AUTHORED FOR THIS PHASE. The families are the in-repo " *
+            "OOD_FAMILIES ($fam_list) defined in `spike/validation/ood.jl`, and " *
+            "the level is `:strongest`, which resolves to rung $level of the EXISTING grid. Each " *
+            "is a pre-registered positive control producing structure the shared-latent " *
+            "smooth-field simulator cannot produce. Authoring the stressor and the bar in the " *
+            "same phase is tuning, and an acceptance criterion greps this runner to prove no " *
+            "family is defined in it (T-14-40). The arms are MATCHED item by item -- identical " *
+            "theta, lambda, image size and stream position, differing only in which generator " *
+            "produced the pixels -- and the matched in-distribution half of every family arm is " *
+            "asserted EQUAL, summary by summary, to the separately drawn in-distribution arm.",
+
+        d06_note =
+            "AN ABSTENTION DRIVEN BY `ood_not_checked` IS NOT DETECTOR PERFORMANCE. Under D-06 an " *
+            "item whose OOD state is `:not_checked` ABSTAINS by default, and that default exists " *
+            "because a `false` flag from an unfitted null means NOT CHECKED rather than IN " *
+            "DISTRIBUTION (`src/amortized/local_map.jl:70-72`). An arm that abstained because " *
+            "nothing ever checked it has demonstrated NOTHING about OOD sensitivity. So " *
+            "`ood_fired` and `ood_not_checked` are counted SEPARATELY in every arm's " *
+            "trigger_breakdown, are never summed into an `OOD' total anywhere, and the headline " *
+            "records `margin_driver` per family. This runner additionally HARD-STOPS when the " *
+            "null is unavailable, which is the one case in which every arm would abstain at rate " *
+            "one for a reason that has nothing to do with the detector (T-14-39).",
+
+        crosstab_note =
+            "THE EMPTY CONFORMAL SET AND THE DENSITY FLAG ARE TWO INDEPENDENT MISSPECIFICATION " *
+            "SIGNALS, AND THE CROSS-TAB IS WHERE THAT IS VISIBLE. They arrive through completely " *
+            "different channels: the density null depends on the simulator being right about " *
+            "densities, whereas an empty conformal set depends only on EXCHANGEABILITY -- which " *
+            "arguably makes it the most valuable single output of the conformal hedge, because it " *
+            "is the one signal in this phase that does not depend on the simulator being right " *
+            "about densities. BOTH READINGS ARE REPORTED AND NEITHER IS EDITORIALISED INTO THE " *
+            "OTHER: where the two AGREE (an empty set on an item the density null also flagged) " *
+            "that is corroboration worth reporting, and where they DISAGREE (an empty set on an " *
+            "item the density null called clear, or vice versa) that is the more interesting " *
+            "finding, because one channel is seeing something the other cannot. The 3x3 table " *
+            "keeps `:empty` distinct from `:ambiguous` throughout (T-14-22).",
+
+        gated_reading_note =
+            "THE GATED READING IS THE MINIMUM OVER FAMILIES, NOT THE MEAN, AND THE PER-FAMILY " *
+            "TABLE IS PERSISTED BESIDE IT. SC3-d is falsified if abstention is no more frequent " *
+            "under A strong, deliberately injected misspecification than in-distribution, so a " *
+            "single weak family must stay VISIBLE rather than be averaged away by three strong " *
+            "ones (T-14-41). `margin` is therefore min over families of " *
+            "(abstain_rate(family) - abstain_rate(in-distribution)), and `margin_per_family` " *
+            "carries every one of them. A report quoting a mean would be quoting a different " *
+            "statistic under this statistic's name.",
+
+        circularity_note =
+            "THE IN-DISTRIBUTION ARM IS A WELL-SPECIFIED-REGIME ARM (D-03 / D-03a). It is drawn " *
+            "from the SAME simulator the evidence net was trained on and the density null was " *
+            "fitted on, so its abstain rate is a statement about internal consistency and NOT " *
+            "about real microscopy. The misspecified arms are that same simulator perturbed by " *
+            "the in-repo positive controls, which is a bound on nothing physical: they say the " *
+            "detector separates the simulator from a deliberately corrupted simulator. The " *
+            "real-data bounding evidence D-03 intended is ABSENT, NOT MERELY LOOSE.",
+
+        amendment = P14_AMENDMENT_NOTICE,
+    )
+end
+
 # =============================================================================================
 # The reported run
 # =============================================================================================
@@ -521,8 +637,286 @@ function main(; n_ood::Integer = P14_N_OOD,
         @assert getproperty(arms, k).n == length(id_items) "run_p14_ood_arm: arm `$k` holds $(getproperty(arms, k).n) items against $(length(id_items)); the arms are not matched in n"
     end
 
+    # --- 7. THE EMPTY-SET x OOD-STATE CROSS-TAB, PER ARM --------------------------------------
+    # Two INDEPENDENT misspecification signals, tabulated against each other rather than merged.
+    # `:empty` is kept distinct from `:ambiguous` throughout (T-14-22): collapsing them would
+    # destroy exactly the channel this table exists to expose.
+    verbose && println("[5/6] cross-tabulating the conformal status against the OOD state …")
+    status_levels = collect(P14_CONFORMAL_STATUSES)
+    ood_levels    = collect(P14_OOD_STATES)
+    crosstab = NamedTuple{keys(arms)}(Tuple(
+        _p14_ood_cross_tab(getproperty(arms, k).conformal_status, status_levels,
+                           getproperty(arms, k).ood_state, ood_levels) for k in keys(arms)))
+    for k in keys(crosstab)
+        @assert sum(getproperty(crosstab, k)) == n_ood "run_p14_ood_arm: the `$k` cross-tab sums to $(sum(getproperty(crosstab, k))) rather than $n_ood; a cell counted into nothing would make the table understate one of the two channels"
+    end
+
+    # The two readings, computed rather than asserted, and BOTH reported. `empty_row` is the index
+    # of `:empty`; `fired_col` / `clear_col` index the density verdict. Agreement is an empty set on
+    # an item the null also flagged; disagreement is an empty set the null called clear, or a
+    # flagged item whose conformal set was a perfectly ordinary singleton.
+    empty_row = findfirst(==(:empty),  status_levels)
+    fired_col = findfirst(==(:fired),  ood_levels)
+    clear_col = findfirst(==(:clear),  ood_levels)
+    agree_disagree = NamedTuple{keys(crosstab)}(Tuple(
+        let M = getproperty(crosstab, k)
+            (empty_and_fired  = M[empty_row, fired_col],
+             empty_but_clear  = M[empty_row, clear_col],
+             fired_but_not_empty = sum(M[:, fired_col]) - M[empty_row, fired_col],
+             n_empty = sum(M[empty_row, :]),
+             n_fired = sum(M[:, fired_col]))
+        end for k in keys(crosstab)))
+
+    # WHICH CHANNEL DROVE THE MARGIN, per family, computed from the two columns D-06 keeps apart.
+    # A margin driven by `ood_not_checked` would be an arm abstaining because nothing checked it,
+    # which demonstrates no OOD sensitivity at all (T-14-39).
+    margin_driver = NamedTuple{Tuple(families)}(Tuple(
+        let d_fired = fam_records[f].ood_fired_rate - id_record.ood_fired_rate,
+            d_unchecked = fam_records[f].ood_not_checked_rate - id_record.ood_not_checked_rate,
+            d_empty = fam_records[f].conformal_empty_rate - id_record.conformal_empty_rate,
+            d_ambig = fam_records[f].conformal_ambiguous_rate - id_record.conformal_ambiguous_rate,
+            d_disag = fam_records[f].disagreement_and_ood_rate - id_record.disagreement_and_ood_rate
+            deltas = (ood_fired = d_fired, ood_not_checked = d_unchecked,
+                      conformal_empty = d_empty, conformal_ambiguous = d_ambig,
+                      disagreement_and_ood = d_disag)
+            ks = keys(deltas)
+            (deltas = deltas,
+             dominant = ks[argmax([getproperty(deltas, k) for k in ks])],
+             driven_by_not_checked = d_unchecked > d_fired)
+        end for f in families))
+    any_not_checked = any(k -> getproperty(arms, k).trigger_breakdown.ood_not_checked > 0,
+                          keys(arms))
+
+    margin_meets_floor = margin >= P14_OOD_MARGIN_FLOOR
+
+    # --- 8. PERSIST THE REPORT, BEFORE THE HEADLINE AND BEFORE THE ASSERTION ------------------
+    verbose && println("[6/6] persisting the SC3-d report (BEFORE any verdict) …")
+    consts_path = joinpath(@__DIR__, "consts.jl")
+    _p14_ood_save_report(report_path,
+        ("arms", "margin", "margin_per_family", "margin_floor", "bar_is_judgement_call",
+         "bar_note", "empty_set_crosstab", "channels_wired", "channels_not_wired", "basis_note",
+         "misspecification_note", "d06_note", "amendment", "crosstab_note", "channels_note",
+         "gated_reading_note", "circularity_note", "margin_driver", "sc3d_met",
+         "abstain_rate_in_distribution", "abstain_rate_per_family", "provenance");
+        # --- the honesty block, splatted in so it CANNOT be dropped: every one of its keys is
+        #     also a REQUIRED key of the integrity check above, so an artifact missing one is
+        #     never written at all.
+        _p14_ood_claims(ref, families, first(values(levels)))...,
+        # --- THE MEASUREMENT (SC3-d, GATED on the MINIMUM over families) ---
+        arms = arms,
+        margin = margin,
+        margin_per_family = margin_per_family,
+        weakest_family = weakest_family,
+        gated_reading = :minimum_over_families,
+        sc3d_met = margin_meets_floor,
+        abstain_rate_in_distribution = id_record.abstain_rate,
+        abstain_rate_per_family = NamedTuple{Tuple(families)}(
+            Tuple(fam_records[f].abstain_rate for f in families)),
+        # --- WHICH CHANNEL FIRED, kept apart rather than summed (D-06, T-14-39) ---
+        margin_driver = margin_driver,
+        any_not_checked = any_not_checked,
+        ood_fired_rate_per_arm = NamedTuple{keys(arms)}(
+            Tuple(getproperty(arms, k).ood_fired_rate for k in keys(arms))),
+        ood_not_checked_rate_per_arm = NamedTuple{keys(arms)}(
+            Tuple(getproperty(arms, k).ood_not_checked_rate for k in keys(arms))),
+        trigger_breakdown_per_arm = NamedTuple{keys(arms)}(
+            Tuple(getproperty(arms, k).trigger_breakdown for k in keys(arms))),
+        abstain_reasons = collect(p14_abstain_reasons()),
+        # --- THE TWO INDEPENDENT MISSPECIFICATION SIGNALS, CROSS-TABULATED (T-14-22) ---
+        empty_set_crosstab = crosstab,
+        empty_set_crosstab_status_levels = status_levels,
+        empty_set_crosstab_ood_levels = ood_levels,
+        empty_set_agreement = agree_disagree,
+        set_size_counts_per_arm = NamedTuple{keys(arms)}(
+            Tuple(getproperty(arms, k).set_size_counts for k in keys(arms))),
+        ood_state_counts_per_arm = NamedTuple{keys(arms)}(
+            Tuple(getproperty(arms, k).ood_state_counts for k in keys(arms))),
+        # --- THE BAR, written INTO the artifact and labelled MECHANICALLY ---
+        margin_floor = Float64(P14_OOD_MARGIN_FLOOR),
+        bar_is_judgement_call = true,
+        P14_OOD_MARGIN_FLOOR = P14_OOD_MARGIN_FLOOR,
+        P14_JUDGEMENT_CALL_BARS = collect(P14_JUDGEMENT_CALL_BARS),
+        bar_is_in_judgement_call_enumeration =
+            :P14_OOD_MARGIN_FLOOR in P14_JUDGEMENT_CALL_BARS,
+        P14_N_OOD = P14_N_OOD,
+        P14_OOD_COUNTER = Int(P14_OOD_COUNTER),
+        P14_ITERATION_ALLOWANCE = P14_ITERATION_ALLOWANCE,
+        P14_ITERATION_TRIGGER = P14_ITERATION_TRIGGER,
+        iteration_trigger_fired = false,
+        iteration_allowance_applies_here = false,
+        # --- THE ARMS AND WHAT MADE THEM ---
+        n_ood = Int(n_ood),
+        n_arms = length(arms),
+        arms_matched_n = true,
+        families = collect(families),
+        family_level = first(values(levels)),
+        family_level_is_strongest_existing_rung = true,
+        ood_grid_levels = OOD_GRID_LEVELS,
+        id_class_masses = id_masses,
+        allow_unchecked_ood = false,
+        # --- THE HEDGE, LOADED not re-calibrated ---
+        qhat = qh.qhat,
+        qhat_source = qh.path,
+        qhat_source_sha = qh.sha,
+        qhat_source_coverage = qh.coverage,
+        qhat_source_band_lower = qh.band_lower,
+        qhat_source_alpha = qh.alpha,
+        qhat_source_reported = qh.source_reported,
+        qhat_recalibrated_here = false,
+        # --- THE DETECTOR ---
+        channels_wired = ref.channels_wired,
+        channels_not_wired = ref.channels_not_wired,
+        ood_threshold = ref.thr,
+        ood_id_quantile = ref.q,
+        ood_basis_provenance = ref.basis_provenance,
+        ood_score_quantiles = ref.score_quantiles,
+        ood_threshold_pinned_to_14_09 = true,
+        shipped_bundle_read = false,
+        pool_provenance = p14_pool_provenance(ref),
+        # --- what the numbers rest on ---
+        guarantee_basis = :simulator_derived_matched_arms,
+        named_limits = p14_named_limits(),
+        named_limits_count = length(p14_named_limits()),
+        # --- provenance ---
+        provenance = p14_provenance_record(bundle.prov),
+        class_prior_used = bundle.prior,
+        tau = bundle.tau,
+        grid = bundle.grid,
+        master_seed = UInt64(P14_DEV_SEED),
+        salt = UInt64(P14_SALT),
+        consts_sha = p14_consts_sha(),
+        consts_git_blob_sha = p14_blob_sha(consts_path),
+        reported = reported,
+        julia_version = string(VERSION),
+        nthreads = Threads.nthreads(),
+        elapsed_s = time() - t_start,
+        generated = string(Dates.now(Dates.UTC)) * "Z")
+    verbose && println("      persisted (before any verdict) -> $report_path")
+
+    # --- 9. THE HEADLINE, PRINTED BEFORE ANY ASSERTION CAN THROW ------------------------------
+    if verbose
+        println("\n", "-"^78)
+        println("SC3-d: ABSTENTION UNDER STRONG MISSPECIFICATION vs IN-DISTRIBUTION")
+        println("  matched n per arm      = $n_ood        arms = $(length(arms))")
+        println("  in-distribution abstain rate = $(id_record.abstain_rate)")
+        println()
+        println("  PER-ARM ABSTAIN RATE AND TRIGGER BREAKDOWN")
+        println("  (ood_fired and ood_not_checked are SEPARATE columns and are never summed)")
+        for k in keys(arms)
+            a = getproperty(arms, k)
+            println("    $(rpad(string(k), 16)) rate = $(rpad(round(a.abstain_rate; digits = 4), 8)) " *
+                    "n_abstain = $(a.n_abstain)")
+            println("      $(a.trigger_breakdown)")
+            println("      set sizes $(a.set_size_counts)   ood states $(a.ood_state_counts)")
+        end
+        println()
+        println("  PER-FAMILY MARGIN = abstain_rate(family) - abstain_rate(in-distribution)")
+        for f in families
+            m  = getproperty(margin_per_family, f)
+            dr = getproperty(margin_driver, f)
+            println("    $(rpad(string(f), 16)) margin = $(rpad(round(m; digits = 4), 8)) " *
+                    "$(m >= P14_OOD_MARGIN_FLOOR ? ">=" : "<") floor   " *
+                    "dominant channel = $(dr.dominant)   " *
+                    "driven by NOT-CHECKED = $(dr.driven_by_not_checked)")
+            println("      deltas $(dr.deltas)")
+        end
+        println()
+        println("  WHICH CHANNEL DROVE THE MARGIN")
+        println("    any item in any arm resolved :not_checked = $any_not_checked")
+        if any_not_checked
+            println("    SOME ABSTENTIONS WERE NOT-CHECKED ABSTENTIONS. An arm that abstains")
+            println("    because the detector never ran has demonstrated NO OOD sensitivity, so")
+            println("    the ood_not_checked column above must be read before the margin (D-06).")
+        else
+            println("    NO item in any arm resolved :not_checked, so no part of any margin is a")
+            println("    default abstention: the density detector ran on every item of every arm,")
+            println("    and every OOD-triggered abstention above is a FIRED detector (D-06).")
+        end
+        println()
+        println("  EMPTY CONFORMAL SET x OOD STATE -- TWO INDEPENDENT MISSPECIFICATION SIGNALS")
+        println("    rows = $(status_levels)   cols = $(ood_levels)")
+        for k in keys(crosstab)
+            println("    $(k):")
+            M = getproperty(crosstab, k)
+            for (i, s) in enumerate(status_levels)
+                println("      $(rpad(string(s), 10)) $(M[i, :])")
+            end
+            g = getproperty(agree_disagree, k)
+            println("      AGREEMENT   : empty AND fired = $(g.empty_and_fired)")
+            println("      DISAGREEMENT: empty but CLEAR = $(g.empty_but_clear)   " *
+                    "fired but NOT empty = $(g.fired_but_not_empty)")
+        end
+        println("    BOTH READINGS ARE REPORTED AND NEITHER IS EDITORIALISED INTO THE OTHER.")
+        println("    Agreement is corroboration through two channels that share no assumption --")
+        println("    the density null needs the simulator to be right about densities, the empty")
+        println("    conformal set needs only exchangeability. Disagreement is the MORE")
+        println("    INTERESTING finding: one channel is seeing something the other cannot.")
+        println()
+        println("  GATED READING: MINIMUM over families (never the mean -- a weak family must stay")
+        println("  visible rather than be averaged away by three strong ones).")
+        println("    weakest family        = $weakest_family")
+        println("    SC3-d margin          = $margin  " *
+                "$(margin_meets_floor ? ">=" : "<") P14_OOD_MARGIN_FLOOR = $P14_OOD_MARGIN_FLOOR" *
+                "   -> $(margin_meets_floor ? "MET" : "NOT MET")")
+        println("    THE FLOOR IS A JUDGEMENT CALL WITH NO DERIVATION, frozen in consts.jl before")
+        println("    this runner existed, and listed in P14_JUDGEMENT_CALL_BARS =")
+        println("    $P14_JUDGEMENT_CALL_BARS")
+        println()
+        println("  NAMED LIMITS CARRIED BY THIS NUMBER")
+        println("    channels wired = $(ref.channels_wired), NOT wired = $(ref.channels_not_wired)")
+        println("    a family the density channel is blind to shows a small margin here that the")
+        println("    unwired noise / posterior-predictive channels might have caught; that is")
+        println("    RECORDED, and it is not an excuse -- the layer as measured is the layer as it")
+        println("    exists.")
+        println("    the misspecification families are the in-repo OOD_FAMILIES at rung " *
+                "$(first(values(levels))); no new one was authored, so the arm cannot have been")
+        println("    tuned to produce a margin.")
+        println("    elapsed = $(round(time() - t_start; digits = 1)) s")
+        println("-"^78)
+        reported || println("SMOKE MODE: no gate was asserted and these numbers are NOT a verdict.")
+    end
+
+    # --- 10. THE ASSERTION, LAST ---------------------------------------------------------------
+    # PERSISTED FIRST, PRINTED SECOND, ASSERTED THIRD. The artifact is already on disk, so a
+    # failing bar below leaves complete evidence of the failure behind it (T-14-31).
+    if reported
+        @assert margin_meets_floor """
+        SC3-d NOT MET. The MINIMUM per-family abstain-rate margin is $margin against the frozen
+        floor P14_OOD_MARGIN_FLOOR = $P14_OOD_MARGIN_FLOOR.
+
+          in-distribution abstain rate : $(id_record.abstain_rate)
+          per-family margins           : $margin_per_family
+          weakest family               : $weakest_family
+          margin drivers               : $(NamedTuple{Tuple(families)}(Tuple(getproperty(margin_driver, f).dominant for f in families)))
+          any :not_checked item        : $any_not_checked
+          channels wired               : $(ref.channels_wired)   NOT wired: $(ref.channels_not_wired)
+
+        AN HONEST SHORTFALL IS A PHASE-14 FINDING, NEVER A LICENCE TO ACT. The floor is a
+        JUDGEMENT CALL WITH NO DERIVATION, and that is a reason to REPORT it as such -- not a
+        licence to relax it after seeing this number, nor to add a family, nor to change the grid
+        rung, nor to wire a further OOD channel in order to clear a bar. Every one of those moves
+        would be authoring the experiment after seeing its result.
+
+        P14_ITERATION_ALLOWANCE has exactly ONE pre-declared trigger and it is the split-conformal
+        coverage band, not this bar:
+
+        $P14_ITERATION_TRIGGER
+
+        The gated reading is the MINIMUM over families, deliberately, so that a single family the
+        wired channel is blind to stays visible rather than being averaged away. Read
+        `margin_per_family`, `margin_driver` and `empty_set_crosstab` in the artifact before
+        concluding anything about the layer as a whole.
+
+        The full report was persisted BEFORE this assertion and is intact at:
+          $report_path
+        """
+    end
+
     return (arms = arms, margin = margin, margin_per_family = margin_per_family,
-            weakest_family = weakest_family, id_record = id_record,
+            margin_driver = margin_driver, weakest_family = weakest_family,
+            empty_set_crosstab = crosstab, empty_set_agreement = agree_disagree,
+            any_not_checked = any_not_checked, sc3d_met = margin_meets_floor,
+            id_record = id_record,
             qhat = qh.qhat, n_ood = Int(n_ood), reported = reported,
             report_path = report_path, elapsed_s = time() - t_start)
 end
