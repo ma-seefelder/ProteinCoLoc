@@ -548,3 +548,28 @@ Plans:
 **Plans**: TBD
 
 - [ ] TBD (run /gsd:plan-phase 16 to break down)
+
+## Backlog
+
+Parked items. These surface at `/bm:new-milestone` planning time, when scope decisions are made
+deliberately rather than as an in-flight reaction.
+
+- [ ] **999.1 — `spike/p14` OOD-wiring traps and one comment-satisfied guard** *(parked from Phase 14
+  verification, 2026-08-04; source: `14-REVIEW.md` CR-01, CR-02, WR-01)*
+  **No Phase-14 reported number is affected** — every runner routes through `p14_ood_input(ref)`, and
+  the Costes seed is independently asserted on a live result at `test_p14_decide.jl:385`. These are
+  latent traps, parked rather than fixed because Phase 14 is closed and post-result source edits are
+  not made in this project without a reason on the record.
+  1. `spike/p14/pools.jl:557` returns a field literally named `ood_nulls` that has **no `:density`
+     key** (it merges the raw `fit_ood_nulls` tuple with `:thr`). `ood_verdict` reads
+     `ood_nulls.density`. Passing that field straight into `p14_decide_one(...; ood_nulls = ...)`
+     bypasses the adapter and silently yields `:not_checked` for every item — i.e. **all abstain**,
+     an outcome indistinguishable from a legitimate result. The adjacent comment asserts the field is
+     what "the shipped verdict reads", which is the opposite of true.
+  2. `spike/p14/decide.jl:290-294` `_p14_ood_verdict` collapses *no null fitted*, *null in the wrong
+     shape* and *not a NamedTuple* into a single silent `nothing`. Only the first is D-06's
+     legitimate not-checked state.
+  3. `spike/test/test_p14_decoupling.jl:593` asserts every `costes_p(` call site names `P14_DEV_SEED`
+     on the same line. `spike/p14/decide.jl:405` satisfies it **via a trailing comment**, not via
+     code — delete the comment and the guard turns red; pass a forbidden seed and it stays green.
+     This is the project's recorded "underived/mis-aimed guard" pattern in a fifth instance.
