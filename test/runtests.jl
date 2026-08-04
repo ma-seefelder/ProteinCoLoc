@@ -1548,3 +1548,35 @@ end
         @test sort(vec(out[1])) == sort(vec(base[1]))
     end
 end
+
+##########################################################################################
+### PHASE-15 SUITE — the calibration operating envelope and CI gate
+###
+### The Phase-15 test files live in `test/gate/` alongside the machinery they cover and are
+### wired in HERE, ONCE. The list below is fixed and complete for the phase; each file is
+### included only if it EXISTS, and the absent ones are named in an `@info` rather than
+### silently ignored. That is the honest `:not_trained` pattern `run_gate.jl:16-19` already
+### uses, and it is what lets later Phase-15 plans add their test file without ever editing
+### this file again — every edit to `runtests.jl` is a chance to disturb the co-resolution
+### hard gate at the top, which must keep running first.
+###
+### Each Phase-15 test file loads its pre-registration into an ISOLATED module: `p15_consts.jl`
+### defines the same const names (`SBC_M`, `prod_seed`, …) that `run_gate.jl` has already loaded
+### into this module via the template, and every gate consts file is guarded on `:SBC_M`, so a
+### direct include would be silently skipped and the assertions would read the wrong file.
+##########################################################################################
+const P15_SUITE_FILES = ("test_p15_consts", "test_p15_families", "test_p15_break",
+                         "test_p15_envelope_arm", "test_p15_golden")
+const P15_SUITE_ABSENT = String[]
+for p15_name in P15_SUITE_FILES
+    p15_path = joinpath(@__DIR__, "gate", "$(p15_name).jl")
+    if isfile(p15_path)
+        include(p15_path)
+    else
+        push!(P15_SUITE_ABSENT, p15_name)
+    end
+end
+isempty(P15_SUITE_ABSENT) ||
+    @info "Phase-15 suite: these test files do not exist yet and were SKIPPED (not failed)" absent =
+        P15_SUITE_ABSENT
+
